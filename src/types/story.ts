@@ -66,7 +66,7 @@ export interface SceneBeat extends BaseEntity {
 
 // AI Chat types
 export interface AIChat extends BaseEntity {
-    storyId: string;
+    storyId: string | null; // null for global chats (e.g. Research) — see ChatType
     title: string;
     messages: ChatMessage[];
     updatedAt?: Date;

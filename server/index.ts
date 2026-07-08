@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runMigrations } from "./db/migrate.js";
 import { seedSystemPrompts } from "./db/seedSystemPrompts.js";
-import { requireAuth } from "./middleware/auth.js";
+import { blockViewerMutations, requireAuth, requireOwner } from "./middleware/auth.js";
 import adminRouter from "./routes/admin.js";
 import aiRouter from "./routes/ai.js";
 import authRouter from "./routes/auth.js";
@@ -26,6 +26,7 @@ import seriesRouter from "./routes/series.js";
 // Import routes
 import storiesRouter from "./routes/stories.js";
 import ttsRouter from "./routes/tts.js";
+import usersRouter from "./routes/users.js";
 
 // ES module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -64,6 +65,10 @@ app.get("/api/health", (_, res) => {
 // Every other /api/* route requires a valid session from here on.
 app.use("/api", requireAuth);
 
+// Viewers get read-only access everywhere; owner-only surfaces (API keys, DB admin, user
+// management) are gated further below.
+app.use("/api", blockViewerMutations);
+
 // API routes
 app.use("/api/series", seriesRouter);
 app.use("/api/stories", storiesRouter);
@@ -72,11 +77,11 @@ app.use("/api/chats", chatsRouter);
 app.use("/api/codex", codexRouter);
 app.use("/api/lorebook", lorebookRouter);
 app.use("/api/prompts", promptsRouter);
-app.use("/api/ai", aiRouter);
+app.use("/api/ai", requireOwner, aiRouter);
 app.use("/api/brainstorm", brainstormRouter);
 app.use("/api/scenebeats", scenebeatsRouter);
 app.use("/api/notes", notesRouter);
-app.use("/api/admin", adminRouter);
+app.use("/api/admin", requireOwner, adminRouter);
 app.use("/api/rag", ragRouter);
 app.use("/api/tts", ttsRouter);
 app.use("/api/humanizer", humanizerRouter);
@@ -84,6 +89,7 @@ app.use("/api/beats", beatsRouter);
 app.use("/api/grammar", grammarRouter);
 app.use("/api/outline", outlineRouter);
 app.use("/api/outline-characters", outlineCharactersRouter);
+app.use("/api/users", requireOwner, usersRouter);
 
 // Serve static files in production
 if (NODE_ENV === "production") {

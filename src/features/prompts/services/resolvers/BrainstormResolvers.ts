@@ -18,6 +18,16 @@ export class ChatHistoryResolver implements IVariableResolver {
     }
 }
 
+// Codex context for chats.ts-backed chats (World-Building/Research) — pre-formatted by the
+// caller from GET /api/chats/:chatId/context's systemPrompt + relevantCodexEntries (see
+// server/services/chatContextService.ts). Not used by the plain Brainstorm feature.
+export class CodexContextResolver implements IVariableResolver {
+    async resolve(context: PromptContext): Promise<string> {
+        const codexContext = context.additionalContext?.codexContext;
+        return typeof codexContext === "string" && codexContext.trim() ? codexContext : "No Codex context available.";
+    }
+}
+
 export class UserInputResolver implements IVariableResolver {
     async resolve(context: PromptContext): Promise<string> {
         if (!context.scenebeat?.trim()) return "No specific question or topic provided.";

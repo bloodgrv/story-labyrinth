@@ -28,7 +28,8 @@ router.get(
         res.json({
             setupComplete,
             authenticated: !!user,
-            username: user?.username ?? null
+            username: user?.username ?? null,
+            role: user?.role ?? null
         });
     })
 );

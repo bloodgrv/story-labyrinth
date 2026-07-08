@@ -132,6 +132,42 @@ Build and run from source:
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
+### Remote Access via Tailscale
+
+Rather than exposing the container to your LAN or the public internet, you can make it reachable only to devices on your [Tailscale](https://tailscale.com) network (tailnet). This pairs well with the app's Owner/Editor/Viewer login system: Tailscale gates *who can reach the server at all*, and the app's own login gates *what they can do once they're on it*.
+
+#### Docker (recommended)
+
+`docker-compose.tailscale.yml` runs a Tailscale sidecar container alongside the app and puts the app on the sidecar's network - it is never published on a host port, so it's unreachable except via the tailnet.
+
+1. Generate an auth key at [the Tailscale admin console](https://login.tailscale.com/admin/settings/keys) (reusable + ephemeral is recommended, so restarting the container doesn't need a new key each time).
+2. Copy the env template and fill in your key:
+   ```bash
+   cp .env.tailscale.example .env
+   # edit .env and set TS_AUTHKEY
+   ```
+3. Start it:
+   ```bash
+   docker-compose -f docker-compose.tailscale.yml up -d
+   ```
+4. From any device on your tailnet, visit `http://<TS_HOSTNAME>:<APP_PORT>` (defaults to `http://storynexus:3000`).
+
+**Optional - proper HTTPS**: by default this serves plain HTTP (the WireGuard tunnel itself is already encrypted, so this is not sending anything in the clear - it's just a browser padlock/UX nicety). To get a real `https://` URL with a valid cert via Tailscale's own TLS, run once after the stack is up:
+
+```bash
+docker exec storynexus-tailscale tailscale serve --bg https / http://localhost:3000
+```
+
+This persists in the state volume (`./tailscale-state`), so it survives container restarts.
+
+#### Bare metal (no Docker)
+
+If you're running `npm start` directly on a machine that already has `tailscaled` installed and running, no compose changes are needed - just point Tailscale's built-in reverse proxy at the app:
+
+```bash
+tailscale serve --bg https / http://localhost:3000
+```
+
 ## Release Process
 
 New releases are published via GitHub Releases, which automatically builds and pushes multi-architecture Docker images to Docker Hub.

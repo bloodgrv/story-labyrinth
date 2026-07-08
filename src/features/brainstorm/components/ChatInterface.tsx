@@ -5,6 +5,7 @@ import { useLorebookContext } from "@/features/lorebook/context/LorebookContext"
 import { getFilteredEntries as getFilteredLorebookEntries } from "@/features/lorebook/utils/lorebookFilters";
 import { usePromptsQuery } from "@/features/prompts/hooks/usePromptsQuery";
 import type { AIChat, AllowedModel, Prompt, PromptParserConfig } from "@/types/story";
+import { useUpdateBrainstormMutation } from "../hooks/useBrainstormQuery";
 import { useChatMessages } from "../hooks/useChatMessages";
 import { useContextSelection } from "../hooks/useContextSelection";
 import { useMessageEditing } from "../hooks/useMessageEditing";
@@ -36,11 +37,14 @@ export default function ChatInterface({ storyId, selectedChat, onChatUpdate }: C
 
     const { data: availableModels = [] } = useAvailableModels();
 
+    const updateChatMutation = useUpdateBrainstormMutation();
     const { selectedPrompt, selectedModel, selectPrompt } = usePromptSelection(
         selectedChat.id,
         selectedChat.lastUsedPromptId,
         selectedChat.lastUsedModelId,
-        prompts
+        prompts,
+        (promptId, modelId) =>
+            updateChatMutation.mutate({ id: selectedChat.id, data: { lastUsedPromptId: promptId, lastUsedModelId: modelId } })
     );
 
     const { showPreview, previewMessages, previewLoading, previewError, openPreview, closePreview } =

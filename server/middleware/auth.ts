@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { validateSession } from "../services/authService.js";
+import type { UserRole } from "../services/authService.js";
 
 export const SESSION_COOKIE_NAME = "storynexus_session";
 
@@ -33,7 +34,7 @@ export const sessionCookieOptions = (maxAgeMs: number) => ({
 declare global {
     namespace Express {
         interface Request {
-            authUser?: { id: string; username: string };
+            authUser?: { id: string; username: string; role: UserRole; isActive: boolean };
         }
     }
 }
@@ -53,5 +54,25 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     }
 
     req.authUser = user;
+    next();
+};
+
+// Blocks 'viewer' from any mutating request (anything but GET/HEAD) across the whole API.
+// This is UX/defense-in-depth, not the only line of defense — individual routes that need
+// stricter rules (owner-only) still use requireOwner. Must run after requireAuth.
+export const blockViewerMutations = (req: Request, res: Response, next: NextFunction): void => {
+    if (req.authUser?.role === "viewer" && req.method !== "GET" && req.method !== "HEAD") {
+        res.status(403).json({ error: "Viewers have read-only access" });
+        return;
+    }
+    next();
+};
+
+// Restricts a route (or router prefix) to the 'owner' role. Must run after requireAuth.
+export const requireOwner = (req: Request, res: Response, next: NextFunction): void => {
+    if (req.authUser?.role !== "owner") {
+        res.status(403).json({ error: "Owner access required" });
+        return;
+    }
     next();
 };

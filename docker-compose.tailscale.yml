@@ -1,0 +1,42 @@
+services:
+    tailscale:
+        image: tailscale/tailscale:latest
+        container_name: storynexus-tailscale
+        hostname: ${TS_HOSTNAME:-storynexus}
+        environment:
+            - TS_AUTHKEY=${TS_AUTHKEY}
+            - TS_STATE_DIR=/var/lib/tailscale
+            # Keep the app container's own DNS resolution (for AI provider API calls) untouched by the tailnet.
+            - TS_EXTRA_ARGS=--accept-dns=false
+        volumes:
+            - ${TAILSCALE_STATE_PATH:-./tailscale-state}:/var/lib/tailscale
+        devices:
+            - /dev/net/tun:/dev/net/tun
+        cap_add:
+            - NET_ADMIN
+            - NET_RAW
+        restart: unless-stopped
+
+    storynexus:
+        image: ${DOCKER_IMAGE:-jonsilver/storynexus}:${IMAGE_TAG:-latest}
+        container_name: storynexus-app
+        pull_policy: always
+        user: "${PUID:-1000}:${PGID:-1000}"
+        # Shares the tailscale container's network namespace instead of publishing ports - the app is
+        # reachable ONLY via the tailnet (at http://<TS_HOSTNAME>:<APP_PORT>), never on the public/LAN interface.
+        network_mode: service:tailscale
+        depends_on:
+            - tailscale
+        environment:
+            - NODE_ENV=production
+            - PORT=${APP_PORT:-3000}
+            - DATABASE_PATH=/app/data/storynexus.db
+        volumes:
+            - ${DATA_PATH:-./data}:/app/data
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD", "sh", "-c", "wget --quiet --tries=1 --spider http://localhost:${APP_PORT:-3000}/api/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s

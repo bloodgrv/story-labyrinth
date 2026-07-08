@@ -1,4 +1,5 @@
 import { Edit, Loader2 } from "lucide-react";
+import type { ReactNode } from "react";
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -16,11 +17,16 @@ interface ChatMessageListProps {
     editingContent: string;
     streamingMessageId: string | null;
     storyId: string;
-    onStartEdit: (message: ChatMessage) => void;
+    // Editing is optional — chats.ts-backed chats (World-Building/Research) don't support
+    // it yet, so onStartEdit is simply omitted there and the edit affordance is hidden.
+    onStartEdit?: (message: ChatMessage) => void;
     onSaveEdit: (messageId: string) => void;
     onCancelEdit: () => void;
     onEditContentChange: (content: string) => void;
     editingTextareaRef: React.RefObject<HTMLTextAreaElement | null>;
+    // Renders below an assistant message's content when that message produced Codex
+    // proposals — see ChatInterface in features/chat for the chats.ts-backed usage.
+    renderProposalsForMessage?: (messageId: string) => ReactNode;
 }
 
 export function ChatMessageList({
@@ -33,7 +39,8 @@ export function ChatMessageList({
     onSaveEdit,
     onCancelEdit,
     onEditContentChange,
-    editingTextareaRef
+    editingTextareaRef,
+    renderProposalsForMessage
 }: ChatMessageListProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -93,7 +100,12 @@ export function ChatMessageList({
                                             <span className="text-sm">Generating...</span>
                                         </div>
                                     ) : message.role === "assistant" ? (
-                                        <AssistantMessageContent content={message.content} />
+                                        <>
+                                            <AssistantMessageContent content={message.content} />
+                                            {renderProposalsForMessage && (
+                                                <div className="mt-3 space-y-2">{renderProposalsForMessage(message.id)}</div>
+                                            )}
+                                        </>
                                     ) : (
                                         <MarkdownRenderer content={message.content} />
                                     )}
@@ -103,9 +115,11 @@ export function ChatMessageList({
                                                 text={parseThinkingContent(message.content).response}
                                                 storyId={storyId}
                                             />
-                                            <Button size="sm" variant="ghost" onClick={() => onStartEdit(message)}>
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
+                                            {onStartEdit && (
+                                                <Button size="sm" variant="ghost" onClick={() => onStartEdit(message)}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     )}
                                 </div>

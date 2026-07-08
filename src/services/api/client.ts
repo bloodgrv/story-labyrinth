@@ -27,6 +27,7 @@ export { grammarApi } from "./grammarClient";
 export { humanizerApi } from "./humanizerClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
 export { ttsApi } from "./ttsClient";
+export { usersApi } from "./usersClient";
 
 // Auth API
 export const authApi = {
@@ -190,6 +191,10 @@ export const chatsApi = {
     },
     getById: (id: string) => fetchJSON<AIChat>(`/chats/${id}`),
     getTemplates: () => fetchJSON<WorldBuildingTemplate[]>("/chats/templates"),
+    getOrCreateGlobal: (chatType: string, title?: string) => {
+        const q = title ? `?${new URLSearchParams({ title })}` : "";
+        return fetchJSON<AIChat>(`/chats/global/${chatType}${q}`);
+    },
     create: (data: { storyId: string; chatType?: string; templateSlug?: string; title?: string }) =>
         fetchJSON<AIChat>("/chats", { method: "POST", body: JSON.stringify(data) }),
     update: (
@@ -265,6 +270,19 @@ export const chatsApi = {
             method: "PATCH",
             body: JSON.stringify(data)
         })
+};
+
+// Codex API (backed by /api/codex) — approve/reject a pending change. Proposing changes and
+// listing them happens through chatsApi's chat-scoped codex-proposal calls above; these two
+// entry-level actions have no chat-scoped equivalent (server/routes/codex.ts).
+export const codexApi = {
+    approve: (pendingChangeId: string) =>
+        fetchJSON<{ entry: LorebookEntry | null; snapshot: unknown; pendingChange: CodexPendingChange }>(
+            `/codex/pending/${pendingChangeId}/approve`,
+            { method: "POST" }
+        ),
+    reject: (pendingChangeId: string) =>
+        fetchJSON<{ pendingChange: CodexPendingChange }>(`/codex/pending/${pendingChangeId}/reject`, { method: "POST" })
 };
 
 // Per-feature AI endpoint overrides

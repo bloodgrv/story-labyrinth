@@ -8,7 +8,10 @@ import { NotesTool } from "./tools/NotesTool";
 import { OutlineTool } from "./tools/OutlineTool";
 import { PromptsTool } from "./tools/PromptsTool";
 import { SeriesTool } from "./tools/SeriesTool";
+import { ResearchTool } from "./tools/ResearchTool";
 import { StoriesTool } from "./tools/StoriesTool";
+import { UsersTool } from "./tools/UsersTool";
+import { WorldBuildingTool } from "./tools/WorldBuildingTool";
 
 // Subtle background tints for each tool
 const toolTints = {
@@ -20,7 +23,10 @@ const toolTints = {
     lorebook: "bg-cyan-50/10 dark:bg-cyan-950/5",
     brainstorm: "bg-purple-50/10 dark:bg-purple-950/5",
     prompts: "bg-orange-50/10 dark:bg-orange-950/5",
-    notes: "bg-green-50/10 dark:bg-green-950/5"
+    notes: "bg-green-50/10 dark:bg-green-950/5",
+    users: "bg-background",
+    worldbuilding: "bg-violet-50/10 dark:bg-violet-950/5",
+    research: "bg-sky-50/10 dark:bg-sky-950/5"
 };
 
 export const MainContent = () => {
@@ -46,6 +52,12 @@ export const MainContent = () => {
                 return <PromptsTool />;
             case "notes":
                 return <NotesTool />;
+            case "users":
+                return <UsersTool />;
+            case "worldbuilding":
+                return <WorldBuildingTool />;
+            case "research":
+                return <ResearchTool />;
             default:
                 return (
                     <div className="flex items-center justify-center h-full">

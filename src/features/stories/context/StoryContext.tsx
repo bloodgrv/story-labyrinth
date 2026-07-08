@@ -9,7 +9,10 @@ export type WorkspaceTool =
     | "lorebook"
     | "brainstorm"
     | "prompts"
-    | "notes";
+    | "notes"
+    | "users"
+    | "worldbuilding"
+    | "research";
 
 interface StoryContextType {
     currentStoryId: string | null;

@@ -1,30 +1,31 @@
 import { ChevronLeft, ChevronRight, Edit2, Plus, Trash2 } from "lucide-react";
-import { type MouseEvent, useState } from "react";
+import { type MouseEvent, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { AIChat } from "@/types/story";
-import { randomUUID } from "@/utils/crypto";
-import {
-    useBrainstormByStoryQuery,
-    useCreateBrainstormMutation,
-    useDeleteBrainstormMutation,
-    useUpdateBrainstormMutation
-} from "../hooks/useBrainstormQuery";
+import type { ChatType } from "@/types/worldbuilding";
+import { useChatsByStoryQuery, useCreateChatMutation, useDeleteChatMutation, useUpdateChatMutation } from "../hooks/useChatQuery";
 
 interface ChatListProps {
     storyId: string;
+    chatType: ChatType;
+    title: string;
+    emptyLabel?: string;
     selectedChat: AIChat | null;
     onSelectChat: (chat: AIChat | null) => void;
+    // When provided, replaces the default "New Chat" button/flow — used by World-Building,
+    // which needs a template picker before creating a chat.
+    renderNewChatAction?: (chats: AIChat[]) => ReactNode;
 }
 
-export default function ChatList({ storyId, selectedChat, onSelectChat }: ChatListProps) {
-    const { data: chats = [], isLoading } = useBrainstormByStoryQuery(storyId);
-    const createMutation = useCreateBrainstormMutation();
-    const updateMutation = useUpdateBrainstormMutation();
-    const deleteMutation = useDeleteBrainstormMutation();
+export function ChatList({ storyId, chatType, title, emptyLabel = "No chats yet", selectedChat, onSelectChat, renderNewChatAction }: ChatListProps) {
+    const { data: chats = [], isLoading } = useChatsByStoryQuery(storyId, chatType);
+    const createMutation = useCreateChatMutation();
+    const updateMutation = useUpdateChatMutation();
+    const deleteMutation = useDeleteChatMutation();
 
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -33,18 +34,8 @@ export default function ChatList({ storyId, selectedChat, onSelectChat }: ChatLi
 
     const handleCreateNewChat = () => {
         createMutation.mutate(
-            {
-                id: randomUUID(),
-                storyId,
-                title: `New Chat ${new Date().toLocaleString()}`,
-                messages: [],
-                updatedAt: new Date()
-            },
-            {
-                onSuccess: newChat => {
-                    onSelectChat(newChat);
-                }
-            }
+            { storyId, chatType, title: `New Chat ${new Date().toLocaleString()}` },
+            { onSuccess: newChat => onSelectChat(newChat) }
         );
     };
 
@@ -64,12 +55,9 @@ export default function ChatList({ storyId, selectedChat, onSelectChat }: ChatLi
     };
 
     const handleSaveTitle = () => {
-        if (editingChat && newTitle.trim()) 
+        if (editingChat && newTitle.trim())
             updateMutation.mutate(
-                {
-                    id: editingChat.id,
-                    data: { title: newTitle.trim() }
-                },
+                { id: editingChat.id, data: { title: newTitle.trim() } },
                 {
                     onSuccess: () => {
                         setIsEditDialogOpen(false);
@@ -78,7 +66,6 @@ export default function ChatList({ storyId, selectedChat, onSelectChat }: ChatLi
                     }
                 }
             );
-        
     };
 
     return (
@@ -89,7 +76,6 @@ export default function ChatList({ storyId, selectedChat, onSelectChat }: ChatLi
                     isCollapsed ? "w-[40px]" : "w-[250px] sm:w-[300px]"
                 )}
             >
-                {/* Toggle button */}
                 <button
                     type="button"
                     onClick={() => setIsCollapsed(!isCollapsed)}
@@ -103,20 +89,18 @@ export default function ChatList({ storyId, selectedChat, onSelectChat }: ChatLi
                     )}
                 </button>
 
-                {/* Chat list content */}
                 <div className={cn("h-full overflow-y-auto", isCollapsed ? "hidden" : "block")}>
                     <div className="p-4 border-b border-input">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="font-semibold text-foreground">Brainstorm History</h2>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCreateNewChat}
-                                className="flex items-center gap-1"
-                            >
-                                <Plus className="h-4 w-4" />
-                                New Chat
-                            </Button>
+                            <h2 className="font-semibold text-foreground">{title}</h2>
+                            {renderNewChatAction ? (
+                                renderNewChatAction(chats)
+                            ) : (
+                                <Button variant="outline" size="sm" onClick={handleCreateNewChat} className="flex items-center gap-1">
+                                    <Plus className="h-4 w-4" />
+                                    New Chat
+                                </Button>
+                            )}
                         </div>
                     </div>
                     <ul className="overflow-y-auto flex-1">
@@ -126,11 +110,13 @@ export default function ChatList({ storyId, selectedChat, onSelectChat }: ChatLi
                             </li>
                         ) : chats.length === 0 ? (
                             <li className="p-8 flex flex-col items-center justify-center text-center">
-                                <p className="text-muted-foreground mb-4">No chats yet</p>
-                                <Button onClick={handleCreateNewChat} className="flex items-center gap-1">
-                                    <Plus className="h-4 w-4" />
-                                    Start New Chat
-                                </Button>
+                                <p className="text-muted-foreground mb-4">{emptyLabel}</p>
+                                {!renderNewChatAction && (
+                                    <Button onClick={handleCreateNewChat} className="flex items-center gap-1">
+                                        <Plus className="h-4 w-4" />
+                                        Start New Chat
+                                    </Button>
+                                )}
                             </li>
                         ) : (
                             chats.map(chat => (
@@ -153,14 +139,11 @@ export default function ChatList({ storyId, selectedChat, onSelectChat }: ChatLi
                                         }}
                                         className="flex flex-col gap-2 w-full text-left"
                                     >
-                                        {/* Title and timestamp with tooltip */}
                                         <div className="flex-1 min-w-0">
                                             <TooltipProvider delayDuration={100}>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                        <span className="text-sm block truncate text-foreground">
-                                                            {chat.title}
-                                                        </span>
+                                                        <span className="text-sm block truncate text-foreground">{chat.title}</span>
                                                     </TooltipTrigger>
                                                     <TooltipContent>
                                                         <p className="max-w-xs break-words">{chat.title}</p>
@@ -176,7 +159,6 @@ export default function ChatList({ storyId, selectedChat, onSelectChat }: ChatLi
                                             </span>
                                         </div>
 
-                                        {/* Action buttons */}
                                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Button
                                                 variant="ghost"
@@ -209,7 +191,6 @@ export default function ChatList({ storyId, selectedChat, onSelectChat }: ChatLi
                 </div>
             </div>
 
-            {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogContent>
                     <DialogHeader>

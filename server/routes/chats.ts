@@ -7,6 +7,7 @@ import {
     deleteChat,
     getChatById,
     getChatsForStory,
+    getOrCreateGlobalChat,
     getTemplates,
     replaceMessages,
     updateMeta
@@ -42,6 +43,19 @@ router.get(
     "/templates",
     asyncHandler(async (_req, res) => {
         res.json(getTemplates());
+    })
+);
+
+// ── GET /api/chats/global/:chatType ──────────────────────────────────────────
+// Get-or-create the single global chat of a type (e.g. Research — no storyId).
+// Must be defined before /:chatId to avoid "global" being matched as a param.
+router.get(
+    "/global/:chatType",
+    asyncHandler(async (req, res) => {
+        const chatType = req.params.chatType as ChatType;
+        const title = (req.query.title as string | undefined) ?? "Research";
+        const chat = await getOrCreateGlobalChat(chatType, title);
+        res.json(chat);
     })
 );
 

@@ -11,12 +11,31 @@ const RELEVANT_ENTRIES_LIMIT = 8;
 
 // Base framing applied to every World-Building Chat, regardless of template.
 // Template-specific guidance (systemPromptHint) is appended after this.
+//
+// The ```codex-proposal fenced-block convention below is this app's only mechanism for
+// turning a chat reply into an actual Codex change — there is no server-side parsing of
+// free text (see server/services/chatCodexService.ts), so the exact JSON shape here must
+// match POST /api/chats/:chatId/codex-proposals's body (server/routes/chats.ts) and what
+// src/features/chat/services/parseCodexProposals.ts extracts client-side.
 const BASE_SYSTEM_FRAMING =
     "You are a collaborative world-building assistant for a long-form fiction project. " +
     "Stay factually consistent with the story's established Codex state and the reference " +
     "context provided below. When you learn a new concrete fact, or a character/location/item's " +
-    "physical state changes, propose it as a Codex entry or update rather than just stating it in " +
-    "conversation — all Codex changes require explicit user approval before they take effect.";
+    "physical state changes, propose it as a Codex entry or update — never just state it in " +
+    "conversation as if it were already canon. All Codex changes require explicit user approval " +
+    "before they take effect.\n\n" +
+    "To propose a change, include a fenced block in this exact form:\n\n" +
+    "```codex-proposal\n" +
+    '{"type": "new_entry", "level": "story", "name": "...", "description": "...", "category": "character", "tags": ["..."]}\n' +
+    "```\n\n" +
+    "or, to modify an existing entry (use the entryId from the Codex context above):\n\n" +
+    "```codex-proposal\n" +
+    '{"type": "modify_entry", "entryId": "...", "proposedDescription": "...", "proposedTags": ["..."]}\n' +
+    "```\n\n" +
+    '"level" must be "global", "series", or "story" (use "story" unless told otherwise). ' +
+    '"category" must be one of: character, location, item, event, note, synopsis, starting scenario, timeline. ' +
+    "Write your normal conversational reply around the block — it's stripped out before the user sees it, " +
+    "so don't reference '```codex-proposal' or 'the block' in your prose; just talk about the proposal naturally.";
 
 // Assemble the effective system prompt for a chat: base framing + template hint (if any).
 // Extend this — not the template catalogue — when adding further global system instructions.
@@ -67,9 +86,11 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
 
     const effectiveQuery = query?.trim() || chat.title;
 
+    // Global chats (e.g. Research) have no storyId, so there's no per-story index to search —
+    // Codex-entry grounding is only available for story-scoped chats.
     const [pendingProposals, relevantCodexEntries]: [CodexPendingChange[], ChatContextCodexEntry[]] = await Promise.all([
         getChatCodexProposals(chatId, "pending"),
-        getRelevantCodexEntries(chat.storyId, effectiveQuery)
+        chat.storyId ? getRelevantCodexEntries(chat.storyId, effectiveQuery) : Promise.resolve([])
     ]);
 
     return {

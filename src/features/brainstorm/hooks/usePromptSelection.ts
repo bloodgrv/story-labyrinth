@@ -1,12 +1,10 @@
 import { useCallback, useRef, useState } from "react";
 import type { AllowedModel, Prompt } from "@/types/story";
-import { useUpdateBrainstormMutation } from "./useBrainstormQuery";
 
 interface UsePromptSelectionReturn {
     selectedPrompt: Prompt | null;
     selectedModel: AllowedModel | null;
     selectPrompt: (prompt: Prompt, model: AllowedModel) => void;
-    isLoading: boolean;
 }
 
 const findInitialSelection = (
@@ -35,7 +33,10 @@ export const usePromptSelection = (
     chatId: string,
     lastUsedPromptId: string | undefined,
     lastUsedModelId: string | undefined,
-    prompts: Prompt[]
+    prompts: Prompt[],
+    // Persists the selection onto the chat record — callers wire this to whichever
+    // update mutation matches their backend (brainstormApi vs chatsApi).
+    persistSelection: (promptId: string, modelId: string) => void
 ): UsePromptSelectionReturn => {
     const initialisedForChatRef = useRef<string | null>(null);
 
@@ -56,28 +57,18 @@ export const usePromptSelection = (
         setSelectedModel(initialValues.model);
     }
 
-    const updateMutation = useUpdateBrainstormMutation();
-
     const selectPrompt = useCallback(
         (prompt: Prompt, model: AllowedModel) => {
             setSelectedPrompt(prompt);
             setSelectedModel(model);
-
-            updateMutation.mutate({
-                id: chatId,
-                data: {
-                    lastUsedPromptId: prompt.id,
-                    lastUsedModelId: model.id
-                }
-            });
+            persistSelection(prompt.id, model.id);
         },
-        [chatId, updateMutation]
+        [persistSelection]
     );
 
     return {
         selectedPrompt,
         selectedModel,
-        selectPrompt,
-        isLoading: updateMutation.isPending
+        selectPrompt
     };
 };

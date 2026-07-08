@@ -21,6 +21,7 @@ import {
     ChapterSummariesResolver,
     CharacterResolver,
     ChatHistoryResolver,
+    CodexContextResolver,
     LorebookFormatter,
     MatchedEntriesChapterResolver,
     PoVResolver,
@@ -89,6 +90,7 @@ export class PromptParser {
         // Brainstorm resolvers - pass entries as dependency
         registry.register("chat_history", new ChatHistoryResolver());
         registry.register("user_input", new UserInputResolver());
+        registry.register("codex_context", new CodexContextResolver());
         registry.register("brainstorm_context", new BrainstormContextResolver(this.formatter, entries));
 
         return registry;

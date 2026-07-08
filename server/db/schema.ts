@@ -67,9 +67,8 @@ export const aiChats = sqliteTable(
     "aiChats",
     {
         id: text("id").primaryKey(),
-        storyId: text("storyId")
-            .notNull()
-            .references(() => stories.id, { onDelete: "cascade" }),
+        // Nullable — global chats (chatType='research') have no story; see getGlobalChat.
+        storyId: text("storyId").references(() => stories.id, { onDelete: "cascade" }),
         title: text("title").notNull(),
         messages: text("messages", { mode: "json" }).notNull(), // JSON: ChatMessage[]
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
@@ -413,15 +412,17 @@ export const ragScanIssues = sqliteTable(
     })
 );
 
-// Users table — local accounts. Phase 0 scope is single-user (registration only allowed
-// while this table is empty; see server/routes/auth.ts), but the schema itself doesn't
-// assume single-user so multi-user/roles can be added later without a breaking migration.
+// Users table — local accounts. Registration via /api/auth/register is only allowed while
+// this table is empty (see server/routes/auth.ts) and always creates the 'owner'; further
+// users are created by an owner through /api/users.
 export const users = sqliteTable(
     "users",
     {
         id: text("id").primaryKey(),
         username: text("username").notNull().unique(),
         passwordHash: text("passwordHash").notNull(), // format: scrypt$<saltHex>$<hashHex> — see passwordService.ts
+        role: text("role").notNull().default("owner"), // 'owner' | 'editor' | 'viewer'
+        isActive: integer("isActive", { mode: "boolean" }).notNull().default(true),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
     },
     table => ({

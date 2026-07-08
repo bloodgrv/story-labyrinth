@@ -11,6 +11,7 @@ import {
     deleteChat,
     getChatById,
     getChatsForStory,
+    getGlobalChat,
     updateChatMessages,
     updateChatMeta,
     type ChatRow,
@@ -84,6 +85,20 @@ export const createGenericChat = async (
         chatType: params.chatType,
         templateSlug: null
     });
+};
+
+/**
+ * Get the single global chat of a type (e.g. Research — see CLAUDE.md's "Global Info/Research
+ * Chat"), creating it if it doesn't exist yet. Server-side get-or-create avoids two concurrent
+ * clients racing to each create their own copy.
+ */
+export const getOrCreateGlobalChat = async (chatType: ChatType, title: string): Promise<ChatRow> => {
+    if (chatType === "worldbuilding") throw new Error("World-Building chats are always story-scoped");
+
+    const existing = await getGlobalChat(chatType);
+    if (existing) return existing;
+
+    return repoCreateChat({ storyId: null, title, chatType, templateSlug: null });
 };
 
 // ── Message management ─────────────────────────────────────────────────────────

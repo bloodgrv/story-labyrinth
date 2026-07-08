@@ -21,17 +21,32 @@ export const getUserById = async (id: string): Promise<UserRow | null> => {
     return row ?? null;
 };
 
-export const createUser = async (params: { username: string; passwordHash: string }): Promise<UserRow> => {
+export const createUser = async (params: {
+    username: string;
+    passwordHash: string;
+    role: "owner" | "editor" | "viewer";
+}): Promise<UserRow> => {
     const [row] = await db
         .insert(schema.users)
         .values({
             id: crypto.randomUUID(),
             username: params.username,
             passwordHash: params.passwordHash,
+            role: params.role,
             createdAt: new Date()
         })
         .returning();
     return row;
+};
+
+export const getAllUsers = async (): Promise<UserRow[]> => db.select().from(schema.users);
+
+export const updateUser = async (
+    id: string,
+    changes: Partial<Pick<UserRow, "role" | "isActive" | "passwordHash">>
+): Promise<UserRow | null> => {
+    const [row] = await db.update(schema.users).set(changes).where(eq(schema.users.id, id)).returning();
+    return row ?? null;
 };
 
 // ── Sessions ───────────────────────────────────────────────────────────────────
@@ -60,6 +75,10 @@ export const getSession = async (hashedToken: string): Promise<SessionRow | null
 
 export const deleteSession = async (hashedToken: string): Promise<void> => {
     await db.delete(schema.sessions).where(eq(schema.sessions.id, hashedToken));
+};
+
+export const deleteSessionsForUser = async (userId: string): Promise<void> => {
+    await db.delete(schema.sessions).where(eq(schema.sessions.userId, userId));
 };
 
 // Opportunistic cleanup — called on login rather than on a timer, since this is a

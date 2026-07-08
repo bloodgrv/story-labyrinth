@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { parseJson } from "../lib/json.js";
 import type { ChatMessage } from "../../src/types/story.js";
@@ -24,7 +24,7 @@ export type ChatRow = ReturnType<typeof toChat>;
 // ── Input types ────────────────────────────────────────────────────────────────
 
 export type CreateChatParams = {
-    storyId: string;
+    storyId: string | null;
     title: string;
     chatType: ChatType;
     templateSlug?: WorldBuildingTemplateSlug | null;
@@ -52,6 +52,17 @@ export const getChatsForStory = async (
         .orderBy(desc(schema.aiChats.updatedAt), desc(schema.aiChats.createdAt));
 
     return rows.map(toChat);
+};
+
+// The single global chat of a given type (storyId IS NULL) — e.g. the one Research chat.
+export const getGlobalChat = async (chatType: ChatType): Promise<ChatRow | null> => {
+    const [row] = await db
+        .select()
+        .from(schema.aiChats)
+        .where(and(isNull(schema.aiChats.storyId), eq(schema.aiChats.chatType, chatType)))
+        .orderBy(desc(schema.aiChats.createdAt))
+        .limit(1);
+    return row ? toChat(row) : null;
 };
 
 export const getChatById = async (id: string): Promise<ChatRow | null> => {

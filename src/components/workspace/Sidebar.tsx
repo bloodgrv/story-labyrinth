@@ -9,10 +9,14 @@ import {
     List,
     ListTree,
     MessageSquare,
-    StickyNote
+    Search,
+    Sparkles,
+    StickyNote,
+    Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
+import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { useStoryContext, type WorkspaceTool } from "@/features/stories/context/StoryContext";
 import { cn } from "@/lib/utils";
 import { version } from "../../../package.json";
@@ -26,14 +30,20 @@ const tools = [
     { id: "outline" as WorkspaceTool, label: "Outline", icon: ListTree, requiresStory: true },
     { id: "lorebook" as WorkspaceTool, label: "Lorebook", icon: BookOpen, requiresStory: true },
     { id: "brainstorm" as WorkspaceTool, label: "Brainstorm", icon: MessageSquare, requiresStory: true },
+    { id: "worldbuilding" as WorkspaceTool, label: "World-Building", icon: Sparkles, requiresStory: true },
+    { id: "research" as WorkspaceTool, label: "Research", icon: Search, requiresStory: false },
     { id: "prompts" as WorkspaceTool, label: "Prompts", icon: FileText, requiresStory: true },
     { id: "notes" as WorkspaceTool, label: "Notes", icon: StickyNote, requiresStory: true }
 ];
+
+const ownerOnlyTools = [{ id: "users" as WorkspaceTool, label: "Users", icon: Users, requiresStory: false }];
 
 export const Sidebar = () => {
     const { currentTool, setCurrentTool, currentStoryId } = useStoryContext();
     const { leftSidebar, toggleLeftSidebar } = useWorkspace();
     const collapsed = leftSidebar.collapsed;
+    const isOwner = useIsOwner();
+    const visibleTools = isOwner ? [...tools, ...ownerOnlyTools] : tools;
 
     const handleToolClick = (toolId: WorkspaceTool, requiresStory: boolean) => {
         if (requiresStory && !currentStoryId) return;
@@ -50,7 +60,7 @@ export const Sidebar = () => {
                 )}
             >
                 <nav className="flex-1 p-2 space-y-1">
-                    {tools.map(tool => {
+                    {visibleTools.map(tool => {
                         const Icon = tool.icon;
                         const isActive = currentTool === tool.id;
                         const isDisabled = tool.requiresStory && !currentStoryId;
@@ -95,7 +105,7 @@ export const Sidebar = () => {
             {/* Mobile Bottom Toolbar */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 z-50">
                 <div className="flex justify-around p-1 sm:p-2">
-                    {tools.map(tool => {
+                    {visibleTools.map(tool => {
                         const Icon = tool.icon;
                         const isActive = currentTool === tool.id;
                         const isDisabled = tool.requiresStory && !currentStoryId;

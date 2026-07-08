@@ -25,7 +25,7 @@ export const useCreateBrainstormMutation = () => {
     return useMutation({
         mutationFn: brainstormApi.create,
         onSuccess: newChat => {
-            queryClient.invalidateQueries({ queryKey: brainstormKeys.byStory(newChat.storyId) });
+            queryClient.invalidateQueries({ queryKey: brainstormKeys.byStory(newChat.storyId ?? "") });
             toast.success("Brainstorm chat created successfully");
         },
         onError: (error: Error) => {
@@ -42,7 +42,7 @@ export const useUpdateBrainstormMutation = () => {
         mutationFn: ({ id, data }: { id: string; data: Partial<AIChat> }) => brainstormApi.update(id, data),
         onSuccess: (updatedChat, variables) => {
             queryClient.setQueryData(brainstormKeys.detail(variables.id), updatedChat);
-            queryClient.setQueryData<AIChat[]>(brainstormKeys.byStory(updatedChat.storyId), old =>
+            queryClient.setQueryData<AIChat[]>(brainstormKeys.byStory(updatedChat.storyId ?? ""), old =>
                 old?.map(c => (c.id === updatedChat.id ? updatedChat : c))
             );
         },

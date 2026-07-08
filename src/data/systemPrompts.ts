@@ -163,6 +163,34 @@ const systemPrompts: Partial<Prompt>[] = [
         top_k: 50,
         repetition_penalty: 1.0,
         min_p: 0.0
+    },
+    {
+        id: "world-building-system",
+        name: "World-Building",
+        promptType: "brainstorm",
+        description: "Collaborative world-building assistant that can propose Codex entries and updates",
+        messages: [
+            {
+                role: "system",
+                content: "{{codex_context}}"
+            },
+            {
+                role: "user",
+                content: "Here's the chat history of our discussion: {{chat_history}}"
+            },
+            {
+                role: "user",
+                content: "{{user_input}}"
+            }
+        ],
+        allowedModels: [],
+        isSystem: true,
+        temperature: 1.0,
+        maxTokens: 16384,
+        top_p: 1.0,
+        top_k: 50,
+        repetition_penalty: 1.0,
+        min_p: 0.0
     }
 ];
 

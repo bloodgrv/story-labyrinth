@@ -5,20 +5,29 @@ import {
     createUser,
     deleteExpiredSessions,
     deleteSession,
+    deleteSessionsForUser,
+    getAllUsers,
     getSession,
     getUserById,
     getUserByUsername,
     getUserCount,
+    updateUser,
     type UserRow
 } from "./authRepository.js";
 
-export type AuthUser = { id: string; username: string };
+export type UserRole = "owner" | "editor" | "viewer";
+export type AuthUser = { id: string; username: string; role: UserRole; isActive: boolean };
 export type AuthSession = { rawToken: string; expiresAt: Date };
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — a personal/local tool, not a bank
 const SESSION_TOKEN_BYTES = 32;
 
-const toAuthUser = (row: UserRow): AuthUser => ({ id: row.id, username: row.username });
+const toAuthUser = (row: UserRow): AuthUser => ({
+    id: row.id,
+    username: row.username,
+    role: row.role as UserRole,
+    isActive: row.isActive
+});
 
 // ── Session tokens ─────────────────────────────────────────────────────────────
 // The raw token goes in the cookie; only its SHA-256 hash is ever persisted (see
@@ -42,7 +51,8 @@ export const validateSession = async (rawToken: string): Promise<AuthUser | null
     }
 
     const user = await getUserById(session.userId);
-    return user ? toAuthUser(user) : null;
+    if (!user || !user.isActive) return null;
+    return toAuthUser(user);
 };
 
 export const endSession = async (rawToken: string): Promise<void> => {
@@ -118,7 +128,7 @@ export const registerUser = async (
     if (existing) throw new Error("Username is already taken.");
 
     const passwordHash = await hashPassword(password);
-    const user = await createUser({ username, passwordHash });
+    const user = await createUser({ username, passwordHash, role: "owner" });
     const session = await issueSession(user.id);
 
     return { user: toAuthUser(user), session };
@@ -144,7 +154,7 @@ export const login = async (username: string, password: string): Promise<{ user:
     }
 
     const valid = await verifyPassword(password, user.passwordHash);
-    if (!valid) {
+    if (!valid || !user.isActive) {
         recordFailedAttempt(username);
         return null;
     }
@@ -155,3 +165,49 @@ export const login = async (username: string, password: string): Promise<{ user:
 };
 
 export const getLoginLockoutSeconds = (username: string): number => Math.ceil(getLockoutRemainingMs(username) / 1000);
+
+// ── Admin user management (owner-only, enforced at the route layer) ────────────────────
+
+export const listUsers = async (): Promise<AuthUser[]> => (await getAllUsers()).map(toAuthUser);
+
+export const createUserByAdmin = async (
+    username: string,
+    password: string,
+    role: UserRole
+): Promise<AuthUser> => {
+    const usernameError = validateUsername(username);
+    if (usernameError) throw new Error(usernameError);
+    const passwordError = validatePassword(password);
+    if (passwordError) throw new Error(passwordError);
+
+    const existing = await getUserByUsername(username);
+    if (existing) throw new Error("Username is already taken.");
+
+    const passwordHash = await hashPassword(password);
+    const user = await createUser({ username, passwordHash, role });
+    return toAuthUser(user);
+};
+
+export const updateUserRole = async (id: string, role: UserRole): Promise<AuthUser> => {
+    const user = await updateUser(id, { role });
+    if (!user) throw new Error("User not found.");
+    return toAuthUser(user);
+};
+
+export const setUserActive = async (id: string, isActive: boolean): Promise<AuthUser> => {
+    const user = await updateUser(id, { isActive });
+    if (!user) throw new Error("User not found.");
+    if (!isActive) await deleteSessionsForUser(id);
+    return toAuthUser(user);
+};
+
+export const adminResetPassword = async (id: string, newPassword: string): Promise<AuthUser> => {
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) throw new Error(passwordError);
+
+    const passwordHash = await hashPassword(newPassword);
+    const user = await updateUser(id, { passwordHash });
+    if (!user) throw new Error("User not found.");
+    await deleteSessionsForUser(id);
+    return toAuthUser(user);
+};
