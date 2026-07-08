@@ -1,0 +1,97 @@
+# Editor MultiView Guide
+
+Split the chapter editor into resizable panes, keep several chapters (or the Lorebook, Outline, and other tool panels) open in tabs, and pop any of them out into a movable window when you want it visible alongside everything else.
+
+> [!NOTE]
+> MultiView lives entirely inside the **Editor** tool. A single pane with a single tab — exactly how the editor has always looked — is still the default; splitting and tabs are opt-in, not a new mode you have to switch into.
+
+---
+
+## 1. Splitting the Editor
+
+Every pane has a small toolbar above its content:
+
+| Button | What it does |
+|--------|---------------|
+| **Split right** (⧉) | Divides the pane into two side-by-side columns |
+| **Split down** (⊟) | Divides the pane into two stacked rows |
+| **✕** (Close pane) | Closes the whole pane — only shown once there's more than one |
+
+A new split starts as a copy of whatever was showing in the pane you split — so splitting while looking at Chapter 3 gives you Chapter 3 in both halves, ready for you to scroll one side ahead or change its tab to something else entirely. Splits can be nested (split a pane, then split one of the results the other direction) to build an arbitrary grid.
+
+Drag the thin divider between two panes to resize them — it highlights as you hover so it's easy to find, and turns solid while you're actively dragging it.
+
+> [!TIP]
+> Click anywhere inside a pane (or one of its tabs) to make it "active" — a small colored line appears along its top edge. New tabs, splits, and keyboard shortcuts all apply to whichever pane is currently active.
+
+## 2. Tabs
+
+Each pane has its own row of tabs, independent of every other pane. A tab isn't limited to a chapter — click the **+** button on a pane's toolbar to add:
+
+- **Chapter** — opens a submenu listing every chapter in the story
+- **Lorebook** — the full Lorebook browser, embedded right in the pane
+- **Tags**, **Outline**, **POV**, **Notes**, **Beats** — the same panels available from the sidebar icons, scoped to whichever chapter is currently focused
+
+This is the main reason to use MultiView even without splitting: keep the Lorebook open in one tab and your chapter in another, in the *same* pane, and switch between them with a click instead of hunting through the sidebar.
+
+Hover a tab to reveal two small icons:
+
+| Icon | Action |
+|------|--------|
+| ↗ | Float this tab (see below) |
+| ✕ | Close this tab |
+
+Closing a pane's last tab closes the pane itself; closing the very last tab in the very last pane isn't allowed — there always has to be something open.
+
+## 3. Docking and Floating
+
+Every tab can also become a **floating panel** — a movable, resizable window that sits on top of the editor instead of taking up space in the grid.
+
+- Click the ↗ icon on a tab to **float** it. It detaches into its own window with a title bar.
+- Drag the title bar to move it; drag the small corner mark in the bottom-right to resize it.
+- Click **Dock** (⇱) in its title bar to send it back into the currently active pane as a tab, or **✕** to close it entirely.
+
+Floating is useful for something you want visible no matter what else you're doing — a character's Codex state while you write their dialogue, for instance — without it eating into your split layout.
+
+## 4. Keyboard Shortcuts
+
+All MultiView shortcuts use **Ctrl+Alt** (**⌘+Option** on Mac) plus one more key, so they never collide with the app's existing shortcuts. They work even while your cursor is in the editor.
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Alt+→` | Split the active pane right |
+| `Ctrl+Alt+↓` | Split the active pane down |
+| `Ctrl+Alt+W` | Close the active pane |
+| `Ctrl+Alt+J` | Next tab in the active pane |
+| `Ctrl+Alt+K` | Previous tab in the active pane |
+| `Ctrl+Alt+L` | Toggle a Lorebook tab in the active pane |
+| `Ctrl+Alt+T` | Toggle a Tags tab (current chapter) |
+| `Ctrl+Alt+O` | Toggle an Outline tab (current chapter) |
+| `Ctrl+Alt+P` | Toggle a POV tab (current chapter) |
+| `Ctrl+Alt+N` | Toggle a Notes tab (current chapter) |
+| `Ctrl+Alt+B` | Toggle a Beats tab (current chapter) |
+
+> [!TIP]
+> The panel-toggle shortcuts (L/T/O/P/N/B) are smart about state: press one to open that panel as a tab, press it again to close that same tab. No need to hunt for the right tab to close it.
+
+## 5. Your Layout Is Saved
+
+Splits, tabs, and floating panels are all remembered automatically per story — close the app, come back tomorrow, and your panes come back exactly as you left them, including a floating panel's exact position and size. Nothing to save manually.
+
+> [!IMPORTANT]
+> If a saved tab pointed at a chapter that's since been deleted, that tab will say so plainly instead of getting stuck loading — just close it.
+
+---
+
+## 6. Troubleshooting
+
+| Problem | What's happening |
+|---------|-------------------|
+| A shortcut doesn't seem to fire | Make sure you're on the Editor tool with a chapter open — MultiView shortcuts only run while the split editor itself is on screen |
+| My split layout looks different than last time | Layouts are saved per story in your browser — using a different browser or clearing site data starts that story fresh |
+| A floating panel disappeared off-screen | Click **Dock** isn't available if you can't see the panel — reopen the Guide's story from Chapters, then re-add the tab and float it again to reset its position |
+| Closing a pane closed more than I expected | Closing a pane closes every tab inside it — check a pane's tabs before closing if it has more than one open |
+
+---
+
+MultiView layouts persist in your browser's local storage, the same way your current chapter and open tool are remembered — no account or server round-trip involved, and it works fully offline.

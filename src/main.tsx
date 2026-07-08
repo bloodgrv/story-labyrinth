@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from "react-router";
 import { ToastContainer } from "react-toastify";
 // Styles
 import "react-toastify/dist/ReactToastify.css";
+import { AuthGate } from "@/features/auth/components/AuthGate";
 import { StoryProvider } from "@/features/stories/context/StoryContext";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -17,6 +18,8 @@ const StoryReader = lazy(() => import("./features/stories/pages/StoryReader").th
 const SeriesListPage = lazy(() => import("./features/series/pages/SeriesListPage"));
 const SettingsPage = lazy(() => import("./features/ai/pages/SettingsPage"));
 const GuidePage = lazy(() => import("./features/guide/pages/GuidePage"));
+const DashboardPage = lazy(() => import("./features/dashboard/pages/DashboardPage"));
+const ChatPage = lazy(() => import("./features/dashboard/pages/ChatPage"));
 
 // Loading fallback component
 const PageLoadingFallback = () => (
@@ -31,22 +34,26 @@ ReactDOM.createRoot(rootElement).render(
     <ErrorBoundary>
         <QueryProvider>
             <ThemeProvider defaultTheme="dark" storageKey="app-theme">
-                <BrowserRouter>
-                    <StoryProvider>
-                        <Suspense fallback={<PageLoadingFallback />}>
-                            <Routes>
-                                <Route path="/" element={<Workspace />} />
-                                <Route element={<MainLayout />}>
-                                    <Route path="/stories/:storyId/read" element={<StoryReader />} />
-                                    <Route path="/series" element={<SeriesListPage />} />
-                                    <Route path="/settings" element={<SettingsPage />} />
-                                    <Route path="/guide" element={<GuidePage />} />
-                                </Route>
-                            </Routes>
-                        </Suspense>
-                    </StoryProvider>
-                    <ToastContainer />
-                </BrowserRouter>
+                <AuthGate>
+                    <BrowserRouter>
+                        <StoryProvider>
+                            <Suspense fallback={<PageLoadingFallback />}>
+                                <Routes>
+                                    <Route path="/" element={<Workspace />} />
+                                    <Route element={<MainLayout />}>
+                                        <Route path="/stories/:storyId/read" element={<StoryReader />} />
+                                        <Route path="/series" element={<SeriesListPage />} />
+                                        <Route path="/settings" element={<SettingsPage />} />
+                                        <Route path="/guide" element={<GuidePage />} />
+                                        <Route path="/dashboard/:storyId" element={<DashboardPage />} />
+                                        <Route path="/dashboard/:storyId/chats/:chatId" element={<ChatPage />} />
+                                    </Route>
+                                </Routes>
+                            </Suspense>
+                        </StoryProvider>
+                        <ToastContainer />
+                    </BrowserRouter>
+                </AuthGate>
             </ThemeProvider>
         </QueryProvider>
     </ErrorBoundary>

@@ -1,0 +1,36 @@
+{
+    "version": "0.0.1",
+    "configurations": [
+        {
+            "name": "dev",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "dev"],
+            "port": 5173
+        },
+        {
+            "name": "server-only",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "cross-env",
+                "NODE_ENV=development",
+                "PORT=3001",
+                "NODE_OPTIONS=--use-system-ca",
+                "tsx",
+                "server/index.ts"
+            ],
+            "port": 3001
+        },
+        {
+            "name": "client-only",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "dev:client"],
+            "port": 5173
+        },
+        {
+            "name": "nervous-bun-dev",
+            "runtimeExecutable": "cmd",
+            "runtimeArgs": ["/c", "cd /d E:\\StoryNexus-Fork\\.claude\\worktrees\\nervous-bun-cf48fd && npm run dev"],
+            "port": 5173
+        }
+    ]
+}

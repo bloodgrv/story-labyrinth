@@ -1,9 +1,12 @@
-FROM node:22-alpine AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Install build dependencies for native modules
-RUN apk add --no-cache python3 make g++
+# Install build dependencies for native modules.
+# Debian (glibc) rather than Alpine (musl): sqlite-vec's prebuilt Linux binaries are
+# built against glibc and fail to load under musl — see DECISIONS.md.
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
@@ -14,6 +17,10 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Fail the build immediately if sqlite-vec can't load in this environment (e.g. a glibc/musl
+# mismatch), rather than deferring the failure to the first RAG request at runtime.
+RUN node server/scripts/verify-sqlite-vec.mjs
+
 # Build application (frontend + backend)
 RUN npm run build
 
@@ -21,12 +28,14 @@ RUN npm run build
 RUN test -f /app/dist/server/server/index.js || (echo "Build output missing" && exit 1)
 
 # Production stage
-FROM node:22-alpine
+FROM node:22-slim
 
 WORKDIR /app
 
-# Install build dependencies for native modules (needed for better-sqlite3)
-RUN apk add --no-cache python3 make g++
+# Install build dependencies for native modules (needed for better-sqlite3), plus wget
+# for the docker-compose healthcheck (not included by default on Debian, unlike Alpine).
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ wget \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
@@ -38,6 +47,18 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/db/migrations ./dist/server/server/db/migrations
 COPY --from=builder /app/server/data ./dist/server/server/data
+
+# Verification scripts (plain .mjs, no build step needed)
+COPY server/scripts ./server/scripts
+
+# Re-verify sqlite-vec against this stage's own --omit=dev install of the platform binary
+# (the builder stage already checked it once, but this is a separate `npm ci` and the image
+# that actually ships, so it gets checked again here).
+RUN node server/scripts/verify-sqlite-vec.mjs
+
+# Verify the full migration chain — including the RAG virtual tables — applies cleanly
+# using the exact compiled artifacts and migration files that ship in this image.
+RUN node server/scripts/verify-migrations.mjs
 
 # Create data directory for SQLite with correct ownership
 RUN mkdir -p /app/data && chown node:node /app/data

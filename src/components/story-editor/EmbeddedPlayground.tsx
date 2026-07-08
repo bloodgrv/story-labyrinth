@@ -3,7 +3,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
-import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { useEditorChapterId } from "@/features/editor-multiview/context/EditorPaneContext";
 import PlaygroundApp from "./App";
 import "./index.css";
 
@@ -29,16 +29,15 @@ const EditorErrorFallback = (error: Error, resetError: () => void) => (
 );
 
 export default function EmbeddedPlayground() {
-    const { currentChapterId } = useStoryContext();
+    const currentChapterId = useEditorChapterId();
     const { data: currentChapter } = useChapterQuery(currentChapterId || "");
 
-    if (!currentChapterId || !currentChapter) 
+    if (!currentChapterId || !currentChapter)
         return (
             <div className="flex items-center justify-center h-full">
                 <p className="text-muted-foreground">Select a chapter to start editing</p>
             </div>
         );
-    
 
     return (
         <div className="h-full flex flex-col">

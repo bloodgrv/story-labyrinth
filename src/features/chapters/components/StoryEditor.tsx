@@ -1,203 +1,63 @@
-import { BookOpen, ChevronLeft, ChevronRight, type LucideIcon, Menu, StickyNote, Tags, User } from "lucide-react";
 import { useState } from "react";
-import { DownloadMenu } from "@/components/ui/DownloadMenu";
-import { Button } from "@/components/ui/button";
-import {
-    Drawer,
-    DrawerClose,
-    DrawerContent,
-    DrawerDescription,
-    DrawerFooter,
-    DrawerHeader,
-    DrawerTitle
-} from "@/components/ui/drawer";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useWorkspace } from "@/components/workspace/context/WorkspaceContext";
-import { ChapterNotesEditor } from "@/features/chapters/components/ChapterNotesEditor";
-import { ChapterPOVEditor } from "@/features/chapters/components/ChapterPOVEditor";
-import { MatchedTagEntries } from "@/features/chapters/components/MatchedTagEntries";
 import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
+import { EditorMultiView } from "@/features/editor-multiview/components/EditorMultiView";
+import { FocusSessionHud } from "@/features/focus-session/components/FocusSessionHud";
+import { useFocusSession } from "@/features/focus-session/context/FocusSessionContext";
+import { FOCUS_THEME_CLASS } from "@/features/focus-session/focusThemeClass";
+import { useFocusSessionShortcut } from "@/features/focus-session/hooks/useFocusSessionShortcut";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { cn } from "@/lib/utils";
-import EmbeddedPlayground from "../../../components/story-editor/EmbeddedPlayground";
-import { ChapterOutline } from "./ChapterOutline";
-
-type DrawerType = "matchedTags" | "chapterOutline" | "chapterPOV" | "chapterNotes" | null;
-
-const sidebarButtons: { id: DrawerType; icon: LucideIcon; label: string; title: string }[] = [
-    { id: "matchedTags", icon: Tags, label: "Tags", title: "Matched Tags" },
-    { id: "chapterOutline", icon: BookOpen, label: "Outline", title: "Chapter Outline" },
-    { id: "chapterPOV", icon: User, label: "POV", title: "Edit POV" },
-    { id: "chapterNotes", icon: StickyNote, label: "Notes", title: "Chapter Notes" }
-];
+import { type DrawerType, EditorToolsPanel } from "./EditorToolsPanel";
 
 export function StoryEditor() {
     const [openDrawer, setOpenDrawer] = useState<DrawerType>(null);
-    const { currentChapterId } = useStoryContext();
+    const { currentChapterId, currentStoryId } = useStoryContext();
     const { data: currentChapter } = useChapterQuery(currentChapterId || "");
     const { rightSidebar, toggleRightSidebar, isMaximised } = useWorkspace();
+    const { isActive: sessionActive, config: sessionConfig } = useFocusSession();
     const collapsed = rightSidebar.collapsed;
+    const focusThemeClass = sessionActive ? FOCUS_THEME_CLASS[sessionConfig.theme] : null;
+    useFocusSessionShortcut(currentChapterId);
 
     const toggleDrawer = (drawer: DrawerType) => setOpenDrawer(drawer === openDrawer ? null : drawer);
 
     return (
-        <div className="h-full flex relative overflow-hidden">
-            <div className={cn("flex-1 flex justify-center overflow-x-hidden min-w-0", !isMaximised && "px-4")}>
-                <div className={cn("h-full flex flex-col min-w-0", isMaximised ? "w-full" : "max-w-[1024px] w-full")}>
-                    <EmbeddedPlayground />
-                </div>
-            </div>
-
-            {/* Mobile floating menu for editor tools */}
-            <div className="md:hidden fixed bottom-20 right-4 z-40">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button size="icon" className="h-12 w-12 rounded-full shadow-lg">
-                            <Menu className="h-5 w-5" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" side="top" className="mb-2">
-                        {sidebarButtons.map(({ id, icon: Icon, title }) => (
-                            <DropdownMenuItem key={id} onClick={() => toggleDrawer(id)}>
-                                <Icon className="h-4 w-4 mr-2" />
-                                {title}
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-
-            <aside
+        <div
+            className={cn(
+                "h-full flex relative overflow-hidden bg-background text-foreground transition-colors duration-300",
+                focusThemeClass
+            )}
+        >
+            <div
                 className={cn(
-                    "hidden md:flex flex-col border-l bg-muted/20 transition-all duration-200",
-                    collapsed ? "w-12" : "w-36"
+                    "flex-1 flex justify-center overflow-x-hidden min-w-0",
+                    !isMaximised && !sessionActive && "px-4"
                 )}
             >
-                <div className="flex-1 py-2 space-y-2">
-                    {sidebarButtons.map(({ id, icon: Icon, label, title }) => (
-                        <Button
-                            key={id}
-                            variant={openDrawer === id ? "default" : "outline"}
-                            size="sm"
-                            className={cn("mx-2", collapsed ? "justify-center px-0 w-8" : "justify-start")}
-                            onClick={() => toggleDrawer(id)}
-                            title={title}
-                        >
-                            <Icon className="h-4 w-4 shrink-0" />
-                            {!collapsed && <span className="ml-2">{label}</span>}
-                        </Button>
-                    ))}
+                {currentStoryId && currentChapterId && (
+                    <EditorMultiView
+                        storyId={currentStoryId}
+                        initialChapterId={currentChapterId}
+                        isMaximised={isMaximised || sessionActive}
+                    />
+                )}
+            </div>
 
-                    {currentChapterId && !collapsed && (
-                        <DownloadMenu
-                            type="chapter"
-                            id={currentChapterId}
-                            variant="outline"
-                            size="sm"
-                            showIcon={true}
-                            label="Download"
-                            className="mx-2 justify-start"
-                        />
-                    )}
-                </div>
+            {sessionActive && <FocusSessionHud />}
 
-                <div className="p-2 border-t">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-full"
-                        onClick={toggleRightSidebar}
-                        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                    >
-                        {collapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    </Button>
-                </div>
-            </aside>
-
-            {/* Matched Tags Drawer */}
-            <Drawer open={openDrawer === "matchedTags"} onOpenChange={open => !open && setOpenDrawer(null)}>
-                <DrawerContent className="max-h-[80vh]">
-                    <DrawerHeader>
-                        <DrawerTitle>Matched Tag Entries</DrawerTitle>
-                        <DrawerDescription>Lorebook entries that match tags in your current chapter.</DrawerDescription>
-                    </DrawerHeader>
-                    <div className="px-4 overflow-y-auto max-h-[60vh]">
-                        <MatchedTagEntries />
-                    </div>
-                    <DrawerFooter>
-                        <DrawerClose asChild>
-                            <Button variant="outline">Close</Button>
-                        </DrawerClose>
-                    </DrawerFooter>
-                </DrawerContent>
-            </Drawer>
-
-            {/* Chapter Outline Drawer */}
-            <Drawer open={openDrawer === "chapterOutline"} onOpenChange={open => !open && setOpenDrawer(null)}>
-                <DrawerContent className="max-h-[80vh]">
-                    <DrawerHeader>
-                        <DrawerTitle>Chapter Outline</DrawerTitle>
-                        <DrawerDescription>Outline and notes for your current chapter.</DrawerDescription>
-                    </DrawerHeader>
-                    <div className="px-4 overflow-y-auto max-h-[60vh]">
-                        {currentChapter && <ChapterOutline key={currentChapter.id} chapter={currentChapter} />}
-                    </div>
-                    <DrawerFooter>
-                        <DrawerClose asChild>
-                            <Button variant="outline">Close</Button>
-                        </DrawerClose>
-                    </DrawerFooter>
-                </DrawerContent>
-            </Drawer>
-
-            {/* Chapter POV Drawer */}
-            <Drawer open={openDrawer === "chapterPOV"} onOpenChange={open => !open && setOpenDrawer(null)}>
-                <DrawerContent className="max-h-[80vh]">
-                    <DrawerHeader>
-                        <DrawerTitle>Edit Chapter POV</DrawerTitle>
-                        <DrawerDescription>
-                            Change the point of view character and perspective for this chapter.
-                        </DrawerDescription>
-                    </DrawerHeader>
-                    <div className="px-4 overflow-y-auto max-h-[60vh]">
-                        {currentChapter && (
-                            <ChapterPOVEditor chapter={currentChapter} onClose={() => setOpenDrawer(null)} />
-                        )}
-                    </div>
-                    <DrawerFooter>
-                        <DrawerClose asChild>
-                            <Button variant="outline">Close</Button>
-                        </DrawerClose>
-                    </DrawerFooter>
-                </DrawerContent>
-            </Drawer>
-
-            {/* Replace the Chapter Notes Drawer with this Sheet */}
-            <Sheet open={openDrawer === "chapterNotes"} onOpenChange={open => !open && setOpenDrawer(null)}>
-                <SheetContent
-                    side="right"
-                    className="h-[100vh] w-full sm:w-[540px] md:w-[700px] lg:w-[800px] sm:max-w-full"
-                >
-                    <SheetHeader>
-                        <SheetTitle>Scribble</SheetTitle>
-                    </SheetHeader>
-                    <div className="overflow-y-auto h-[100vh]">
-                        {currentChapter && (
-                            <ChapterNotesEditor
-                                key={currentChapter.id}
-                                chapter={currentChapter}
-                                onClose={() => setOpenDrawer(null)}
-                            />
-                        )}
-                    </div>
-                </SheetContent>
-            </Sheet>
+            {!sessionActive && (
+                <EditorToolsPanel
+                    openDrawer={openDrawer}
+                    onToggleDrawer={toggleDrawer}
+                    onCloseDrawer={() => setOpenDrawer(null)}
+                    currentChapterId={currentChapterId}
+                    currentStoryId={currentStoryId}
+                    currentChapter={currentChapter}
+                    collapsed={collapsed}
+                    onToggleCollapsed={toggleRightSidebar}
+                />
+            )}
         </div>
     );
 }

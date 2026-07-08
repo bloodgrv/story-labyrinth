@@ -46,9 +46,18 @@ export class AIService {
         if (this.settings.geminiKey)
             this.providerFactory.initializeProvider("gemini", this.settings.geminiKey);
 
+        if (this.settings.grokKey)
+            this.providerFactory.initializeProvider("grok", this.settings.grokKey);
+
+        if (this.settings.grokSessionCookie)
+            this.providerFactory.initializeProvider("grok-session", this.settings.grokSessionCookie);
+
+        if (this.settings.grokOAuthAccessToken)
+            this.providerFactory.initializeProvider("grok-oauth", this.settings.grokOAuthAccessToken);
+
         if (this.settings.localApiUrl)
             this.providerFactory.updateLocalApiUrl(this.settings.localApiUrl);
-        
+
     }
 
     async updateKey(provider: AIProvider, key: string) {
@@ -57,7 +66,9 @@ export class AIService {
         const keyFieldMap: Record<string, keyof AISettings> = {
             openai: "openaiKey",
             openrouter: "openrouterKey",
-            gemini: "geminiKey"
+            gemini: "geminiKey",
+            grok: "grokKey",
+            "grok-session": "grokSessionCookie"
         };
         const field = keyFieldMap[provider];
         if (!field) return;
@@ -121,9 +132,9 @@ export class AIService {
         this.abortController = new AbortController();
         const signal = this.abortController.signal;
 
-        // Local provider doesn't need SSE formatting
-        if (providerType === "local") {
-            const provider = this.providerFactory.getProvider("local");
+        // Local and grok-session already return an OpenAI-style SSE stream, so no re-wrapping needed
+        if (providerType === "local" || providerType === "grok-session") {
+            const provider = this.providerFactory.getProvider(providerType);
             return provider.generate(messages, modelId, temperature, maxTokens, signal);
         }
 
@@ -152,7 +163,10 @@ export class AIService {
         const keyMap: Record<string, string | undefined> = {
             openai: this.settings?.openaiKey,
             openrouter: this.settings?.openrouterKey,
-            gemini: this.settings?.geminiKey
+            gemini: this.settings?.geminiKey,
+            grok: this.settings?.grokKey,
+            "grok-session": this.settings?.grokSessionCookie,
+            "grok-oauth": this.settings?.grokOAuthAccessToken
         };
 
         const key = keyMap[providerType];
@@ -203,6 +217,37 @@ export class AIService {
         return this.settings?.defaultGeminiModel;
     }
 
+    getGrokKey(): string | undefined {
+        return this.settings?.grokKey;
+    }
+
+    getDefaultGrokModel(): string | undefined {
+        return this.settings?.defaultGrokModel;
+    }
+
+    getDefaultGrokSessionModel(): string | undefined {
+        return this.settings?.defaultGrokSessionModel;
+    }
+
+    getDefaultGrokOAuthModel(): string | undefined {
+        return this.settings?.defaultGrokOAuthModel;
+    }
+
+    isGrokOAuthConnected(): boolean {
+        return !!this.settings?.grokOAuthAccessToken;
+    }
+
+    async disconnectGrokOAuth(): Promise<void> {
+        // "" / 0 rather than undefined — JSON.stringify drops undefined keys entirely, which
+        // would leave the stored tokens untouched instead of clearing them.
+        await this.updateSettingsField({
+            grokOAuthAccessToken: "",
+            grokOAuthRefreshToken: "",
+            grokOAuthExpiresAt: 0
+        });
+        this.providerFactory.initializeProvider("grok-oauth", undefined);
+    }
+
     async updateDefaultModel(provider: AIProvider, modelId: string | undefined): Promise<void> {
         if (!this.settings) throw new Error("AI settings not initialized");
 
@@ -210,7 +255,10 @@ export class AIService {
             local: "defaultLocalModel",
             openai: "defaultOpenAIModel",
             openrouter: "defaultOpenRouterModel",
-            gemini: "defaultGeminiModel"
+            gemini: "defaultGeminiModel",
+            grok: "defaultGrokModel",
+            "grok-session": "defaultGrokSessionModel",
+            "grok-oauth": "defaultGrokOAuthModel"
         };
         const field = fieldMap[provider];
         if (!field) return;

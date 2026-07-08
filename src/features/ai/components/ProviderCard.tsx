@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,8 @@ type ProviderCardProps = {
     onSaveKey: (key: string) => void;
     onRefresh: () => void;
     onDefaultModelChange: (modelId: string | undefined) => void;
+    /** Optional caveat shown under the title, e.g. for unofficial/unsupported integrations. */
+    warning?: string;
 };
 
 export const ProviderCard = ({
@@ -33,7 +35,8 @@ export const ProviderCard = ({
     isRefreshing,
     onSaveKey,
     onRefresh,
-    onDefaultModelChange
+    onDefaultModelChange,
+    warning
 }: ProviderCardProps) => {
     const [inputKey, setInputKey] = useState(storedKey || "");
     const isPending = isKeyMutating || isRefreshing;
@@ -49,6 +52,12 @@ export const ProviderCard = ({
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+                {warning && (
+                    <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-500">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span>{warning}</span>
+                    </div>
+                )}
                 <div className="grid gap-2">
                     <Label>{keyLabel}</Label>
                     <div className="flex gap-2">

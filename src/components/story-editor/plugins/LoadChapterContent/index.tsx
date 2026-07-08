@@ -2,25 +2,23 @@ import { attempt } from "@jfdi/attempt";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useEffect, useState } from "react";
 import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
-import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { useEditorChapterId } from "@/features/editor-multiview/context/EditorPaneContext";
 import { logger } from "@/utils/logger";
 
 export function LoadChapterContentPlugin(): null {
     const [editor] = useLexicalComposerContext();
-    const { currentChapterId } = useStoryContext();
+    const currentChapterId = useEditorChapterId();
     const { data: currentChapter } = useChapterQuery(currentChapterId || "");
     const [hasLoaded, setHasLoaded] = useState(false);
 
     // Reset hasLoaded when chapter changes
     useEffect(() => {
-        if (currentChapterId) 
-            setHasLoaded(false);
-        
+        if (currentChapterId) setHasLoaded(false);
     }, [currentChapterId]);
 
     // Set editor content when chapter data is available
     useEffect(() => {
-        if (!hasLoaded && currentChapter?.content && currentChapter.id === currentChapterId) 
+        if (!hasLoaded && currentChapter?.content && currentChapter.id === currentChapterId)
             // Defer to microtask to avoid flushSync warning
             queueMicrotask(() => {
                 const [error] = attempt(() => {
@@ -41,12 +39,9 @@ export function LoadChapterContentPlugin(): null {
                         );
                         setHasLoaded(true);
                     });
-                    if (recoveryError) 
-                        logger.error("LoadChapterContent - Recovery failed:", recoveryError);
-                    
+                    if (recoveryError) logger.error("LoadChapterContent - Recovery failed:", recoveryError);
                 }
             });
-        
     }, [editor, currentChapter, currentChapterId, hasLoaded]);
 
     return null;

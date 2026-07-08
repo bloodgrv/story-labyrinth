@@ -5,6 +5,7 @@ import { ChaptersTool } from "./tools/ChaptersTool";
 import { EditorTool } from "./tools/EditorTool";
 import { LorebookTool } from "./tools/LorebookTool";
 import { NotesTool } from "./tools/NotesTool";
+import { OutlineTool } from "./tools/OutlineTool";
 import { PromptsTool } from "./tools/PromptsTool";
 import { SeriesTool } from "./tools/SeriesTool";
 import { StoriesTool } from "./tools/StoriesTool";
@@ -15,6 +16,7 @@ const toolTints = {
     series: "bg-background",
     editor: "bg-amber-50/10 dark:bg-amber-950/5",
     chapters: "bg-blue-50/10 dark:bg-blue-950/5",
+    outline: "bg-rose-50/10 dark:bg-rose-950/5",
     lorebook: "bg-cyan-50/10 dark:bg-cyan-950/5",
     brainstorm: "bg-purple-50/10 dark:bg-purple-950/5",
     prompts: "bg-orange-50/10 dark:bg-orange-950/5",
@@ -34,6 +36,8 @@ export const MainContent = () => {
                 return <EditorTool />;
             case "chapters":
                 return <ChaptersTool />;
+            case "outline":
+                return <OutlineTool />;
             case "lorebook":
                 return <LorebookTool />;
             case "brainstorm":
@@ -51,7 +55,19 @@ export const MainContent = () => {
         }
     };
 
+    // Every other tool grows to fit its content and lets `main` page-scroll — the right call for
+    // list/form-heavy tools. The editor is the exception: its own CSS (.editor-scroller) already
+    // scrolls chapter text internally, but that only works if this wrapper has a real bounded
+    // height instead of growing to match the content — which split panes need to size against.
     return (
-        <div className={cn("min-h-full transition-colors duration-300", toolTints[currentTool])}>{renderTool()}</div>
+        <div
+            className={cn(
+                "transition-colors duration-300",
+                currentTool === "editor" ? "h-full overflow-hidden" : "min-h-full",
+                toolTints[currentTool]
+            )}
+        >
+            {renderTool()}
+        </div>
     );
 };

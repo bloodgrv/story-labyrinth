@@ -1,0 +1,76 @@
+# Text-to-Speech Guide
+
+Have your AI-generated chat responses read aloud, in a voice you choose, using [Speechify](https://speechify.com). This guide walks through getting an API key, enabling TTS, and picking voices.
+
+> [!NOTE]
+> Speechify is the only supported provider today. The settings are built so more providers (ElevenLabs, OpenAI TTS, the browser's built-in Web Speech API) can be added later without changing how you use TTS.
+
+---
+
+## 1. Get a Speechify API Key
+
+1. Go to [platform.speechify.ai/api-keys](https://platform.speechify.ai/api-keys) and sign in (or create an account).
+2. Create a new API key.
+3. Copy it — you'll paste it into Story Nexus in the next step.
+
+> [!IMPORTANT]
+> Treat this key like a password. Anyone with it can generate speech on your account and use your credits. Story Nexus stores it locally in your own database, the same way it stores your OpenAI/OpenRouter/Gemini keys.
+
+## 2. Enable TTS in Settings
+
+*Path: click the **?** (Guide) icon's neighbour, the gear icon, in the top bar → Settings*
+
+1. Scroll down to the **Text-to-Speech (TTS)** card.
+2. Paste your key into **Speechify API Key** and click **Save**.
+3. Click **Test Connection** to confirm the key works. You should see "Connected to Speechify successfully."
+4. Turn on the **Enable TTS** switch at the top of the card.
+
+> [!WARNING]
+> Nothing plays until **Enable TTS** is on — the toggle isn't just cosmetic. If a Read Aloud button doesn't appear next to a message, this is almost always the reason.
+
+## 3. Choose Voices
+
+Speechify has hundreds of voices in different languages and accents. Load them once, then pick a default:
+
+1. In the same TTS card, click **Refresh Voices**. This fetches the full voice catalogue from Speechify (roughly 900+ voices) — it only needs to be done once, or again later if you want to check for new voices.
+2. Use the **Default Voice** dropdown to search and pick one. This is the voice used everywhere by default.
+3. Click the play button next to the dropdown to preview it before committing.
+
+### Per-project voices
+
+Each story can use a different voice than the global default:
+
+*Path: Dashboard → [Your Story] → **TTS Voice** card in the sidebar*
+
+- Pick a voice there to override the default for that project only.
+- Choose **"Use global default"** to go back to whatever's set in Settings.
+- This is useful if you want a particular narrator voice tied to a specific story.
+
+## 4. Reading Text Aloud
+
+Once TTS is enabled and a voice is set (globally or per-project), a small play button appears next to AI-generated messages — in Brainstorm chats and World-Building chats.
+
+| Icon | Meaning |
+|------|---------|
+| ▶ Play | Click to generate and start reading this message |
+| ⏸ Pause | Click to pause partway through |
+| ▶ Play (again) | Click to resume from where you paused |
+
+Only one message plays at a time — starting a new one stops whatever was already playing.
+
+> [!TIP]
+> Model "thinking" content (see the **Show Model Thinking** setting) is never read aloud, even when it's visible on screen — only the actual response is spoken.
+
+## 5. Troubleshooting
+
+| Problem | What's happening |
+|---------|-------------------|
+| No play button next to messages | TTS is disabled, or no voice is configured yet — check the Settings card |
+| "Speechify rejected this API key" | The key is invalid, expired, or was mistyped — get a fresh one and re-save |
+| "Speechify rate limit exceeded" | Too many requests in a short time — wait a few seconds and try again |
+| "No voice selected" | Pick a default voice in Settings, or a per-project voice on the dashboard |
+| "Speechify account has insufficient credits" | Your Speechify account is out of credits — check your plan at platform.speechify.ai |
+
+---
+
+Text-to-Speech settings persist in your local database exactly like your AI provider keys — no account or cloud sync required, and everything still works offline except the moment of actually generating speech, which needs a connection to Speechify's API.

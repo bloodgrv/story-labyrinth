@@ -1,0 +1,76 @@
+# Concrete Beats Guide
+
+Tag concrete, observable moments in your prose — a punch thrown, a coat put on, a line of dialogue, a jump in time — so you can track what's actually happened in a chapter at a glance, independent of your own memory or re-reading the whole thing.
+
+> [!NOTE]
+> This is **not** the same as **Scene Beat** (the `Alt+S` command that asks the AI to generate prose from a short instruction). A Concrete Beat is a tag applied to prose that already exists, for tracking and consistency — it never generates or changes your writing.
+
+Concrete Beats are deliberately narrow: only physical, observable elements. There is no psychological, emotional, or thematic tagging — that's out of scope by design (see the app's Character Codex, which this feature is built to eventually feed with wardrobe/item/wound tracking).
+
+---
+
+## 1. The Seven Beat Types
+
+| Type | Colour | What it captures |
+|------|--------|-------------------|
+| Physical Action | Red | A concrete physical act — a punch thrown, a door opened, a hand reaching out |
+| Dialogue Tag | Blue | A line of spoken dialogue or its attribution |
+| Environmental Detail | Green | A concrete detail about the setting — weather, lighting, objects in the room |
+| Wardrobe/Item Change | Purple | A character puts on, removes, or acquires clothing or an item |
+| Time/Setting Shift | Amber | A jump in time or a change of location |
+| Sensory Detail | Teal | A concrete sensory observation — a sound, smell, taste, or texture |
+| Character Movement | Indigo | A character moves from one place to another within the scene |
+
+These colours appear both as badges in the Beats panel and as highlight colours inline in the editor, so the same colour always means the same type everywhere. Hover any inline highlight to see its type name, or click the **ⓘ** icon in the Beats panel for the full colour key.
+
+## 2. Marking a Beat Manually
+
+1. Select a span of text in the chapter editor.
+2. Click **Mark Beat** in the floating toolbar that appears above your selection.
+3. Choose a beat type, and optionally link a character — this pulls up their current Codex state (wardrobe, appearance, wounds, items) so you can double-check consistency before confirming.
+4. Click **Mark Beat** to apply. The text is highlighted in the colour for that type.
+
+> [!TIP]
+> Linking a character to a beat is optional and works for every beat type, not just wardrobe changes — dialogue tags need a speaker, movement needs whoever's moving, and so on.
+
+## 3. AI-Assisted Suggestions
+
+*Path: open the **Beats** tab in the chapter editor's right sidebar*
+
+Instead of marking every beat by hand, let a model scan the chapter and propose concrete beats for you to review:
+
+1. Click **Suggest Beats** to scan the current chapter on demand.
+2. Or turn on **Auto-detect on save** to have it run quietly in the background a few seconds after you stop typing (no need to click anything).
+
+Suggestions never touch your document automatically — each one appears in the **Suggested Beats** section with a dashed amber border and an "AI Suggested" badge, waiting for your decision:
+
+| Action | What it does |
+|--------|--------------|
+| **Accept** | Confirms the beat and highlights the matching text in the editor, exactly like a manually-marked beat |
+| **Edit** | Lets you change the beat type or linked character before deciding — doesn't accept it yet |
+| **Reject** | Discards this one suggestion |
+| **Reject All** | Discards every pending suggestion in this chapter at once |
+
+> [!IMPORTANT]
+> Nothing from a suggestion enters your chapter's text or its inline highlights until you click **Accept**. Editing a suggestion doesn't accept it either — you still need to Accept or Reject afterward.
+
+Beat detection uses your configured AI provider like everything else in the app. If you want a separate (e.g. faster or local) model dedicated to this, add an override for **Beat Detection** in Settings → Feature Endpoints — otherwise it uses your global default model.
+
+## 4. Managing Beats
+
+The **Beats** panel lists every confirmed beat in the current chapter, each showing its type badge and (if linked) the character's name. Beats that started life as an AI suggestion keep a small sparkles icon after acceptance, so you can still tell them apart from ones you marked by hand.
+
+Click the trash icon on any beat to remove it — this deletes the database record and un-highlights the text in the editor together, in one action.
+
+## 5. Troubleshooting
+
+| Problem | What's happening |
+|---------|-------------------|
+| "No AI provider configured" when clicking Suggest Beats | Set up a model in AI Settings, or a dedicated Beat Detection endpoint in Settings → Feature Endpoints |
+| A confirmed suggestion has no inline highlight | The exact text couldn't be found — the chapter was likely edited after detection ran. The beat is still saved; you can mark the same span manually if you want the highlight |
+| Suggestions don't appear after saving | Check that **Auto-detect on save** is turned on — it's off by default, and only fires a few seconds after you stop typing, not on every keystroke |
+| A beat shows "Character removed" | The linked character's lorebook entry was deleted — the beat itself is unaffected, just remove or re-link it if needed |
+
+---
+
+Concrete Beats persist in your local database alongside the rest of your chapter data — no account or cloud sync required, and manual marking works fully offline. Only AI-assisted suggestions need a reachable model endpoint.

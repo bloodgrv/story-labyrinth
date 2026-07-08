@@ -1,3 +1,4 @@
+import { mergeRegister } from "@lexical/utils";
 import {
     CAN_REDO_COMMAND,
     CAN_UNDO_COMMAND,
@@ -8,21 +9,23 @@ import {
     SELECTION_CHANGE_COMMAND,
     UNDO_COMMAND
 } from "lexical";
-import { mergeRegister } from "@lexical/utils";
-import { Bold, Italic, Maximize, Minimize, Underline } from "lucide-react";
+import { Bold, Focus, Italic, Maximize, Minimize, Underline } from "lucide-react";
 import type { JSX } from "react";
 import { type Dispatch, useEffect, useState } from "react";
 import { IS_APPLE } from "@/components/story-editor/shared/environment";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/components/workspace/context/WorkspaceContext";
+import { useEditorChapterId } from "@/features/editor-multiview/context/EditorPaneContext";
+import { StartFocusSessionDialog } from "@/features/focus-session/components/StartFocusSessionDialog";
+import { useFocusSession } from "@/features/focus-session/context/FocusSessionContext";
 import { blockTypeToBlockName, useToolbarState } from "../../context/ToolbarContext";
 import { SHORTCUTS } from "../ShortcutsPlugin/shortcuts";
 import { BlockFormatDropDown } from "./BlockFormatDropDown";
 import { ElementFormatDropdown } from "./ElementFormatDropdown";
 import { FontDropDown } from "./FontDropDown";
-import FontSize from "./fontSize";
 import { FormatDropdown } from "./FormatDropdown";
 import { InsertDropdown } from "./InsertDropdown";
+import FontSize from "./fontSize";
 import { useToolbarUpdate } from "./useToolbarUpdate";
 
 const Divider = (): JSX.Element => <div className="divider" />;
@@ -38,8 +41,11 @@ export default function ToolbarPlugin({
     setIsLinkEditMode: Dispatch<boolean>;
 }): JSX.Element {
     const [isEditable, setIsEditable] = useState(() => editor.isEditable());
+    const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
     const { toolbarState, updateToolbarState } = useToolbarState();
     const { isMaximised, toggleMaximise } = useWorkspace();
+    const { isActive: sessionActive, config: sessionConfig, startSession } = useFocusSession();
+    const chapterId = useEditorChapterId();
     const $updateToolbar = useToolbarUpdate(editor, activeEditor, updateToolbarState);
 
     useEffect(
@@ -203,16 +209,35 @@ export default function ToolbarPlugin({
                 <span className="hidden sm:inline text-xs text-muted-foreground px-2">
                     Words: {toolbarState.wordCount}
                 </span>
+                {!sessionActive && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-accent/50 transition-colors"
+                        onClick={() => setSessionDialogOpen(true)}
+                        title="Start a Writing Session"
+                    >
+                        <Focus className="h-4 w-4" />
+                    </Button>
+                )}
                 <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 hover:bg-accent/50 transition-colors"
                     onClick={toggleMaximise}
-                    title={isMaximised ? "Restore layout" : "Focus mode"}
+                    title={isMaximised ? "Restore Sidebars" : "Maximize Editor"}
                 >
                     {isMaximised ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                 </Button>
             </div>
+
+            <StartFocusSessionDialog
+                open={sessionDialogOpen}
+                onOpenChange={setSessionDialogOpen}
+                initialConfig={sessionConfig}
+                canTrackWordCount={Boolean(chapterId)}
+                onStart={config => startSession(config, chapterId)}
+            />
         </div>
     );
 }

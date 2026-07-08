@@ -7,10 +7,12 @@ import {
     Layers,
     Library,
     List,
+    ListTree,
     MessageSquare,
     StickyNote
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LogoutButton } from "@/features/auth/components/LogoutButton";
 import { useStoryContext, type WorkspaceTool } from "@/features/stories/context/StoryContext";
 import { cn } from "@/lib/utils";
 import { version } from "../../../package.json";
@@ -21,6 +23,7 @@ const tools = [
     { id: "series" as WorkspaceTool, label: "Series", icon: Layers, requiresStory: false },
     { id: "editor" as WorkspaceTool, label: "Editor", icon: FileEdit, requiresStory: true },
     { id: "chapters" as WorkspaceTool, label: "Chapters", icon: List, requiresStory: true },
+    { id: "outline" as WorkspaceTool, label: "Outline", icon: ListTree, requiresStory: true },
     { id: "lorebook" as WorkspaceTool, label: "Lorebook", icon: BookOpen, requiresStory: true },
     { id: "brainstorm" as WorkspaceTool, label: "Brainstorm", icon: MessageSquare, requiresStory: true },
     { id: "prompts" as WorkspaceTool, label: "Prompts", icon: FileText, requiresStory: true },
@@ -76,6 +79,7 @@ export const Sidebar = () => {
                     <div className="text-xs text-muted-foreground text-center">
                         {collapsed ? `v${version}` : `Version ${version}`}
                     </div>
+                    <LogoutButton collapsed={collapsed} className="w-full" />
                     <Button
                         variant="ghost"
                         size="icon"

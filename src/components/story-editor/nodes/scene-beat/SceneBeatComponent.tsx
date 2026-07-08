@@ -5,13 +5,13 @@ import { useCallback, useEffect, useMemo } from "react";
 import { PromptPreviewDialog } from "@/components/ui/prompt-preview-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
+import { useEditorChapterId, useEditorStoryId } from "@/features/editor-multiview/context/EditorPaneContext";
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { useChapterMatching } from "@/features/lorebook/hooks/useChapterMatching";
 import { buildTagMap } from "@/features/lorebook/utils/lorebookFilters";
 import { useLastUsedPrompt } from "@/features/prompts/hooks/useLastUsedPrompt";
 import { usePromptsQuery } from "@/features/prompts/hooks/usePromptsQuery";
 import { useDeleteSceneBeatMutation } from "@/features/scenebeats/hooks/useSceneBeatQuery";
-import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { SceneBeatMatchedEntries } from "../SceneBeatMatchedEntries";
 import { ContextToggles } from "./components/ContextToggles";
 import { GenerationControls } from "./components/GenerationControls";
@@ -28,13 +28,15 @@ import { useSceneBeatSync } from "./hooks/useSceneBeatSync";
 
 export default function SceneBeatComponent({ nodeKey }: { nodeKey: NodeKey }): JSX.Element {
     const [editor] = useLexicalComposerContext();
-    const { currentStoryId, currentChapterId } = useStoryContext();
+    const currentStoryId = useEditorStoryId();
+    const currentChapterId = useEditorChapterId();
     const { data: currentChapter } = useChapterQuery(currentChapterId || "");
     const { data: prompts = [], isLoading, error: promptsQueryError } = usePromptsQuery({ includeSystem: true });
     const promptsError = promptsQueryError?.message ?? null;
     const { lastUsed, saveSelection } = useLastUsedPrompt("scene_beat", prompts);
     const { entries } = useLorebookContext();
-    const { chapterMatchedEntries } = useChapterMatching();
+    const { getMatchedEntries } = useChapterMatching();
+    const chapterMatchedEntries = getMatchedEntries(currentChapterId ?? "");
 
     const tagMap = useMemo(() => buildTagMap(entries), [entries]);
     const characterEntries = useMemo(() => entries.filter(entry => entry.category === "character"), [entries]);

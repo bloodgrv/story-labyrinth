@@ -122,17 +122,15 @@ export const useMessageGeneration = ({
 
                     const updatedMessages = [...selectedChat.messages, ctx.userMessage, assistantMessage];
 
-                    updateMutation.mutate(
-                        {
-                            id: ctx.chatId,
-                            data: { messages: updatedMessages }
-                        },
-                        {
-                            onSuccess: updatedChat => {
-                                onChatUpdate(updatedChat);
-                            }
-                        }
-                    );
+                    // Awaited so the persisted chat (via onChatUpdate) lands before the optimistic
+                    // pending/streaming state below is cleared — otherwise there's a visible gap
+                    // where neither the optimistic message nor the saved one is in the UI, making
+                    // the just-sent message flash and disappear.
+                    const updatedChat = await updateMutation.mutateAsync({
+                        id: ctx.chatId,
+                        data: { messages: updatedMessages }
+                    });
+                    onChatUpdate(updatedChat);
                 }
 
                 setStreamingMessageId(null);

@@ -1,0 +1,56 @@
+# Outline Guide
+
+Plan your story's structure before (or alongside) writing it: chapters containing nested scenes, each with a title, a concrete summary, and a word count target — separate from the per-chapter free-text outline field you may already know from the Main Editor's **Outline** drawer, which is unrelated and untouched.
+
+> [!NOTE]
+> This is a story-wide _planning_ layer, not your chapter prose. An outline "chapter" can optionally correspond to a real chapter you've already written, or it can exist purely as a plan for something you haven't written yet.
+
+---
+
+## 1. Building the Outline
+
+_Path: **Outline** in the left sidebar (requires a story to be open)_
+
+- **Add Chapter** creates a new top-level entry with a title, summary, and optional word count target.
+- Click the **+** icon on a chapter to add a **scene** nested underneath it.
+- Drag the grip handle on the left of any row to reorder — chapters reorder among chapters, and scenes reorder among their own chapter's other scenes.
+- To move a scene to a _different_ chapter, use the small chapter dropdown on the right of its row instead of dragging — this keeps a scene's own reordering simple while still letting you restructure freely.
+- Click the pencil icon to edit a chapter or scene's title, summary, or word count target. The trash icon deletes it — deleting a chapter also deletes its scenes.
+
+## 2. Character Arc Tracking
+
+Link any chapter or scene to one or more characters from your Lorebook using the small person icon next to its character chips. Each link can carry a short note about that character's development at that specific point in the story.
+
+Switch to the **Character Arcs** tab and pick a character to see every outline item they're linked to, in story order, with their notes — this ordered list _is_ their arc overview. Click any note to edit it.
+
+> [!TIP]
+> Keep arc notes concrete ("loses the locket in the chase," not "grows more vulnerable") — the same "observable, not thematic" bias the rest of this app's tracking features (Concrete Beats, Character Codex) use throughout.
+
+## 3. AI-Assisted Outlining
+
+Click **Generate with AI** to have a model propose the next chapters (with nested scenes) that should follow whatever you already have — your story's synopsis, main characters, and any existing chapters or outline entries are sent as context so it doesn't repeat what's already there.
+
+Suggestions never merge into your outline automatically — each appears with a dashed amber border and an "AI Suggested" badge, waiting for your decision:
+
+| Action                     | What it does                                                     |
+| -------------------------- | ---------------------------------------------------------------- |
+| **Accept** (✓)             | Confirms this one item, making it a normal outline entry         |
+| **Edit** (pencil)          | Opens the same edit dialog as any other item — doesn't accept it |
+| **Reject** (✗)             | Discards this one suggestion                                     |
+| **Reject All Suggestions** | Discards every pending suggestion for the story at once          |
+
+Accepting a suggested chapter does **not** automatically accept its suggested scenes — each is reviewed independently, so you can keep a chapter shell while rejecting or rewriting individual scenes.
+
+Outline generation uses your configured AI provider like everything else in the app. For a dedicated (e.g. faster or local) model just for this, add an override for **Outline Generation** in Settings → Feature Endpoints.
+
+## 4. Troubleshooting
+
+| Problem                                                  | What's happening                                                                                          |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| "No AI provider configured" when generating              | Set up a model in AI Settings, or a dedicated Outline Generation endpoint in Settings → Feature Endpoints |
+| A character shows "Character removed" on a chip          | The linked Lorebook entry was deleted — unlink it if you no longer need the reference                     |
+| The "Move to chapter" dropdown doesn't appear on a scene | It only shows when there's more than one chapter to move to                                               |
+
+---
+
+Outline items persist in your local database alongside the rest of your story data — no account or cloud sync required, and creating/reordering/linking all work fully offline. Only **Generate with AI** needs a reachable model endpoint.

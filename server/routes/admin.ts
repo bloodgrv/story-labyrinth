@@ -3,6 +3,12 @@ import { eq } from "drizzle-orm";
 import express from "express";
 import multer from "multer";
 import { db, schema } from "../db/client.js";
+import {
+    getFeatureEndpoints,
+    setFeatureEndpoints
+} from "../services/aiClientFactory.js";
+import type { FeatureEndpoint, FeatureKey } from "../../src/types/aiSettings.js";
+import { FEATURE_KEYS } from "../../src/types/aiSettings.js";
 
 type ImportedSeries = typeof schema.series.$inferSelect;
 type ImportedStory = typeof schema.stories.$inferSelect;
@@ -238,6 +244,125 @@ router.post("/import", upload.single("file"), async (req, res) => {
         success: true,
         imported: counts
     });
+});
+
+// ── Feature endpoint routes ────────────────────────────────────────────────────
+// Per-feature AI model/endpoint overrides. When a feature has an override it
+// takes precedence over the global aiSettings defaults.
+
+// GET /api/admin/feature-endpoints — return the current per-feature config
+router.get("/feature-endpoints", async (_, res) => {
+    const [error, endpoints] = await attemptPromise(() => getFeatureEndpoints());
+    if (error) {
+        res.status(500).json({ error: "Failed to load feature endpoints", details: error.message });
+        return;
+    }
+    res.json(endpoints);
+});
+
+// PUT /api/admin/feature-endpoints — replace the entire feature endpoint map
+// Body: FeatureEndpoints object (partial Record<FeatureKey, FeatureEndpoint>)
+router.put("/feature-endpoints", async (req, res) => {
+    const body = req.body as Record<string, unknown>;
+
+    // Validate each entry in the payload
+    for (const [key, value] of Object.entries(body)) {
+        if (!FEATURE_KEYS.includes(key as FeatureKey)) {
+            res.status(400).json({ error: `Unknown feature key: ${key}` });
+            return;
+        }
+        if (typeof value !== "object" || value === null) {
+            res.status(400).json({ error: `Value for '${key}' must be an object` });
+            return;
+        }
+        const ep = value as Record<string, unknown>;
+        if (ep.provider !== "local" && ep.provider !== "openai" && ep.provider !== "openrouter") {
+            res.status(400).json({ error: `'${key}.provider' must be 'local', 'openai', or 'openrouter'` });
+            return;
+        }
+        if (typeof ep.model !== "string" || !ep.model.trim()) {
+            res.status(400).json({ error: `'${key}.model' must be a non-empty string` });
+            return;
+        }
+    }
+
+    const [error] = await attemptPromise(() =>
+        setFeatureEndpoints(body as Parameters<typeof setFeatureEndpoints>[0])
+    );
+    if (error) {
+        res.status(500).json({ error: "Failed to save feature endpoints", details: error.message });
+        return;
+    }
+    res.json(body);
+});
+
+// PUT /api/admin/feature-endpoints/:feature — set or update a single feature override
+// Body: FeatureEndpoint object
+router.put("/feature-endpoints/:feature", async (req, res) => {
+    const feature = req.params.feature as FeatureKey;
+    if (!FEATURE_KEYS.includes(feature)) {
+        res.status(400).json({ error: `Unknown feature key: ${feature}` });
+        return;
+    }
+
+    const { provider, apiUrl, apiKey, model } = req.body as {
+        provider?: unknown;
+        apiUrl?: unknown;
+        apiKey?: unknown;
+        model?: unknown;
+    };
+
+    if (provider !== "local" && provider !== "openai" && provider !== "openrouter") {
+        res.status(400).json({ error: "provider must be 'local', 'openai', or 'openrouter'" });
+        return;
+    }
+    if (typeof model !== "string" || !model.trim()) {
+        res.status(400).json({ error: "model must be a non-empty string" });
+        return;
+    }
+
+    const endpoint: FeatureEndpoint = {
+        provider,
+        model: model.trim(),
+        apiUrl: typeof apiUrl === "string" ? apiUrl : null,
+        apiKey: typeof apiKey === "string" ? apiKey : null
+    };
+
+    const [error, updated] = await attemptPromise(async () => {
+        const current = await getFeatureEndpoints();
+        const next = { ...current, [feature]: endpoint };
+        await setFeatureEndpoints(next);
+        return next;
+    });
+
+    if (error) {
+        res.status(500).json({ error: "Failed to save feature endpoint", details: error.message });
+        return;
+    }
+    res.json(updated);
+});
+
+// DELETE /api/admin/feature-endpoints/:feature — remove a single feature override
+// The feature will fall back to global defaults after this.
+router.delete("/feature-endpoints/:feature", async (req, res) => {
+    const feature = req.params.feature as FeatureKey;
+    if (!FEATURE_KEYS.includes(feature)) {
+        res.status(400).json({ error: `Unknown feature key: ${feature}` });
+        return;
+    }
+
+    const [error, updated] = await attemptPromise(async () => {
+        const next = await getFeatureEndpoints();
+        delete next[feature];
+        await setFeatureEndpoints(next);
+        return next;
+    });
+
+    if (error) {
+        res.status(500).json({ error: "Failed to remove feature endpoint", details: error.message });
+        return;
+    }
+    res.json(updated);
 });
 
 export default router;

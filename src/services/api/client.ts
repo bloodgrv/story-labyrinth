@@ -1,3 +1,6 @@
+import type { FeatureEndpoint, FeatureEndpoints, FeatureKey } from "@/types/aiSettings";
+import type { AuthStatus, AuthUser } from "@/types/auth";
+import type { CodexPendingChange, CodexPendingStatus, CodexState } from "@/types/codex";
 import type {
     AIChat,
     AISettings,
@@ -13,7 +16,30 @@ import type {
     Story,
     StoryExport
 } from "@/types/story";
+import type { ChatContext, WorldBuildingTemplate } from "@/types/worldbuilding";
 import { fetchJSON, uploadFile } from "./apiFactory";
+
+// Re-exported so existing `import { ttsApi } from "@/services/api/client"` call sites don't
+// need to change — these live in their own files purely to keep this file under the max-lines
+// lint limit as the API surface has grown.
+export { beatsApi } from "./beatsClient";
+export { grammarApi } from "./grammarClient";
+export { humanizerApi } from "./humanizerClient";
+export { outlineApi, outlineCharactersApi } from "./outlineClient";
+export { ttsApi } from "./ttsClient";
+
+// Auth API
+export const authApi = {
+    getStatus: () => fetchJSON<AuthStatus>("/auth/status"),
+    register: (username: string, password: string) =>
+        fetchJSON<{ user: AuthUser }>("/auth/register", {
+            method: "POST",
+            body: JSON.stringify({ username, password })
+        }),
+    login: (username: string, password: string) =>
+        fetchJSON<{ user: AuthUser }>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+    logout: () => fetchJSON<{ success: boolean }>("/auth/logout", { method: "POST" })
+};
 
 // Stories API
 export const storiesApi = {
@@ -97,6 +123,31 @@ export const aiApi = {
         fetchJSON<AISettings>(`/ai/settings/${id}`, { method: "PUT", body: JSON.stringify(data) })
 };
 
+// xAI OAuth device-flow API
+export type GrokDeviceAuthorization = {
+    deviceCode: string;
+    userCode: string;
+    verificationUri: string;
+    verificationUriComplete: string;
+    expiresIn: number;
+    interval: number;
+};
+
+export type GrokDevicePollResult =
+    | { status: "complete" }
+    | { status: "pending" | "slow_down" }
+    | { status: "error"; error: string };
+
+export const grokOAuthApi = {
+    startDeviceFlow: () =>
+        fetchJSON<GrokDeviceAuthorization>("/ai/grok-oauth/device/start", { method: "POST" }),
+    pollDeviceToken: (deviceCode: string) =>
+        fetchJSON<GrokDevicePollResult>("/ai/grok-oauth/device/poll", {
+            method: "POST",
+            body: JSON.stringify({ deviceCode })
+        })
+};
+
 // Brainstorm (AI Chats) API
 export const brainstormApi = {
     getByStory: (storyId: string) => fetchJSON<AIChat[]>(`/brainstorm/story/${storyId}`),
@@ -128,6 +179,104 @@ export const notesApi = {
     update: (id: string, data: Partial<Note>) =>
         fetchJSON<Note>(`/notes/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: string) => fetchJSON<{ success: boolean }>(`/notes/${id}`, { method: "DELETE" })
+};
+
+// World-Building Chats API (backed by /api/chats)
+export const chatsApi = {
+    getByStory: (storyId: string, type?: string) => {
+        const q = new URLSearchParams({ storyId });
+        if (type) q.set("type", type);
+        return fetchJSON<AIChat[]>(`/chats?${q}`);
+    },
+    getById: (id: string) => fetchJSON<AIChat>(`/chats/${id}`),
+    getTemplates: () => fetchJSON<WorldBuildingTemplate[]>("/chats/templates"),
+    create: (data: { storyId: string; chatType?: string; templateSlug?: string; title?: string }) =>
+        fetchJSON<AIChat>("/chats", { method: "POST", body: JSON.stringify(data) }),
+    update: (
+        id: string,
+        data: {
+            messages?: unknown[];
+            title?: string;
+            lastUsedPromptId?: string | null;
+            lastUsedModelId?: string | null;
+        }
+    ) => fetchJSON<AIChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    appendMessage: (id: string, role: "user" | "assistant", content: string) =>
+        fetchJSON<AIChat>(`/chats/${id}/messages`, { method: "POST", body: JSON.stringify({ role, content }) }),
+    delete: (id: string) => fetchJSON<void>(`/chats/${id}`, { method: "DELETE" }),
+
+    // Context for generating a response/proposal: system prompt, this chat's own pending
+    // proposals, and Codex entries relevant to `query` (via the RAG hybrid index).
+    getContext: (id: string, query?: string) => {
+        const q = query ? `?${new URLSearchParams({ query })}` : "";
+        return fetchJSON<ChatContext>(`/chats/${id}/context${q}`);
+    },
+
+    // Codex proposals scoped to this chat
+    getProposals: (id: string, status?: CodexPendingStatus) => {
+        const q = status ? `?${new URLSearchParams({ status })}` : "";
+        return fetchJSON<CodexPendingChange[]>(`/chats/${id}/codex-proposals${q}`);
+    },
+    getProposal: (id: string, pendingChangeId: string) =>
+        fetchJSON<CodexPendingChange>(`/chats/${id}/codex-proposals/${pendingChangeId}`),
+    proposeNewEntry: (
+        id: string,
+        data: {
+            messageId?: string;
+            level: string;
+            scopeId?: string;
+            name: string;
+            description: string;
+            category: string;
+            tags?: string[];
+            proposedState?: CodexState;
+        }
+    ) =>
+        fetchJSON(`/chats/${id}/codex-proposals`, {
+            method: "POST",
+            body: JSON.stringify({ type: "new_entry", ...data })
+        }),
+    proposeModifyEntry: (
+        id: string,
+        data: {
+            messageId?: string;
+            entryId: string;
+            proposedDescription?: string;
+            proposedState?: CodexState;
+            proposedTags?: string[];
+            proposedNeedsFleshingOut?: boolean;
+        }
+    ) =>
+        fetchJSON<{ pendingChange: CodexPendingChange }>(`/chats/${id}/codex-proposals`, {
+            method: "POST",
+            body: JSON.stringify({ type: "modify_entry", ...data })
+        }),
+    reviseProposal: (
+        id: string,
+        pendingChangeId: string,
+        data: {
+            proposedDescription?: string;
+            proposedState?: CodexState;
+            proposedTags?: string[];
+            proposedNeedsFleshingOut?: boolean;
+        }
+    ) =>
+        fetchJSON<CodexPendingChange>(`/chats/${id}/codex-proposals/${pendingChangeId}`, {
+            method: "PATCH",
+            body: JSON.stringify(data)
+        })
+};
+
+// Per-feature AI endpoint overrides
+export const featureEndpointsApi = {
+    get: () => fetchJSON<FeatureEndpoints>("/admin/feature-endpoints"),
+    setFeature: (feature: FeatureKey, endpoint: FeatureEndpoint) =>
+        fetchJSON<FeatureEndpoints>(`/admin/feature-endpoints/${feature}`, {
+            method: "PUT",
+            body: JSON.stringify(endpoint)
+        }),
+    removeFeature: (feature: FeatureKey) =>
+        fetchJSON<FeatureEndpoints>(`/admin/feature-endpoints/${feature}`, { method: "DELETE" })
 };
 
 // Admin/Migration API

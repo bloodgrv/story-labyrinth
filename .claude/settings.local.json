@@ -1,28 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)",
-      "Bash(mkdir:*)",
-      "Bash(npm run db:generate:*)",
-      "Bash(git ls-tree:*)",
-      "Bash(git log:*)",
-      "Bash(node:*)",
-      "Bash(npm run lint)",
-      "Bash(npm run knip:*)",
-      "Bash(npm run lint:fix:*)",
-      "Bash(npm run lint:*)",
-      "Bash(npm update:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(npm install:*)",
-      "Bash(gh issue view:*)",
-      "Bash(gh repo view:*)",
-      "Bash(git remote:*)",
-      "Bash(npm run format:*)",
-      "Bash(npm run lint:server:*)",
-      "Bash(npm run build:client:*)"
-    ],
-    "deny": [],
-    "ask": []
+      "PowerShell(Get-ChildItem \"E:\\\\StoryNexus-Fork\" -ErrorAction SilentlyContinue; if \\(-not \\(Test-Path \"E:\\\\StoryNexus-Fork\"\\)\\) { Write-Host \"Directory does not exist\" })",
+      "Bash(npm run *)",
+      "Bash(npx tsc *)",
+      "Bash(npx oxlint *)",
+      "Bash(timeout 15 npx cross-env NODE_ENV=development PORT=3001 npx tsx server/index.ts)",
+      "Bash(netstat -ano)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3001/api/auth/status)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/)",
+      "PowerShell(Get-Process node,tsx -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -in 3001,5173 } | Select-Object LocalAddress, LocalPort, OwningProcess)",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\")",
+      "Bash(curl -s -o /dev/null -w \"auth-status:%{http_code}\\\\n\" http://localhost:3001/api/auth/status)",
+      "PowerShell(Get-Process -Id 180868,185768)"
+    ]
   }
 }

@@ -103,6 +103,21 @@ export const useRefreshModelsMutation = () => {
     });
 };
 
+export const useDisconnectGrokOAuthMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => aiService.disconnectGrokOAuth(),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: aiSettingsKeys.settings() });
+            toast.success("Disconnected from xAI");
+        },
+        onError: () => {
+            toast.error("Failed to disconnect from xAI");
+        }
+    });
+};
+
 export const useDeleteDemoDataMutation = () => {
     const queryClient = useQueryClient();
 
@@ -125,7 +140,10 @@ const providerName = (provider: AIProvider): string => {
         openai: "OpenAI",
         openrouter: "OpenRouter",
         local: "Local",
-        gemini: "Gemini"
+        gemini: "Gemini",
+        grok: "Grok (xAI)",
+        "grok-session": "SuperGrok (Session)",
+        "grok-oauth": "Grok (xAI OAuth)"
     };
     return names[provider];
 };

@@ -187,6 +187,7 @@ export default function ChatInterface({ storyId, selectedChat, onChatUpdate }: C
                 editingMessageId={editingMessageId}
                 editingContent={editingContent}
                 streamingMessageId={streamingMessageId}
+                storyId={storyId}
                 onStartEdit={startEdit}
                 onSaveEdit={saveEdit}
                 onCancelEdit={cancelEdit}

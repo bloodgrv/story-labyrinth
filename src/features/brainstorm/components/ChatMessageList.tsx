@@ -4,7 +4,10 @@ import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { TtsPlayButton } from "@/features/tts/components/TtsPlayButton";
 import type { ChatMessage } from "@/types/story";
+import { parseThinkingContent } from "@/utils/parseThinking";
+import { AssistantMessageContent } from "./AssistantMessageContent";
 import MarkdownRenderer from "./MarkdownRenderer";
 
 interface ChatMessageListProps {
@@ -12,6 +15,7 @@ interface ChatMessageListProps {
     editingMessageId: string | null;
     editingContent: string;
     streamingMessageId: string | null;
+    storyId: string;
     onStartEdit: (message: ChatMessage) => void;
     onSaveEdit: (messageId: string) => void;
     onCancelEdit: () => void;
@@ -24,6 +28,7 @@ export function ChatMessageList({
     editingMessageId,
     editingContent,
     streamingMessageId,
+    storyId,
     onStartEdit,
     onSaveEdit,
     onCancelEdit,
@@ -87,18 +92,21 @@ export function ChatMessageList({
                                             <Loader2 className="h-4 w-4 animate-spin" />
                                             <span className="text-sm">Generating...</span>
                                         </div>
+                                    ) : message.role === "assistant" ? (
+                                        <AssistantMessageContent content={message.content} />
                                     ) : (
                                         <MarkdownRenderer content={message.content} />
                                     )}
                                     {message.role === "assistant" && !streamingMessageId && (
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={() => onStartEdit(message)}
-                                        >
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
+                                        <div className="absolute top-0 right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <TtsPlayButton
+                                                text={parseThinkingContent(message.content).response}
+                                                storyId={storyId}
+                                            />
+                                            <Button size="sm" variant="ghost" onClick={() => onStartEdit(message)}>
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     )}
                                 </div>
                             )}

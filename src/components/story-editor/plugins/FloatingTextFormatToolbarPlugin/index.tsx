@@ -9,21 +9,27 @@ import { toast } from "react-toastify";
 import { PromptPreviewDialog } from "@/components/ui/prompt-preview-dialog";
 import { Separator } from "@/components/ui/separator";
 import { useGenerateWithPrompt } from "@/features/ai/hooks/useGenerateWithPrompt";
+import { useMarkBeatAction } from "@/features/beats/hooks/useMarkBeatAction";
 import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
+import { useEditorChapterId, useEditorStoryId } from "@/features/editor-multiview/context/EditorPaneContext";
+import { useHumanizeMutation } from "@/features/humanizer/hooks/useHumanizeMutation";
+import { useHumanizerSettingsQuery } from "@/features/humanizer/hooks/useHumanizerSettingsQuery";
+import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { useLastUsedPrompt } from "@/features/prompts/hooks/useLastUsedPrompt";
 import { usePromptParser } from "@/features/prompts/hooks/usePromptParser";
 import { usePromptsQuery } from "@/features/prompts/hooks/usePromptsQuery";
-import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useStoryQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { aiService } from "@/services/ai/AIService";
 import type { AllowedModel, Prompt, PromptMessage } from "@/types/story";
 import { logger } from "@/utils/logger";
+import { BeatMarkPopover } from "./BeatMarkPopover";
 import { FormatButtons } from "./FormatButtons";
 import { GenerateButtons } from "./GenerateButtons";
+import { HumanizeButton } from "./HumanizeButton";
+import "./index.css";
 import { useFloatingTextFormatToolbar } from "./useFloatingTextFormatToolbar";
 import { useSelectionPromptConfig } from "./useSelectionPromptConfig";
 import { useMouseDragListener, useToolbarPosition } from "./useToolbarPosition";
-import "./index.css";
 
 interface TextFormatFloatingToolbarProps {
     editor: LexicalEditor;
@@ -33,15 +39,24 @@ interface TextFormatFloatingToolbarProps {
     isUnderline: boolean;
 }
 
-const TextFormatFloatingToolbar = ({ editor, anchorElem, isBold, isItalic, isUnderline }: TextFormatFloatingToolbarProps): JSX.Element => {
+const TextFormatFloatingToolbar = ({
+    editor,
+    anchorElem,
+    isBold,
+    isItalic,
+    isUnderline
+}: TextFormatFloatingToolbarProps): JSX.Element => {
     const popupRef = useRef<HTMLDivElement | null>(null);
-    const { currentStoryId, currentChapterId } = useStoryContext();
+    const currentStoryId = useEditorStoryId();
+    const currentChapterId = useEditorChapterId();
     const { data: prompts = [], isLoading, error } = usePromptsQuery({ includeSystem: true });
     const { lastUsed, saveSelection } = useLastUsedPrompt("selection_specific", prompts);
     const { generateWithPrompt } = useGenerateWithPrompt();
     const { parsePrompt } = usePromptParser();
     const { data: currentStory } = useStoryQuery(currentStoryId || "");
     const { data: currentChapter } = useChapterQuery(currentChapterId || "");
+    const { data: humanizerSettings } = useHumanizerSettingsQuery();
+    const humanizeMutation = useHumanizeMutation();
     const [selectedPrompt, setSelectedPrompt] = useState<Prompt | undefined>(lastUsed?.prompt);
     const [selectedModel, setSelectedModel] = useState<AllowedModel | undefined>(lastUsed?.model);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -58,6 +73,14 @@ const TextFormatFloatingToolbar = ({ editor, anchorElem, isBold, isItalic, isUnd
         povType: currentChapter?.povType || "Third Person Omniscient",
         povCharacter: currentChapter?.povCharacter || ""
     });
+    const { handleMarkBeat, isMarking } = useMarkBeatAction({
+        editor,
+        getSelectedText,
+        storyId: currentStoryId ?? undefined,
+        chapterId: currentChapterId ?? undefined
+    });
+    const { entries: lorebookEntries } = useLorebookContext();
+    const characters = lorebookEntries.filter(entry => entry.category === "character" && !entry.isDisabled);
 
     useToolbarPosition(editor, anchorElem, popupRef);
     useMouseDragListener(popupRef);
@@ -124,6 +147,32 @@ const TextFormatFloatingToolbar = ({ editor, anchorElem, isBold, isItalic, isUnd
         setIsGenerating(false);
     };
 
+    const handleHumanize = async () => {
+        const selectedText = getSelectedText();
+        if (!selectedText) {
+            toast.error("No text selected");
+            return;
+        }
+
+        const [err, result] = await attemptPromise(() => humanizeMutation.mutateAsync(selectedText));
+
+        if (err) {
+            logger.error("Error humanizing text:", err);
+            toast.error("Failed to humanize text");
+            return;
+        }
+        if (!result.success || !result.text) {
+            toast.error(result.message ?? "Failed to humanize text");
+            return;
+        }
+
+        editor.update(() => {
+            const currentSelection = $getSelection();
+            if ($isRangeSelection(currentSelection)) currentSelection.insertText(result.text as string);
+        });
+        toast.success("Text humanized");
+    };
+
     const handlePreviewPrompt = async () => {
         if (!selectedPrompt) {
             toast.error("Please select a prompt first");
@@ -176,6 +225,14 @@ const TextFormatFloatingToolbar = ({ editor, anchorElem, isBold, isItalic, isUnd
                             onPreview={handlePreviewPrompt}
                             onGenerate={handleGenerateWithPrompt}
                         />
+                        <Separator orientation="vertical" className="mx-1 h-6" />
+                        <BeatMarkPopover isMarking={isMarking} characters={characters} onApply={handleMarkBeat} />
+                        {humanizerSettings?.enabled && (
+                            <>
+                                <Separator orientation="vertical" className="mx-1 h-6" />
+                                <HumanizeButton isHumanizing={humanizeMutation.isPending} onHumanize={handleHumanize} />
+                            </>
+                        )}
                     </div>
                 )}
             </div>
@@ -183,14 +240,24 @@ const TextFormatFloatingToolbar = ({ editor, anchorElem, isBold, isItalic, isUnd
     );
 };
 
-export default function FloatingTextFormatToolbarPlugin({ anchorElem = document.body }: { anchorElem?: HTMLElement }): JSX.Element | null {
+export default function FloatingTextFormatToolbarPlugin({
+    anchorElem = document.body
+}: {
+    anchorElem?: HTMLElement;
+}): JSX.Element | null {
     const [editor] = useLexicalComposerContext();
     const { isText, isBold, isItalic, isUnderline } = useFloatingTextFormatToolbar(editor);
 
     if (!isText) return null;
 
     return createPortal(
-        <TextFormatFloatingToolbar editor={editor} anchorElem={anchorElem} isBold={isBold} isItalic={isItalic} isUnderline={isUnderline} />,
+        <TextFormatFloatingToolbar
+            editor={editor}
+            anchorElem={anchorElem}
+            isBold={isBold}
+            isItalic={isItalic}
+            isUnderline={isUnderline}
+        />,
         anchorElem
     );
 }

@@ -1,11 +1,30 @@
 import { attemptPromise } from "@jfdi/attempt";
 import type { Table } from "drizzle-orm";
-import { eq, type InferSelectModel } from "drizzle-orm";
+import { eq, getTableColumns, type InferSelectModel } from "drizzle-orm";
 import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import { type Request, type Response, Router } from "express";
 import { db } from "../db/client.js";
 
 type TableWithId = Table & { id: SQLiteColumn };
+
+// req.body always arrives JSON-parsed, so any `mode: "timestamp"` column value the client sends
+// (e.g. updatedAt) is a string, not a Date — drizzle's SQLite driver calls .getTime() on it and
+// throws "value.getTime is not a function". Coerce those columns back to real Date instances
+// before they reach drizzle, for every table this router is used with.
+//
+// Returns `any` (matching req.body's own type) rather than a precise record type — the caller
+// spreads this directly into drizzle's insert/update `values()`, which needs to infer the exact
+// per-table shape from the spread; a `Record<string, unknown>` return here would widen that and
+// break drizzle's type inference despite being runtime-safe, since this route already trusts the
+// request body's shape (no schema validation on this generic path).
+const coerceTimestampColumns = (table: TableWithId, data: Record<string, unknown>): any => {
+    const columns = getTableColumns(table);
+    const coerced = { ...data };
+    for (const [key, column] of Object.entries(columns))
+        if (column.dataType === "date" && coerced[key] != null && !(coerced[key] instanceof Date))
+            coerced[key] = new Date(coerced[key] as string | number);
+    return coerced;
+};
 
 type CrudConfig<
     TTable extends TableWithId,
@@ -99,7 +118,7 @@ export const createCrudRouter = <
             const { id: _id, createdAt: _createdAt, ...bodyWithoutReserved } = req.body;
             const data = {
                 id: req.body.id || crypto.randomUUID(),
-                ...bodyWithoutReserved,
+                ...coerceTimestampColumns(table, bodyWithoutReserved),
                 createdAt: new Date()
             };
             const result = await db.insert(table).values(data).returning();
@@ -114,7 +133,11 @@ export const createCrudRouter = <
         asyncHandler(async (req, res) => {
             const { id: _id, createdAt: _createdAt, ...updates } = req.body;
             const column = table.id;
-            const result = await db.update(table).set(updates).where(eq(column, req.params.id)).returning();
+            const result = await db
+                .update(table)
+                .set(coerceTimestampColumns(table, updates))
+                .where(eq(column, req.params.id))
+                .returning();
             const updated = Array.isArray(result) ? result[0] : result;
             if (!updated) {
                 res.status(404).json({ error: `${name} not found` });

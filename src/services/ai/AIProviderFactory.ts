@@ -1,6 +1,15 @@
 import { API_URLS } from "@/constants/urls";
 import type { AIProvider } from "@/types/story";
-import { GeminiProvider, type IAIProvider, LocalAIProvider, OpenAIProvider, OpenRouterProvider } from "./providers";
+import {
+    GeminiProvider,
+    GrokOAuthProvider,
+    GrokProvider,
+    GrokSessionProvider,
+    type IAIProvider,
+    LocalAIProvider,
+    OpenAIProvider,
+    OpenRouterProvider
+} from "./providers";
 
 export class AIProviderFactory {
     private providers: Map<AIProvider, IAIProvider> = new Map();
@@ -10,6 +19,9 @@ export class AIProviderFactory {
         this.providers.set("openai", new OpenAIProvider());
         this.providers.set("openrouter", new OpenRouterProvider());
         this.providers.set("gemini", new GeminiProvider());
+        this.providers.set("grok", new GrokProvider());
+        this.providers.set("grok-session", new GrokSessionProvider());
+        this.providers.set("grok-oauth", new GrokOAuthProvider());
     }
 
     getProvider(provider: AIProvider): IAIProvider {

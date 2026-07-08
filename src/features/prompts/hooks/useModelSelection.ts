@@ -34,6 +34,7 @@ export const useModelSelection = ({ initialModels = [] }: UseModelSelectionProps
             Local: [],
             Gemini: [],
             xAI: [],
+            SuperGrok: [],
             Anthropic: [],
             OpenAI: [],
             DeepSeek: [],
@@ -46,6 +47,8 @@ export const useModelSelection = ({ initialModels = [] }: UseModelSelectionProps
         availableModels.forEach(model => {
             if (model.provider === "local") groups.Local.push(model);
             else if (model.provider === "gemini") groups.Gemini.push(model);
+            else if (model.provider === "grok" || model.provider === "grok-oauth") groups.xAI.push(model);
+            else if (model.provider === "grok-session") groups.SuperGrok.push(model);
             else if (MOST_USED_MODELS.some(name => model.name === name)) groups["Most Used"].push(model);
             else if (model.name.toLowerCase().includes("(free)")) groups.Free.push(model);
             else if (model.provider === "openai") groups.OpenAI.push(model);
@@ -104,7 +107,10 @@ export const useModelSelection = ({ initialModels = [] }: UseModelSelectionProps
             settings.defaultLocalModel,
             settings.defaultOpenAIModel,
             settings.defaultOpenRouterModel,
-            settings.defaultGeminiModel
+            settings.defaultGeminiModel,
+            settings.defaultGrokModel,
+            settings.defaultGrokSessionModel,
+            settings.defaultGrokOAuthModel
         ].filter(Boolean) as string[];
 
         const defaultModels = defaultModelIds

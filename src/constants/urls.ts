@@ -9,6 +9,9 @@ export const API_URLS = {
     /** OpenRouter API base URL */
     OPENROUTER_BASE: "https://openrouter.ai/api/v1",
 
+    /** xAI (Grok) official API base URL */
+    XAI_BASE: "https://api.x.ai/v1",
+
     /** Local development server URL (for HTTP-Referer header) */
     DEV_REFERER: "http://localhost:5173"
 } as const;
@@ -30,6 +33,9 @@ export const ROUTES = {
         CHAPTER_EDITOR: (storyId: string, chapterId: string) => `/dashboard/${storyId}/chapters/${chapterId}`,
         PROMPTS: (storyId: string) => `/dashboard/${storyId}/prompts`,
         LOREBOOK: (storyId: string) => `/dashboard/${storyId}/lorebook`,
+        CODEX: (storyId: string) => `/dashboard/${storyId}/codex`,
+        CHATS: (storyId: string) => `/dashboard/${storyId}/chats`,
+        CHAT: (storyId: string, chatId: string) => `/dashboard/${storyId}/chats/${chatId}`,
         BRAINSTORM: (storyId: string) => `/dashboard/${storyId}/brainstorm`,
         NOTES: (storyId: string) => `/dashboard/${storyId}/notes`
     }

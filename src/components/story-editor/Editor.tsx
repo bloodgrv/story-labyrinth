@@ -16,12 +16,14 @@ import { CAN_USE_DOM } from "@/components/story-editor/shared/canUseDOM";
 import { useSettings } from "./context/SettingsContext";
 import { useSharedHistoryContext } from "./context/SharedHistoryContext";
 import AutoLinkPlugin from "./plugins/AutoLinkPlugin";
+import BeatMarkSyncPlugin from "./plugins/BeatMarkSyncPlugin";
 import CollapsiblePlugin from "./plugins/CollapsiblePlugin";
 import ContextMenuPlugin from "./plugins/ContextMenuPlugin";
 import DragDropPaste from "./plugins/DragDropPastePlugin";
 import DraggableBlockPlugin from "./plugins/DraggableBlockPlugin";
 import FloatingLinkEditorPlugin from "./plugins/FloatingLinkEditorPlugin";
 import FloatingTextFormatToolbarPlugin from "./plugins/FloatingTextFormatToolbarPlugin";
+import GrammarCheckPlugin from "./plugins/GrammarCheckPlugin";
 import ImagesPlugin from "./plugins/ImagesPlugin";
 import InlineImagePlugin from "./plugins/InlineImagePlugin";
 import { LayoutPlugin } from "./plugins/LayoutPlugin/LayoutPlugin";
@@ -126,6 +128,8 @@ export default function Editor(): JSX.Element {
                         <LayoutPlugin />
                         <SceneBeatShortcutPlugin editor={editor} />
                         <SlashCommandPlugin editor={editor} />
+                        <BeatMarkSyncPlugin />
+                        <GrammarCheckPlugin />
                         {floatingAnchorElem && <FloatingTextFormatToolbarPlugin anchorElem={floatingAnchorElem} />}
                         {floatingAnchorElem && !isSmallWidthViewport && (
                             <>

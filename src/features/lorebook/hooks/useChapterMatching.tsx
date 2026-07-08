@@ -1,22 +1,40 @@
-import { createContext, type ReactNode, useContext, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useState } from "react";
 import type { LorebookEntry } from "@/types/story";
 
+type MatchedEntriesByChapter = Map<string, Map<string, LorebookEntry>>;
+
 interface ChapterMatchingContextValue {
-    chapterMatchedEntries: Map<string, LorebookEntry>;
-    setChapterMatchedEntries: (entries: Map<string, LorebookEntry>) => void;
+    getMatchedEntries: (chapterId: string) => Map<string, LorebookEntry>;
+    setMatchedEntries: (chapterId: string, entries: Map<string, LorebookEntry>) => void;
 }
 
 const ChapterMatchingContext = createContext<ChapterMatchingContextValue | null>(null);
+const EMPTY_MATCHES = new Map<string, LorebookEntry>();
 
 interface ChapterMatchingProviderProps {
     children: ReactNode;
 }
 
+// One shared provider (mounted once, in EditorTool), keyed by chapterId rather than one instance
+// per open editor pane. A pane's LorebookTagPlugin only ever needs to update its OWN chapter's
+// slice, and readers (SceneBeatComponent, the shell's Tags drawer) only ever need to read one
+// specific chapter's slice — keying this way means one pane's typing can't clobber another
+// pane's matches (Editor MultiView, Task 1) while the shell-level Tags drawer still sees
+// whichever chapter is currently focused.
 export const ChapterMatchingProvider = ({ children }: ChapterMatchingProviderProps) => {
-    const [chapterMatchedEntries, setChapterMatchedEntries] = useState<Map<string, LorebookEntry>>(new Map());
+    const [byChapter, setByChapter] = useState<MatchedEntriesByChapter>(new Map());
+
+    const getMatchedEntries = useCallback(
+        (chapterId: string) => byChapter.get(chapterId) ?? EMPTY_MATCHES,
+        [byChapter]
+    );
+
+    const setMatchedEntries = useCallback((chapterId: string, entries: Map<string, LorebookEntry>) => {
+        setByChapter(prev => new Map(prev).set(chapterId, entries));
+    }, []);
 
     return (
-        <ChapterMatchingContext.Provider value={{ chapterMatchedEntries, setChapterMatchedEntries }}>
+        <ChapterMatchingContext.Provider value={{ getMatchedEntries, setMatchedEntries }}>
             {children}
         </ChapterMatchingContext.Provider>
     );

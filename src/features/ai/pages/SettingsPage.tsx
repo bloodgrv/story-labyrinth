@@ -9,15 +9,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ModelCombobox } from "@/components/ui/model-combobox";
 import { API_URLS } from "@/constants/urls";
+import { GrokOAuthCard } from "@/features/ai/components/GrokOAuthCard";
 import { ProviderCard } from "@/features/ai/components/ProviderCard";
 import {
     useAISettingsQuery,
     useDeleteDemoDataMutation,
+    useDisconnectGrokOAuthMutation,
     useRefreshModelsMutation,
     useUpdateAPIKeyMutation,
     useUpdateDefaultModelMutation,
     useUpdateLocalApiUrlMutation
 } from "@/features/ai/hooks/useAISettingsQuery";
+import { GrammarSettingsCard } from "@/features/grammar/components/GrammarSettingsCard";
+import { HumanizerSettingsCard } from "@/features/humanizer/components/HumanizerSettingsCard";
+import { TtsSettingsCard } from "@/features/tts/components/TtsSettingsCard";
 import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
@@ -32,6 +37,7 @@ export default function SettingsPage() {
     const updateLocalUrlMutation = useUpdateLocalApiUrlMutation();
     const updateDefaultModelMutation = useUpdateDefaultModelMutation();
     const refreshModelsMutation = useRefreshModelsMutation();
+    const disconnectGrokOAuthMutation = useDisconnectGrokOAuthMutation();
     const deleteDemoMutation = useDeleteDemoDataMutation();
 
     const toggleSection = (section: string) => {
@@ -51,6 +57,9 @@ export default function SettingsPage() {
     const openrouterModels = allModels.filter(m => m.provider === "openrouter");
     const geminiModels = allModels.filter(m => m.provider === "gemini");
     const localModels = allModels.filter(m => m.provider === "local");
+    const grokModels = allModels.filter(m => m.provider === "grok");
+    const grokSessionModels = allModels.filter(m => m.provider === "grok-session");
+    const grokOAuthModels = allModels.filter(m => m.provider === "grok-oauth");
 
     const currentLocalUrl = localApiUrlInput || settings?.localApiUrl || "";
 
@@ -115,6 +124,54 @@ export default function SettingsPage() {
                         onDefaultModelChange={modelId =>
                             updateDefaultModelMutation.mutate({ provider: "gemini", modelId })
                         }
+                    />
+
+                    <ProviderCard
+                        provider="grok"
+                        title="Grok (xAI) Configuration"
+                        keyLabel="xAI API Key"
+                        keyPlaceholder="Enter your xAI API key"
+                        storedKey={settings?.grokKey}
+                        models={grokModels}
+                        defaultModel={settings?.defaultGrokModel}
+                        isKeyMutating={updateKeyMutation.isPending}
+                        isRefreshing={refreshModelsMutation.isPending}
+                        onSaveKey={key => updateKeyMutation.mutate({ provider: "grok", key })}
+                        onRefresh={() => refreshModelsMutation.mutate("grok")}
+                        onDefaultModelChange={modelId =>
+                            updateDefaultModelMutation.mutate({ provider: "grok", modelId })
+                        }
+                    />
+
+                    <ProviderCard
+                        provider="grok-session"
+                        title="SuperGrok (Session) Configuration"
+                        keyLabel="Full Cookie Header"
+                        keyPlaceholder="grok_device_id=...; sso=...; sso-rw=...; cf_clearance=...; __cf_bm=...; ..."
+                        storedKey={settings?.grokSessionCookie}
+                        models={grokSessionModels}
+                        defaultModel={settings?.defaultGrokSessionModel}
+                        isKeyMutating={updateKeyMutation.isPending}
+                        isRefreshing={refreshModelsMutation.isPending}
+                        onSaveKey={key => updateKeyMutation.mutate({ provider: "grok-session", key })}
+                        onRefresh={() => refreshModelsMutation.mutate("grok-session")}
+                        onDefaultModelChange={modelId =>
+                            updateDefaultModelMutation.mutate({ provider: "grok-session", modelId })
+                        }
+                        warning="Unofficial — uses your grok.com session cookie, against its ToS, and may break or get your account flagged at any time. Paste the full Cookie header (all cookies, including Cloudflare's cf_clearance/__cf_bm), not just sso/sso-rw. Use at your own risk."
+                    />
+
+                    <GrokOAuthCard
+                        connected={!!settings?.grokOAuthAccessToken}
+                        defaultModel={settings?.defaultGrokOAuthModel}
+                        models={grokOAuthModels}
+                        isRefreshing={refreshModelsMutation.isPending}
+                        onRefresh={() => refreshModelsMutation.mutate("grok-oauth")}
+                        onDefaultModelChange={modelId =>
+                            updateDefaultModelMutation.mutate({ provider: "grok-oauth", modelId })
+                        }
+                        onDisconnect={() => disconnectGrokOAuthMutation.mutate()}
+                        isDisconnecting={disconnectGrokOAuthMutation.isPending}
                     />
 
                     {/* Local Models Section */}
@@ -205,6 +262,12 @@ export default function SettingsPage() {
                             )}
                         </CardContent>
                     </Card>
+
+                    <TtsSettingsCard />
+
+                    <HumanizerSettingsCard />
+
+                    <GrammarSettingsCard />
 
                     {/* Delete Demo Data Section */}
                     <Card>

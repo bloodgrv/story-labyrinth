@@ -11,6 +11,8 @@ import type { Klass, LexicalNode } from "lexical";
 import { CollapsibleContainerNode } from "../plugins/CollapsiblePlugin/CollapsibleContainerNode";
 import { CollapsibleContentNode } from "../plugins/CollapsiblePlugin/CollapsibleContentNode";
 import { CollapsibleTitleNode } from "../plugins/CollapsiblePlugin/CollapsibleTitleNode";
+import { BeatMarkNode } from "./BeatMarkNode";
+import { GrammarMarkNode } from "./GrammarMarkNode";
 import { ImageNode } from "./ImageNode";
 import { InlineImageNode } from "./InlineImageNode/InlineImageNode";
 import { LayoutContainerNode } from "./LayoutContainerNode";
@@ -44,7 +46,9 @@ const PlaygroundNodes: Array<Klass<LexicalNode>> = [
     LayoutContainerNode,
     LayoutItemNode,
     SpecialTextNode,
-    SceneBeatNode
+    SceneBeatNode,
+    BeatMarkNode,
+    GrammarMarkNode
 ];
 
 export default PlaygroundNodes;

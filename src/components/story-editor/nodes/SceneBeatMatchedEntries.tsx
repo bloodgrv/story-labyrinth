@@ -3,8 +3,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useEditorStoryId } from "@/features/editor-multiview/context/EditorPaneContext";
 import { CreateEntryDialog } from "@/features/lorebook/components/CreateEntryDialog";
-import { useStoryContext } from "@/features/stories/context/StoryContext";
 import type { LorebookEntry } from "@/types/story";
 
 interface SceneBeatMatchedEntriesProps {
@@ -14,7 +14,7 @@ interface SceneBeatMatchedEntriesProps {
 }
 
 export function SceneBeatMatchedEntries({ open, onOpenChange, matchedEntries }: SceneBeatMatchedEntriesProps) {
-    const { currentStoryId } = useStoryContext();
+    const currentStoryId = useEditorStoryId();
     const [openStates, setOpenStates] = useState<Record<string, boolean>>({});
     const [editingEntry, setEditingEntry] = useState<LorebookEntry | null>(null);
 

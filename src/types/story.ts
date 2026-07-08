@@ -1,3 +1,6 @@
+import type { CodexState } from "./codex.js";
+import type { ChatType, WorldBuildingTemplateSlug } from "./worldbuilding.js";
+
 // Base types for common fields (used across all entities)
 interface BaseEntity {
     id: string;
@@ -69,6 +72,10 @@ export interface AIChat extends BaseEntity {
     updatedAt?: Date;
     lastUsedPromptId?: string;
     lastUsedModelId?: string;
+    // Chat context type — null/undefined treated as 'general'
+    chatType?: ChatType | null;
+    // Worldbuilding template identifier; only meaningful when chatType = 'worldbuilding'
+    templateSlug?: WorldBuildingTemplateSlug | null;
 }
 
 export interface ChatMessage {
@@ -112,7 +119,7 @@ export interface Prompt extends BaseEntity {
 }
 
 // AI Provider and Model types
-export type AIProvider = "openai" | "openrouter" | "local" | "gemini";
+export type AIProvider = "openai" | "openrouter" | "local" | "gemini" | "grok" | "grok-session" | "grok-oauth";
 
 export interface AIModel {
     id: string;
@@ -126,6 +133,11 @@ export interface AISettings extends BaseEntity {
     openaiKey?: string;
     openrouterKey?: string;
     geminiKey?: string;
+    grokKey?: string;
+    grokSessionCookie?: string;
+    grokOAuthAccessToken?: string;
+    grokOAuthRefreshToken?: string;
+    grokOAuthExpiresAt?: number;
     availableModels: AIModel[];
     lastModelsFetch?: Date;
     localApiUrl?: string;
@@ -133,6 +145,9 @@ export interface AISettings extends BaseEntity {
     defaultOpenAIModel?: string;
     defaultOpenRouterModel?: string;
     defaultGeminiModel?: string;
+    defaultGrokModel?: string;
+    defaultGrokSessionModel?: string;
+    defaultGrokOAuthModel?: string;
 }
 
 // Note types
@@ -167,6 +182,11 @@ export interface LorebookEntry extends BaseEntity {
         customFields?: Record<string, unknown>;
     };
     isDisabled?: boolean;
+    // Codex extension — null/undefined means plain lorebook entry
+    codexEnabled?: boolean | null;
+    needsFleshingOut?: boolean | null;
+    codexState?: CodexState | null;
+    updatedAt?: Date | null;
 }
 
 // Prompt Parser types

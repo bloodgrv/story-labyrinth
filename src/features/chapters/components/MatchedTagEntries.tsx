@@ -7,9 +7,17 @@ import { useChapterMatching } from "@/features/lorebook/hooks/useChapterMatching
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import type { LorebookEntry } from "@/types/story";
 
-export function MatchedTagEntries() {
-    const { chapterMatchedEntries } = useChapterMatching();
-    const { currentStoryId } = useStoryContext();
+interface MatchedTagEntriesProps {
+    // Defaults to the app-wide focused chapter (the StoryEditor side-drawer usage) — a MultiView
+    // "Tags" tab passes its own tab's chapterId explicitly instead, so it can't drift when focus
+    // moves to a different pane.
+    chapterId?: string;
+}
+
+export function MatchedTagEntries({ chapterId }: MatchedTagEntriesProps = {}) {
+    const { getMatchedEntries } = useChapterMatching();
+    const { currentStoryId, currentChapterId } = useStoryContext();
+    const chapterMatchedEntries = getMatchedEntries(chapterId ?? currentChapterId ?? "");
     const [editingEntry, setEditingEntry] = useState<LorebookEntry | null>(null);
 
     // Derive open states from matched entries, preserving user interactions

@@ -1,0 +1,96 @@
+/* Deep Writing Sessions — adaptive editor themes. Each class overrides the same shadcn/Tailwind
+   CSS variables index.css defines for light/dark, scoped to the session wrapper (never applied
+   to <html>/<body>) so it only affects the editor surface while a session is active and never
+   fights the app-wide ThemeToggle. "default" (no override) deliberately has no class here — it
+   just inherits whichever of light/dark is already active.
+
+   Colors resolve to a *value* (hsl(var(--background)) becomes a concrete color at computed-style
+   time), so a plain `transition: background-color` on the elements below animates smoothly
+   across a theme swap even though the source is a CSS custom property — no @property tricks
+   needed. Scoped to descendants of the three theme classes only, not the whole app. */
+
+.focus-theme-warm,
+.focus-theme-low-contrast,
+.focus-theme-night {
+    transition:
+        background-color 300ms ease,
+        color 300ms ease;
+}
+
+.focus-theme-warm *,
+.focus-theme-low-contrast *,
+.focus-theme-night * {
+    transition:
+        background-color 300ms ease,
+        color 300ms ease,
+        border-color 300ms ease;
+}
+
+/* Warm — sepia/amber tones, easier on the eyes for evening writing. */
+.focus-theme-warm {
+    --background: 30 25% 12%;
+    --foreground: 35 40% 88%;
+    --card: 30 25% 15%;
+    --card-foreground: 35 40% 88%;
+    --popover: 30 25% 15%;
+    --popover-foreground: 35 40% 88%;
+    --primary: 35 60% 55%;
+    --primary-foreground: 30 25% 12%;
+    --secondary: 30 20% 20%;
+    --secondary-foreground: 35 40% 85%;
+    --muted: 30 20% 20%;
+    --muted-foreground: 35 20% 65%;
+    --accent: 30 20% 25%;
+    --accent-foreground: 35 40% 88%;
+    --destructive: 5 60% 45%;
+    --destructive-foreground: 35 40% 90%;
+    --border: 30 20% 25%;
+    --input: 30 20% 25%;
+    --ring: 35 60% 55%;
+}
+
+/* Low Contrast — softer, muted tones with a smaller gap between background and text. */
+.focus-theme-low-contrast {
+    --background: 220 8% 22%;
+    --foreground: 220 8% 68%;
+    --card: 220 8% 24%;
+    --card-foreground: 220 8% 68%;
+    --popover: 220 8% 24%;
+    --popover-foreground: 220 8% 68%;
+    --primary: 220 8% 62%;
+    --primary-foreground: 220 8% 20%;
+    --secondary: 220 8% 28%;
+    --secondary-foreground: 220 8% 65%;
+    --muted: 220 8% 28%;
+    --muted-foreground: 220 8% 55%;
+    --accent: 220 8% 30%;
+    --accent-foreground: 220 8% 68%;
+    --destructive: 0 35% 45%;
+    --destructive-foreground: 220 8% 68%;
+    --border: 220 8% 30%;
+    --input: 220 8% 30%;
+    --ring: 220 8% 55%;
+}
+
+/* Night — very dim, deep tones for late-night sessions, dimmer than the app's normal dark theme. */
+.focus-theme-night {
+    --background: 220 40% 4%;
+    --foreground: 220 10% 45%;
+    --card: 220 40% 6%;
+    --card-foreground: 220 10% 45%;
+    --popover: 220 40% 6%;
+    --popover-foreground: 220 10% 45%;
+    --primary: 220 15% 40%;
+    --primary-foreground: 220 40% 4%;
+    --secondary: 220 30% 10%;
+    --secondary-foreground: 220 10% 45%;
+    --muted: 220 30% 10%;
+    --muted-foreground: 220 10% 32%;
+    --accent: 220 30% 12%;
+    --accent-foreground: 220 10% 45%;
+    --destructive: 0 40% 30%;
+    --destructive-foreground: 220 10% 45%;
+    --border: 220 30% 12%;
+    --input: 220 30% 12%;
+    --ring: 220 15% 40%;
+}

@@ -2,12 +2,15 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { $isElementNode, type LexicalNode } from "lexical";
 import { debounce } from "lodash";
 import { useCallback, useEffect } from "react";
+import { useEditorChapterId } from "@/features/editor-multiview/context/EditorPaneContext";
+import { reportChapterWordCount } from "@/lib/chapterWordCountStore";
 import { countWords } from "@/utils/textUtils";
 import { useToolbarState } from "../../context/ToolbarContext";
 
 export function WordCountPlugin() {
     const [editor] = useLexicalComposerContext();
     const { updateToolbarState } = useToolbarState();
+    const chapterId = useEditorChapterId();
 
     const updateWordCount = useCallback(
         () =>
@@ -28,9 +31,11 @@ export function WordCountPlugin() {
                         root.getChildren().forEach(traverse);
                     }
                 });
-                updateToolbarState("wordCount", countWords(text));
+                const count = countWords(text);
+                updateToolbarState("wordCount", count);
+                if (chapterId) reportChapterWordCount(chapterId, count);
             }, 500),
-        [editor, updateToolbarState]
+        [editor, updateToolbarState, chapterId]
     )();
 
     useEffect(() => {
