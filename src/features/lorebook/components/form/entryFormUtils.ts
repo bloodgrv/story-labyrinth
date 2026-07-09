@@ -1,10 +1,17 @@
-import type { CodexState } from "@/types/codex";
+import type { CodexState, DocumentImportDraft } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
 
 export type LorebookLevel = LorebookEntry["level"];
 export type LorebookCategory = LorebookEntry["category"];
 
 export const EMPTY_CODEX_STATE: CodexState = { wardrobe: [], appearance: [], wounds: [], items: [], customFields: [] };
+
+const hasCodexContent = (state: CodexState): boolean =>
+    state.wardrobe.length > 0 ||
+    state.appearance.length > 0 ||
+    state.wounds.length > 0 ||
+    state.items.length > 0 ||
+    state.customFields.length > 0;
 
 export const CATEGORIES: LorebookCategory[] = [
     "character",
@@ -41,28 +48,33 @@ export interface CreateEntryForm {
     codexState: CodexState;
 }
 
+// `draft` seeds a brand-new entry from an AI-extracted document import (see
+// documentImportService.ts) — only consulted when `entry` is absent, since an existing entry's
+// own saved values always win.
 export const getDefaultFormValues = (
     entry?: LorebookEntry,
     seriesId?: string,
     storyId?: string,
-    defaultCategory?: LorebookCategory
+    defaultCategory?: LorebookCategory,
+    draft?: DocumentImportDraft
 ): CreateEntryForm => {
     const defaultLevel: LorebookLevel = entry?.level || (seriesId ? "series" : "story");
     const defaultScopeId = entry?.scopeId || seriesId || storyId || "";
+    const codexState = entry?.codexState ?? draft?.codexState ?? EMPTY_CODEX_STATE;
 
     return {
         level: defaultLevel,
         scopeId: defaultScopeId,
-        name: entry?.name || "",
-        category: entry?.category || defaultCategory || "character",
+        name: entry?.name || draft?.name || "",
+        category: entry?.category || draft?.category || defaultCategory || "character",
         importance: entry?.metadata?.importance || "minor",
-        tags: entry?.tags?.join(", ") || "",
-        description: entry?.description || "",
+        tags: entry?.tags?.join(", ") || draft?.tags?.join(", ") || "",
+        description: entry?.description || draft?.description || "",
         type: entry?.metadata?.type || "",
         status: entry?.metadata?.status || "active",
         isDisabled: entry?.isDisabled || false,
-        codexEnabled: entry?.codexEnabled ?? false,
-        codexState: entry?.codexState ?? EMPTY_CODEX_STATE
+        codexEnabled: entry?.codexEnabled ?? hasCodexContent(codexState),
+        codexState
     };
 };
 

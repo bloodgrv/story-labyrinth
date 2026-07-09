@@ -20,6 +20,17 @@ export interface CodexState {
     customFields: CodexCustomField[];
 }
 
+// AI-extracted draft entry from an uploaded PDF/DOCX/MD/TXT reference document (see
+// server/services/documentImportService.ts) — not persisted, reviewed/edited in the normal
+// entry-creation UI before the user saves it.
+export interface DocumentImportDraft {
+    name: string;
+    category: "character" | "location" | "item" | "event" | "note" | "synopsis" | "starting scenario" | "timeline";
+    description: string;
+    tags: string[];
+    codexState: CodexState;
+}
+
 export type CodexSourceType = "user" | "chat" | "ai_suggestion";
 export type CodexPendingSourceType = "chat" | "ai";
 export type CodexPendingStatus = "pending" | "approved" | "rejected";

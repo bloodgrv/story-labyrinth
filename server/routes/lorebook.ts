@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { parseJson } from "../lib/json.js";
+import { importEntryFromDocument } from "../services/documentImportService.js";
 import { indexLorebookEntry } from "../services/ragIndexService.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -268,6 +269,30 @@ export default createCrudRouter({
                     },
                     entries: newEntries
                 });
+            })
+        );
+
+        // POST /lorebook/import/document - Extract a draft entry from an uploaded PDF/DOCX/MD/TXT
+        // reference document. Returns the draft only — nothing is persisted here, the client
+        // opens the normal entry-creation UI pre-filled with it for review before saving.
+        router.post(
+            "/import/document",
+            upload.single("file"),
+            asyncHandler(async (req, res) => {
+                const { file } = req;
+                if (!file) {
+                    res.status(400).json({ error: "No file uploaded" });
+                    return;
+                }
+
+                const [error, draft] = await attemptPromise(() => importEntryFromDocument(file.buffer, file.originalname));
+
+                if (error) {
+                    res.status(400).json({ error: error.message });
+                    return;
+                }
+
+                res.json({ draft });
             })
         );
     }

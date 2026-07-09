@@ -15,7 +15,8 @@ export type FeatureKey =
     | "editor_chat" // Main Editor Chat AI calls (future)
     | "humanizer" // Humanize rewrite pass (humanizerService.ts)
     | "beat_detection" // Concrete beat suggestion pass (beatDetector.ts)
-    | "outline_generation"; // AI-assisted outline suggestion pass (outlineGenerator.ts)
+    | "outline_generation" // AI-assisted outline suggestion pass (outlineGenerator.ts)
+    | "document_import"; // Extract a Lorebook entry from an uploaded PDF/DOCX/MD file (documentImportService.ts)
 
 export type FeatureProvider = "local" | "openai" | "openrouter" | "grok";
 
@@ -43,7 +44,8 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
     editor_chat: "Editor Chat",
     humanizer: "Humanizer",
     beat_detection: "Beat Detection",
-    outline_generation: "Outline Generation"
+    outline_generation: "Outline Generation",
+    document_import: "Document Import (Lorebook)"
 };
 
 export const FEATURE_KEYS: FeatureKey[] = [
@@ -54,5 +56,6 @@ export const FEATURE_KEYS: FeatureKey[] = [
     "editor_chat",
     "humanizer",
     "beat_detection",
-    "outline_generation"
+    "outline_generation",
+    "document_import"
 ];

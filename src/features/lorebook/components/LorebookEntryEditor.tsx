@@ -14,6 +14,7 @@ import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
 import { useStoryQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
 import { codexApi } from "@/services/api/client";
+import type { DocumentImportDraft } from "@/types/codex";
 import type { AIChat, LorebookEntry } from "@/types/story";
 import { randomUUID } from "@/utils/crypto";
 import type { WorldBuildingTemplateSlug } from "@/types/worldbuilding";
@@ -37,6 +38,9 @@ export interface LorebookEntryEditorProps {
     seriesId?: string;
     entry?: LorebookEntry;
     defaultCategory?: LorebookCategory;
+    // Seeds a brand-new entry from an AI document-import extraction — see entryFormUtils.ts's
+    // getDefaultFormValues. Ignored when `entry` is set (editing always wins over a draft).
+    draftValues?: DocumentImportDraft;
     // Called after a successful create/update. Sheet usage closes itself; tab usage can leave
     // the tab open (entry tabs have nothing else to navigate back to).
     onSaved?: () => void;
@@ -114,7 +118,15 @@ function WorldBuildingChatPanel({ storyId }: { storyId: string }) {
 // construction time, so both callers key this component on entry identity (LorebookEntryTab) or
 // on open-transition (CreateEntryDialog) to force a fresh mount — and therefore fresh defaults —
 // instead of fighting react-hook-form's mount-time-only defaults with an effect.
-export function LorebookEntryEditor({ storyId, seriesId, entry, defaultCategory, onSaved, onCancel }: LorebookEntryEditorProps) {
+export function LorebookEntryEditor({
+    storyId,
+    seriesId,
+    entry,
+    defaultCategory,
+    draftValues,
+    onSaved,
+    onCancel
+}: LorebookEntryEditorProps) {
     const createMutation = useCreateLorebookMutation();
     const updateMutation = useUpdateLorebookMutation();
     const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -124,7 +136,7 @@ export function LorebookEntryEditor({ storyId, seriesId, entry, defaultCategory,
     const { data: seriesList } = useSeriesQuery();
 
     const form = useForm<CreateEntryForm>({
-        defaultValues: getDefaultFormValues(entry, seriesId, storyId, defaultCategory)
+        defaultValues: getDefaultFormValues(entry, seriesId, storyId, defaultCategory, draftValues)
     });
 
     const selectedLevel = form.watch("level");

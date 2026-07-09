@@ -1,6 +1,6 @@
 import type { FeatureEndpoint, FeatureEndpoints, FeatureKey } from "@/types/aiSettings";
 import type { AuthStatus, AuthUser } from "@/types/auth";
-import type { CodexPendingChange, CodexPendingStatus, CodexState } from "@/types/codex";
+import type { CodexPendingChange, CodexPendingStatus, CodexState, DocumentImportDraft } from "@/types/codex";
 import type {
     AIChat,
     AISettings,
@@ -99,7 +99,10 @@ export const lorebookApi = {
     getBySeries: (seriesId: string) => fetchJSON<LorebookEntry[]>(`/lorebook/series/${seriesId}`),
     getHierarchical: (storyId: string) => fetchJSON<LorebookEntry[]>(`/lorebook/story/${storyId}/hierarchical`),
     exportGlobal: () => fetchJSON<GlobalLorebookExport>("/lorebook/global/export"),
-    importGlobal: (file: File) => uploadFile<{ success: boolean }>("/lorebook/global/import", file)
+    importGlobal: (file: File) => uploadFile<{ success: boolean }>("/lorebook/global/import", file),
+    // PDF/DOCX/MD/TXT reference document -> AI-extracted draft entry (not persisted; the
+    // caller opens the normal entry-creation UI pre-filled with it for review).
+    importDocument: (file: File) => uploadFile<{ draft: DocumentImportDraft }>("/lorebook/import/document", file)
 };
 
 // Prompts API

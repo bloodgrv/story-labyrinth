@@ -1,13 +1,19 @@
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { DocumentImportDraft } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
 
-// The permanent first tab (card grid) plus one tab per entry opened from a card — a lightweight,
-// page-local tab strip (not the Editor's MultiView pane/tab system, which Lorebook isn't part
-// of; see DECISIONS.md's tab-location note). Visual language matches
-// editor-multiview/components/PaneTabStrip.tsx, minus the split/float controls that don't apply
-// here.
-export type LorebookOpenTab = { kind: "browse" } | { kind: "entry"; entryId: string };
+// The permanent first tab (card grid) plus one tab per entry opened from a card, plus one per
+// pending document-import draft — a lightweight, page-local tab strip (not the Editor's
+// MultiView pane/tab system, which Lorebook isn't part of; see DECISIONS.md's tab-location
+// note). Visual language matches editor-multiview/components/PaneTabStrip.tsx, minus the
+// split/float controls that don't apply here.
+export type LorebookOpenTab =
+    | { kind: "browse" }
+    | { kind: "entry"; entryId: string }
+    | { kind: "draft"; draftId: string; draft: DocumentImportDraft };
+
+const tabKey = (tab: LorebookOpenTab) => (tab.kind === "browse" ? "browse" : tab.kind === "entry" ? tab.entryId : tab.draftId);
 
 interface LorebookTabStripProps {
     tabs: LorebookOpenTab[];
@@ -23,10 +29,15 @@ export function LorebookTabStrip({ tabs, activeIndex, entries, onSelect, onClose
             <div role="tablist" className="flex flex-1 min-w-0 items-center gap-0.5 overflow-x-auto">
                 {tabs.map((tab, index) => {
                     const isActive = index === activeIndex;
-                    const label = tab.kind === "browse" ? "Browse" : (entries.find(e => e.id === tab.entryId)?.name ?? "Entry");
+                    const label =
+                        tab.kind === "browse"
+                            ? "Browse"
+                            : tab.kind === "entry"
+                              ? (entries.find(e => e.id === tab.entryId)?.name ?? "Entry")
+                              : tab.draft.name;
                     return (
                         <div
-                            key={tab.kind === "browse" ? "browse" : tab.entryId}
+                            key={tabKey(tab)}
                             role="tab"
                             tabIndex={0}
                             aria-selected={isActive}
@@ -46,7 +57,7 @@ export function LorebookTabStrip({ tabs, activeIndex, entries, onSelect, onClose
                             title={label}
                         >
                             <span className="truncate">{label}</span>
-                            {tab.kind === "entry" && (
+                            {tab.kind !== "browse" && (
                                 <button
                                     type="button"
                                     className={cn(
