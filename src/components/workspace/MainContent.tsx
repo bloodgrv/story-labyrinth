@@ -10,7 +10,6 @@ import { SeriesTool } from "./tools/SeriesTool";
 import { ResearchTool } from "./tools/ResearchTool";
 import { StoriesTool } from "./tools/StoriesTool";
 import { UsersTool } from "./tools/UsersTool";
-import { WorldBuildingTool } from "./tools/WorldBuildingTool";
 
 // Subtle background tints for each tool
 const toolTints = {
@@ -23,7 +22,6 @@ const toolTints = {
     brainstorm: "bg-purple-50/10 dark:bg-purple-950/5",
     notes: "bg-green-50/10 dark:bg-green-950/5",
     users: "bg-background",
-    worldbuilding: "bg-violet-50/10 dark:bg-violet-950/5",
     research: "bg-sky-50/10 dark:bg-sky-950/5"
 };
 
@@ -50,8 +48,6 @@ export const MainContent = () => {
                 return <NotesTool />;
             case "users":
                 return <UsersTool />;
-            case "worldbuilding":
-                return <WorldBuildingTool />;
             case "research":
                 return <ResearchTool />;
             default:

@@ -10,7 +10,6 @@ const VALID_TOOLS: readonly WorkspaceTool[] = [
     "outline",
     "lorebook",
     "brainstorm",
-    "worldbuilding",
     "research",
     "notes",
     "users"

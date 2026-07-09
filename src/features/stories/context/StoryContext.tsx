@@ -10,7 +10,6 @@ export type WorkspaceTool =
     | "brainstorm"
     | "notes"
     | "users"
-    | "worldbuilding"
     | "research";
 
 interface StoryContextType {

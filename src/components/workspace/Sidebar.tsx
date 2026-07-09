@@ -11,7 +11,6 @@ import {
     MessageSquare,
     Search,
     Settings,
-    Sparkles,
     StickyNote,
     Users
 } from "lucide-react";
@@ -33,7 +32,6 @@ const tools = [
     { id: "outline" as WorkspaceTool, label: "Outline", icon: ListTree, requiresStory: true },
     { id: "lorebook" as WorkspaceTool, label: "Lorebook", icon: BookOpen, requiresStory: true },
     { id: "brainstorm" as WorkspaceTool, label: "Brainstorm", icon: MessageSquare, requiresStory: true },
-    { id: "worldbuilding" as WorkspaceTool, label: "World-Building", icon: Sparkles, requiresStory: true },
     { id: "research" as WorkspaceTool, label: "Research", icon: Search, requiresStory: false },
     { id: "notes" as WorkspaceTool, label: "Notes", icon: StickyNote, requiresStory: true }
 ];
