@@ -1,7 +1,10 @@
+import type { CodexState } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
 
 export type LorebookLevel = LorebookEntry["level"];
 export type LorebookCategory = LorebookEntry["category"];
+
+export const EMPTY_CODEX_STATE: CodexState = { wardrobe: [], appearance: [], wounds: [], items: [], customFields: [] };
 
 export const CATEGORIES: LorebookCategory[] = [
     "character",
@@ -31,6 +34,11 @@ export interface CreateEntryForm {
     type: string;
     status: StatusOption;
     isDisabled: boolean;
+    // Concrete physical state (wardrobe/appearance/wounds/items/customFields) — see
+    // CodexStateEditor.tsx. Submitted separately from the rest of this form, through
+    // codexApi.enable/recordState, not through buildSubmitData below.
+    codexEnabled: boolean;
+    codexState: CodexState;
 }
 
 export const getDefaultFormValues = (
@@ -52,7 +60,9 @@ export const getDefaultFormValues = (
         description: entry?.description || "",
         type: entry?.metadata?.type || "",
         status: entry?.metadata?.status || "active",
-        isDisabled: entry?.isDisabled || false
+        isDisabled: entry?.isDisabled || false,
+        codexEnabled: entry?.codexEnabled ?? false,
+        codexState: entry?.codexState ?? EMPTY_CODEX_STATE
     };
 };
 
@@ -72,8 +82,7 @@ export const buildSubmitData = (data: CreateEntryForm) => {
             importance: data.importance,
             status: data.status,
             type: data.type,
-            relationships: [],
-            customFields: {}
+            relationships: []
         },
         level: data.level,
         scopeId: data.level === "global" ? undefined : data.scopeId

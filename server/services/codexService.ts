@@ -144,6 +144,7 @@ export const recordStateChange = async (
 
     const entry = await updateCodexEntryFields(entryId, changes);
     if (!entry) throw new Error(`Failed to update entry: ${entryId}`);
+    void attemptPromise(() => indexLorebookEntry(entry.id));
 
     const snapshot = await createSnapshot({
         entryId: entry.id,

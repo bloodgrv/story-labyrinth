@@ -51,16 +51,6 @@ export const AdvancedSettings = ({ control, open, onOpenChange }: AdvancedSettin
                 />
             </div>
 
-            <div className="space-y-2">
-                <FormLabel>Custom Fields</FormLabel>
-                <div className="border rounded-md p-3 bg-muted/20">
-                    <p className="text-sm text-muted-foreground mb-2">
-                        Custom fields will be added in a future update. These will allow you to add any additional
-                        information specific to your lorebook entries.
-                    </p>
-                </div>
-            </div>
-
             <FormField
                 control={control}
                 name="isDisabled"

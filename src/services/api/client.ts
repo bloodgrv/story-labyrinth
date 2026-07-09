@@ -23,6 +23,7 @@ import { fetchJSON, uploadFile } from "./apiFactory";
 // need to change — these live in their own files purely to keep this file under the max-lines
 // lint limit as the API surface has grown.
 export { beatsApi } from "./beatsClient";
+export { codexApi } from "./codexClient";
 export { grammarApi } from "./grammarClient";
 export { humanizerApi } from "./humanizerClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
@@ -271,19 +272,6 @@ export const chatsApi = {
             method: "PATCH",
             body: JSON.stringify(data)
         })
-};
-
-// Codex API (backed by /api/codex) — approve/reject a pending change. Proposing changes and
-// listing them happens through chatsApi's chat-scoped codex-proposal calls above; these two
-// entry-level actions have no chat-scoped equivalent (server/routes/codex.ts).
-export const codexApi = {
-    approve: (pendingChangeId: string) =>
-        fetchJSON<{ entry: LorebookEntry | null; snapshot: unknown; pendingChange: CodexPendingChange }>(
-            `/codex/pending/${pendingChangeId}/approve`,
-            { method: "POST" }
-        ),
-    reject: (pendingChangeId: string) =>
-        fetchJSON<{ pendingChange: CodexPendingChange }>(`/codex/pending/${pendingChangeId}/reject`, { method: "POST" })
 };
 
 // Per-feature AI endpoint overrides

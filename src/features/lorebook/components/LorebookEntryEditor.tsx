@@ -13,6 +13,7 @@ import { useChatTemplatesQuery, useCreateChatMutation } from "@/features/chat/ho
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
 import { useStoryQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
+import { codexApi } from "@/services/api/client";
 import type { AIChat, LorebookEntry } from "@/types/story";
 import { randomUUID } from "@/utils/crypto";
 import type { WorldBuildingTemplateSlug } from "@/types/worldbuilding";
@@ -20,6 +21,8 @@ import { useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/u
 import {
     AdvancedSettings,
     CATEGORIES,
+    CodexStateEditor,
+    EMPTY_CODEX_STATE,
     IMPORTANCE_LEVELS,
     LevelScopeFields,
     SelectField,
@@ -126,19 +129,31 @@ export function LorebookEntryEditor({ storyId, seriesId, entry, defaultCategory,
 
     const selectedLevel = form.watch("level");
     const tagInput = form.watch("tags");
+    const selectedCategory = form.watch("category");
 
     const handleSubmit = async (data: CreateEntryForm) => {
         const [error] = await attemptPromise(async () => {
             const dataToSubmit = buildSubmitData(data);
+            const entryId = entry?.id ?? randomUUID();
 
-            if (entry)
-                await updateMutation.mutateAsync({ id: entry.id, data: dataToSubmit });
+            if (entry) await updateMutation.mutateAsync({ id: entry.id, data: dataToSubmit });
             else
                 await createMutation.mutateAsync({
-                    id: randomUUID(),
+                    id: entryId,
                     ...dataToSubmit,
                     storyId: storyId || data.scopeId || ""
                 } as Omit<LorebookEntry, "createdAt">);
+
+            // Codex state is submitted separately (codexApi), not part of the base entry
+            // payload above — see CodexStateEditor.tsx and CreateEntryForm's own doc comment.
+            if (data.codexEnabled) {
+                if (!entry?.codexEnabled) await codexApi.enable(entryId, { sourceType: "user" });
+
+                const codexStateChanged =
+                    JSON.stringify(data.codexState) !== JSON.stringify(entry?.codexState ?? EMPTY_CODEX_STATE);
+                if (codexStateChanged)
+                    await codexApi.recordState(entryId, { changes: { codexState: data.codexState }, sourceType: "user" });
+            }
 
             onSaved?.();
         });
@@ -212,6 +227,8 @@ export function LorebookEntryEditor({ storyId, seriesId, entry, defaultCategory,
                                 </FormItem>
                             )}
                         />
+
+                        {selectedCategory === "character" && <CodexStateEditor control={form.control} />}
 
                         <AdvancedSettings control={form.control} open={advancedOpen} onOpenChange={setAdvancedOpen} />
 
