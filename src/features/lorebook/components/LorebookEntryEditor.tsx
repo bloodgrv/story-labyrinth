@@ -17,6 +17,7 @@ import { codexApi, lorebookApi } from "@/services/api/client";
 import type { DocumentImportDraft } from "@/types/codex";
 import type { AIChat, LorebookEntry } from "@/types/story";
 import { randomUUID } from "@/utils/crypto";
+import { toastCRUD } from "@/utils/toastUtils";
 import type { WorldBuildingTemplateSlug } from "@/types/worldbuilding";
 import { useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
 import {
@@ -143,8 +144,10 @@ export function LorebookEntryEditor({
     const selectedLevel = form.watch("level");
     const tagInput = form.watch("tags");
     const selectedCategory = form.watch("category");
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (data: CreateEntryForm) => {
+        setIsSubmitting(true);
         const [error] = await attemptPromise(async () => {
             const dataToSubmit = buildSubmitData(data);
             const entryId = entry?.id ?? randomUUID();
@@ -169,18 +172,18 @@ export function LorebookEntryEditor({
             }
 
             // Image is submitted separately too, same reasoning — see ImageUploadField.tsx and
-            // CreateEntryForm's imageFile doc comment.
+            // CreateEntryForm's imageFile/generateImageOnSave doc comments.
             if (data.imageFile instanceof File) await lorebookApi.uploadImage(entryId, data.imageFile);
             else if (data.imageFile === null) await lorebookApi.removeImage(entryId);
+            else if (data.generateImageOnSave) await lorebookApi.generateImage(entryId);
 
             onSaved?.();
         });
-        if (error) {
-            // Error toast handled by mutation
-        }
+        setIsSubmitting(false);
+        if (error) toastCRUD.saveError("entry", error);
     };
 
-    const isPending = createMutation.isPending || updateMutation.isPending;
+    const isPending = createMutation.isPending || updateMutation.isPending || isSubmitting;
     const showChatPanel = isDesktop && !!storyId;
 
     return (

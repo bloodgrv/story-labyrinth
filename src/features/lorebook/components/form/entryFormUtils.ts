@@ -50,6 +50,9 @@ export interface CreateEntryForm {
     // Never pre-populated from an existing entry's image — that's displayed via its own URL
     // (lorebookApi.imageUrl), not re-uploaded. See ImageUploadField.tsx.
     imageFile?: File | null;
+    // true = generate a new image from the description on save (lorebookApi.generateImage).
+    // Mutually exclusive with imageFile — picking one clears the other. See ImageUploadField.tsx.
+    generateImageOnSave?: boolean;
 }
 
 // `draft` seeds a brand-new entry from an AI-extracted document import (see

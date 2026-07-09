@@ -6,6 +6,7 @@ import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { parseJson } from "../lib/json.js";
 import { importEntryFromDocument } from "../services/documentImportService.js";
+import { generateLorebookImage } from "../services/grokImageService.js";
 import {
     deleteLorebookImage,
     getLorebookImagePath,
@@ -370,6 +371,21 @@ export default createCrudRouter({
                     .returning();
                 const updated = Array.isArray(result) ? result[0] : result;
                 res.json(transform(updated));
+            })
+        );
+
+        // POST /lorebook/:id/generate-image - generate a portrait from the entry's own saved
+        // description via the "image_generation" feature endpoint (see grokImageService.ts).
+        router.post(
+            "/:id/generate-image",
+            asyncHandler(async (req, res) => {
+                const [error] = await attemptPromise(() => generateLorebookImage(req.params.id));
+                if (error) {
+                    res.status(400).json({ error: error.message });
+                    return;
+                }
+                const [entry] = await db.select().from(table).where(eq(table.id, req.params.id));
+                res.json(transform(entry));
             })
         );
 

@@ -25,6 +25,8 @@ export const lorebookApi = {
     importDocument: (file: File) => uploadFile<{ draft: DocumentImportDraft }>("/lorebook/import/document", file),
     uploadImage: (entryId: string, file: File) => uploadFile<LorebookEntry>(`/lorebook/${entryId}/image`, file),
     removeImage: (entryId: string) => fetchJSON<LorebookEntry>(`/lorebook/${entryId}/image`, { method: "DELETE" }),
+    // AI-generates a portrait from the entry's own saved description (see grokImageService.ts).
+    generateImage: (entryId: string) => fetchJSON<LorebookEntry>(`/lorebook/${entryId}/generate-image`, { method: "POST" }),
     // Not a fetch helper — this is the literal <img src> value, GET /:id/image is served directly
     // (auth cookie goes along automatically on same-origin <img> requests, see
     // DECISIONS.md's Lorebook Image Support entry for why this isn't a public static mount).
