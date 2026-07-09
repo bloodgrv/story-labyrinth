@@ -6,6 +6,12 @@ import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { parseJson } from "../lib/json.js";
 import { importEntryFromDocument } from "../services/documentImportService.js";
+import {
+    deleteLorebookImage,
+    getLorebookImagePath,
+    isSupportedImageMimetype,
+    saveLorebookImage
+} from "../services/lorebookImageStorage.js";
 import { indexLorebookEntry } from "../services/ragIndexService.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -293,6 +299,90 @@ export default createCrudRouter({
                 }
 
                 res.json({ draft });
+            })
+        );
+
+        // POST /lorebook/:id/image - Upload (or replace) an entry's image. Deletes the previous
+        // file first if one exists, so replacing never leaves an orphan on disk.
+        router.post(
+            "/:id/image",
+            upload.single("file"),
+            asyncHandler(async (req, res) => {
+                const { file } = req;
+                if (!file) {
+                    res.status(400).json({ error: "No file uploaded" });
+                    return;
+                }
+                if (!isSupportedImageMimetype(file.mimetype)) {
+                    res.status(400).json({ error: `Unsupported image type: ${file.mimetype}` });
+                    return;
+                }
+
+                const [entry] = await db.select().from(table).where(eq(table.id, req.params.id));
+                if (!entry) {
+                    res.status(404).json({ error: "Lorebook entry not found" });
+                    return;
+                }
+
+                const filename = await saveLorebookImage(file.buffer, file.mimetype);
+                if (entry.imageFilename) await deleteLorebookImage(entry.imageFilename);
+
+                const result = await db
+                    .update(table)
+                    .set({ imageFilename: filename })
+                    .where(eq(table.id, req.params.id))
+                    .returning();
+                const updated = Array.isArray(result) ? result[0] : result;
+                res.json(transform(updated));
+            })
+        );
+
+        // GET /lorebook/:id/image - Stream the entry's image. Sits under /api (requireAuth
+        // applied globally in server/index.ts), not a public static mount - see DECISIONS.md's
+        // Basic Login entry on why everything here stays behind a session.
+        router.get(
+            "/:id/image",
+            asyncHandler(async (req, res) => {
+                const [entry] = await db.select().from(table).where(eq(table.id, req.params.id));
+                if (!entry?.imageFilename) {
+                    res.status(404).json({ error: "No image set for this entry" });
+                    return;
+                }
+                res.sendFile(getLorebookImagePath(entry.imageFilename));
+            })
+        );
+
+        // DELETE /lorebook/:id/image - Remove an entry's image without deleting the entry itself.
+        router.delete(
+            "/:id/image",
+            asyncHandler(async (req, res) => {
+                const [entry] = await db.select().from(table).where(eq(table.id, req.params.id));
+                if (!entry) {
+                    res.status(404).json({ error: "Lorebook entry not found" });
+                    return;
+                }
+                if (entry.imageFilename) await deleteLorebookImage(entry.imageFilename);
+
+                const result = await db
+                    .update(table)
+                    .set({ imageFilename: null })
+                    .where(eq(table.id, req.params.id))
+                    .returning();
+                const updated = Array.isArray(result) ? result[0] : result;
+                res.json(transform(updated));
+            })
+        );
+
+        // DELETE /lorebook/:id - overrides the generic CRUD delete (customRoutes are registered
+        // before the generic routes, see server/lib/crud.ts) purely to also delete the entry's
+        // image file first, so deleting an entry never orphans an image on disk.
+        router.delete(
+            "/:id",
+            asyncHandler(async (req, res) => {
+                const [entry] = await db.select().from(table).where(eq(table.id, req.params.id));
+                if (entry?.imageFilename) await deleteLorebookImage(entry.imageFilename);
+                await db.delete(table).where(eq(table.id, req.params.id));
+                res.json({ success: true });
             })
         );
     }

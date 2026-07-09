@@ -204,7 +204,8 @@ export const lorebookEntries = sqliteTable(
         codexEnabled: integer("codexEnabled", { mode: "boolean" }),
         needsFleshingOut: integer("needsFleshingOut", { mode: "boolean" }),
         codexState: text("codexState", { mode: "json" }), // JSON: { wardrobe: [], appearance: [], wounds: [], items: [], customFields: [{ key, label, value }] }
-        updatedAt: integer("updatedAt", { mode: "timestamp" })
+        updatedAt: integer("updatedAt", { mode: "timestamp" }),
+        imageFilename: text("imageFilename") // Generated filename on disk under UPLOADS_DIR/lorebook/ - see server/routes/lorebook.ts's /:id/image routes
     },
     table => ({
         levelIdx: index("lorebook_level_idx").on(table.level),

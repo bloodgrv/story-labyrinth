@@ -46,6 +46,10 @@ export interface CreateEntryForm {
     // codexApi.enable/recordState, not through buildSubmitData below.
     codexEnabled: boolean;
     codexState: CodexState;
+    // undefined = no change, File = a newly-picked image to upload, null = explicitly removed.
+    // Never pre-populated from an existing entry's image — that's displayed via its own URL
+    // (lorebookApi.imageUrl), not re-uploaded. See ImageUploadField.tsx.
+    imageFile?: File | null;
 }
 
 // `draft` seeds a brand-new entry from an AI-extracted document import (see

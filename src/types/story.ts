@@ -190,6 +190,9 @@ export interface LorebookEntry extends BaseEntity {
     needsFleshingOut?: boolean | null;
     codexState?: CodexState | null;
     updatedAt?: Date | null;
+    // Generated filename on disk (server/services/lorebookImageStorage.ts) — fetch the actual
+    // image via GET /api/lorebook/:id/image, this is not a usable URL on its own.
+    imageFilename?: string | null;
 }
 
 // Prompt Parser types

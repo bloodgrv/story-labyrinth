@@ -1,5 +1,6 @@
 export { AdvancedSettings } from "./AdvancedSettings";
 export { CodexStateEditor } from "./CodexStateEditor";
+export { ImageUploadField } from "./ImageUploadField";
 export { LevelScopeFields } from "./LevelScopeFields";
 export { SelectField } from "./SelectField";
 export { TagsField } from "./TagsField";

@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { SearchFilter } from "@/components/ui/SearchFilter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { lorebookApi } from "@/services/api/client";
 import type { LorebookEntry } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { useDeleteLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
@@ -145,9 +146,16 @@ export function LorebookEntryList({
                                         className={`cursor-pointer border-2 border-gray-300 dark:border-gray-700 shadow-sm transition-colors hover:border-primary/50 ${entry.isDisabled ? "opacity-60" : ""} ${!isEntryEditable ? "opacity-75" : ""}`}
                                     >
                                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gray-50 dark:bg-transparent">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                {entry.imageFilename && (
+                                                    <img
+                                                        src={lorebookApi.imageUrl(entry.id)}
+                                                        alt=""
+                                                        className="h-8 w-8 shrink-0 rounded-full object-cover border"
+                                                    />
+                                                )}
                                                 {showLevel && <LevelBadge level={entry.level} />}
-                                                <CardTitle className="text-lg font-semibold">{entry.name}</CardTitle>
+                                                <CardTitle className="text-lg font-semibold truncate">{entry.name}</CardTitle>
                                             </div>
                                             {isEntryEditable && (
                                                 <div className="flex gap-2">

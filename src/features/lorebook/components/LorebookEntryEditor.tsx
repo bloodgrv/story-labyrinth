@@ -13,7 +13,7 @@ import { useChatTemplatesQuery, useCreateChatMutation } from "@/features/chat/ho
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
 import { useStoryQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
-import { codexApi } from "@/services/api/client";
+import { codexApi, lorebookApi } from "@/services/api/client";
 import type { DocumentImportDraft } from "@/types/codex";
 import type { AIChat, LorebookEntry } from "@/types/story";
 import { randomUUID } from "@/utils/crypto";
@@ -24,6 +24,7 @@ import {
     CATEGORIES,
     CodexStateEditor,
     EMPTY_CODEX_STATE,
+    ImageUploadField,
     IMPORTANCE_LEVELS,
     LevelScopeFields,
     SelectField,
@@ -167,6 +168,11 @@ export function LorebookEntryEditor({
                     await codexApi.recordState(entryId, { changes: { codexState: data.codexState }, sourceType: "user" });
             }
 
+            // Image is submitted separately too, same reasoning — see ImageUploadField.tsx and
+            // CreateEntryForm's imageFile doc comment.
+            if (data.imageFile instanceof File) await lorebookApi.uploadImage(entryId, data.imageFile);
+            else if (data.imageFile === null) await lorebookApi.removeImage(entryId);
+
             onSaved?.();
         });
         if (error) {
@@ -189,6 +195,13 @@ export function LorebookEntryEditor({
                             storyId={storyId}
                             story={story}
                             seriesList={seriesList}
+                        />
+
+                        <ImageUploadField
+                            control={form.control}
+                            setValue={form.setValue}
+                            entryId={entry?.id}
+                            hasExistingImage={!!entry?.imageFilename}
                         />
 
                         <FormField

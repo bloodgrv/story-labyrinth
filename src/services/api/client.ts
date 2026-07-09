@@ -1,12 +1,11 @@
 import type { FeatureEndpoint, FeatureEndpoints, FeatureKey } from "@/types/aiSettings";
 import type { AuthStatus, AuthUser } from "@/types/auth";
-import type { CodexPendingChange, CodexPendingStatus, CodexState, DocumentImportDraft } from "@/types/codex";
+import type { CodexPendingChange, CodexPendingStatus, CodexState } from "@/types/codex";
 import type {
     AIChat,
     AISettings,
     Chapter,
     DatabaseExport,
-    GlobalLorebookExport,
     LorebookEntry,
     Note,
     Prompt,
@@ -26,6 +25,7 @@ export { beatsApi } from "./beatsClient";
 export { codexApi } from "./codexClient";
 export { grammarApi } from "./grammarClient";
 export { humanizerApi } from "./humanizerClient";
+export { lorebookApi } from "./lorebookClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
 export { ragApi } from "./ragClient";
 export { ttsApi } from "./ttsClient";
@@ -81,28 +81,6 @@ export const chaptersApi = {
     update: (id: string, data: Partial<Chapter>) =>
         fetchJSON<Chapter>(`/chapters/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: string) => fetchJSON<{ success: boolean }>(`/chapters/${id}`, { method: "DELETE" })
-};
-
-// Lorebook API
-export const lorebookApi = {
-    getByStory: (storyId: string) => fetchJSON<LorebookEntry[]>(`/lorebook/story/${storyId}`),
-    getByCategory: (storyId: string, category: string) =>
-        fetchJSON<LorebookEntry[]>(`/lorebook/story/${storyId}/category/${category}`),
-    getByTag: (storyId: string, tag: string) => fetchJSON<LorebookEntry[]>(`/lorebook/story/${storyId}/tag/${tag}`),
-    getById: (id: string) => fetchJSON<LorebookEntry>(`/lorebook/${id}`),
-    create: (data: Omit<LorebookEntry, "createdAt">) =>
-        fetchJSON<LorebookEntry>("/lorebook", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<LorebookEntry>) =>
-        fetchJSON<LorebookEntry>(`/lorebook/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    delete: (id: string) => fetchJSON<{ success: boolean }>(`/lorebook/${id}`, { method: "DELETE" }),
-    getGlobal: () => fetchJSON<LorebookEntry[]>("/lorebook/global"),
-    getBySeries: (seriesId: string) => fetchJSON<LorebookEntry[]>(`/lorebook/series/${seriesId}`),
-    getHierarchical: (storyId: string) => fetchJSON<LorebookEntry[]>(`/lorebook/story/${storyId}/hierarchical`),
-    exportGlobal: () => fetchJSON<GlobalLorebookExport>("/lorebook/global/export"),
-    importGlobal: (file: File) => uploadFile<{ success: boolean }>("/lorebook/global/import", file),
-    // PDF/DOCX/MD/TXT reference document -> AI-extracted draft entry (not persisted; the
-    // caller opens the normal entry-creation UI pre-filled with it for review).
-    importDocument: (file: File) => uploadFile<{ draft: DocumentImportDraft }>("/lorebook/import/document", file)
 };
 
 // Prompts API

@@ -1,0 +1,1 @@
+ALTER TABLE `lorebookEntries` ADD `imageFilename` text;
