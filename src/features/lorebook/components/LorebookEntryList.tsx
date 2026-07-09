@@ -1,5 +1,5 @@
 import { attemptPromise } from "@jfdi/attempt";
-import { Edit, Eye, EyeOff, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
     AlertDialog,
@@ -21,7 +21,6 @@ import { Switch } from "@/components/ui/switch";
 import type { LorebookEntry } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { useDeleteLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
-import { CreateEntryDialog } from "./CreateEntryDialog";
 import { LevelBadge } from "./LevelBadge";
 
 interface LorebookEntryListProps {
@@ -29,7 +28,9 @@ interface LorebookEntryListProps {
     editable?: boolean;
     showLevel?: boolean;
     editableFilter?: (entry: LorebookEntry) => boolean;
-    contextStoryId?: string;
+    // Clicking a card opens the entry here instead of an inline edit dialog — LorebookPage
+    // opens it as a tab; other callers can pass whatever they like.
+    onOpenEntry: (entry: LorebookEntry) => void;
 }
 
 type SortOption = "name" | "category" | "importance" | "created";
@@ -42,12 +43,11 @@ export function LorebookEntryList({
     editable = true,
     showLevel = false,
     editableFilter,
-    contextStoryId
+    onOpenEntry
 }: LorebookEntryListProps) {
     const deleteMutation = useDeleteLorebookMutation();
     const updateMutation = useUpdateLorebookMutation();
     const [sortBy, setSortBy] = useState<SortOption>("name");
-    const [editingEntry, setEditingEntry] = useState<LorebookEntry | null>(null);
     const [deletingEntry, setDeletingEntry] = useState<LorebookEntry | null>(null);
     const [showDisabled, setShowDisabled] = useState(false);
 
@@ -141,7 +141,8 @@ export function LorebookEntryList({
                                 return (
                                     <Card
                                         key={entry.id}
-                                        className={`border-2 border-gray-300 dark:border-gray-700 shadow-sm ${entry.isDisabled ? "opacity-60" : ""} ${!isEntryEditable ? "opacity-75" : ""}`}
+                                        onClick={() => onOpenEntry(entry)}
+                                        className={`cursor-pointer border-2 border-gray-300 dark:border-gray-700 shadow-sm transition-colors hover:border-primary/50 ${entry.isDisabled ? "opacity-60" : ""} ${!isEntryEditable ? "opacity-75" : ""}`}
                                     >
                                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gray-50 dark:bg-transparent">
                                             <div className="flex items-center gap-2">
@@ -153,7 +154,10 @@ export function LorebookEntryList({
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        onClick={() => toggleDisabled(entry)}
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            toggleDisabled(entry);
+                                                        }}
                                                         title={entry.isDisabled ? "Enable entry" : "Disable entry"}
                                                     >
                                                         {entry.isDisabled ? (
@@ -165,14 +169,10 @@ export function LorebookEntryList({
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        onClick={() => setEditingEntry(entry)}
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => setDeletingEntry(entry)}
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            setDeletingEntry(entry);
+                                                        }}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
@@ -213,15 +213,6 @@ export function LorebookEntryList({
                                 );
                             })}
                         </div>
-
-                        {editingEntry && (
-                            <CreateEntryDialog
-                                open={!!editingEntry}
-                                onOpenChange={() => setEditingEntry(null)}
-                                storyId={contextStoryId}
-                                entry={editingEntry}
-                            />
-                        )}
 
                         <AlertDialog open={!!deletingEntry} onOpenChange={() => setDeletingEntry(null)}>
                             <AlertDialogContent>

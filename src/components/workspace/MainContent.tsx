@@ -60,10 +60,11 @@ export const MainContent = () => {
     };
 
     // Every other tool grows to fit its content and lets `main` page-scroll — the right call for
-    // list/form-heavy tools. Editor and Outline are the exception: both can render a resizable
-    // chat rail (react-resizable-panels) alongside their own content, which needs a real bounded
-    // height to size against instead of a wrapper that grows to match the content.
-    const needsBoundedHeight = currentTool === "editor" || currentTool === "outline";
+    // list/form-heavy tools. Editor, Outline, and Lorebook are the exception: Editor/Outline can
+    // render a resizable chat rail (react-resizable-panels), and Lorebook has its own open-tabs
+    // strip (LorebookPage.tsx) — both need a real bounded height to lay out against instead of a
+    // wrapper that grows to match the content.
+    const needsBoundedHeight = currentTool === "editor" || currentTool === "outline" || currentTool === "lorebook";
 
     return (
         <div

@@ -12,6 +12,8 @@ import type { LorebookEntry } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { CreateEntryDialog } from "../components/CreateEntryDialog";
 import { LorebookEntryList } from "../components/LorebookEntryList";
+import { LorebookEntryTab } from "../components/LorebookEntryTab";
+import { LorebookTabStrip, type LorebookOpenTab } from "../components/LorebookTabStrip";
 import { lorebookKeys, useHierarchicalLorebookQuery, useSeriesLorebookQuery } from "../hooks/useLorebookQuery";
 import { exportEntries, importEntries } from "../stores/LorebookImportExportService";
 
@@ -43,6 +45,8 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
 
     const [selectedCategory, setSelectedCategory] = useState<LorebookCategory>("character");
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [openTabs, setOpenTabs] = useState<LorebookOpenTab[]>([{ kind: "browse" }]);
+    const [activeTabIndex, setActiveTabIndex] = useState(0);
 
     // Fetch appropriate entries based on context
     const { data: storyEntries, isLoading: storyLoading } = useHierarchicalLorebookQuery(storyId);
@@ -62,6 +66,29 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
         },
         {} as Record<LorebookCategory, number>
     );
+
+    const activeTab = openTabs[activeTabIndex] ?? openTabs[0];
+    const activeEntry = activeTab.kind === "entry" ? entries.find(e => e.id === activeTab.entryId) : undefined;
+
+    const openEntryTab = (entry: LorebookEntry) => {
+        const existingIdx = openTabs.findIndex(t => t.kind === "entry" && t.entryId === entry.id);
+        if (existingIdx >= 0) {
+            setActiveTabIndex(existingIdx);
+            return;
+        }
+        setActiveTabIndex(openTabs.length);
+        setOpenTabs(prev => [...prev, { kind: "entry", entryId: entry.id }]);
+    };
+
+    const closeTab = (index: number) => {
+        if (openTabs[index]?.kind === "browse") return;
+        setOpenTabs(prev => prev.filter((_, i) => i !== index));
+        setActiveTabIndex(current => {
+            if (index < current) return current - 1;
+            if (index === current) return Math.max(0, current - 1);
+            return current;
+        });
+    };
 
     // Handle export functionality
     const handleExport = async () => {
@@ -106,104 +133,128 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
     };
 
     return (
-        <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-            {/* Header - horizontal with buttons alongside title */}
-            <div className="flex justify-between items-start gap-2">
-                <div className="min-w-0 flex-1">
-                    <h1 className="text-xl sm:text-3xl font-bold">{seriesId ? "Series Lorebook" : "Story Lorebook"}</h1>
-                    <p className="text-muted-foreground mt-1 text-xs sm:text-base truncate">
-                        {seriesId ? "Shared across series" : "Story, global & series entries"}
-                    </p>
-                </div>
-                <div className="flex gap-1 sm:gap-2 shrink-0">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleExport}
-                        className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
-                        title="Export"
-                    >
-                        <Download className="w-4 h-4" />
-                        <span className="hidden sm:inline ml-2">Export</span>
-                    </Button>
-                    <label htmlFor="import-lorebook" aria-label="Import lorebook entries">
-                        <Button variant="outline" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3">
-                            <div title="Import">
-                                <Upload className="w-4 h-4" />
-                                <span className="hidden sm:inline ml-2">Import</span>
-                            </div>
-                        </Button>
-                    </label>
-                    <input id="import-lorebook" type="file" accept=".json" className="hidden" onChange={handleImport} />
-                    <Button
-                        size="icon"
-                        className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
-                        onClick={() => setIsCreateDialogOpen(true)}
-                        title="New Entry"
-                    >
-                        <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline ml-2">New Entry</span>
-                    </Button>
-                </div>
-            </div>
+        <div className="flex h-full flex-col">
+            <LorebookTabStrip
+                tabs={openTabs}
+                activeIndex={activeTabIndex}
+                entries={entries}
+                onSelect={setActiveTabIndex}
+                onClose={closeTab}
+            />
 
-            <Separator className="bg-gray-300 dark:bg-gray-700" />
-
-            {/* Mobile: dropdown selector */}
-            <div className="sm:hidden">
-                <Select value={selectedCategory} onValueChange={v => setSelectedCategory(v as LorebookCategory)}>
-                    <SelectTrigger className="w-full">
-                        <SelectValue>
-                            {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} (
-                            {categoryCounts[selectedCategory] || 0})
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        {CATEGORIES.map(cat => (
-                            <SelectItem key={cat} value={cat}>
-                                {cat.charAt(0).toUpperCase() + cat.slice(1)} ({categoryCounts[cat] || 0})
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-
-            {/* Desktop: tabs */}
-            <Tabs
-                value={selectedCategory}
-                onValueChange={v => setSelectedCategory(v as LorebookCategory)}
-                className="w-full hidden sm:block"
-            >
-                <TabsList className="w-full justify-start bg-gray-100 dark:bg-gray-800 p-1 border border-gray-300 dark:border-gray-700">
-                    {CATEGORIES.map(cat => (
-                        <TabsTrigger
-                            key={cat}
-                            value={cat}
-                            className="text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:border-b-2 data-[state=active]:border-primary"
-                        >
-                            {cat.charAt(0).toUpperCase() + cat.slice(1)} ({categoryCounts[cat] || 0})
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
-            </Tabs>
-
-            {/* Entry list - shared between mobile and desktop */}
-            <div className="mt-4 sm:mt-6">
-                {isLoading ? (
-                    <div className="flex justify-center p-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            {activeTab.kind === "entry" ? (
+                activeEntry ? (
+                    <div className="flex-1 min-h-0">
+                        <LorebookEntryTab entry={activeEntry} storyId={storyId} seriesId={seriesId} />
                     </div>
-                ) : entriesByCategory.length > 0 ? (
-                    <LorebookEntryList
-                        entries={entriesByCategory}
-                        editable={true}
-                        showLevel={true}
-                        contextStoryId={storyId}
-                    />
                 ) : (
-                    <div className="text-center text-muted-foreground py-12">No {selectedCategory} entries yet</div>
-                )}
-            </div>
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                        This entry no longer exists.
+                    </div>
+                )
+            ) : (
+                <div className="flex-1 min-h-0 overflow-y-auto container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+                    {/* Header - horizontal with buttons alongside title */}
+                    <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-xl sm:text-3xl font-bold">
+                                {seriesId ? "Series Lorebook" : "Story Lorebook"}
+                            </h1>
+                            <p className="text-muted-foreground mt-1 text-xs sm:text-base truncate">
+                                {seriesId ? "Shared across series" : "Story, global & series entries"}
+                            </p>
+                        </div>
+                        <div className="flex gap-1 sm:gap-2 shrink-0">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={handleExport}
+                                className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
+                                title="Export"
+                            >
+                                <Download className="w-4 h-4" />
+                                <span className="hidden sm:inline ml-2">Export</span>
+                            </Button>
+                            <label htmlFor="import-lorebook" aria-label="Import lorebook entries">
+                                <Button variant="outline" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3">
+                                    <div title="Import">
+                                        <Upload className="w-4 h-4" />
+                                        <span className="hidden sm:inline ml-2">Import</span>
+                                    </div>
+                                </Button>
+                            </label>
+                            <input id="import-lorebook" type="file" accept=".json" className="hidden" onChange={handleImport} />
+                            <Button
+                                size="icon"
+                                className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
+                                onClick={() => setIsCreateDialogOpen(true)}
+                                title="New Entry"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span className="hidden sm:inline ml-2">New Entry</span>
+                            </Button>
+                        </div>
+                    </div>
+
+                    <Separator className="bg-gray-300 dark:bg-gray-700" />
+
+                    {/* Mobile: dropdown selector */}
+                    <div className="sm:hidden">
+                        <Select value={selectedCategory} onValueChange={v => setSelectedCategory(v as LorebookCategory)}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue>
+                                    {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} (
+                                    {categoryCounts[selectedCategory] || 0})
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {CATEGORIES.map(cat => (
+                                    <SelectItem key={cat} value={cat}>
+                                        {cat.charAt(0).toUpperCase() + cat.slice(1)} ({categoryCounts[cat] || 0})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Desktop: tabs */}
+                    <Tabs
+                        value={selectedCategory}
+                        onValueChange={v => setSelectedCategory(v as LorebookCategory)}
+                        className="w-full hidden sm:block"
+                    >
+                        <TabsList className="w-full justify-start bg-gray-100 dark:bg-gray-800 p-1 border border-gray-300 dark:border-gray-700">
+                            {CATEGORIES.map(cat => (
+                                <TabsTrigger
+                                    key={cat}
+                                    value={cat}
+                                    className="text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+                                >
+                                    {cat.charAt(0).toUpperCase() + cat.slice(1)} ({categoryCounts[cat] || 0})
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
+
+                    {/* Entry list - shared between mobile and desktop */}
+                    <div className="mt-4 sm:mt-6">
+                        {isLoading ? (
+                            <div className="flex justify-center p-8">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                            </div>
+                        ) : entriesByCategory.length > 0 ? (
+                            <LorebookEntryList
+                                entries={entriesByCategory}
+                                editable={true}
+                                showLevel={true}
+                                onOpenEntry={openEntryTab}
+                            />
+                        ) : (
+                            <div className="text-center text-muted-foreground py-12">No {selectedCategory} entries yet</div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Create dialog */}
             <CreateEntryDialog
