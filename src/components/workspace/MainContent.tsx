@@ -6,7 +6,6 @@ import { EditorTool } from "./tools/EditorTool";
 import { LorebookTool } from "./tools/LorebookTool";
 import { NotesTool } from "./tools/NotesTool";
 import { OutlineTool } from "./tools/OutlineTool";
-import { PromptsTool } from "./tools/PromptsTool";
 import { SeriesTool } from "./tools/SeriesTool";
 import { ResearchTool } from "./tools/ResearchTool";
 import { StoriesTool } from "./tools/StoriesTool";
@@ -22,7 +21,6 @@ const toolTints = {
     outline: "bg-rose-50/10 dark:bg-rose-950/5",
     lorebook: "bg-cyan-50/10 dark:bg-cyan-950/5",
     brainstorm: "bg-purple-50/10 dark:bg-purple-950/5",
-    prompts: "bg-orange-50/10 dark:bg-orange-950/5",
     notes: "bg-green-50/10 dark:bg-green-950/5",
     users: "bg-background",
     worldbuilding: "bg-violet-50/10 dark:bg-violet-950/5",
@@ -48,8 +46,6 @@ export const MainContent = () => {
                 return <LorebookTool />;
             case "brainstorm":
                 return <BrainstormTool />;
-            case "prompts":
-                return <PromptsTool />;
             case "notes":
                 return <NotesTool />;
             case "users":

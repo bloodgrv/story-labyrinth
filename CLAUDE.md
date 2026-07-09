@@ -54,6 +54,11 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - Strong Tailscale / LAN support required
 - Multi-machine model routing supported (e.g., 3090 for writing, Mac for scanner)
 
+### Agent Framework (Planned)
+- A future background layer that owns RAG index freshness, unattended scanner runs, light DB housekeeping, and an evolving per-writer/per-project memory
+- Reuses existing infrastructure rather than introducing new dependencies: a generalized jobs table (extending the existing `ragScans` pattern), an in-process job runner (no queue library/worker process — single Docker container, single SQLite file), and agent memory stored as a new RAG entity type (reusing `ragChunks`/`hybridSearch` rather than a parallel store)
+- Full design recorded in `DECISIONS.md` under "RAG Index Freshness ... & Agent Framework Direction" — not yet implemented; current work should avoid building things (e.g. a manual RAG Scanner trigger UI) that this would immediately obsolete
+
 ---
 
 ## Technology Stack
@@ -79,6 +84,7 @@ Priority order for implementation:
 7. Main Editor integration + quick-add
 8. Dashboard + tab system + persistence
 9. Project Saves (Codex + Story layers)
+10. Agent Framework (background jobs, scanner orchestration, DB housekeeping, cross-project memory) — design recorded in `DECISIONS.md`, not started
 
 ---
 

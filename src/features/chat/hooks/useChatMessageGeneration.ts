@@ -7,6 +7,7 @@ import { chatsApi } from "@/services/api/client";
 import type { AIChat, AllowedModel, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { parseCodexProposals } from "../services/parseCodexProposals";
+import { parseProseProposal } from "../services/parseProseProposal";
 import { useCreateProposalMutation } from "./useCodexProposalsQuery";
 
 interface UseChatMessageGenerationParams {
@@ -15,6 +16,10 @@ interface UseChatMessageGenerationParams {
     selectedModel: AllowedModel | null;
     onChatUpdate: (chat: AIChat) => void;
     createPromptConfig: (prompt: Prompt) => PromptParserConfig;
+    // Called with the newly-created assistant message's id and proposed text when a reply
+    // contains a ```prose-proposal block (Editor chats only — see chatContextService.ts).
+    // Not persisted server-side, so the caller owns tracking it (see ChatInterface.tsx).
+    onProseProposal?: (messageId: string, proposal: string) => void;
 }
 
 interface UseChatMessageGenerationReturn {
@@ -34,7 +39,8 @@ export const useChatMessageGeneration = ({
     selectedPrompt,
     selectedModel,
     onChatUpdate,
-    createPromptConfig
+    createPromptConfig,
+    onProseProposal
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
     const [isSending, setIsSending] = useState(false);
     const { generateWithPrompt } = useGenerateWithPrompt();
@@ -67,7 +73,8 @@ export const useChatMessageGeneration = ({
                 const fullResponse = await processStream(response);
                 if (!fullResponse) return;
 
-                const { cleanedContent, proposals } = parseCodexProposals(fullResponse);
+                const { cleanedContent: afterCodexStrip, proposals } = parseCodexProposals(fullResponse);
+                const { cleanedContent, proseProposal } = parseProseProposal(afterCodexStrip);
 
                 const afterAssistantMessage = await chatsApi.appendMessage(selectedChat.id, "assistant", cleanedContent);
                 onChatUpdate(afterAssistantMessage);
@@ -81,6 +88,8 @@ export const useChatMessageGeneration = ({
                         data: { messageId: assistantMessage?.id, ...proposal }
                     })
                 );
+
+                if (proseProposal && assistantMessage) onProseProposal?.(assistantMessage.id, proseProposal);
             });
 
             if (error) {

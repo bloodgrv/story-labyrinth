@@ -25,12 +25,6 @@ export const seedSystemPrompts = async () => {
             allowedModels: prompt.allowedModels || [],
             storyId: null,
             isSystem: true,
-            temperature: prompt.temperature || null,
-            maxTokens: prompt.maxTokens || null,
-            top_p: prompt.top_p || null,
-            top_k: prompt.top_k || null,
-            repetition_penalty: prompt.repetition_penalty || null,
-            min_p: prompt.min_p || null,
             createdAt: new Date()
         }));
 

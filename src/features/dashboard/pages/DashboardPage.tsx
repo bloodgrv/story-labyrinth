@@ -9,8 +9,7 @@ import {
     MessageSquare,
     PenLine,
     Plus,
-    StickyNote,
-    Wand2
+    StickyNote
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -296,13 +295,6 @@ export default function DashboardPage() {
                                 icon={Lightbulb}
                                 href={workspaceTabUrl("brainstorm")}
                                 onOpen={() => recordWorkspaceTab("brainstorm", "Brainstorm")}
-                            />
-                            <DashboardCard
-                                title="Prompts"
-                                description="Manage writing prompts and system instructions"
-                                icon={Wand2}
-                                href={workspaceTabUrl("prompts")}
-                                onOpen={() => recordWorkspaceTab("prompts", "Prompts")}
                             />
                         </div>
                     </div>

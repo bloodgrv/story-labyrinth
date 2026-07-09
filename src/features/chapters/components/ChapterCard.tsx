@@ -92,6 +92,7 @@ export function ChapterCard({ chapter, storyId, onWriteClick }: ChapterCardProps
                                 variant="ghost"
                                 size="sm"
                                 className="cursor-grab active:cursor-grabbing shrink-0 h-8 w-8 p-0"
+                                title="Drag to reorder"
                                 {...attributes}
                                 {...listeners}
                             >
@@ -112,21 +113,34 @@ export function ChapterCard({ chapter, storyId, onWriteClick }: ChapterCardProps
                             </div>
                         </div>
                         <div className="flex gap-1 shrink-0">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowEditDialog(true)}>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                title="Edit chapter details"
+                                onClick={() => setShowEditDialog(true)}
+                            >
                                 <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleWriteClick}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Write" onClick={handleWriteClick}>
                                 <PenLine className="h-4 w-4" />
                             </Button>
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
+                                title="Delete chapter"
                                 onClick={() => setShowDeleteDialog(true)}
                             >
                                 <Trash2 className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleExpanded}>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                title={isExpanded ? "Collapse" : "Expand"}
+                                onClick={toggleExpanded}
+                            >
                                 {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             </Button>
                         </div>

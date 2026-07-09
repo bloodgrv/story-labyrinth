@@ -32,6 +32,7 @@ import { LoadChapterContentPlugin } from "./plugins/LoadChapterContent";
 import LorebookTagPlugin from "./plugins/LorebookTagPlugin";
 import MarkdownShortcutPlugin from "./plugins/MarkdownShortcutPlugin";
 import PageBreakPlugin from "./plugins/PageBreakPlugin";
+import RegisterActiveEditorPlugin from "./plugins/RegisterActiveEditorPlugin";
 import { SaveChapterContentPlugin } from "./plugins/SaveChapterContent";
 import SceneBeatShortcutPlugin from "./plugins/SceneBeatShortcutPlugin";
 import SlashCommandPlugin from "./plugins/SlashCommandPlugin";
@@ -95,6 +96,7 @@ export default function Editor(): JSX.Element {
             <div className={`editor-container ${showTreeView ? "tree-view" : ""} ${!isRichText ? "plain-text" : ""}`}>
                 <LoadChapterContentPlugin />
                 <SaveChapterContentPlugin />
+                <RegisterActiveEditorPlugin />
                 <WordCountPlugin />
                 <DragDropPaste />
                 <AutoFocusPlugin />

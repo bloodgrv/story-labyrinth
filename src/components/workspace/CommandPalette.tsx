@@ -5,7 +5,6 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { useStoryLorebookQuery } from "@/features/lorebook/hooks/useLorebookQuery";
 import { useNotesByStoryQuery } from "@/features/notes/hooks/useNotesQuery";
-import { usePromptsQuery } from "@/features/prompts/hooks/usePromptsQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useStoriesQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useCommandPaletteCommands } from "./useCommandPaletteCommands.tsx";
@@ -24,7 +23,6 @@ export const CommandPalette = ({ open, onOpenChange }: CommandPaletteProps) => {
     const { data: stories = [] } = useStoriesQuery();
     const { data: chapters = [] } = useChaptersByStoryQuery(currentStoryId || "");
     const { data: lorebookEntries = [] } = useStoryLorebookQuery(currentStoryId || "");
-    const { data: prompts = [] } = usePromptsQuery();
     const { data: notes = [] } = useNotesByStoryQuery(currentStoryId || "");
 
     useEffect(() => {
@@ -36,7 +34,6 @@ export const CommandPalette = ({ open, onOpenChange }: CommandPaletteProps) => {
         stories,
         chapters,
         lorebookEntries,
-        prompts,
         notes,
         setCurrentStoryId,
         setCurrentChapterId,

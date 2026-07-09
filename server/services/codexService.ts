@@ -1,7 +1,9 @@
+import { attemptPromise } from "@jfdi/attempt";
 import type { InferSelectModel } from "drizzle-orm";
 import type { schema } from "../db/client.js";
 import type { CodexPendingChange, CodexPendingSourceType, CodexSnapshot, CodexSourceType, CodexState } from "../../src/types/codex.js";
 import type { LorebookEntry } from "../../src/types/story.js";
+import { indexLorebookEntry } from "./ragIndexService.js";
 import {
     createPendingChange,
     createSnapshot,
@@ -205,6 +207,7 @@ export const approvePendingChange = async (
         const updated = await updateCodexEntryFields(pending.entryId, changes);
         if (!updated) throw new Error(`Failed to apply changes to entry: ${pending.entryId}`);
         entry = updated;
+        void attemptPromise(() => indexLorebookEntry(entry.id));
     }
 
     // sourceRef on the snapshot points back to the pending change for full audit trail

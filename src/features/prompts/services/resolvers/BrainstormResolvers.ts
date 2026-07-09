@@ -7,6 +7,11 @@ import { extractPlainTextFromLexical } from "@/utils/lexicalUtils";
 import { logger } from "@/utils/logger";
 import type { ILorebookFormatter, IVariableResolver } from "./types";
 
+// Cap on how many recent messages get sent per generation — a technical backstop against
+// unbounded context growth in long-running chats, independent of how the UI organizes chats
+// (e.g. starting a new chat per chapter/arc to keep things scoped).
+const MAX_CHAT_HISTORY_MESSAGES = 40;
+
 export class ChatHistoryResolver implements IVariableResolver {
     async resolve(context: PromptContext): Promise<string> {
         const chatHistory = context.additionalContext?.chatHistory as
@@ -14,7 +19,8 @@ export class ChatHistoryResolver implements IVariableResolver {
             | undefined;
         if (!chatHistory?.length) return "No previous conversation history.";
 
-        return chatHistory.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join("\n\n");
+        const recent = chatHistory.slice(-MAX_CHAT_HISTORY_MESSAGES);
+        return recent.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join("\n\n");
     }
 }
 

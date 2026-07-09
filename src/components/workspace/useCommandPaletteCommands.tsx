@@ -1,6 +1,6 @@
-import { BookOpen, FileCode, FileText, HelpCircle, MessageSquare, StickyNote, Tags } from "lucide-react";
+import { BookOpen, FileText, HelpCircle, MessageSquare, StickyNote, Tags } from "lucide-react";
 import { useMemo } from "react";
-import type { Chapter, LorebookEntry, Note, Prompt, Story } from "@/types/story";
+import type { Chapter, LorebookEntry, Note, Story } from "@/types/story";
 import type { WorkspaceTool } from "@/features/stories/context/StoryContext";
 
 interface CommandItem {
@@ -18,7 +18,6 @@ interface UseCommandsParams {
     stories: Story[];
     chapters: Chapter[];
     lorebookEntries: LorebookEntry[];
-    prompts: Prompt[];
     notes: Note[];
     setCurrentStoryId: (id: string) => void;
     setCurrentChapterId: (id: string) => void;
@@ -32,7 +31,6 @@ export const useCommandPaletteCommands = ({
     stories,
     chapters,
     lorebookEntries,
-    prompts,
     notes,
     setCurrentStoryId,
     setCurrentChapterId,
@@ -102,17 +100,6 @@ export const useCommandPaletteCommands = ({
                 disabled: !currentStoryId
             },
             {
-                id: "tool-prompts",
-                label: "Go to Prompts",
-                category: "Tools",
-                keywords: ["prompts", "tool", "navigate"],
-                icon: <FileCode className="h-4 w-4 mr-2" />,
-                action: () => {
-                    setCurrentTool("prompts");
-                    onClose();
-                }
-            },
-            {
                 id: "tool-notes",
                 label: "Go to Notes",
                 category: "Tools",
@@ -178,25 +165,6 @@ export const useCommandPaletteCommands = ({
         [lorebookEntries, setCurrentTool, onClose]
     );
 
-    const promptCommands = useMemo(
-        () =>
-            prompts
-                .filter(p => !p.isSystem)
-                .slice(0, 30)
-                .map(prompt => ({
-                    id: `prompt-${prompt.id}`,
-                    label: `Edit: ${prompt.name}`,
-                    category: "Prompts",
-                    keywords: ["prompt", "edit", prompt.name],
-                    icon: <FileCode className="h-4 w-4 mr-2" />,
-                    action: () => {
-                        setCurrentTool("prompts");
-                        onClose();
-                    }
-                })),
-        [prompts, setCurrentTool, onClose]
-    );
-
     const noteCommands = useMemo(
         () =>
             notes.slice(0, 30).map((note: Note) => ({
@@ -236,7 +204,6 @@ export const useCommandPaletteCommands = ({
             ...storyCommands,
             ...chapterCommands,
             ...lorebookCommands,
-            ...promptCommands,
             ...noteCommands,
             ...actionCommands
         ];
@@ -249,5 +216,5 @@ export const useCommandPaletteCommands = ({
         });
 
         return groups;
-    }, [toolCommands, storyCommands, chapterCommands, lorebookCommands, promptCommands, noteCommands, actionCommands]);
+    }, [toolCommands, storyCommands, chapterCommands, lorebookCommands, noteCommands, actionCommands]);
 };

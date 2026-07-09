@@ -6,6 +6,7 @@ import { useDetectBeatsMutation } from "@/features/beats/hooks/useDetectBeatsMut
 import { useUpdateChapterMutation } from "@/features/chapters/hooks/useChaptersQuery";
 import { useEditorChapterId, useEditorStoryId } from "@/features/editor-multiview/context/EditorPaneContext";
 import { useAutoDetectBeats } from "@/lib/useAutoDetectBeats";
+import { ragApi } from "@/services/api/client";
 import { logger } from "@/utils/logger";
 import { stripGrammarMarks } from "../../nodes/stripGrammarMarks";
 
@@ -55,12 +56,25 @@ export function SaveChapterContentPlugin(): null {
         }, 8000)
     );
 
+    // Independent, long-debounced RAG re-indexing so the Editor chat rail's auto-context can
+    // actually find this chapter's prose (indexChapter exists server-side but nothing else
+    // triggers it — see chatContextService.ts). Silent on failure by design, same reasoning
+    // as background beat detection: this runs unattended and shouldn't interrupt writing.
+    const reindexRef = useRef(
+        debounce((chapterId: string) => {
+            ragApi.indexChapter(chapterId).catch(error => {
+                logger.error("SaveChapterContent - Failed to reindex chapter for chat context:", error);
+            });
+        }, 8000)
+    );
+
     // Register update listener
     useEffect(() => {
         if (!currentChapterId) return undefined;
 
         const saveContent = saveContentRef.current;
         const detectBeats = detectBeatsRef.current;
+        const reindex = reindexRef.current;
 
         const removeUpdateListener = editor.registerUpdateListener(({ editorState, dirtyElements, dirtyLeaves, tags }) => {
             // Skip if no changes
@@ -79,6 +93,7 @@ export function SaveChapterContentPlugin(): null {
 
             // Save the content
             saveContent(currentChapterId, content);
+            reindex(currentChapterId);
 
             if (autoDetectEnabled && currentStoryId) detectBeats(currentStoryId);
         });
@@ -87,6 +102,7 @@ export function SaveChapterContentPlugin(): null {
             removeUpdateListener();
             saveContent.cancel();
             detectBeats.cancel();
+            reindex.cancel();
         };
     }, [editor, currentChapterId, currentStoryId, autoDetectEnabled]);
 

@@ -28,13 +28,7 @@ const systemPrompts: Partial<Prompt>[] = [
             }
         ],
         allowedModels: [],
-        isSystem: true,
-        temperature: 1.0,
-        maxTokens: 16384,
-        top_p: 1.0,
-        top_k: 50,
-        repetition_penalty: 1.0,
-        min_p: 0.0
+        isSystem: true
     },
     {
         id: "gen-summary-system",
@@ -53,13 +47,7 @@ const systemPrompts: Partial<Prompt>[] = [
             }
         ],
         allowedModels: [],
-        isSystem: true,
-        temperature: 1.0,
-        maxTokens: 512,
-        top_p: 1.0,
-        top_k: 50,
-        repetition_penalty: 1.0,
-        min_p: 0.0
+        isSystem: true
     },
     {
         id: "selection-expand-system",
@@ -78,12 +66,7 @@ const systemPrompts: Partial<Prompt>[] = [
             }
         ],
         allowedModels: [],
-        isSystem: true,
-        temperature: 1.0,
-        maxTokens: 8192,
-        top_p: 1.0,
-        top_k: 50,
-        repetition_penalty: 1.0
+        isSystem: true
     },
     {
         id: "selection-rewrite-system",
@@ -102,13 +85,7 @@ const systemPrompts: Partial<Prompt>[] = [
             }
         ],
         allowedModels: [],
-        isSystem: true,
-        temperature: 1.0,
-        maxTokens: 8192,
-        top_p: 1.0,
-        top_k: 50,
-        repetition_penalty: 1.0,
-        min_p: 0.0
+        isSystem: true
     },
     {
         id: "selection-shorten-system",
@@ -127,13 +104,7 @@ const systemPrompts: Partial<Prompt>[] = [
             }
         ],
         allowedModels: [],
-        isSystem: true,
-        temperature: 1.0,
-        maxTokens: 8192,
-        top_p: 1.0,
-        top_k: 50,
-        repetition_penalty: 1.0,
-        min_p: 0.0
+        isSystem: true
     },
     {
         id: "brainstorm-system",
@@ -156,18 +127,12 @@ const systemPrompts: Partial<Prompt>[] = [
             }
         ],
         allowedModels: [],
-        isSystem: true,
-        temperature: 1.0,
-        maxTokens: 16384,
-        top_p: 1.0,
-        top_k: 50,
-        repetition_penalty: 1.0,
-        min_p: 0.0
+        isSystem: true
     },
     {
         id: "world-building-system",
         name: "World-Building",
-        promptType: "brainstorm",
+        promptType: "worldbuilding",
         description: "Collaborative world-building assistant that can propose Codex entries and updates",
         messages: [
             {
@@ -184,13 +149,52 @@ const systemPrompts: Partial<Prompt>[] = [
             }
         ],
         allowedModels: [],
-        isSystem: true,
-        temperature: 1.0,
-        maxTokens: 16384,
-        top_p: 1.0,
-        top_k: 50,
-        repetition_penalty: 1.0,
-        min_p: 0.0
+        isSystem: true
+    },
+    {
+        id: "research-system",
+        name: "Research",
+        promptType: "research",
+        description: "General research/reference assistant, not scoped to any single story",
+        messages: [
+            {
+                role: "system",
+                content:
+                    "You are a research assistant helping a fiction writer gather background information, verify facts, and think through worldbuilding or craft questions that aren't tied to any single story. Be concise, accurate, and cite reasoning where it helps the writer judge reliability."
+            },
+            {
+                role: "user",
+                content: "Here's the chat history of our discussion: {{chat_history}}"
+            },
+            {
+                role: "user",
+                content: "{{user_input}}"
+            }
+        ],
+        allowedModels: [],
+        isSystem: true
+    },
+    {
+        id: "editor-system",
+        name: "Editor",
+        promptType: "editor",
+        description: "Writing companion embedded in the chapter editor — can discuss the manuscript and propose prose",
+        messages: [
+            {
+                role: "system",
+                content: "{{codex_context}}"
+            },
+            {
+                role: "user",
+                content: "Here's the chat history of our discussion: {{chat_history}}"
+            },
+            {
+                role: "user",
+                content: "{{user_input}}"
+            }
+        ],
+        allowedModels: [],
+        isSystem: true
     }
 ];
 

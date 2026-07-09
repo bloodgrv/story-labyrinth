@@ -49,6 +49,7 @@ export const ResearchTool = () => {
         <LorebookProvider storyId="">
             <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[chat.id]}>
                 <ChatInterface
+                    promptType="research"
                     selectedChat={chat}
                     onChatUpdate={updated => queryClient.setQueryData(["chats", "global", "research"], updated)}
                 />

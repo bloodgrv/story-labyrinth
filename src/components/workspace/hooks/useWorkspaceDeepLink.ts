@@ -10,8 +10,10 @@ const VALID_TOOLS: readonly WorkspaceTool[] = [
     "outline",
     "lorebook",
     "brainstorm",
-    "prompts",
-    "notes"
+    "worldbuilding",
+    "research",
+    "notes",
+    "users"
 ];
 
 // Consume `?story=&tool=` query params on mount (e.g. a deep link from a Dashboard card

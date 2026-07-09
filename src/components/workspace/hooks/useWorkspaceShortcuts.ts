@@ -20,7 +20,7 @@ export const useWorkspaceShortcuts = ({ onOpenCommandPalette }: UseWorkspaceShor
         [onOpenCommandPalette]
     );
 
-    // Tool Navigation: Cmd/Ctrl+1-7
+    // Tool Navigation: Cmd/Ctrl+1-6
     useHotkeys(
         "mod+1",
         e => {
@@ -68,15 +68,6 @@ export const useWorkspaceShortcuts = ({ onOpenCommandPalette }: UseWorkspaceShor
 
     useHotkeys(
         "mod+6",
-        e => {
-            e.preventDefault();
-            setCurrentTool("prompts");
-        },
-        [setCurrentTool]
-    );
-
-    useHotkeys(
-        "mod+7",
         e => {
             e.preventDefault();
             if (currentStoryId) setCurrentTool("notes");

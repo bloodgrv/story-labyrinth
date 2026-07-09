@@ -19,6 +19,9 @@ const getPromptTypeLabel = (type: Prompt["promptType"]) => {
         selection_specific: "Selection-Specific",
         continue_writing: "Continue Writing",
         brainstorm: "Brainstorm",
+        worldbuilding: "World-Building",
+        research: "Research",
+        editor: "Editor",
         other: "Other"
     };
     return labels[type];
@@ -31,6 +34,9 @@ const promptTypeOrder: Prompt["promptType"][] = [
     "selection_specific",
     "gen_summary",
     "brainstorm",
+    "worldbuilding",
+    "research",
+    "editor",
     "other"
 ];
 

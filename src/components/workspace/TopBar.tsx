@@ -84,12 +84,14 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
                             </TooltipContent>
                         </Tooltip>
 
+                        {/* Settings/Guide/Theme live in the desktop Sidebar footer instead - these are the
+                            mobile equivalents, since mobile has no sidebar (bottom toolbar is nav-only). */}
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-9 w-9"
+                                    className="md:hidden h-9 w-9"
                                     onClick={() => navigate("/settings")}
                                 >
                                     <Settings className="h-5 w-5" />
@@ -100,13 +102,12 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
                             </TooltipContent>
                         </Tooltip>
 
-                        {/* Guide - hidden on mobile */}
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="hidden sm:inline-flex h-9 w-9"
+                                    className="hidden sm:inline-flex md:hidden h-9 w-9"
                                     onClick={() => navigate("/guide")}
                                 >
                                     <HelpCircle className="h-5 w-5" />
@@ -117,7 +118,9 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
                             </TooltipContent>
                         </Tooltip>
 
-                        <ThemeToggle />
+                        <div className="md:hidden">
+                            <ThemeToggle />
+                        </div>
                     </div>
                 </TooltipProvider>
             </div>

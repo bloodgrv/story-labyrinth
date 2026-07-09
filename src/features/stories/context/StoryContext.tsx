@@ -8,7 +8,6 @@ export type WorkspaceTool =
     | "outline"
     | "lorebook"
     | "brainstorm"
-    | "prompts"
     | "notes"
     | "users"
     | "worldbuilding"

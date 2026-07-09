@@ -3,17 +3,20 @@ import {
     ChevronLeft,
     ChevronRight,
     FileEdit,
-    FileText,
+    HelpCircle,
     Layers,
     Library,
     List,
     ListTree,
     MessageSquare,
     Search,
+    Settings,
     Sparkles,
     StickyNote,
     Users
 } from "lucide-react";
+import { useNavigate } from "react-router";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
 import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
@@ -32,7 +35,6 @@ const tools = [
     { id: "brainstorm" as WorkspaceTool, label: "Brainstorm", icon: MessageSquare, requiresStory: true },
     { id: "worldbuilding" as WorkspaceTool, label: "World-Building", icon: Sparkles, requiresStory: true },
     { id: "research" as WorkspaceTool, label: "Research", icon: Search, requiresStory: false },
-    { id: "prompts" as WorkspaceTool, label: "Prompts", icon: FileText, requiresStory: true },
     { id: "notes" as WorkspaceTool, label: "Notes", icon: StickyNote, requiresStory: true }
 ];
 
@@ -44,6 +46,7 @@ export const Sidebar = () => {
     const collapsed = leftSidebar.collapsed;
     const isOwner = useIsOwner();
     const visibleTools = isOwner ? [...tools, ...ownerOnlyTools] : tools;
+    const navigate = useNavigate();
 
     const handleToolClick = (toolId: WorkspaceTool, requiresStory: boolean) => {
         if (requiresStory && !currentStoryId) return;
@@ -84,6 +87,30 @@ export const Sidebar = () => {
                         );
                     })}
                 </nav>
+
+                {/* Settings/Guide/Theme - moved here from the top bar on desktop; mobile still gets
+                    them in TopBar since the mobile bottom toolbar (below) is nav-only. */}
+                <div className="p-2 border-t space-y-1">
+                    <Button
+                        variant="ghost"
+                        className={cn("w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")}
+                        onClick={() => navigate("/settings")}
+                        title={collapsed ? "Settings" : undefined}
+                    >
+                        <Settings className="h-4 w-4 shrink-0" />
+                        {!collapsed && <span className="text-sm">Settings</span>}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        className={cn("w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")}
+                        onClick={() => navigate("/guide")}
+                        title={collapsed ? "Guide" : undefined}
+                    >
+                        <HelpCircle className="h-4 w-4 shrink-0" />
+                        {!collapsed && <span className="text-sm">Guide</span>}
+                    </Button>
+                    <ThemeToggle isExpanded={!collapsed} />
+                </div>
 
                 <div className="p-2 border-t space-y-2">
                     <div className="text-xs text-muted-foreground text-center">

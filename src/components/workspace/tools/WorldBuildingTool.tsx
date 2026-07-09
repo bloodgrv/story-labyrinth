@@ -89,7 +89,12 @@ export const WorldBuildingTool = () => {
                 <div className="flex-1 h-full min-h-0">
                     {selectedChat ? (
                         <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[selectedChat.id]}>
-                            <ChatInterface storyId={currentStoryId} selectedChat={selectedChat} onChatUpdate={setSelectedChat} />
+                            <ChatInterface
+                                storyId={currentStoryId}
+                                promptType="worldbuilding"
+                                selectedChat={selectedChat}
+                                onChatUpdate={setSelectedChat}
+                            />
                         </ErrorBoundary>
                     ) : (
                         <div className="flex items-center justify-center h-full flex-col gap-6 text-muted-foreground p-4">

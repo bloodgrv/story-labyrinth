@@ -1,58 +1,49 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAvailableModels } from "@/features/ai/hooks/useAvailableModels";
 import { ChatMessageList } from "@/features/brainstorm/components/ChatMessageList";
 import { ContextSelector } from "@/features/brainstorm/components/ContextSelector";
 import { MessageInputArea } from "@/features/brainstorm/components/MessageInputArea";
-import { PromptControls } from "@/features/brainstorm/components/PromptControls";
 import { useChatMessages } from "@/features/brainstorm/hooks/useChatMessages";
 import { useContextSelection } from "@/features/brainstorm/hooks/useContextSelection";
-import { usePromptPreview } from "@/features/brainstorm/hooks/usePromptPreview";
-import { usePromptSelection } from "@/features/brainstorm/hooks/usePromptSelection";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { getFilteredEntries as getFilteredLorebookEntries } from "@/features/lorebook/utils/lorebookFilters";
-import { usePromptsQuery } from "@/features/prompts/hooks/usePromptsQuery";
 import { chatsApi } from "@/services/api/client";
-import type { AIChat, AllowedModel, Prompt, PromptParserConfig } from "@/types/story";
+import type { AIChat, Prompt, PromptParserConfig } from "@/types/story";
+import { ChatSystemPromptControl } from "./ChatSystemPromptControl";
 import { ProposalCard } from "./ProposalCard";
 import { useChatMessageGeneration } from "../hooks/useChatMessageGeneration";
+import { useChatSystemPrompt } from "../hooks/useChatSystemPrompt";
 import { groupProposalsByMessage, useChatProposalsQuery } from "../hooks/useCodexProposalsQuery";
 
 interface ChatInterfaceProps {
     // Absent for global chats (Research) — chapter/lorebook context selection is simply
     // unavailable there (no single story to scope it to), not an error state.
     storyId?: string;
+    promptType: Prompt["promptType"];
     selectedChat: AIChat;
     onChatUpdate: (chat: AIChat) => void;
 }
 
-// ChatInterface for chats.ts-backed chats (World-Building, Research) — reuses the same
-// message-list/prompt-selection/context-selection UI as features/brainstorm, but generates
-// via useChatMessageGeneration (chatsApi) instead of brainstormApi, and renders Codex
-// proposals inline under the assistant message that produced them. Message editing isn't
-// supported here yet (see ChatMessageList's optional onStartEdit).
-export function ChatInterface({ storyId, selectedChat, onChatUpdate }: ChatInterfaceProps) {
+// ChatInterface for chats.ts-backed chats (World-Building, Research, Editor) — reuses the same
+// message-list/context-selection UI as features/brainstorm, but generates via
+// useChatMessageGeneration (chatsApi) instead of brainstormApi, and renders Codex proposals
+// inline under the assistant message that produced them. Message editing isn't supported here
+// yet (see ChatMessageList's optional onStartEdit).
+export function ChatInterface({ storyId, promptType, selectedChat, onChatUpdate }: ChatInterfaceProps) {
     const [input, setInput] = useState("");
 
     const { entries: lorebookEntries } = useLorebookContext();
-    const {
-        data: prompts = [],
-        isLoading: promptsLoading,
-        error: promptsQueryError
-    } = usePromptsQuery({ includeSystem: true });
     const { data: chapters = [] } = useChaptersByStoryQuery(storyId ?? "");
-    const promptsError = promptsQueryError?.message ?? null;
-    const { data: availableModels = [] } = useAvailableModels();
 
-    const { selectedPrompt, selectedModel, selectPrompt } = usePromptSelection(
-        selectedChat.id,
-        selectedChat.lastUsedPromptId,
-        selectedChat.lastUsedModelId,
-        prompts,
-        (promptId, modelId) => chatsApi.update(selectedChat.id, { lastUsedPromptId: promptId, lastUsedModelId: modelId })
+    const {
+        prompt: selectedPrompt,
+        isLoading: promptLoading,
+        availableModels,
+        selectedModel,
+        selectModel
+    } = useChatSystemPrompt(promptType, selectedChat.lastUsedModelId, modelId =>
+        chatsApi.update(selectedChat.id, { lastUsedModelId: modelId })
     );
-
-    const { showPreview, previewMessages, previewLoading, previewError, openPreview, closePreview } = usePromptPreview();
 
     const {
         includeFullContext,
@@ -70,8 +61,9 @@ export function ChatInterface({ storyId, selectedChat, onChatUpdate }: ChatInter
         clearSelections
     } = useContextSelection();
 
-    // Grounds the AI in the chat's Codex context (template hint, pending proposals, relevant
-    // entries) and the ```codex-proposal wire-format instructions — see chatContextService.ts.
+    // Grounds the AI in the chat's context (chat-type framing, relevant Codex entries, and —
+    // for Editor chats only — relevant chapter passages) plus the ```codex-proposal /
+    // ```prose-proposal wire-format instructions. See chatContextService.ts.
     const [codexContext, setCodexContext] = useState<string>("");
     useEffect(() => {
         let cancelled = false;
@@ -80,7 +72,15 @@ export function ChatInterface({ storyId, selectedChat, onChatUpdate }: ChatInter
             const entriesText = context.relevantCodexEntries
                 .map(e => `- ${e.name} (${e.category}): ${e.excerpt}`)
                 .join("\n");
-            setCodexContext(entriesText ? `${context.systemPrompt}\n\nRelevant Codex entries:\n${entriesText}` : context.systemPrompt);
+            const passagesText = context.relevantChapterPassages
+                .map(p => `- ${p.title}: ${p.excerpt}`)
+                .join("\n");
+            const sections = [
+                context.systemPrompt,
+                entriesText && `Relevant Codex entries:\n${entriesText}`,
+                passagesText && `Relevant chapter passages:\n${passagesText}`
+            ].filter(Boolean);
+            setCodexContext(sections.join("\n\n"));
         });
         return () => {
             cancelled = true;
@@ -129,13 +129,6 @@ export function ChatInterface({ storyId, selectedChat, onChatUpdate }: ChatInter
 
     const getFilteredEntries = () => getFilteredLorebookEntries(lorebookEntries, false);
 
-    const handlePromptSelect = (prompt: Prompt, model: AllowedModel) => selectPrompt(prompt, model);
-
-    const handlePreviewPrompt = async () => {
-        if (!selectedPrompt) return;
-        await openPreview(createPromptConfig(selectedPrompt));
-    };
-
     const handleSubmit = async () => {
         await generate(input);
         setInput("");
@@ -149,20 +142,12 @@ export function ChatInterface({ storyId, selectedChat, onChatUpdate }: ChatInter
     return (
         <div className="flex flex-col h-full">
             <div className="p-4 space-y-4">
-                <PromptControls
-                    prompts={prompts}
-                    promptsLoading={promptsLoading}
-                    promptsError={promptsError}
-                    selectedPrompt={selectedPrompt}
+                <ChatSystemPromptControl
+                    prompt={selectedPrompt}
+                    isLoading={promptLoading}
+                    availableModels={availableModels}
                     selectedModel={selectedModel}
-                    availableModels={availableModels.map(model => ({ id: model.id, name: model.name, provider: model.provider }))}
-                    showPreview={showPreview}
-                    previewMessages={previewMessages}
-                    previewLoading={previewLoading}
-                    previewError={previewError}
-                    onPromptSelect={handlePromptSelect}
-                    onPreviewPrompt={handlePreviewPrompt}
-                    onClosePreview={closePreview}
+                    onSelectModel={selectModel}
                 />
 
                 <ContextSelector

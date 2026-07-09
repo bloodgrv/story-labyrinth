@@ -11,7 +11,6 @@ import { usePromptMessages } from "../hooks/usePromptMessages";
 import { useCreatePromptMutation, useUpdatePromptMutation } from "../hooks/usePromptsQuery";
 import { MessageEditor } from "./MessageEditor";
 import { ModelSelector } from "./ModelSelector";
-import { PromptSettings } from "./PromptSettings";
 
 type PromptType = Prompt["promptType"];
 
@@ -63,13 +62,7 @@ export function PromptForm({ prompt, onSave, onCancel, fixedType }: PromptFormPr
             name: formState.name,
             messages: messageHandlers.getMessagesWithoutIds(),
             promptType: formState.promptType,
-            allowedModels: modelSelection.selectedModels,
-            temperature: formState.temperature,
-            maxTokens: formState.maxTokens,
-            top_p: formState.topP,
-            top_k: formState.topK,
-            repetition_penalty: formState.repetitionPenalty,
-            min_p: formState.minP
+            allowedModels: modelSelection.selectedModels
         };
 
         const [saveError] = await attemptPromise(async () => {
@@ -108,8 +101,6 @@ export function PromptForm({ prompt, onSave, onCancel, fixedType }: PromptFormPr
                 </Select>
                 {fixedType && <p className="text-xs text-muted-foreground mt-2">Prompt type is fixed for this context</p>}
             </div>
-
-            <PromptSettings formState={formState} />
 
             <div className="flex gap-2">
                 {onCancel && (

@@ -1,21 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import { useAvailableModels } from "@/features/ai/hooks/useAvailableModels";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
+import { ChatSystemPromptControl } from "@/features/chat/components/ChatSystemPromptControl";
+import { useChatSystemPrompt } from "@/features/chat/hooks/useChatSystemPrompt";
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { getFilteredEntries as getFilteredLorebookEntries } from "@/features/lorebook/utils/lorebookFilters";
-import { usePromptsQuery } from "@/features/prompts/hooks/usePromptsQuery";
-import type { AIChat, AllowedModel, Prompt, PromptParserConfig } from "@/types/story";
+import type { AIChat, Prompt, PromptParserConfig } from "@/types/story";
 import { useUpdateBrainstormMutation } from "../hooks/useBrainstormQuery";
 import { useChatMessages } from "../hooks/useChatMessages";
 import { useContextSelection } from "../hooks/useContextSelection";
 import { useMessageEditing } from "../hooks/useMessageEditing";
 import { useMessageGeneration } from "../hooks/useMessageGeneration";
-import { usePromptPreview } from "../hooks/usePromptPreview";
-import { usePromptSelection } from "../hooks/usePromptSelection";
 import { ChatMessageList } from "./ChatMessageList";
 import { ContextSelector } from "./ContextSelector";
 import { MessageInputArea } from "./MessageInputArea";
-import { PromptControls } from "./PromptControls";
 
 interface ChatInterfaceProps {
     storyId: string;
@@ -27,28 +24,18 @@ export default function ChatInterface({ storyId, selectedChat, onChatUpdate }: C
     const [input, setInput] = useState("");
 
     const { entries: lorebookEntries } = useLorebookContext();
-    const {
-        data: prompts = [],
-        isLoading: promptsLoading,
-        error: promptsQueryError
-    } = usePromptsQuery({ includeSystem: true });
     const { data: chapters = [] } = useChaptersByStoryQuery(storyId);
-    const promptsError = promptsQueryError?.message ?? null;
-
-    const { data: availableModels = [] } = useAvailableModels();
 
     const updateChatMutation = useUpdateBrainstormMutation();
-    const { selectedPrompt, selectedModel, selectPrompt } = usePromptSelection(
-        selectedChat.id,
-        selectedChat.lastUsedPromptId,
-        selectedChat.lastUsedModelId,
-        prompts,
-        (promptId, modelId) =>
-            updateChatMutation.mutate({ id: selectedChat.id, data: { lastUsedPromptId: promptId, lastUsedModelId: modelId } })
+    const {
+        prompt: selectedPrompt,
+        isLoading: promptLoading,
+        availableModels,
+        selectedModel,
+        selectModel
+    } = useChatSystemPrompt("brainstorm", selectedChat.lastUsedModelId, modelId =>
+        updateChatMutation.mutate({ id: selectedChat.id, data: { lastUsedModelId: modelId } })
     );
-
-    const { showPreview, previewMessages, previewLoading, previewError, openPreview, closePreview } =
-        usePromptPreview();
 
     const {
         includeFullContext,
@@ -123,16 +110,6 @@ export default function ChatInterface({ storyId, selectedChat, onChatUpdate }: C
 
     const getFilteredEntries = () => getFilteredLorebookEntries(lorebookEntries, false);
 
-    const handlePromptSelect = (prompt: Prompt, model: AllowedModel) => {
-        selectPrompt(prompt, model);
-    };
-
-    const handlePreviewPrompt = async () => {
-        if (!selectedPrompt) return;
-        const config = createPromptConfig(selectedPrompt);
-        await openPreview(config);
-    };
-
     const handleSubmit = async () => {
         await generate(input);
         setInput("");
@@ -147,24 +124,12 @@ export default function ChatInterface({ storyId, selectedChat, onChatUpdate }: C
     return (
         <div className="flex flex-col h-full">
             <div className="p-4 space-y-4">
-                <PromptControls
-                    prompts={prompts}
-                    promptsLoading={promptsLoading}
-                    promptsError={promptsError}
-                    selectedPrompt={selectedPrompt}
+                <ChatSystemPromptControl
+                    prompt={selectedPrompt}
+                    isLoading={promptLoading}
+                    availableModels={availableModels}
                     selectedModel={selectedModel}
-                    availableModels={availableModels.map(model => ({
-                        id: model.id,
-                        name: model.name,
-                        provider: model.provider
-                    }))}
-                    showPreview={showPreview}
-                    previewMessages={previewMessages}
-                    previewLoading={previewLoading}
-                    previewError={previewError}
-                    onPromptSelect={handlePromptSelect}
-                    onPreviewPrompt={handlePreviewPrompt}
-                    onClosePreview={closePreview}
+                    onSelectModel={selectModel}
                 />
 
                 <ContextSelector

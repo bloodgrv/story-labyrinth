@@ -60,14 +60,26 @@ const indexEntity = async (params: {
     const rows = replaceChunksForEntity({ storyId, entityType, entityId, texts });
     if (rows.length === 0) return { indexed: false, chunks: 0 };
 
-    const embeddings = await embedTexts(rows.map(r => r.content));
-    const model = embeddings[0]?.model ?? "unknown";
+    // Mirrors search()'s own fallback below: an unavailable embedding endpoint shouldn't block
+    // indexing entirely — chunks still get keyword/FTS-indexed, just without vector search
+    // until a later re-index picks up embeddings.
+    let embeddings: { embedding: number[]; model: string }[] | null = null;
+    try {
+        embeddings = await embedTexts(rows.map(r => r.content));
+    } catch (error) {
+        console.warn(
+            `RAG indexing: embedding unavailable for ${entityType}:${entityId}, indexing keyword-only:`,
+            (error as Error).message
+        );
+    }
+
+    const model = embeddings?.[0]?.model ?? "none";
     saveEmbeddings(
         rows.map((row, i) => ({
             id: row.id,
             storyId: row.storyId,
             content: row.content,
-            embedding: embeddings[i].embedding
+            embedding: embeddings ? embeddings[i].embedding : null
         })),
         model
     );

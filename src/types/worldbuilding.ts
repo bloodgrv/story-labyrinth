@@ -87,11 +87,21 @@ export interface ChatContextCodexEntry {
     excerpt: string;
 }
 
+// A chapter passage surfaced as relevant context for an Editor chat (via the RAG hybrid
+// search index) — only populated for chatType="editor", see chatContextService.ts.
+export interface ChatContextChapterPassage {
+    chapterId: string;
+    title: string;
+    excerpt: string;
+}
+
 // Assembled context for generating a chat response or proposal: the effective system
-// prompt (base framing + template hint), this chat's own unresolved Codex proposals,
-// and Codex entries relevant to the current topic. See chatContextService.ts.
+// prompt (chat-type framing + template hint for World-Building), this chat's own unresolved
+// Codex proposals, and Codex entries / chapter passages relevant to the current topic.
+// See chatContextService.ts.
 export interface ChatContext {
     systemPrompt: string;
     pendingProposals: CodexPendingChange[];
     relevantCodexEntries: ChatContextCodexEntry[];
+    relevantChapterPassages: ChatContextChapterPassage[];
 }

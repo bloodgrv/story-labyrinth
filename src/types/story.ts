@@ -105,17 +105,20 @@ export interface AllowedModel {
 export interface Prompt extends BaseEntity {
     name: string;
     description?: string;
-    promptType: "scene_beat" | "gen_summary" | "selection_specific" | "continue_writing" | "other" | "brainstorm";
+    promptType:
+        | "scene_beat"
+        | "gen_summary"
+        | "selection_specific"
+        | "continue_writing"
+        | "other"
+        | "brainstorm"
+        | "worldbuilding"
+        | "research"
+        | "editor";
     messages: PromptMessage[];
     allowedModels: AllowedModel[];
     storyId?: string;
     isSystem?: boolean; // Flag to identify system prompts
-    temperature?: number;
-    maxTokens?: number;
-    top_p?: number; // Nucleus sampling: 1.0 means consider all tokens, 0 means disabled
-    top_k?: number; // Limit sampling to top k tokens: 50 is default, 0 means disabled
-    repetition_penalty?: number; // Penalty for repeating tokens: 1.0 means no penalty, 0 means disabled
-    min_p?: number; // Minimum probability for sampling: 0.0 is default, 1.0 means only consider most likely tokens
 }
 
 // AI Provider and Model types

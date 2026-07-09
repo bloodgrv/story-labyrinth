@@ -26,6 +26,7 @@ export { beatsApi } from "./beatsClient";
 export { grammarApi } from "./grammarClient";
 export { humanizerApi } from "./humanizerClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
+export { ragApi } from "./ragClient";
 export { ttsApi } from "./ttsClient";
 export { usersApi } from "./usersClient";
 

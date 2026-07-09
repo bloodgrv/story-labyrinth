@@ -92,17 +92,12 @@ export const prompts = sqliteTable(
         id: text("id").primaryKey(),
         name: text("name").notNull(),
         description: text("description"),
-        promptType: text("promptType").notNull(), // 'scene_beat' | 'gen_summary' | 'selection_specific' | 'continue_writing' | 'other' | 'brainstorm'
+        // 'scene_beat' | 'gen_summary' | 'selection_specific' | 'continue_writing' | 'other' | 'brainstorm' | 'worldbuilding' | 'research' | 'editor'
+        promptType: text("promptType").notNull(),
         messages: text("messages", { mode: "json" }).notNull(), // JSON: PromptMessage[]
         allowedModels: text("allowedModels", { mode: "json" }).notNull(), // JSON: AllowedModel[]
         storyId: text("storyId").references(() => stories.id, { onDelete: "cascade" }),
         isSystem: integer("isSystem", { mode: "boolean" }),
-        temperature: integer("temperature"),
-        maxTokens: integer("maxTokens"),
-        top_p: integer("top_p"),
-        top_k: integer("top_k"),
-        repetition_penalty: integer("repetition_penalty"),
-        min_p: integer("min_p"),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
     },
     table => ({

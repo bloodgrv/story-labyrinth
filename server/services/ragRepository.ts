@@ -106,8 +106,11 @@ export const replaceChunksForEntity = (params: {
 };
 
 // Store computed embeddings for a batch of chunks and index their text for keyword search.
+// `embedding: null` means no embedding endpoint was available for this batch (see
+// ragIndexService.ts's indexEntity) — the chunk still gets indexed for keyword/FTS search,
+// it just won't surface via vector search until it's re-indexed with embeddings available.
 export const saveEmbeddings = (
-    rows: { id: string; storyId: string; content: string; embedding: number[] }[],
+    rows: { id: string; storyId: string; content: string; embedding: number[] | null }[],
     model: string
 ): void => {
     if (rows.length === 0) return;
@@ -129,9 +132,9 @@ export const saveEmbeddings = (
             clearVecRow.run(row.id);
             clearFtsRow.run(row.id);
 
-            insertVec.run(row.storyId, new Float32Array(row.embedding), row.id);
+            if (row.embedding) insertVec.run(row.storyId, new Float32Array(row.embedding), row.id);
             insertFts.run(row.content, row.id, row.storyId);
-            updateChunk.run(model, now, now, row.id);
+            updateChunk.run(row.embedding ? model : null, now, now, row.id);
         }
     });
     tx();

@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { parseJson } from "../lib/json.js";
+import { indexLorebookEntry } from "../services/ragIndexService.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -160,6 +161,7 @@ export default createCrudRouter({
 
                 const result = await db.insert(table).values(newEntry).returning();
                 const created = Array.isArray(result) ? result[0] : result;
+                void attemptPromise(() => indexLorebookEntry(created.id));
                 res.status(201).json(transform(created));
             })
         );
@@ -190,6 +192,7 @@ export default createCrudRouter({
                     res.status(404).json({ error: "Lorebook entry not found" });
                     return;
                 }
+                void attemptPromise(() => indexLorebookEntry(updated.id));
                 res.json(transform(updated));
             })
         );
