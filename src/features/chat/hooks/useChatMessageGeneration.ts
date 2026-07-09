@@ -108,7 +108,8 @@ export const useChatMessageGeneration = ({
             processStream,
             reset,
             createProposalMutation,
-            onChatUpdate
+            onChatUpdate,
+            onProseProposal
         ]
     );
 

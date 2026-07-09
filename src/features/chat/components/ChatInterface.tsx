@@ -27,6 +27,12 @@ interface ChatInterfaceProps {
     promptType: Prompt["promptType"];
     selectedChat: AIChat;
     onChatUpdate: (chat: AIChat) => void;
+    // Editor and Outline share the same chatType="editor" chats (see EditorChatRail.tsx), but
+    // Outline items are structured data, not prose — there's no chapter editor to insert into
+    // there. Defaults to true (the Editor tool's own usage); Outline's rail passes false so a
+    // ```prose-proposal reply is still parsed/stripped from the visible text but never rendered
+    // as an actionable card.
+    enableProseProposals?: boolean;
 }
 
 // ChatInterface for chats.ts-backed chats (World-Building, Research, Editor) — reuses the same
@@ -34,7 +40,13 @@ interface ChatInterfaceProps {
 // useChatMessageGeneration (chatsApi) instead of brainstormApi, and renders Codex proposals
 // inline under the assistant message that produced them. Message editing isn't supported here
 // yet (see ChatMessageList's optional onStartEdit).
-export function ChatInterface({ storyId, promptType, selectedChat, onChatUpdate }: ChatInterfaceProps) {
+export function ChatInterface({
+    storyId,
+    promptType,
+    selectedChat,
+    onChatUpdate,
+    enableProseProposals = true
+}: ChatInterfaceProps) {
     const [input, setInput] = useState("");
     // Editor chats rely entirely on the auto-pulled codexContext (chapter passages + Codex
     // entries, fetched below) instead of the manual chapter-summary/lorebook checkboxes —
@@ -124,7 +136,9 @@ export function ChatInterface({ storyId, promptType, selectedChat, onChatUpdate 
         selectedModel,
         onChatUpdate,
         createPromptConfig,
-        onProseProposal: (messageId, proposal) => setProseProposals(prev => ({ ...prev, [messageId]: proposal }))
+        onProseProposal: enableProseProposals
+            ? (messageId, proposal) => setProseProposals(prev => ({ ...prev, [messageId]: proposal }))
+            : undefined
     });
 
     const dismissProseProposal = (messageId: string) =>

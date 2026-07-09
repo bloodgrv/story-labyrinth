@@ -30,12 +30,15 @@ const ChatErrorFallback = (error: Error, resetError: () => void) => (
 
 interface EditorChatRailProps {
     storyId: string;
+    // Outline's rail passes false — outline items are structured data, not prose, so there's
+    // nothing for a prose-proposal Accept to insert into. See ChatInterface's own prop doc.
+    enableProseProposals?: boolean;
 }
 
 // Docked chat companion for the Editor and Outline tools (chatType="editor", shared between
 // both — CLAUDE.md's "Main Editor Chat" is one context, not split per-tool). Multiple named
 // chats per story (not a single unbounded thread) so context stays manageable per chapter/arc.
-export function EditorChatRail({ storyId }: EditorChatRailProps) {
+export function EditorChatRail({ storyId, enableProseProposals = true }: EditorChatRailProps) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
 
     return (
@@ -52,7 +55,13 @@ export function EditorChatRail({ storyId }: EditorChatRailProps) {
             <div className="flex-1 h-full min-h-0">
                 {selectedChat ? (
                     <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[selectedChat.id]}>
-                        <ChatInterface storyId={storyId} promptType="editor" selectedChat={selectedChat} onChatUpdate={setSelectedChat} />
+                        <ChatInterface
+                            storyId={storyId}
+                            promptType="editor"
+                            selectedChat={selectedChat}
+                            onChatUpdate={setSelectedChat}
+                            enableProseProposals={enableProseProposals}
+                        />
                     </ErrorBoundary>
                 ) : (
                     <div className="flex items-center justify-center h-full flex-col gap-4 text-muted-foreground p-4">

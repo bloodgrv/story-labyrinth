@@ -64,14 +64,16 @@ export const MainContent = () => {
     };
 
     // Every other tool grows to fit its content and lets `main` page-scroll — the right call for
-    // list/form-heavy tools. The editor is the exception: its own CSS (.editor-scroller) already
-    // scrolls chapter text internally, but that only works if this wrapper has a real bounded
-    // height instead of growing to match the content — which split panes need to size against.
+    // list/form-heavy tools. Editor and Outline are the exception: both can render a resizable
+    // chat rail (react-resizable-panels) alongside their own content, which needs a real bounded
+    // height to size against instead of a wrapper that grows to match the content.
+    const needsBoundedHeight = currentTool === "editor" || currentTool === "outline";
+
     return (
         <div
             className={cn(
                 "transition-colors duration-300",
-                currentTool === "editor" ? "h-full overflow-hidden" : "min-h-full",
+                needsBoundedHeight ? "h-full overflow-hidden" : "min-h-full",
                 toolTints[currentTool]
             )}
         >
