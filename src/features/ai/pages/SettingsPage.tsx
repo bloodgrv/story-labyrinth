@@ -1,15 +1,13 @@
-import { AlertTriangle, ArrowLeft, ChevronRight, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ModelCombobox } from "@/components/ui/model-combobox";
-import { API_URLS } from "@/constants/urls";
+import { FeatureEndpointsCard } from "@/features/ai/components/FeatureEndpointsCard";
 import { GrokOAuthCard } from "@/features/ai/components/GrokOAuthCard";
+import { LocalModelsCard } from "@/features/ai/components/LocalModelsCard";
 import { ProviderCard } from "@/features/ai/components/ProviderCard";
 import {
     useAISettingsQuery,
@@ -23,11 +21,9 @@ import {
 import { GrammarSettingsCard } from "@/features/grammar/components/GrammarSettingsCard";
 import { HumanizerSettingsCard } from "@/features/humanizer/components/HumanizerSettingsCard";
 import { TtsSettingsCard } from "@/features/tts/components/TtsSettingsCard";
-import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
     const navigate = useNavigate();
-    const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
     const [localApiUrlInput, setLocalApiUrlInput] = useState("");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
@@ -40,11 +36,7 @@ export default function SettingsPage() {
     const disconnectGrokOAuthMutation = useDisconnectGrokOAuthMutation();
     const deleteDemoMutation = useDeleteDemoDataMutation();
 
-    const toggleSection = (section: string) => {
-        setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
-    };
-
-    if (isLoadingSettings) 
+    if (isLoadingSettings)
         return (
             <div className="p-8 flex justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -155,94 +147,19 @@ export default function SettingsPage() {
                         isDisconnecting={disconnectGrokOAuthMutation.isPending}
                     />
 
-                    {/* Local Models Section */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex justify-between items-center">
-                                Local Models
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => refreshModelsMutation.mutate("local")}
-                                    disabled={refreshModelsMutation.isPending}
-                                >
-                                    {refreshModelsMutation.isPending ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        "Refresh Models"
-                                    )}
-                                </Button>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-muted-foreground">Models from LM Studio</span>
-                            </div>
+                    <FeatureEndpointsCard allModels={allModels} />
 
-                            <Collapsible
-                                open={openSections.localAdvanced}
-                                onOpenChange={() => toggleSection("localAdvanced")}
-                            >
-                                <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-                                    <ChevronRight
-                                        className={cn(
-                                            "h-4 w-4 transition-transform",
-                                            openSections.localAdvanced && "transform rotate-90"
-                                        )}
-                                    />
-                                    Advanced Settings
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="mt-2 space-y-2">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="local-api-url">Local API URL</Label>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                id="local-api-url"
-                                                type="text"
-                                                placeholder={API_URLS.LOCAL_AI_DEFAULT}
-                                                value={currentLocalUrl}
-                                                onChange={e => setLocalApiUrlInput(e.target.value)}
-                                            />
-                                            <Button
-                                                onClick={() => updateLocalUrlMutation.mutate(currentLocalUrl)}
-                                                disabled={updateLocalUrlMutation.isPending || !currentLocalUrl.trim()}
-                                            >
-                                                {updateLocalUrlMutation.isPending ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    "Save"
-                                                )}
-                                            </Button>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            The URL of your local LLM server. Default is {API_URLS.LOCAL_AI_DEFAULT}
-                                        </p>
-                                    </div>
-                                </CollapsibleContent>
-                            </Collapsible>
-
-                            {localModels.length > 0 && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="local-default">Default Model</Label>
-                                    <ModelCombobox
-                                        id="local-default"
-                                        models={localModels}
-                                        value={settings?.defaultLocalModel}
-                                        onValueChange={modelId =>
-                                            updateDefaultModelMutation.mutate({
-                                                provider: "local",
-                                                modelId
-                                            })
-                                        }
-                                        placeholder="Select default model"
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        Select a default model for local generation
-                                    </p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                    <LocalModelsCard
+                        localModels={localModels}
+                        currentLocalUrl={currentLocalUrl}
+                        onLocalUrlChange={setLocalApiUrlInput}
+                        isSavingUrl={updateLocalUrlMutation.isPending}
+                        onSaveUrl={() => updateLocalUrlMutation.mutate(currentLocalUrl)}
+                        isRefreshing={refreshModelsMutation.isPending}
+                        onRefresh={() => refreshModelsMutation.mutate("local")}
+                        defaultModel={settings?.defaultLocalModel}
+                        onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "local", modelId })}
+                    />
 
                     <TtsSettingsCard />
 

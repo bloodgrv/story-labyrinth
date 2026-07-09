@@ -18,15 +18,22 @@ export type FeatureKey =
     | "outline_generation" // AI-assisted outline suggestion pass (outlineGenerator.ts)
     | "document_import"; // Extract a Lorebook entry from an uploaded PDF/DOCX/MD file (documentImportService.ts)
 
-export type FeatureProvider = "local" | "openai" | "openrouter" | "grok";
+// "grok-session" is deliberately excluded — it isn't a simple OpenAI-compatible client (it proxies
+// through grok.com server-side via a bespoke SSE conversion, see grokSessionClient.ts) and is
+// already flagged as unofficial/fragile in the UI. "grok"/"grok-oauth" are both real
+// https://api.x.ai/v1 connections and fit the same `new OpenAI({baseURL, apiKey})` shape as
+// every other provider here.
+export type FeatureProvider = "local" | "openai" | "openrouter" | "grok" | "grok-oauth";
 
 export type FeatureEndpoint = {
     provider: FeatureProvider;
     // For "local": the base URL of the OpenAI-compatible server (e.g. http://192.168.1.5:1234/v1)
     // For "openrouter": optional custom base URL (defaults to https://openrouter.ai/api/v1)
-    // For "openai"/"grok": not used (always https://api.openai.com/v1 / https://api.x.ai/v1)
+    // For "openai"/"grok"/"grok-oauth": not used (always api.openai.com / api.x.ai)
     apiUrl?: string | null;
-    // API key for the provider. For "local" this is ignored (sent as "local").
+    // API key for the provider. For "local" this is ignored (sent as "local"). For "grok-oauth"
+    // this is ignored too — it always uses the single global xAI OAuth connection, refreshed
+    // transparently (see aiClientFactory.ts's getFreshGrokOAuthToken).
     // If omitted for "openai"/"openrouter"/"grok", the global key in aiSettings is used as fallback.
     apiKey?: string | null;
     model: string;

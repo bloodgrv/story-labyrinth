@@ -1,14 +1,55 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { aiService } from "@/services/ai/AIService";
-import { adminApi } from "@/services/api/client";
+import { adminApi, featureEndpointsApi } from "@/services/api/client";
+import type { FeatureEndpoint, FeatureKey } from "@/types/aiSettings";
 import type { AIProvider, AISettings } from "@/types/story";
 
 export const aiSettingsKeys = {
     all: ["ai"] as const,
     settings: () => [...aiSettingsKeys.all, "settings"] as const,
     models: () => [...aiSettingsKeys.all, "models"] as const,
-    modelsByProvider: (provider: AIProvider) => [...aiSettingsKeys.models(), provider] as const
+    modelsByProvider: (provider: AIProvider) => [...aiSettingsKeys.models(), provider] as const,
+    // Shared with useDashboardData.ts's PreferencesSidebar display so saving/clearing an
+    // override here also refreshes that read-only summary.
+    featureEndpoints: () => [...aiSettingsKeys.all, "featureEndpoints"] as const
+};
+
+export const useFeatureEndpointsQuery = () =>
+    useQuery({
+        queryKey: aiSettingsKeys.featureEndpoints(),
+        queryFn: () => featureEndpointsApi.get()
+    });
+
+export const useSetFeatureEndpointMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ feature, endpoint }: { feature: FeatureKey; endpoint: FeatureEndpoint }) =>
+            featureEndpointsApi.setFeature(feature, endpoint),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: aiSettingsKeys.featureEndpoints() });
+            toast.success("Feature endpoint saved");
+        },
+        onError: (error: Error) => {
+            toast.error(`Failed to save feature endpoint: ${error.message}`);
+        }
+    });
+};
+
+export const useRemoveFeatureEndpointMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (feature: FeatureKey) => featureEndpointsApi.removeFeature(feature),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: aiSettingsKeys.featureEndpoints() });
+            toast.success("Reverted to global default");
+        },
+        onError: (error: Error) => {
+            toast.error(`Failed to clear feature endpoint: ${error.message}`);
+        }
+    });
 };
 
 export const useAISettingsQuery = () =>

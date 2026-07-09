@@ -2,13 +2,34 @@ import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { db, schema } from "../db/client.js";
 import type { FeatureEndpoint, FeatureEndpoints, FeatureKey } from "../../src/types/aiSettings.js";
+import { ensureFreshAccessToken } from "./grokOAuthClient.js";
 
 type AiSettingsRow = typeof schema.aiSettings.$inferSelect;
 type ClientAndModel = { client: OpenAI; model: string };
 
 // ── Internal helpers ───────────────────────────────────────────────────────────
 
-const clientFromEndpoint = (endpoint: FeatureEndpoint): ClientAndModel => {
+// Single source of truth for "get me a working Grok OAuth access token right now," transparently
+// refreshing and persisting a rotated token back to the DB when needed — same refresh-then-persist
+// pattern server/routes/ai.ts's GET /settings already does for the settings-page display, now
+// also needed here since a per-feature endpoint can target grok-oauth directly.
+const getFreshGrokOAuthToken = async (settings: AiSettingsRow): Promise<string | null> => {
+    if (!settings.grokOAuthAccessToken) return null;
+    const tokens = await ensureFreshAccessToken(settings);
+    if (!tokens) return null;
+    if (tokens.accessToken !== settings.grokOAuthAccessToken)
+        await db
+            .update(schema.aiSettings)
+            .set({
+                grokOAuthAccessToken: tokens.accessToken,
+                grokOAuthRefreshToken: tokens.refreshToken ?? settings.grokOAuthRefreshToken,
+                grokOAuthExpiresAt: tokens.expiresAt
+            })
+            .where(eq(schema.aiSettings.id, settings.id));
+    return tokens.accessToken;
+};
+
+const clientFromEndpoint = async (endpoint: FeatureEndpoint, settings: AiSettingsRow): Promise<ClientAndModel> => {
     switch (endpoint.provider) {
         case "local":
             return {
@@ -20,22 +41,30 @@ const clientFromEndpoint = (endpoint: FeatureEndpoint): ClientAndModel => {
             };
         case "openai":
             return {
-                client: new OpenAI({ apiKey: endpoint.apiKey ?? "" }),
+                client: new OpenAI({ apiKey: endpoint.apiKey || settings.openaiKey || "" }),
                 model: endpoint.model
             };
         case "openrouter":
             return {
                 client: new OpenAI({
                     baseURL: endpoint.apiUrl ?? "https://openrouter.ai/api/v1",
-                    apiKey: endpoint.apiKey ?? ""
+                    apiKey: endpoint.apiKey || settings.openrouterKey || ""
                 }),
                 model: endpoint.model
             };
         case "grok":
             return {
-                client: new OpenAI({ baseURL: "https://api.x.ai/v1", apiKey: endpoint.apiKey ?? "" }),
+                client: new OpenAI({ baseURL: "https://api.x.ai/v1", apiKey: endpoint.apiKey || settings.grokKey || "" }),
                 model: endpoint.model
             };
+        case "grok-oauth": {
+            const accessToken = await getFreshGrokOAuthToken(settings);
+            if (!accessToken) throw new Error("Grok (xAI OAuth) is not connected. Connect it in AI Settings first.");
+            return {
+                client: new OpenAI({ baseURL: "https://api.x.ai/v1", apiKey: accessToken }),
+                model: endpoint.model
+            };
+        }
     }
 };
 
@@ -86,8 +115,10 @@ const parseEndpoints = (raw: string | null | undefined): FeatureEndpoints => {
  * Build an OpenAI-compatible client for a specific feature.
  *
  * Resolution order:
- *   1. Per-feature override in aiSettings.featureEndpoints (if featureKey provided)
- *   2. Global defaults: local → openai → openrouter
+ *   1. Per-feature override in aiSettings.featureEndpoints (if featureKey provided) - can target
+ *      any of local/openai/openrouter/grok/grok-oauth directly, independent of the global default
+ *   2. Global defaults: local → openai → openrouter → grok (grok-oauth is not part of this
+ *      fallback chain - reach it via an explicit per-feature override)
  *
  * Returns null when no provider is configured at all.
  */
@@ -100,7 +131,7 @@ export const buildClientForFeature = async (
     if (featureKey) {
         const endpoints = parseEndpoints(settings.featureEndpoints);
         const override = endpoints[featureKey];
-        if (override) return clientFromEndpoint(override);
+        if (override) return clientFromEndpoint(override, settings);
     }
 
     return clientFromGlobalSettings(settings);

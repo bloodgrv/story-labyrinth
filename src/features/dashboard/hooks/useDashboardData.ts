@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
+import { aiSettingsKeys } from "@/features/ai/hooks/useAISettingsQuery";
 import { aiApi, chaptersApi, chatsApi, featureEndpointsApi, storiesApi } from "@/services/api/client";
 import type { WorldBuildingTemplateSlug } from "@/types/worldbuilding";
 
@@ -10,8 +11,7 @@ const keys = {
     chapters: (storyId: string) => ["chapters", "byStory", storyId] as const,
     wbChats: (storyId: string) => ["chats", "worldbuilding", storyId] as const,
     templates: () => ["chats", "templates"] as const,
-    aiSettings: () => ["aiSettings"] as const,
-    featureEndpoints: () => ["featureEndpoints"] as const
+    aiSettings: () => ["aiSettings"] as const
 };
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ export const useDashboardData = (storyId: string) => {
     });
 
     const featureEndpoints = useQuery({
-        queryKey: keys.featureEndpoints(),
+        queryKey: aiSettingsKeys.featureEndpoints(),
         queryFn: () => featureEndpointsApi.get()
     });
 

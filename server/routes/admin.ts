@@ -10,6 +10,10 @@ import {
 import type { FeatureEndpoint, FeatureKey } from "../../src/types/aiSettings.js";
 import { FEATURE_KEYS } from "../../src/types/aiSettings.js";
 
+// Kept as a plain string[] (not FeatureProvider[]) since this is a runtime validation boundary
+// over unvalidated request bodies, not a typed context.
+const VALID_FEATURE_PROVIDERS: string[] = ["local", "openai", "openrouter", "grok", "grok-oauth"];
+
 type ImportedSeries = typeof schema.series.$inferSelect;
 type ImportedStory = typeof schema.stories.$inferSelect;
 type ImportedChapter = typeof schema.chapters.$inferSelect;
@@ -276,8 +280,8 @@ router.put("/feature-endpoints", async (req, res) => {
             return;
         }
         const ep = value as Record<string, unknown>;
-        if (ep.provider !== "local" && ep.provider !== "openai" && ep.provider !== "openrouter") {
-            res.status(400).json({ error: `'${key}.provider' must be 'local', 'openai', or 'openrouter'` });
+        if (!VALID_FEATURE_PROVIDERS.includes(ep.provider as string)) {
+            res.status(400).json({ error: `'${key}.provider' must be one of: ${VALID_FEATURE_PROVIDERS.join(", ")}` });
             return;
         }
         if (typeof ep.model !== "string" || !ep.model.trim()) {
@@ -312,8 +316,8 @@ router.put("/feature-endpoints/:feature", async (req, res) => {
         model?: unknown;
     };
 
-    if (provider !== "local" && provider !== "openai" && provider !== "openrouter") {
-        res.status(400).json({ error: "provider must be 'local', 'openai', or 'openrouter'" });
+    if (!VALID_FEATURE_PROVIDERS.includes(provider as string)) {
+        res.status(400).json({ error: `provider must be one of: ${VALID_FEATURE_PROVIDERS.join(", ")}` });
         return;
     }
     if (typeof model !== "string" || !model.trim()) {
@@ -322,7 +326,7 @@ router.put("/feature-endpoints/:feature", async (req, res) => {
     }
 
     const endpoint: FeatureEndpoint = {
-        provider,
+        provider: provider as FeatureEndpoint["provider"],
         model: model.trim(),
         apiUrl: typeof apiUrl === "string" ? apiUrl : null,
         apiKey: typeof apiKey === "string" ? apiKey : null
