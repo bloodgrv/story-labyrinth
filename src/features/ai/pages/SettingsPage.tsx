@@ -58,7 +58,6 @@ export default function SettingsPage() {
     const geminiModels = allModels.filter(m => m.provider === "gemini");
     const localModels = allModels.filter(m => m.provider === "local");
     const grokModels = allModels.filter(m => m.provider === "grok");
-    const grokSessionModels = allModels.filter(m => m.provider === "grok-session");
     const grokOAuthModels = allModels.filter(m => m.provider === "grok-oauth");
 
     const currentLocalUrl = localApiUrlInput || settings?.localApiUrl || "";
@@ -141,24 +140,6 @@ export default function SettingsPage() {
                         onDefaultModelChange={modelId =>
                             updateDefaultModelMutation.mutate({ provider: "grok", modelId })
                         }
-                    />
-
-                    <ProviderCard
-                        provider="grok-session"
-                        title="SuperGrok (Session) Configuration"
-                        keyLabel="Full Cookie Header"
-                        keyPlaceholder="grok_device_id=...; sso=...; sso-rw=...; cf_clearance=...; __cf_bm=...; ..."
-                        storedKey={settings?.grokSessionCookie}
-                        models={grokSessionModels}
-                        defaultModel={settings?.defaultGrokSessionModel}
-                        isKeyMutating={updateKeyMutation.isPending}
-                        isRefreshing={refreshModelsMutation.isPending}
-                        onSaveKey={key => updateKeyMutation.mutate({ provider: "grok-session", key })}
-                        onRefresh={() => refreshModelsMutation.mutate("grok-session")}
-                        onDefaultModelChange={modelId =>
-                            updateDefaultModelMutation.mutate({ provider: "grok-session", modelId })
-                        }
-                        warning="Unofficial — uses your grok.com session cookie, against its ToS, and may break or get your account flagged at any time. Paste the full Cookie header (all cookies, including Cloudflare's cf_clearance/__cf_bm), not just sso/sso-rw. Use at your own risk."
                     />
 
                     <GrokOAuthCard

@@ -75,16 +75,6 @@ function WorldBuildingChatPanel({ storyId }: { storyId: string }) {
 
     return (
         <div className="flex h-full border-l">
-            <ChatList
-                storyId={storyId}
-                chatType="worldbuilding"
-                title="World-Building Chats"
-                emptyLabel="No world-building chats yet"
-                selectedChat={selectedChat}
-                onSelectChat={setSelectedChat}
-                renderNewChatAction={renderTemplatePicker}
-            />
-
             <div className="flex-1 h-full min-h-0">
                 {selectedChat ? (
                     <ChatInterface storyId={storyId} promptType="worldbuilding" selectedChat={selectedChat} onChatUpdate={setSelectedChat} />
@@ -96,6 +86,17 @@ function WorldBuildingChatPanel({ storyId }: { storyId: string }) {
                     </div>
                 )}
             </div>
+
+            <ChatList
+                storyId={storyId}
+                chatType="worldbuilding"
+                title="World-Building Chats"
+                emptyLabel="No world-building chats yet"
+                selectedChat={selectedChat}
+                onSelectChat={setSelectedChat}
+                renderNewChatAction={renderTemplatePicker}
+                side="right"
+            />
         </div>
     );
 }

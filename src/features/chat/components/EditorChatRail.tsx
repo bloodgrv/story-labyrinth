@@ -43,15 +43,6 @@ export function EditorChatRail({ storyId, enableProseProposals = true }: EditorC
 
     return (
         <div className="flex h-full">
-            <ChatList
-                storyId={storyId}
-                chatType="editor"
-                title="Editor Chats"
-                emptyLabel="No editor chats yet"
-                selectedChat={selectedChat}
-                onSelectChat={setSelectedChat}
-            />
-
             <div className="flex-1 h-full min-h-0">
                 {selectedChat ? (
                     <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[selectedChat.id]}>
@@ -70,6 +61,16 @@ export function EditorChatRail({ storyId, enableProseProposals = true }: EditorC
                     </div>
                 )}
             </div>
+
+            <ChatList
+                storyId={storyId}
+                chatType="editor"
+                title="Editor Chats"
+                emptyLabel="No editor chats yet"
+                selectedChat={selectedChat}
+                onSelectChat={setSelectedChat}
+                side="right"
+            />
         </div>
     );
 }

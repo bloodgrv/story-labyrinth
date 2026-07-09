@@ -19,9 +19,23 @@ interface ChatListProps {
     // When provided, replaces the default "New Chat" button/flow — used by World-Building,
     // which needs a template picker before creating a chat.
     renderNewChatAction?: (chats: AIChat[]) => ReactNode;
+    // Which side of the chat interface this list sits on — flips the shared border and the
+    // collapse toggle's position/chevron direction accordingly. Defaults to "left" (list first,
+    // interface after); pass "right" when the list is the trailing column instead.
+    side?: "left" | "right";
 }
 
-export function ChatList({ storyId, chatType, title, emptyLabel = "No chats yet", selectedChat, onSelectChat, renderNewChatAction }: ChatListProps) {
+export function ChatList({
+    storyId,
+    chatType,
+    title,
+    emptyLabel = "No chats yet",
+    selectedChat,
+    onSelectChat,
+    renderNewChatAction,
+    side = "left"
+}: ChatListProps) {
+    const isLeftSide = side === "left";
     const { data: chats = [], isLoading } = useChatsByStoryQuery(storyId, chatType);
     const createMutation = useCreateChatMutation();
     const updateMutation = useUpdateChatMutation();
@@ -72,17 +86,21 @@ export function ChatList({ storyId, chatType, title, emptyLabel = "No chats yet"
         <>
             <div
                 className={cn(
-                    "relative border-r border-input bg-background transition-all duration-300",
+                    "relative bg-background transition-all duration-300",
+                    isLeftSide ? "border-r border-input" : "border-l border-input",
                     isCollapsed ? "w-[40px]" : "w-[250px] sm:w-[300px]"
                 )}
             >
                 <button
                     type="button"
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="absolute -right-3 top-1/2 transform -translate-y-1/2 z-10
-                        bg-background border-input border rounded-full p-1 shadow-sm hover:bg-muted"
+                    className={cn(
+                        "absolute top-1/2 transform -translate-y-1/2 z-10",
+                        "bg-background border-input border rounded-full p-1 shadow-sm hover:bg-muted",
+                        isLeftSide ? "-right-3" : "-left-3"
+                    )}
                 >
-                    {isCollapsed ? (
+                    {isCollapsed === isLeftSide ? (
                         <ChevronRight className="h-4 w-4 text-foreground" />
                     ) : (
                         <ChevronLeft className="h-4 w-4 text-foreground" />

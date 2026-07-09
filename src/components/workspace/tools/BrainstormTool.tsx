@@ -119,11 +119,6 @@ export const BrainstormTool = () => {
                     </Button>
                 </div>
 
-                {/* Desktop: sidebar */}
-                <div className="hidden md:block">
-                    <ChatList storyId={currentStoryId} selectedChat={selectedChat} onSelectChat={setSelectedChat} />
-                </div>
-
                 <div className="flex-1 h-full min-h-0">
                     {selectedChat ? (
                         <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[selectedChat.id]}>
@@ -148,6 +143,16 @@ export const BrainstormTool = () => {
                             </div>
                         </div>
                     )}
+                </div>
+
+                {/* Desktop: sidebar */}
+                <div className="hidden md:block">
+                    <ChatList
+                        storyId={currentStoryId}
+                        selectedChat={selectedChat}
+                        onSelectChat={setSelectedChat}
+                        side="right"
+                    />
                 </div>
             </div>
         </LorebookProvider>
