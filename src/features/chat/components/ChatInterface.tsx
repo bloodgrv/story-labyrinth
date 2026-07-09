@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 import { ChatMessageList } from "@/features/brainstorm/components/ChatMessageList";
 import { ContextSelector } from "@/features/brainstorm/components/ContextSelector";
 import { MessageInputArea } from "@/features/brainstorm/components/MessageInputArea";
@@ -7,13 +8,17 @@ import { useContextSelection } from "@/features/brainstorm/hooks/useContextSelec
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { getFilteredEntries as getFilteredLorebookEntries } from "@/features/lorebook/utils/lorebookFilters";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { getActiveChapterEditor } from "@/lib/activeChapterEditorStore";
 import { chatsApi } from "@/services/api/client";
 import type { AIChat, Prompt, PromptParserConfig } from "@/types/story";
 import { ChatSystemPromptControl } from "./ChatSystemPromptControl";
 import { ProposalCard } from "./ProposalCard";
+import { ProseProposalCard } from "./ProseProposalCard";
 import { useChatMessageGeneration } from "../hooks/useChatMessageGeneration";
 import { useChatSystemPrompt } from "../hooks/useChatSystemPrompt";
 import { groupProposalsByMessage, useChatProposalsQuery } from "../hooks/useCodexProposalsQuery";
+import { insertProposedProse } from "../services/insertProposedProse";
 
 interface ChatInterfaceProps {
     // Absent for global chats (Research) — chapter/lorebook context selection is simply
@@ -31,9 +36,14 @@ interface ChatInterfaceProps {
 // yet (see ChatMessageList's optional onStartEdit).
 export function ChatInterface({ storyId, promptType, selectedChat, onChatUpdate }: ChatInterfaceProps) {
     const [input, setInput] = useState("");
+    // Editor chats rely entirely on the auto-pulled codexContext (chapter passages + Codex
+    // entries, fetched below) instead of the manual chapter-summary/lorebook checkboxes —
+    // see chatContextService.ts and DECISIONS.md's chat-context notes.
+    const isEditorChat = promptType === "editor";
 
     const { entries: lorebookEntries } = useLorebookContext();
     const { data: chapters = [] } = useChaptersByStoryQuery(storyId ?? "");
+    const { currentChapterId } = useStoryContext();
 
     const {
         prompt: selectedPrompt,
@@ -95,22 +105,46 @@ export function ChatInterface({ storyId, promptType, selectedChat, onChatUpdate 
             additionalContext: {
                 codexContext,
                 chatHistory: selectedChat.messages.map(msg => ({ role: msg.role, content: msg.content })),
-                includeFullContext,
-                selectedSummaries: includeFullContext ? [] : selectedSummaries,
-                selectedItems: includeFullContext ? [] : selectedItems.map(item => item.id),
-                selectedChapterContent: includeFullContext ? [] : selectedChapterContent
+                includeFullContext: isEditorChat ? false : includeFullContext,
+                selectedSummaries: isEditorChat || includeFullContext ? [] : selectedSummaries,
+                selectedItems: isEditorChat || includeFullContext ? [] : selectedItems.map(item => item.id),
+                selectedChapterContent: isEditorChat || includeFullContext ? [] : selectedChapterContent
             }
         }),
-        [input, storyId, codexContext, selectedChat.messages, includeFullContext, selectedSummaries, selectedItems, selectedChapterContent]
+        [input, storyId, codexContext, selectedChat.messages, isEditorChat, includeFullContext, selectedSummaries, selectedItems, selectedChapterContent]
     );
+
+    // Prose proposals aren't persisted server-side (unlike Codex proposals) — they live only in
+    // this component's state until Accept/Reject, matching ProseProposalCard's own doc comment.
+    const [proseProposals, setProseProposals] = useState<Record<string, string>>({});
 
     const { generate, isGenerating, abort, streamingContent } = useChatMessageGeneration({
         selectedChat,
         selectedPrompt,
         selectedModel,
         onChatUpdate,
-        createPromptConfig
+        createPromptConfig,
+        onProseProposal: (messageId, proposal) => setProseProposals(prev => ({ ...prev, [messageId]: proposal }))
     });
+
+    const dismissProseProposal = (messageId: string) =>
+        setProseProposals(prev => {
+            const next = { ...prev };
+            delete next[messageId];
+            return next;
+        });
+
+    const handleAcceptProse = (messageId: string) => {
+        const text = proseProposals[messageId];
+        if (!text) return;
+        const editor = currentChapterId ? getActiveChapterEditor(currentChapterId) : null;
+        if (!editor) {
+            toast.error("Open the chapter you want to insert into, then try again.");
+            return;
+        }
+        insertProposedProse(editor, text);
+        dismissProseProposal(messageId);
+    };
 
     const displayMessages = useChatMessages({
         selectedChat,
@@ -150,23 +184,25 @@ export function ChatInterface({ storyId, promptType, selectedChat, onChatUpdate 
                     onSelectModel={selectModel}
                 />
 
-                <ContextSelector
-                    includeFullContext={includeFullContext}
-                    contextOpen={contextOpen}
-                    selectedSummaries={selectedSummaries}
-                    selectedItems={selectedItems}
-                    selectedChapterContent={selectedChapterContent}
-                    chapters={chapters}
-                    lorebookEntries={lorebookEntries}
-                    onToggleFullContext={toggleFullContext}
-                    onToggleContextOpen={toggleContextOpen}
-                    onToggleSummary={toggleSummary}
-                    onItemSelect={handleItemSelect}
-                    onRemoveItem={removeItem}
-                    onChapterContentSelect={addChapterContent}
-                    onRemoveChapterContent={removeChapterContent}
-                    getFilteredEntries={getFilteredEntries}
-                />
+                {!isEditorChat && (
+                    <ContextSelector
+                        includeFullContext={includeFullContext}
+                        contextOpen={contextOpen}
+                        selectedSummaries={selectedSummaries}
+                        selectedItems={selectedItems}
+                        selectedChapterContent={selectedChapterContent}
+                        chapters={chapters}
+                        lorebookEntries={lorebookEntries}
+                        onToggleFullContext={toggleFullContext}
+                        onToggleContextOpen={toggleContextOpen}
+                        onToggleSummary={toggleSummary}
+                        onItemSelect={handleItemSelect}
+                        onRemoveItem={removeItem}
+                        onChapterContentSelect={addChapterContent}
+                        onRemoveChapterContent={removeChapterContent}
+                        getFilteredEntries={getFilteredEntries}
+                    />
+                )}
             </div>
 
             <ChatMessageList
@@ -181,19 +217,31 @@ export function ChatInterface({ storyId, promptType, selectedChat, onChatUpdate 
                 editingTextareaRef={{ current: null }}
                 renderProposalsForMessage={messageId => {
                     const proposals = proposalsByMessageId[messageId];
-                    if (!proposals?.length) return null;
-                    return proposals.map(proposal => {
-                        const entry = entryLookup.get(proposal.entryId);
-                        return (
-                            <ProposalCard
-                                key={proposal.id}
-                                proposal={proposal}
-                                chatId={selectedChat.id}
-                                entryName={entry?.name ?? "Unknown entry"}
-                                entryCategory={entry?.category ?? "unknown"}
-                            />
-                        );
-                    });
+                    const proseProposal = proseProposals[messageId];
+                    if (!proposals?.length && !proseProposal) return null;
+                    return (
+                        <>
+                            {proposals?.map(proposal => {
+                                const entry = entryLookup.get(proposal.entryId);
+                                return (
+                                    <ProposalCard
+                                        key={proposal.id}
+                                        proposal={proposal}
+                                        chatId={selectedChat.id}
+                                        entryName={entry?.name ?? "Unknown entry"}
+                                        entryCategory={entry?.category ?? "unknown"}
+                                    />
+                                );
+                            })}
+                            {proseProposal && (
+                                <ProseProposalCard
+                                    text={proseProposal}
+                                    onAccept={() => handleAcceptProse(messageId)}
+                                    onReject={() => dismissProseProposal(messageId)}
+                                />
+                            )}
+                        </>
+                    );
                 }}
             />
 
