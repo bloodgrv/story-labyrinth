@@ -86,7 +86,7 @@ function WorldBuildingChatPanel({ storyId }: { storyId: string }) {
 
     return (
         <div className="flex h-full border-l">
-            <div className="flex-1 h-full min-h-0">
+            <div className="flex-1 h-full min-h-0 min-w-0">
                 {selectedChat ? (
                     <ChatInterface storyId={storyId} promptType="worldbuilding" selectedChat={selectedChat} onChatUpdate={setSelectedChat} />
                 ) : (
@@ -275,7 +275,11 @@ export function LorebookEntryEditor({
             </div>
 
             {showChatPanel && (
-                <div className="w-[420px] shrink-0 h-full">
+                // 420px was sized for the chat interface alone; it now docks the World-Building
+                // Chats list (a fixed 300px, see ChatList.tsx) alongside it, which left only
+                // ~120px for the interface itself once min-w-0 (below) stopped it from silently
+                // overflowing off-screen. Widened to give the interface real breathing room.
+                <div className="w-[680px] shrink-0 h-full">
                     <WorldBuildingChatPanel storyId={storyId as string} />
                 </div>
             )}

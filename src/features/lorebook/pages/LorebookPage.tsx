@@ -166,7 +166,20 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
             {activeTab.kind === "entry" ? (
                 activeEntry ? (
                     <div className="flex-1 min-h-0">
-                        <LorebookEntryTab entry={activeEntry} storyId={storyId} seriesId={seriesId} />
+                        <LorebookEntryTab
+                            // Keyed on id + updatedAt (not just id) so a Refresh that pulls back
+                            // changed server data (e.g. a chat-approved Codex proposal, an
+                            // AI-generated image) forces a fresh mount — the form's defaultValues
+                            // are only read once at mount time (see LorebookEntryEditor.tsx's own
+                            // doc comment), so updating the `entry` prop alone wouldn't refresh
+                            // fields already rendered.
+                            key={`${activeEntry.id}-${activeEntry.updatedAt ?? ""}`}
+                            entry={activeEntry}
+                            storyId={storyId}
+                            seriesId={seriesId}
+                            onRefresh={() => void refetchEntries()}
+                            isRefreshing={isRefreshing}
+                        />
                     </div>
                 ) : (
                     <div className="flex-1 flex items-center justify-center text-muted-foreground">
