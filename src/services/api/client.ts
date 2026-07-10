@@ -184,6 +184,7 @@ export const chatsApi = {
         templateSlug?: string;
         title?: string;
         anchorEntryId?: string | null;
+        anchorChapterId?: string | null;
     }) => fetchJSON<AIChat>("/chats", { method: "POST", body: JSON.stringify(data) }),
     update: (
         id: string,

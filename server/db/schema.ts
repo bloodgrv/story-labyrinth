@@ -89,12 +89,20 @@ export const aiChats = sqliteTable(
         // makes below for the same reason: cleaned up in application code instead (see
         // chatContextService.ts's resolveAnchorAndRelated, which already degrades gracefully on a
         // stale/missing anchor id).
-        anchorEntryId: text("anchorEntryId")
+        anchorEntryId: text("anchorEntryId"),
+        // Chapter this chat was opened while focused on (EditorChatRail via StoryEditor's
+        // currentChapterId) — lets getChatContext ground the AI in the chapter's actual current
+        // content via its own ragChunks, not RAG search luck. Null otherwise. A chat only ever has
+        // one of anchorEntryId/anchorChapterId set, never both — each is written only by its own
+        // creation path (createWorldBuildingChat vs createGenericChat). Plain column, not a real
+        // FK — same reasoning as anchorEntryId above.
+        anchorChapterId: text("anchorChapterId")
     },
     table => ({
         storyIdIdx: index("chat_story_id_idx").on(table.storyId),
         typeIdx: index("chat_type_idx").on(table.chatType),
-        anchorEntryIdIdx: index("chat_anchor_entry_id_idx").on(table.anchorEntryId)
+        anchorEntryIdIdx: index("chat_anchor_entry_id_idx").on(table.anchorEntryId),
+        anchorChapterIdIdx: index("chat_anchor_chapter_id_idx").on(table.anchorChapterId)
     })
 );
 

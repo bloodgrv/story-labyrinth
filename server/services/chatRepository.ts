@@ -30,6 +30,8 @@ export type CreateChatParams = {
     templateSlug?: WorldBuildingTemplateSlug | null;
     // The Lorebook entry this chat was opened from, if any — see schema.ts's aiChats.anchorEntryId.
     anchorEntryId?: string | null;
+    // The chapter this chat was opened while focused on, if any — see schema.ts's aiChats.anchorChapterId.
+    anchorChapterId?: string | null;
 };
 
 export type UpdateChatMetaFields = Partial<{
@@ -88,6 +90,7 @@ export const createChat = async (params: CreateChatParams): Promise<ChatRow> => 
             chatType: params.chatType,
             templateSlug: params.templateSlug ?? null,
             anchorEntryId: params.anchorEntryId ?? null,
+            anchorChapterId: params.anchorChapterId ?? null,
             createdAt: new Date(),
             updatedAt: new Date()
         })

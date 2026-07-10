@@ -69,6 +69,8 @@ export type CreateGenericChatParams = {
     storyId: string;
     chatType: ChatType;
     title: string;
+    // The chapter this chat was opened while focused on (EditorChatRail), if any.
+    anchorChapterId?: string | null;
 };
 
 /**
@@ -86,7 +88,8 @@ export const createGenericChat = async (
         storyId: params.storyId,
         title: params.title.trim(),
         chatType: params.chatType,
-        templateSlug: null
+        templateSlug: null,
+        anchorChapterId: params.anchorChapterId ?? null
     });
 };
 

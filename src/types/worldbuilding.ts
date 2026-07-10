@@ -92,12 +92,16 @@ export interface ChatContextCodexEntry {
     role: "anchor" | "related" | "search";
 }
 
-// A chapter passage surfaced as relevant context for an Editor chat (via the RAG hybrid
-// search index) — only populated for chatType="editor", see chatContextService.ts.
+// A chapter passage surfaced as context for an Editor chat — only populated for
+// chatType="editor", see chatContextService.ts:
+//   "anchor" — the chapter this chat was opened while focused on (aiChats.anchorChapterId),
+//              pulled directly from its own ragChunks, always current
+//   "search" — found via RAG hybrid search against the chat's title/query, may be tangential
 export interface ChatContextChapterPassage {
     chapterId: string;
     title: string;
     excerpt: string;
+    role: "anchor" | "search";
 }
 
 // Assembled context for generating a chat response or proposal: the effective system

@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { ChatContext, ChatContextChapterPassage, ChatContextCodexEntry, ChatType } from "../../src/types/worldbuilding.js";
 import { getTemplate } from "../../src/types/worldbuilding.js";
 import { db, schema } from "../db/client.js";
@@ -100,9 +100,9 @@ const resolveCodexEntries = async (
 // A Lorebook entry included directly in context, not via RAG ranking — either the chat's own
 // anchor entry (WorldBuildingChatPanel opened it, aiChats.anchorEntryId) or a one-hop
 // metadata.relationships target of that anchor. Degrades gracefully to an empty array rather
-// than throwing if the anchor entry (or a related target) no longer exists — this app runs with
-// SQLite foreign_key enforcement off (see schema.ts), so a deleted entry's id can linger in
-// anchorEntryId/relationships with no DB-level cascade to clean it up.
+// than throwing if the anchor entry (or a related target) no longer exists — anchorEntryId is a
+// plain column, not a real FK (see schema.ts's comment on it for why), so a deleted entry's id
+// can linger with no DB-level cascade to clean it up.
 const resolveAnchorAndRelated = async (anchorEntryId: string | null): Promise<ChatContextCodexEntry[]> => {
     if (!anchorEntryId) return [];
 
@@ -159,8 +159,15 @@ const resolveAnchorAndRelated = async (anchorEntryId: string | null): Promise<Ch
 // Chapter passages are only pulled for Editor chats (see getChatContext) — chapter content
 // must actually be indexed first via POST /api/rag/index/chapter/:chapterId, which the
 // chapter-content autosave now triggers (debounced) — see SaveChapterContent's plugin.
-const resolveChapterPassages = async (results: SearchResult[]): Promise<ChatContextChapterPassage[]> => {
-    const chapterResults = results.filter(r => r.entityType === "chapter").slice(0, RELEVANT_ENTRIES_LIMIT);
+// `excludeIds` keeps the anchor chapter (resolveAnchorChapter, below) from being listed twice if
+// RAG search also happens to surface a different chunk of it.
+const resolveChapterPassages = async (
+    results: SearchResult[],
+    excludeIds: Set<string>
+): Promise<ChatContextChapterPassage[]> => {
+    const chapterResults = results
+        .filter(r => r.entityType === "chapter" && !excludeIds.has(r.entityId))
+        .slice(0, RELEVANT_ENTRIES_LIMIT);
     if (chapterResults.length === 0) return [];
 
     const chapterIds = [...new Set(chapterResults.map(r => r.entityId))];
@@ -173,8 +180,37 @@ const resolveChapterPassages = async (results: SearchResult[]): Promise<ChatCont
     return chapterResults.map(r => ({
         chapterId: r.entityId,
         title: meta.get(r.entityId)?.title ?? r.entityId,
-        excerpt: r.content
+        excerpt: r.content,
+        role: "search" as const
     }));
+};
+
+// A chapter included directly in context, not via RAG ranking — the chat's own anchor chapter
+// (EditorChatRail opened it while StoryEditor was focused there, aiChats.anchorChapterId). Pulls
+// every one of the chapter's own ragChunks directly (entityType='chapter', entityId=
+// anchorChapterId), ordered by chunkIndex — bypassing RAG relevance ranking entirely (it's the
+// chapter actually being worked on, not a maybe-relevant one), same "bypass ranking, keep the
+// real content" move resolveAnchorAndRelated makes for the entry case. Deliberately unbounded
+// (all chunks, not RELEVANT_ENTRIES_LIMIT-capped) so a long chapter isn't silently truncated —
+// reuses the indexing pipeline's existing per-chunk size bound rather than adding new truncation
+// logic. Degrades gracefully to [] if the chapter no longer exists or hasn't been indexed yet.
+const resolveAnchorChapter = async (anchorChapterId: string | null): Promise<ChatContextChapterPassage[]> => {
+    if (!anchorChapterId) return [];
+
+    const [chapterRow] = await db
+        .select({ id: schema.chapters.id, title: schema.chapters.title })
+        .from(schema.chapters)
+        .where(eq(schema.chapters.id, anchorChapterId));
+    if (!chapterRow) return [];
+
+    const chunks = await db
+        .select({ content: schema.ragChunks.content })
+        .from(schema.ragChunks)
+        .where(and(eq(schema.ragChunks.entityType, "chapter"), eq(schema.ragChunks.entityId, anchorChapterId)))
+        .orderBy(schema.ragChunks.chunkIndex);
+    if (chunks.length === 0) return [];
+
+    return chunks.map(c => ({ chapterId: chapterRow.id, title: chapterRow.title, excerpt: c.content, role: "anchor" as const }));
 };
 
 /**
@@ -187,13 +223,16 @@ const resolveChapterPassages = async (results: SearchResult[]): Promise<ChatCont
  *   - relevantCodexEntries: the chat's anchor entry (if any, see aiChats.anchorEntryId) plus its
  *     one-hop metadata.relationships targets — always included, not RAG-ranked — followed by
  *     whatever else a RAG hybrid-index search for `query` (defaults to the chat's title) surfaces
- *   - relevantChapterPassages: RAG hybrid-index search results, chapter entity type only
- *     populates for Editor chats
+ *   - relevantChapterPassages: the chat's anchor chapter (if any, see aiChats.anchorChapterId,
+ *     Editor chats only), pulled directly from its own ragChunks — always included, not
+ *     RAG-ranked — followed by whatever else the RAG search surfaces (chapter entity type only
+ *     populates for Editor chats)
  *
  * Degrades gracefully rather than failing: if the story has no indexed content, no embedding
- * endpoint is configured, or the anchor entry no longer exists, the relevant-* fields are simply
- * empty/absent (search() itself already falls back to keyword-only when embeddings are
- * unavailable; resolveAnchorAndRelated returns [] rather than throwing on a missing entry).
+ * endpoint is configured, or an anchor entry/chapter no longer exists, the relevant-* fields are
+ * simply empty/absent (search() itself already falls back to keyword-only when embeddings are
+ * unavailable; resolveAnchorAndRelated/resolveAnchorChapter return [] rather than throwing on a
+ * missing anchor).
  */
 export const getChatContext = async (chatId: string, query?: string): Promise<ChatContext> => {
     const chat = await getChatById(chatId);
@@ -204,8 +243,9 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     const includeChapters = chatType === "editor";
 
     // Global chats (e.g. Research) have no storyId, so there's no per-story index/story row to
-    // search/fetch, and never carry an anchorEntryId (only createWorldBuildingChat accepts one).
-    const [pendingProposals, searchResults, storyRows, anchorEntries] = await Promise.all([
+    // search/fetch, and never carry an anchorEntryId/anchorChapterId (only
+    // createWorldBuildingChat/createGenericChat accept those respectively).
+    const [pendingProposals, searchResults, storyRows, anchorEntries, anchorChapterPassages] = await Promise.all([
         getChatCodexProposals(chatId, "pending"),
         chat.storyId
             ? search({ storyId: chat.storyId, query: effectiveQuery, limit: SEARCH_POOL_SIZE })
@@ -213,13 +253,15 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
         chat.storyId
             ? db.select({ synopsis: schema.stories.synopsis }).from(schema.stories).where(eq(schema.stories.id, chat.storyId))
             : Promise.resolve([]),
-        resolveAnchorAndRelated(chat.anchorEntryId)
+        resolveAnchorAndRelated(chat.anchorEntryId),
+        resolveAnchorChapter(chat.anchorChapterId)
     ]);
 
     const anchorIds = new Set(anchorEntries.map(e => e.entryId));
-    const [searchCodexEntries, relevantChapterPassages] = await Promise.all([
+    const anchorChapterIds = new Set(anchorChapterPassages.map(p => p.chapterId));
+    const [searchCodexEntries, searchChapterPassages] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
-        includeChapters ? resolveChapterPassages(searchResults) : Promise.resolve([])
+        includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([])
     ]);
 
     return {
@@ -227,6 +269,6 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
         pendingProposals,
         projectSynopsis: storyRows[0]?.synopsis ?? null,
         relevantCodexEntries: [...anchorEntries, ...searchCodexEntries],
-        relevantChapterPassages
+        relevantChapterPassages: [...anchorChapterPassages, ...searchChapterPassages]
     };
 };

@@ -84,15 +84,18 @@ export function ChatInterface({
     } = useContextSelection();
 
     // Grounds the AI in the chat's context (chat-type framing, project synopsis, the chat's
-    // anchor entry + its one-hop relationships, other relevant Codex entries, and — for Editor
-    // chats only — relevant chapter passages) plus the ```codex-proposal / ```prose-proposal
-    // wire-format instructions. See chatContextService.ts.
+    // anchor entry/chapter + the entry's one-hop relationships, other relevant Codex entries, and
+    // — for Editor chats only — other relevant chapter passages) plus the ```codex-proposal /
+    // ```prose-proposal wire-format instructions. See chatContextService.ts.
     const [codexContext, setCodexContext] = useState<string>("");
-    // The chat's anchor entry name, if any — surfaced in the UI (see the "Focused on" line
-    // below) so anchoring failing silently (e.g. the entry was deleted) is visible, not just a
-    // mysterious drop in the AI's apparent knowledge. Derived from the same context fetch, no
-    // extra request.
-    const [anchorEntryName, setAnchorEntryName] = useState<string | null>(null);
+    // The chat's anchor label (entry name for World-Building chats, "Chapter: {title}" for
+    // Editor chats), if any — surfaced in the UI (see the "Focused on" line below) so anchoring
+    // failing silently (e.g. the entry/chapter was deleted) is visible, not just a mysterious
+    // drop in the AI's apparent knowledge. A chat only ever has one of anchorEntryId/
+    // anchorChapterId set (chatType-scoped, see chatContextService.ts), so a single label sourced
+    // from whichever role="anchor" list is non-empty is correct. Derived from the same context
+    // fetch, no extra request.
+    const [focusedOnLabel, setFocusedOnLabel] = useState<string | null>(null);
     useEffect(() => {
         let cancelled = false;
         chatsApi.getContext(selectedChat.id).then(context => {
@@ -103,12 +106,15 @@ export function ChatInterface({
             const searchEntries = context.relevantCodexEntries.filter(e => e.role === "search");
             const formatEntry = (e: (typeof context.relevantCodexEntries)[number]) => `- ${e.name} (${e.category}): ${e.excerpt}`;
 
+            const anchorChapters = context.relevantChapterPassages.filter(p => p.role === "anchor");
+            const searchChapters = context.relevantChapterPassages.filter(p => p.role === "search");
+            const formatChapter = (p: (typeof context.relevantChapterPassages)[number]) => `- ${p.title}: ${p.excerpt}`;
+
             const anchorText = anchorEntries.map(formatEntry).join("\n");
             const relatedText = relatedEntries.map(formatEntry).join("\n");
             const searchText = searchEntries.map(formatEntry).join("\n");
-            const passagesText = context.relevantChapterPassages
-                .map(p => `- ${p.title}: ${p.excerpt}`)
-                .join("\n");
+            const anchorChapterText = anchorChapters.map(formatChapter).join("\n");
+            const searchChapterText = searchChapters.map(formatChapter).join("\n");
 
             const sections = [
                 context.systemPrompt,
@@ -116,10 +122,12 @@ export function ChatInterface({
                 anchorText && `Focused entry (this chat is anchored to it — treat as current, authoritative):\n${anchorText}`,
                 relatedText && `Entries connected to the focused entry:\n${relatedText}`,
                 searchText && `Other relevant Codex entries:\n${searchText}`,
-                passagesText && `Relevant chapter passages:\n${passagesText}`
+                anchorChapterText &&
+                    `Focused chapter (this chat is anchored to it — treat as current, authoritative):\n${anchorChapterText}`,
+                searchChapterText && `Other relevant chapter passages:\n${searchChapterText}`
             ].filter(Boolean);
             setCodexContext(sections.join("\n\n"));
-            setAnchorEntryName(anchorEntries[0]?.name ?? null);
+            setFocusedOnLabel(anchorEntries[0]?.name ?? (anchorChapters[0] ? `Chapter: ${anchorChapters[0].title}` : null));
         });
         return () => {
             cancelled = true;
@@ -207,8 +215,8 @@ export function ChatInterface({
     return (
         <div className="flex flex-col h-full">
             <div className="p-4 space-y-4">
-                {anchorEntryName && (
-                    <p className="text-xs text-muted-foreground">Focused on: {anchorEntryName}</p>
+                {focusedOnLabel && (
+                    <p className="text-xs text-muted-foreground">Focused on: {focusedOnLabel}</p>
                 )}
                 <ChatSystemPromptControl
                     prompt={selectedPrompt}

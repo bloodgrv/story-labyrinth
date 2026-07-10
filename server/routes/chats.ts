@@ -76,18 +76,19 @@ router.get(
 
 // ── POST /api/chats ───────────────────────────────────────────────────────────
 // Create a new chat.
-// Body: { storyId, chatType, title?, templateSlug?, anchorEntryId? }
+// Body: { storyId, chatType, title?, templateSlug?, anchorEntryId?, anchorChapterId? }
 // chatType 'worldbuilding' → createWorldBuildingChat (templateSlug, anchorEntryId optional)
-// Other chatTypes → createGenericChat (title required; anchorEntryId not applicable)
+// Other chatTypes → createGenericChat (title required; anchorChapterId optional for 'editor')
 router.post(
     "/",
     asyncHandler(async (req, res) => {
-        const { storyId, chatType, title, templateSlug, anchorEntryId } = req.body as {
+        const { storyId, chatType, title, templateSlug, anchorEntryId, anchorChapterId } = req.body as {
             storyId?: string;
             chatType?: ChatType;
             title?: string;
             templateSlug?: string;
             anchorEntryId?: string | null;
+            anchorChapterId?: string | null;
         };
 
         if (!storyId) {
@@ -108,7 +109,7 @@ router.post(
                 res.status(400).json({ error: "title is required for non-worldbuilding chats" });
                 return;
             }
-            chat = await createGenericChat({ storyId, chatType, title });
+            chat = await createGenericChat({ storyId, chatType, title, anchorChapterId: anchorChapterId ?? null });
         }
 
         res.status(201).json(chat);

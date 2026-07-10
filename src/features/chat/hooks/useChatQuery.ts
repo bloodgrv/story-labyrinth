@@ -30,6 +30,7 @@ export const useCreateChatMutation = () => {
             templateSlug?: WorldBuildingTemplateSlug;
             title?: string;
             anchorEntryId?: string | null;
+            anchorChapterId?: string | null;
         }) => chatsApi.create(data),
         onSuccess: chat => {
             queryClient.invalidateQueries({ queryKey: chatKeys.byStory(chat.storyId ?? "") });

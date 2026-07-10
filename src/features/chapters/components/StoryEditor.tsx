@@ -57,7 +57,7 @@ export function StoryEditor() {
                     </ResizablePanel>
                     <ResizableHandle withHandle />
                     <ResizablePanel defaultSize={28} minSize={20}>
-                        <EditorChatRail storyId={currentStoryId} />
+                        <EditorChatRail storyId={currentStoryId} anchorChapterId={currentChapterId ?? undefined} />
                     </ResizablePanel>
                 </ResizablePanelGroup>
             ) : (
