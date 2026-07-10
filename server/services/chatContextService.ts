@@ -1,7 +1,8 @@
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { ChatContext, ChatContextChapterPassage, ChatContextCodexEntry, ChatType } from "../../src/types/worldbuilding.js";
 import { getTemplate } from "../../src/types/worldbuilding.js";
 import { db, schema } from "../db/client.js";
+import { parseJson } from "../lib/json.js";
 import { getChatCodexProposals } from "./chatCodexService.js";
 import { getChatById } from "./chatRepository.js";
 import { search } from "./ragIndexService.js";
@@ -69,8 +70,15 @@ const buildSystemPrompt = (chatType: ChatType, templateSlug: string | null): str
     return template?.systemPromptHint ? `${WORLDBUILDING_FRAMING}\n\n${template.systemPromptHint}` : WORLDBUILDING_FRAMING;
 };
 
-const resolveCodexEntries = async (results: SearchResult[]): Promise<ChatContextCodexEntry[]> => {
-    const lorebookResults = results.filter(r => r.entityType === "lorebook_entry").slice(0, RELEVANT_ENTRIES_LIMIT);
+// `excludeIds` keeps anchor/related entries (resolveAnchorAndRelated, below) from being listed
+// twice if RAG search also happens to surface them.
+const resolveCodexEntries = async (
+    results: SearchResult[],
+    excludeIds: Set<string>
+): Promise<ChatContextCodexEntry[]> => {
+    const lorebookResults = results
+        .filter(r => r.entityType === "lorebook_entry" && !excludeIds.has(r.entityId))
+        .slice(0, RELEVANT_ENTRIES_LIMIT);
     if (lorebookResults.length === 0) return [];
 
     const entryIds = [...new Set(lorebookResults.map(r => r.entityId))];
@@ -84,8 +92,68 @@ const resolveCodexEntries = async (results: SearchResult[]): Promise<ChatContext
         entryId: r.entityId,
         name: meta.get(r.entityId)?.name ?? r.entityId,
         category: meta.get(r.entityId)?.category ?? "unknown",
-        excerpt: r.content
+        excerpt: r.content,
+        role: "search" as const
     }));
+};
+
+// A Lorebook entry included directly in context, not via RAG ranking — either the chat's own
+// anchor entry (WorldBuildingChatPanel opened it, aiChats.anchorEntryId) or a one-hop
+// metadata.relationships target of that anchor. Degrades gracefully to an empty array rather
+// than throwing if the anchor entry (or a related target) no longer exists — this app runs with
+// SQLite foreign_key enforcement off (see schema.ts), so a deleted entry's id can linger in
+// anchorEntryId/relationships with no DB-level cascade to clean it up.
+const resolveAnchorAndRelated = async (anchorEntryId: string | null): Promise<ChatContextCodexEntry[]> => {
+    if (!anchorEntryId) return [];
+
+    const [anchorRow] = await db
+        .select({
+            id: schema.lorebookEntries.id,
+            name: schema.lorebookEntries.name,
+            category: schema.lorebookEntries.category,
+            description: schema.lorebookEntries.description,
+            metadata: schema.lorebookEntries.metadata
+        })
+        .from(schema.lorebookEntries)
+        .where(eq(schema.lorebookEntries.id, anchorEntryId));
+    if (!anchorRow) return [];
+
+    const metadata = parseJson(anchorRow.metadata as string | null | undefined) as
+        | { relationships?: Array<{ targetId: string; type: string; description?: string }> }
+        | null;
+    const relationships = metadata?.relationships ?? [];
+
+    const entries: ChatContextCodexEntry[] = [
+        { entryId: anchorRow.id, name: anchorRow.name, category: anchorRow.category, excerpt: anchorRow.description, role: "anchor" }
+    ];
+
+    const targetIds = [...new Set(relationships.map(r => r.targetId))].filter(id => id !== anchorEntryId);
+    if (targetIds.length > 0) {
+        const relatedRows = await db
+            .select({
+                id: schema.lorebookEntries.id,
+                name: schema.lorebookEntries.name,
+                category: schema.lorebookEntries.category,
+                description: schema.lorebookEntries.description
+            })
+            .from(schema.lorebookEntries)
+            .where(inArray(schema.lorebookEntries.id, targetIds));
+        const relatedMeta = new Map(relatedRows.map(r => [r.id, r]));
+
+        for (const rel of relationships) {
+            const target = relatedMeta.get(rel.targetId);
+            if (!target) continue; // stale relationship target (entry since deleted) — skip silently
+            entries.push({
+                entryId: target.id,
+                name: target.name,
+                category: target.category,
+                excerpt: rel.description ? `${rel.type}: ${rel.description} — ${target.description}` : `${rel.type} — ${target.description}`,
+                role: "related"
+            });
+        }
+    }
+
+    return entries;
 };
 
 // Chapter passages are only pulled for Editor chats (see getChatContext) — chapter content
@@ -114,13 +182,18 @@ const resolveChapterPassages = async (results: SearchResult[]): Promise<ChatCont
  *   - systemPrompt: chat-type framing (+ template hint for World-Building)
  *   - pendingProposals: this chat's own not-yet-resolved Codex proposals, so it can
  *     follow up on or revise them instead of re-proposing the same thing
- *   - relevantCodexEntries / relevantChapterPassages: retrieved via one RAG hybrid-index
- *     search for `query` (defaults to the chat's title when no query is given), split by
- *     entity type — chapter passages only populate for Editor chats.
+ *   - projectSynopsis: the story's own synopsis, injected unconditionally (not RAG-dependent)
+ *     as baseline project grounding for any story-scoped chat
+ *   - relevantCodexEntries: the chat's anchor entry (if any, see aiChats.anchorEntryId) plus its
+ *     one-hop metadata.relationships targets — always included, not RAG-ranked — followed by
+ *     whatever else a RAG hybrid-index search for `query` (defaults to the chat's title) surfaces
+ *   - relevantChapterPassages: RAG hybrid-index search results, chapter entity type only
+ *     populates for Editor chats
  *
- * Degrades gracefully rather than failing: if the story has no indexed content, or no
- * embedding endpoint is configured, the relevant-* fields are simply empty (search() itself
- * already falls back to keyword-only when embeddings are unavailable).
+ * Degrades gracefully rather than failing: if the story has no indexed content, no embedding
+ * endpoint is configured, or the anchor entry no longer exists, the relevant-* fields are simply
+ * empty/absent (search() itself already falls back to keyword-only when embeddings are
+ * unavailable; resolveAnchorAndRelated returns [] rather than throwing on a missing entry).
  */
 export const getChatContext = async (chatId: string, query?: string): Promise<ChatContext> => {
     const chat = await getChatById(chatId);
@@ -130,23 +203,30 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     const chatType = (chat.chatType ?? "general") as ChatType;
     const includeChapters = chatType === "editor";
 
-    // Global chats (e.g. Research) have no storyId, so there's no per-story index to search.
-    const [pendingProposals, searchResults] = await Promise.all([
+    // Global chats (e.g. Research) have no storyId, so there's no per-story index/story row to
+    // search/fetch, and never carry an anchorEntryId (only createWorldBuildingChat accepts one).
+    const [pendingProposals, searchResults, storyRows, anchorEntries] = await Promise.all([
         getChatCodexProposals(chatId, "pending"),
         chat.storyId
             ? search({ storyId: chat.storyId, query: effectiveQuery, limit: SEARCH_POOL_SIZE })
-            : Promise.resolve([])
+            : Promise.resolve([]),
+        chat.storyId
+            ? db.select({ synopsis: schema.stories.synopsis }).from(schema.stories).where(eq(schema.stories.id, chat.storyId))
+            : Promise.resolve([]),
+        resolveAnchorAndRelated(chat.anchorEntryId)
     ]);
 
-    const [relevantCodexEntries, relevantChapterPassages] = await Promise.all([
-        resolveCodexEntries(searchResults),
+    const anchorIds = new Set(anchorEntries.map(e => e.entryId));
+    const [searchCodexEntries, relevantChapterPassages] = await Promise.all([
+        resolveCodexEntries(searchResults, anchorIds),
         includeChapters ? resolveChapterPassages(searchResults) : Promise.resolve([])
     ]);
 
     return {
         systemPrompt: buildSystemPrompt(chatType, chat.templateSlug),
         pendingProposals,
-        relevantCodexEntries,
+        projectSynopsis: storyRows[0]?.synopsis ?? null,
+        relevantCodexEntries: [...anchorEntries, ...searchCodexEntries],
         relevantChapterPassages
     };
 };

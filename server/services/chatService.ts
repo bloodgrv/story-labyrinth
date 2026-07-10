@@ -37,6 +37,8 @@ export type CreateWorldBuildingChatParams = {
     storyId: string;
     templateSlug?: WorldBuildingTemplateSlug;
     title?: string;
+    // The Lorebook entry this chat was opened from (WorldBuildingChatPanel), if any.
+    anchorEntryId?: string | null;
 };
 
 /**
@@ -58,7 +60,8 @@ export const createWorldBuildingChat = async (
         storyId: params.storyId,
         title,
         chatType: "worldbuilding",
-        templateSlug: params.templateSlug ?? null
+        templateSlug: params.templateSlug ?? null,
+        anchorEntryId: params.anchorEntryId ?? null
     });
 };
 

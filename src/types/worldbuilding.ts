@@ -79,12 +79,17 @@ export const WORLD_BUILDING_TEMPLATES: readonly WorldBuildingTemplate[] = [
 export const getTemplate = (slug: WorldBuildingTemplateSlug): WorldBuildingTemplate | undefined =>
     WORLD_BUILDING_TEMPLATES.find(t => t.slug === slug);
 
-// A Codex entry surfaced as relevant context for a chat (via the RAG hybrid search index).
+// A Codex entry surfaced as context for a chat. `role` distinguishes how it was surfaced so the
+// client can format/prioritize it differently — see chatContextService.ts:
+//   "anchor"  — the entry this chat was opened from (WorldBuildingChatPanel), always current
+//   "related" — a one-hop metadata.relationships target of the anchor entry
+//   "search"  — found via RAG hybrid search against the chat's title/query, may be tangential
 export interface ChatContextCodexEntry {
     entryId: string;
     name: string;
     category: string;
     excerpt: string;
+    role: "anchor" | "related" | "search";
 }
 
 // A chapter passage surfaced as relevant context for an Editor chat (via the RAG hybrid
@@ -102,6 +107,9 @@ export interface ChatContextChapterPassage {
 export interface ChatContext {
     systemPrompt: string;
     pendingProposals: CodexPendingChange[];
+    // story.synopsis, injected unconditionally for any story-scoped chat (null for global chats
+    // or stories with no synopsis set) — baseline project grounding independent of RAG.
+    projectSynopsis: string | null;
     relevantCodexEntries: ChatContextCodexEntry[];
     relevantChapterPassages: ChatContextChapterPassage[];
 }

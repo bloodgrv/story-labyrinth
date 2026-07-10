@@ -77,11 +77,24 @@ export const aiChats = sqliteTable(
         lastUsedModelId: text("lastUsedModelId"),
         isDemo: integer("isDemo", { mode: "boolean" }),
         chatType: text("chatType"), // 'worldbuilding' | 'research' | 'editor' | 'general' — null treated as 'general'
-        templateSlug: text("templateSlug") // identifies the worldbuilding template; only meaningful when chatType='worldbuilding'
+        templateSlug: text("templateSlug"), // identifies the worldbuilding template; only meaningful when chatType='worldbuilding'
+        // Lorebook entry this chat was opened from (WorldBuildingChatPanel) — lets getChatContext
+        // ground the AI in it directly instead of RAG search luck. Null otherwise. Plain column,
+        // not a real FK: SQLite's ALTER TABLE ADD COLUMN doesn't support ON DELETE clauses at all
+        // (confirmed - drizzle-kit silently drops it for every column added this way in this
+        // repo's own migration history), and foreign_keys enforcement IS actually on for this
+        // connection (better-sqlite3 defaults it on - confirmed live; the "off database-wide"
+        // claim on concreteBeats.characterId below is stale/wrong), so a real inline FK here would
+        // block deleting any entry ever used as an anchor. Same call outlineItems.parentId already
+        // makes below for the same reason: cleaned up in application code instead (see
+        // chatContextService.ts's resolveAnchorAndRelated, which already degrades gracefully on a
+        // stale/missing anchor id).
+        anchorEntryId: text("anchorEntryId")
     },
     table => ({
         storyIdIdx: index("chat_story_id_idx").on(table.storyId),
-        typeIdx: index("chat_type_idx").on(table.chatType)
+        typeIdx: index("chat_type_idx").on(table.chatType),
+        anchorEntryIdIdx: index("chat_anchor_entry_id_idx").on(table.anchorEntryId)
     })
 );
 

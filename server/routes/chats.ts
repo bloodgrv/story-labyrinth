@@ -76,17 +76,18 @@ router.get(
 
 // ── POST /api/chats ───────────────────────────────────────────────────────────
 // Create a new chat.
-// Body: { storyId, chatType, title?, templateSlug? }
-// chatType 'worldbuilding' → createWorldBuildingChat (templateSlug optional)
-// Other chatTypes → createGenericChat (title required)
+// Body: { storyId, chatType, title?, templateSlug?, anchorEntryId? }
+// chatType 'worldbuilding' → createWorldBuildingChat (templateSlug, anchorEntryId optional)
+// Other chatTypes → createGenericChat (title required; anchorEntryId not applicable)
 router.post(
     "/",
     asyncHandler(async (req, res) => {
-        const { storyId, chatType, title, templateSlug } = req.body as {
+        const { storyId, chatType, title, templateSlug, anchorEntryId } = req.body as {
             storyId?: string;
             chatType?: ChatType;
             title?: string;
             templateSlug?: string;
+            anchorEntryId?: string | null;
         };
 
         if (!storyId) {
@@ -99,7 +100,8 @@ router.post(
             chat = await createWorldBuildingChat({
                 storyId,
                 templateSlug: templateSlug as WorldBuildingTemplateSlug | undefined,
-                title
+                title,
+                anchorEntryId: anchorEntryId ?? null
             });
         } else {
             if (!title?.trim()) {

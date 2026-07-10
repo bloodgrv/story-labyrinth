@@ -76,6 +76,9 @@ export interface AIChat extends BaseEntity {
     chatType?: ChatType | null;
     // Worldbuilding template identifier; only meaningful when chatType = 'worldbuilding'
     templateSlug?: WorldBuildingTemplateSlug | null;
+    // The Lorebook entry this chat was opened from (WorldBuildingChatPanel), for direct
+    // grounding in getChatContext — null for chats not opened from an entry.
+    anchorEntryId?: string | null;
 }
 
 export interface ChatMessage {

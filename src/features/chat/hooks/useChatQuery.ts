@@ -24,8 +24,13 @@ export const useChatTemplatesQuery = () =>
 export const useCreateChatMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: { storyId: string; chatType?: ChatType; templateSlug?: WorldBuildingTemplateSlug; title?: string }) =>
-            chatsApi.create(data),
+        mutationFn: (data: {
+            storyId: string;
+            chatType?: ChatType;
+            templateSlug?: WorldBuildingTemplateSlug;
+            title?: string;
+            anchorEntryId?: string | null;
+        }) => chatsApi.create(data),
         onSuccess: chat => {
             queryClient.invalidateQueries({ queryKey: chatKeys.byStory(chat.storyId ?? "") });
         },

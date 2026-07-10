@@ -83,26 +83,43 @@ export function ChatInterface({
         clearSelections
     } = useContextSelection();
 
-    // Grounds the AI in the chat's context (chat-type framing, relevant Codex entries, and —
-    // for Editor chats only — relevant chapter passages) plus the ```codex-proposal /
-    // ```prose-proposal wire-format instructions. See chatContextService.ts.
+    // Grounds the AI in the chat's context (chat-type framing, project synopsis, the chat's
+    // anchor entry + its one-hop relationships, other relevant Codex entries, and — for Editor
+    // chats only — relevant chapter passages) plus the ```codex-proposal / ```prose-proposal
+    // wire-format instructions. See chatContextService.ts.
     const [codexContext, setCodexContext] = useState<string>("");
+    // The chat's anchor entry name, if any — surfaced in the UI (see the "Focused on" line
+    // below) so anchoring failing silently (e.g. the entry was deleted) is visible, not just a
+    // mysterious drop in the AI's apparent knowledge. Derived from the same context fetch, no
+    // extra request.
+    const [anchorEntryName, setAnchorEntryName] = useState<string | null>(null);
     useEffect(() => {
         let cancelled = false;
         chatsApi.getContext(selectedChat.id).then(context => {
             if (cancelled) return;
-            const entriesText = context.relevantCodexEntries
-                .map(e => `- ${e.name} (${e.category}): ${e.excerpt}`)
-                .join("\n");
+
+            const anchorEntries = context.relevantCodexEntries.filter(e => e.role === "anchor");
+            const relatedEntries = context.relevantCodexEntries.filter(e => e.role === "related");
+            const searchEntries = context.relevantCodexEntries.filter(e => e.role === "search");
+            const formatEntry = (e: (typeof context.relevantCodexEntries)[number]) => `- ${e.name} (${e.category}): ${e.excerpt}`;
+
+            const anchorText = anchorEntries.map(formatEntry).join("\n");
+            const relatedText = relatedEntries.map(formatEntry).join("\n");
+            const searchText = searchEntries.map(formatEntry).join("\n");
             const passagesText = context.relevantChapterPassages
                 .map(p => `- ${p.title}: ${p.excerpt}`)
                 .join("\n");
+
             const sections = [
                 context.systemPrompt,
-                entriesText && `Relevant Codex entries:\n${entriesText}`,
+                context.projectSynopsis && `Project synopsis:\n${context.projectSynopsis}`,
+                anchorText && `Focused entry (this chat is anchored to it — treat as current, authoritative):\n${anchorText}`,
+                relatedText && `Entries connected to the focused entry:\n${relatedText}`,
+                searchText && `Other relevant Codex entries:\n${searchText}`,
                 passagesText && `Relevant chapter passages:\n${passagesText}`
             ].filter(Boolean);
             setCodexContext(sections.join("\n\n"));
+            setAnchorEntryName(anchorEntries[0]?.name ?? null);
         });
         return () => {
             cancelled = true;
@@ -190,6 +207,9 @@ export function ChatInterface({
     return (
         <div className="flex flex-col h-full">
             <div className="p-4 space-y-4">
+                {anchorEntryName && (
+                    <p className="text-xs text-muted-foreground">Focused on: {anchorEntryName}</p>
+                )}
                 <ChatSystemPromptControl
                     prompt={selectedPrompt}
                     isLoading={promptLoading}

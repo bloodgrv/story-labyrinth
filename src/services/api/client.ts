@@ -178,8 +178,13 @@ export const chatsApi = {
         const q = title ? `?${new URLSearchParams({ title })}` : "";
         return fetchJSON<AIChat>(`/chats/global/${chatType}${q}`);
     },
-    create: (data: { storyId: string; chatType?: string; templateSlug?: string; title?: string }) =>
-        fetchJSON<AIChat>("/chats", { method: "POST", body: JSON.stringify(data) }),
+    create: (data: {
+        storyId: string;
+        chatType?: string;
+        templateSlug?: string;
+        title?: string;
+        anchorEntryId?: string | null;
+    }) => fetchJSON<AIChat>("/chats", { method: "POST", body: JSON.stringify(data) }),
     update: (
         id: string,
         data: {

@@ -54,14 +54,18 @@ export interface LorebookEntryEditorProps {
 // Docked World-Building chat alongside the entry form — the same chat/template-picker
 // composition the old standalone World-Building tool used (now folded in here, see D1/D2 in
 // DECISIONS.md), reusing ChatList/ChatInterface rather than a new per-entry chat.
-function WorldBuildingChatPanel({ storyId }: { storyId: string }) {
+// `entryId` (when editing an existing entry) anchors new chats created here to it — see
+// DECISIONS.md's chat-context-anchoring entry and chatContextService.ts's getChatContext.
+// Naturally undefined for a brand-new not-yet-saved entry, which just means new chats aren't
+// anchored, no special-casing needed.
+function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId?: string }) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const createMutation = useCreateChatMutation();
     const { data: templates = [] } = useChatTemplatesQuery();
 
     const handleCreateFromTemplate = (templateSlug: WorldBuildingTemplateSlug, templateName: string) => {
         createMutation.mutate(
-            { storyId, chatType: "worldbuilding", templateSlug, title: templateName },
+            { storyId, chatType: "worldbuilding", templateSlug, title: templateName, anchorEntryId: entryId ?? null },
             { onSuccess: newChat => setSelectedChat(newChat) }
         );
     };
@@ -280,7 +284,7 @@ export function LorebookEntryEditor({
                 // ~120px for the interface itself once min-w-0 (below) stopped it from silently
                 // overflowing off-screen. Widened to give the interface real breathing room.
                 <div className="w-[680px] shrink-0 h-full">
-                    <WorldBuildingChatPanel storyId={storyId as string} />
+                    <WorldBuildingChatPanel storyId={storyId as string} entryId={entry?.id} />
                 </div>
             )}
         </div>
