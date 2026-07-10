@@ -1,4 +1,4 @@
-import { Download, Loader2, Plus, Upload } from "lucide-react";
+import { Download, Loader2, Plus, RefreshCw, Upload } from "lucide-react";
 import type { ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +15,8 @@ interface LorebookBrowsePanelProps {
     categoryCounts: Record<LorebookCategory, number>;
     entriesByCategory: LorebookEntry[];
     isLoading: boolean;
+    onRefresh: () => void;
+    isRefreshing: boolean;
     onExport: () => void;
     onImport: (event: ChangeEvent<HTMLInputElement>) => void;
     isImportingDocument: boolean;
@@ -32,6 +34,8 @@ export function LorebookBrowsePanel({
     categoryCounts,
     entriesByCategory,
     isLoading,
+    onRefresh,
+    isRefreshing,
     onExport,
     onImport,
     isImportingDocument,
@@ -49,6 +53,17 @@ export function LorebookBrowsePanel({
                     </p>
                 </div>
                 <div className="flex gap-1 sm:gap-2 shrink-0">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={onRefresh}
+                        disabled={isRefreshing}
+                        className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
+                        title="Refresh"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                        <span className="hidden sm:inline ml-2">Refresh</span>
+                    </Button>
                     <Button
                         variant="outline"
                         size="icon"

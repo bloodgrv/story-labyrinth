@@ -41,11 +41,15 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
     const [isImportingDocument, setIsImportingDocument] = useState(false);
 
     // Fetch appropriate entries based on context
-    const { data: storyEntries, isLoading: storyLoading } = useHierarchicalLorebookQuery(storyId);
-    const { data: seriesEntries, isLoading: seriesLoading } = useSeriesLorebookQuery(seriesId);
+    const { data: storyEntries, isLoading: storyLoading, refetch: refetchStory, isFetching: isFetchingStory } =
+        useHierarchicalLorebookQuery(storyId);
+    const { data: seriesEntries, isLoading: seriesLoading, refetch: refetchSeries, isFetching: isFetchingSeries } =
+        useSeriesLorebookQuery(seriesId);
 
     const entries = storyId ? storyEntries || [] : seriesEntries || [];
     const isLoading = storyId ? storyLoading : seriesLoading;
+    const isRefreshing = storyId ? isFetchingStory : isFetchingSeries;
+    const refetchEntries = storyId ? refetchStory : refetchSeries;
 
     // Filter by category
     const entriesByCategory = entries.filter(e => e.category === selectedCategory);
@@ -186,6 +190,8 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                     categoryCounts={categoryCounts}
                     entriesByCategory={entriesByCategory}
                     isLoading={isLoading}
+                    onRefresh={() => void refetchEntries()}
+                    isRefreshing={isRefreshing}
                     onExport={handleExport}
                     onImport={handleImport}
                     isImportingDocument={isImportingDocument}

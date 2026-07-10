@@ -332,11 +332,17 @@ router.post(
                 return;
             }
 
+            // The AI has no legitimate way to know this story's UUID (it's an internal DB id,
+            // never surfaced in chat), so the system prompt's proposal example omits scopeId
+            // entirely (see CODEX_PROPOSAL_INSTRUCTIONS in chatContextService.ts). Default it
+            // from the chat's own story here rather than requiring the model to supply it.
+            const resolvedScopeId = level === "story" ? (scopeId ?? chat.storyId) : (scopeId ?? null);
+
             const result = await proposeNewEntry({
                 chatId: req.params.chatId,
                 messageId: messageId ?? null,
                 level: level as "global" | "series" | "story",
-                scopeId: scopeId ?? null,
+                scopeId: resolvedScopeId,
                 name,
                 description,
                 category: category as LorebookEntry["category"],
