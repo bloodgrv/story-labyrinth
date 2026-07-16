@@ -429,6 +429,47 @@ export const ragScanIssues = sqliteTable(
     })
 );
 
+// Agent Jobs table — durable background job queue for the in-process job runner (jobRunner.ts).
+// Generalizes the ragScans precedent (status/progress/story-scope/polling) into one table for
+// all background job types (index reconciliation, scans, housekeeping), so this work survives a
+// process restart instead of running as a fire-and-forget IIFE (see ragScanner.ts's scanStory
+// before this table existed). See docs/Agent_Framework_And_Project_Memory_Design.md §3.
+export const agentJobs = sqliteTable(
+    "agentJobs",
+    {
+        id: text("id").primaryKey(),
+        jobType: text("jobType").notNull(), // 'reconcile_index' | 'rag_scan_chapter' | 'rag_scan_story' | 'prune_history'
+        status: text("status").notNull().default("queued"), // 'queued' | 'running' | 'completed' | 'failed'
+        // Nullable — some jobs are global/housekeeping (e.g. prune_history) and touch no single
+        // story. Real FK: unlike entityId below, storyId has exactly one possible parent table.
+        storyId: text("storyId").references(() => stories.id, { onDelete: "cascade" }),
+        // Polymorphic (chapter id, lorebook entry id, or unused) — loose indexed column, NO real
+        // FK, same convention as aiChats.anchorEntryId/outlineItems.parentId above: it could
+        // point at more than one parent table, which can't be expressed as one FK constraint.
+        // Cleaned up in application code (reconcile_index's own orphan detection handles it).
+        entityId: text("entityId"),
+        payload: text("payload", { mode: "json" }), // JSON: job-specific input, shape varies by jobType
+        result: text("result", { mode: "json" }), // JSON: job-specific output summary, shape varies by jobType
+        progress: text("progress", { mode: "json" }), // JSON: { processed: number, total: number, message?: string }
+        attempts: integer("attempts").notNull().default(0),
+        maxAttempts: integer("maxAttempts").notNull().default(3),
+        error: text("error"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        queuedAt: integer("queuedAt", { mode: "timestamp" }).notNull(),
+        startedAt: integer("startedAt", { mode: "timestamp" }),
+        completedAt: integer("completedAt", { mode: "timestamp" }),
+        lastAttemptAt: integer("lastAttemptAt", { mode: "timestamp" })
+    },
+    table => ({
+        statusIdx: index("agentjob_status_idx").on(table.status),
+        storyIdIdx: index("agentjob_story_id_idx").on(table.storyId),
+        jobTypeStatusIdx: index("agentjob_job_type_status_idx").on(table.jobType, table.status),
+        // Supports both the dedup check (enqueue) and the schedule tick's "no active row for this
+        // key" check (jobRunner.ts) — see agentJobsRepository.hasActiveJob.
+        dedupLookupIdx: index("agentjob_dedup_lookup_idx").on(table.jobType, table.storyId, table.entityId, table.status)
+    })
+);
+
 // Users table — local accounts. Registration via /api/auth/register is only allowed while
 // this table is empty (see server/routes/auth.ts) and always creates the 'owner'; further
 // users are created by an owner through /api/users.

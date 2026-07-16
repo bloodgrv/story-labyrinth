@@ -13,7 +13,7 @@ import {
     isSupportedImageMimetype,
     saveLorebookImage
 } from "../services/lorebookImageStorage.js";
-import { indexLorebookEntry } from "../services/ragIndexService.js";
+import { indexLorebookEntry, removeEntityFromIndex } from "../services/ragIndexService.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -390,14 +390,15 @@ export default createCrudRouter({
         );
 
         // DELETE /lorebook/:id - overrides the generic CRUD delete (customRoutes are registered
-        // before the generic routes, see server/lib/crud.ts) purely to also delete the entry's
-        // image file first, so deleting an entry never orphans an image on disk.
+        // before the generic routes, see server/lib/crud.ts) to also delete the entry's image
+        // file and remove it from the RAG index, so deleting an entry never orphans either.
         router.delete(
             "/:id",
             asyncHandler(async (req, res) => {
                 const [entry] = await db.select().from(table).where(eq(table.id, req.params.id));
                 if (entry?.imageFilename) await deleteLorebookImage(entry.imageFilename);
                 await db.delete(table).where(eq(table.id, req.params.id));
+                removeEntityFromIndex("lorebook_entry", req.params.id);
                 res.json({ success: true });
             })
         );

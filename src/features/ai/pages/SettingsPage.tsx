@@ -9,6 +9,7 @@ import { FeatureEndpointsCard } from "@/features/ai/components/FeatureEndpointsC
 import { GrokOAuthCard } from "@/features/ai/components/GrokOAuthCard";
 import { LocalModelsCard } from "@/features/ai/components/LocalModelsCard";
 import { ProviderCard } from "@/features/ai/components/ProviderCard";
+import { RecentJobsCard } from "@/features/ai/components/RecentJobsCard";
 import {
     useAISettingsQuery,
     useDeleteDemoDataMutation,
@@ -166,6 +167,8 @@ export default function SettingsPage() {
                     <HumanizerSettingsCard />
 
                     <GrammarSettingsCard />
+
+                    <RecentJobsCard />
 
                     {/* Delete Demo Data Section */}
                     <Card>

@@ -54,10 +54,10 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - Strong Tailscale / LAN support required
 - Multi-machine model routing supported (e.g., 3090 for writing, Mac for scanner)
 
-### Agent Framework (Planned)
-- A future background layer that owns RAG index freshness, unattended scanner runs, light DB housekeeping, and an evolving per-writer/per-project memory
-- Reuses existing infrastructure rather than introducing new dependencies: a generalized jobs table (extending the existing `ragScans` pattern), an in-process job runner (no queue library/worker process — single Docker container, single SQLite file), and agent memory stored as a new RAG entity type (reusing `ragChunks`/`hybridSearch` rather than a parallel store)
-- Full design recorded in `DECISIONS.md` under "RAG Index Freshness ... & Agent Framework Direction" — not yet implemented; current work should avoid building things (e.g. a manual RAG Scanner trigger UI) that this would immediately obsolete
+### Agent Framework & Project Memory
+- Design: `docs/Agent_Framework_And_Project_Memory_Design.md` (supersedes `DECISIONS.md`'s earlier "RAG Index Freshness ... & Agent Framework Direction" section — shape kept, gaps filled)
+- **Phase A — implemented.** In-process, strictly serial `agentJobs`/`jobRunner.ts` (no queue library, no worker process — single Docker container, single SQLite file): `reconcile_index` (RAG index drift detection/repair), `rag_scan_chapter`/`rag_scan_story` (dual-write adapter over the existing `ragScans`/`ragScanIssues` tables), `prune_history`. Minimal read-only status/retry surface in Settings (`RecentJobsCard`). Load-bearing implementation decisions recorded in `DECISIONS.md` under "Agent Framework — Phase A (Agent Jobs), Load-Bearing Decisions"
+- **Phase B — not started.** Factual/concrete project memory (`agentMemories`) with mandatory pending→approve lifecycle before anything is retrievable; stored as a new `agent_memory` RAG entity type (reusing `ragChunks`/`hybridSearch`, excluded from search by default unless a feature opts in). No thematic/psychological agent pipelines — Codex remains concrete-state only. Do not start until Phase A has been stable through a review pass
 
 ---
 
@@ -84,7 +84,7 @@ Priority order for implementation:
 7. Main Editor integration + quick-add
 8. Dashboard + tab system + persistence
 9. Project Saves (Codex + Story layers)
-10. Agent Framework (background jobs, scanner orchestration, DB housekeeping, cross-project memory) — design recorded in `DECISIONS.md`, not started
+10. Agent Framework (background jobs, scanner orchestration, DB housekeeping, cross-project memory) — Phase A (background jobs) implemented; Phase B (project memory) not started, see `docs/Agent_Framework_And_Project_Memory_Design.md`
 
 ---
 

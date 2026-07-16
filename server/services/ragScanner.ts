@@ -213,7 +213,9 @@ const resolveEntityIdsByName = async (storyId: string): Promise<Map<string, stri
 
 // ── Scanner connection ────────────────────────────────────────────────────────────
 
-const requireScannerConnection = async (): Promise<{ client: OpenAI; model: string }> => {
+// Exported for services/jobs/ragScanJobs.ts (Phase A's job-runner-driven caller — see
+// docs/Agent_Framework_And_Project_Memory_Design.md §3), avoiding a duplicate error message.
+export const requireScannerConnection = async (): Promise<{ client: OpenAI; model: string }> => {
     const connection = await buildClientForFeature("rag_scanner");
     if (!connection) {
         throw new Error(
@@ -225,7 +227,11 @@ const requireScannerConnection = async (): Promise<{ client: OpenAI; model: stri
 
 // ── Core per-chapter scan ────────────────────────────────────────────────────────
 
-const runChapterScan = async (params: {
+// Exported for services/jobs/ragScanJobs.ts's runRagScanStoryJob, which reimplements this
+// function's own loop (below, in scanStory) without the fire-and-forget IIFE so the job runner
+// itself can await it. Per-chapter errors here are still swallowed by the caller's own
+// try/catch, not this function — see both call sites.
+export const runChapterScan = async (params: {
     scanId: string;
     storyId: string;
     chapterId: string;
@@ -294,31 +300,38 @@ export const scanChapter = async (chapterId: string): Promise<{ scan: RagScan; i
     }
 };
 
+// Exported for services/jobs/ragScanJobs.ts's runRagScanStoryJob, which needs the same ordered
+// chapter-id list without duplicating this query.
+export const listOrderedChapterIds = async (storyId: string): Promise<string[]> => {
+    const chapterRows = await db
+        .select({ id: schema.chapters.id })
+        .from(schema.chapters)
+        .where(eq(schema.chapters.storyId, storyId))
+        .orderBy(schema.chapters.order);
+    return chapterRows.map(row => row.id);
+};
+
 // Kick off a whole-story scan: chapters are scanned one at a time in the background so the
 // caller gets an immediate response and polls `getScanWithIssues(scan.id)` for progress.
 // Throws immediately (before creating the scan row) if no scanner endpoint is configured.
 export const scanStory = async (storyId: string): Promise<RagScan> => {
     const { client, model } = await requireScannerConnection();
 
-    const chapterRows = await db
-        .select({ id: schema.chapters.id })
-        .from(schema.chapters)
-        .where(eq(schema.chapters.storyId, storyId))
-        .orderBy(schema.chapters.order);
+    const chapterIds = await listOrderedChapterIds(storyId);
 
-    const scan = await createScan({ storyId, scope: "story", chapterId: null, totalChapters: chapterRows.length });
+    const scan = await createScan({ storyId, scope: "story", chapterId: null, totalChapters: chapterIds.length });
 
     void (async () => {
         try {
-            for (const [index, chapterRow] of chapterRows.entries()) {
+            for (const [index, chapterId] of chapterIds.entries()) {
                 try {
-                    await runChapterScan({ scanId: scan.id, storyId, chapterId: chapterRow.id, client, model });
+                    await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model });
                 } catch (error) {
-                    console.error(`RAG scan: chapter ${chapterRow.id} failed:`, (error as Error).message);
+                    console.error(`RAG scan: chapter ${chapterId} failed:`, (error as Error).message);
                 }
                 await updateScanProgress(scan.id, index + 1);
             }
-            await completeScan(scan.id, { model, processedChapters: chapterRows.length });
+            await completeScan(scan.id, { model, processedChapters: chapterIds.length });
         } catch (error) {
             await failScan(scan.id, (error as Error).message);
         }

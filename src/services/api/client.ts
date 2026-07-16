@@ -21,6 +21,7 @@ import { fetchJSON, uploadFile } from "./apiFactory";
 // Re-exported so existing `import { ttsApi } from "@/services/api/client"` call sites don't
 // need to change — these live in their own files purely to keep this file under the max-lines
 // lint limit as the API surface has grown.
+export { agentJobsApi } from "./agentJobsClient";
 export { beatsApi } from "./beatsClient";
 export { codexApi } from "./codexClient";
 export { grammarApi } from "./grammarClient";

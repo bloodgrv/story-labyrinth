@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import { runMigrations } from "./db/migrate.js";
 import { seedSystemPrompts } from "./db/seedSystemPrompts.js";
 import { blockViewerMutations, requireAuth, requireOwner } from "./middleware/auth.js";
+import { start as startJobRunner, stop as stopJobRunner } from "./services/jobRunner.js";
 import adminRouter from "./routes/admin.js";
+import agentJobsRouter from "./routes/agentJobs.js";
 import aiRouter from "./routes/ai.js";
 import authRouter from "./routes/auth.js";
 import beatsRouter from "./routes/beats.js";
@@ -36,10 +38,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
-// Run migrations and seed system prompts on startup
+// Run migrations, seed system prompts, and start the background job runner on startup.
+// jobRunner starts last so the agentJobs table (and everything it references) definitely
+// exists first — a failure here is caught by the same startup guard below.
 const initializeDatabase = async () => {
     runMigrations();
     await seedSystemPrompts();
+    await startJobRunner();
 };
 
 initializeDatabase().catch(error => {
@@ -82,6 +87,9 @@ app.use("/api/brainstorm", brainstormRouter);
 app.use("/api/scenebeats", scenebeatsRouter);
 app.use("/api/notes", notesRouter);
 app.use("/api/admin", requireOwner, adminRouter);
+// System-level infrastructure (LLM-spend-triggering, story-wide reindexing) that a
+// viewer/editor has no legitimate reason to poke at directly — matching /api/admin/ai/users.
+app.use("/api/agent/jobs", requireOwner, agentJobsRouter);
 app.use("/api/rag", ragRouter);
 app.use("/api/tts", ttsRouter);
 app.use("/api/humanizer", humanizerRouter);
@@ -108,6 +116,15 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
     res.status(500).json({ error: err.message || "Internal server error" });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT} in ${NODE_ENV} mode`);
 });
+
+// No graceful shutdown handling existed anywhere in this codebase before this — needed now so
+// stopJobRunner() gets a chance to let an in-flight job finish before the process exits.
+const shutdown = async () => {
+    await stopJobRunner();
+    server.close(() => process.exit(0));
+};
+process.on("SIGTERM", () => void shutdown());
+process.on("SIGINT", () => void shutdown());

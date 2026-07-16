@@ -31,7 +31,9 @@ const formatCodexState = (state: CodexState | null): string => {
     return lines.join("\n");
 };
 
-const buildLorebookEntryText = (entry: LorebookRow): string => {
+// Exported for reconcileIndexJob.ts's staleness check, so it recomputes indexable text the
+// exact same way indexLorebookEntry does and can't drift from what actually gets indexed.
+export const buildLorebookEntryText = (entry: LorebookRow): string => {
     // Drizzle's `mode: "json"` column already deserializes this to an object on select.
     const codexText = formatCodexState((entry.codexState as CodexState | null) ?? null);
     return [entry.name, entry.description, codexText].filter(Boolean).join("\n\n");
