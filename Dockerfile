@@ -5,7 +5,11 @@ WORKDIR /app
 # Install build dependencies for native modules.
 # Debian (glibc) rather than Alpine (musl): sqlite-vec's prebuilt Linux binaries are
 # built against glibc and fail to load under musl — see DECISIONS.md.
+# Cairo/Pango/JPEG/GIF/RSVG dev libs: required by the `canvas` package (document-import PDF
+# image extraction) — node-canvas ships prebuilt binaries for some platforms, but this slim base
+# image has none of its native deps present, so it needs to be able to build from source too.
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+    libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
@@ -32,9 +36,10 @@ FROM node:22-slim
 
 WORKDIR /app
 
-# Install build dependencies for native modules (needed for better-sqlite3), plus wget
-# for the docker-compose healthcheck (not included by default on Debian, unlike Alpine).
+# Install build dependencies for native modules (needed for better-sqlite3 and canvas), plus
+# wget for the docker-compose healthcheck (not included by default on Debian, unlike Alpine).
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ wget \
+    libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files

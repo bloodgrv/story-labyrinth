@@ -4,15 +4,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Form } from "@/components/ui/form";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
 import { useChatTemplatesQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
 import { useStoryQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
+import { useNaturalEntryView } from "@/lib/useNaturalEntryView";
 import { codexApi, lorebookApi } from "@/services/api/client";
 import type { DocumentImportDraft } from "@/types/codex";
 import type { AIChat, LorebookEntry } from "@/types/story";
@@ -22,15 +21,12 @@ import type { WorldBuildingTemplateSlug } from "@/types/worldbuilding";
 import { useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
 import {
     AdvancedSettings,
-    CATEGORIES,
     CodexHistoryPanel,
-    CodexStateEditor,
     EMPTY_CODEX_STATE,
     ImageUploadField,
-    IMPORTANCE_LEVELS,
     LevelScopeFields,
-    SelectField,
-    TagsField,
+    NaturalEntryView,
+    RawEntryFields,
     buildSubmitData,
     getDefaultFormValues
 } from "./form";
@@ -137,6 +133,7 @@ export function LorebookEntryEditor({
     const createMutation = useCreateLorebookMutation();
     const updateMutation = useUpdateLorebookMutation();
     const [advancedOpen, setAdvancedOpen] = useState(false);
+    const [naturalView, setNaturalView] = useNaturalEntryView();
     const isDesktop = useIsDesktopViewport();
 
     const { data: story } = useStoryQuery(storyId || "");
@@ -196,14 +193,16 @@ export function LorebookEntryEditor({
             <div className="flex-1 min-w-0 overflow-y-auto p-6">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                        <LevelScopeFields
-                            control={form.control}
-                            setValue={form.setValue}
-                            selectedLevel={selectedLevel}
-                            storyId={storyId}
-                            story={story}
-                            seriesList={seriesList}
-                        />
+                        {!naturalView && (
+                            <LevelScopeFields
+                                control={form.control}
+                                setValue={form.setValue}
+                                selectedLevel={selectedLevel}
+                                storyId={storyId}
+                                story={story}
+                                seriesList={seriesList}
+                            />
+                        )}
 
                         <ImageUploadField
                             control={form.control}
@@ -212,60 +211,21 @@ export function LorebookEntryEditor({
                             hasExistingImage={!!entry?.imageFilename}
                         />
 
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            rules={{ required: "Name is required" }}
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Name</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <SelectField
-                                control={form.control}
-                                name="category"
-                                label="Category"
-                                options={CATEGORIES}
-                                placeholder="Select category"
-                            />
-                            <SelectField
-                                control={form.control}
-                                name="importance"
-                                label="Importance"
-                                options={IMPORTANCE_LEVELS}
-                                placeholder="Select importance"
-                            />
-                        </div>
-
-                        <TagsField control={form.control} tagInput={tagInput} />
-
-                        <FormField
-                            control={form.control}
-                            name="description"
-                            rules={{ required: "Description is required" }}
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Description</FormLabel>
-                                    <FormControl>
-                                        <Textarea {...field} rows={6} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        {selectedCategory === "character" && <CodexStateEditor control={form.control} />}
+                        {naturalView ? (
+                            <NaturalEntryView control={form.control} />
+                        ) : (
+                            <RawEntryFields control={form.control} tagInput={tagInput} selectedCategory={selectedCategory} />
+                        )}
 
                         {entry?.codexEnabled && entry.id && <CodexHistoryPanel entryId={entry.id} storyId={storyId} />}
 
-                        <AdvancedSettings control={form.control} open={advancedOpen} onOpenChange={setAdvancedOpen} />
+                        <AdvancedSettings
+                            control={form.control}
+                            open={advancedOpen}
+                            onOpenChange={setAdvancedOpen}
+                            naturalView={naturalView}
+                            onNaturalViewChange={setNaturalView}
+                        />
 
                         <div className="flex justify-end gap-3">
                             {onCancel && (

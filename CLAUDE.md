@@ -26,6 +26,8 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - Supports per-entry snapshot history with restore capability
 - Tracks source of changes (chat + user)
 - Quick-add from Main Editor with "Needs fleshing out" tagging
+- Codex state (wardrobe/appearance/wounds/items) is user-typed or chat-proposed (Approve/Reject; "Edit First" exists server-side but has no UI yet) — **not** auto-compiled from the manuscript today; that's tracked as backlog item P0.3/C5, deliberately not built yet (see `DECISIONS.md`'s "Lorebook Entry Editor — Natural View" entry)
+- Entry editor has a "Natural View" toggle (Advanced Settings, default on) that presents an entry as an editable prose character profile instead of the raw field form, hiding tags — same underlying form data either way
 
 ### Chat System
 - Three main contexts:
@@ -75,25 +77,34 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - Graph visualization: React Flow (`@xyflow/react`)
 - All model access via OpenAI-compatible endpoints
 - Local-first with optional LAN/Tailscale access
+- `canvas` (native Cairo bindings) — used only by document-import PDF image extraction; the one deliberate exception to this project's usual native-binding-dependency avoidance, added 2026-07-17 by explicit user decision after the tradeoff was raised. `Dockerfile` installs the required system libs (`libcairo2-dev` etc.) in both build stages — see `DECISIONS.md`'s "Document Import" entry
 
 ---
 
 ## Current Phase
 
-We are in **Phase 0 – Foundation**.
+**Foundation (original Phase 0) is largely complete.** Remaining work and priority live in:
 
-Priority order for implementation:
-1. Fork + Docker + basic login
-2. Character Codex (dynamic state + history)
-3. Per-feature endpoint selection
-4. Vector RAG (sqlite-vec)
-5. RAG Scanner
-6. World-Building Chat system
-7. Main Editor integration + quick-add
-8. Dashboard + tab system + persistence
-9. Project Saves (Codex + Story layers) — Codex layer (restore + timeline UI) implemented; Story layer (chapter versioning) not started
-10. Agent Framework (background jobs, scanner orchestration, DB housekeeping, cross-project memory) — Phase A (background jobs) and Phase B (project memory) both implemented; Phase C (UI polish, deferred features) not started, see `docs/Agent_Framework_And_Project_Memory_Design.md`
-11. Lorebook Relationship Graph — Phase G1 (edge table as source of truth, migration, interactive graph tool) implemented; AI edge suggestions, saved layout, and pending-edge review UI not started, see `docs/Thin_Story_Graph_And_Lorebook_Visualization.md`
+**`docs/CURRENT_BACKLOG.md`** ← source of truth for *what’s left* (use this when the old 1–11 list disagrees with reality).
+
+### Done (high level)
+1. Fork + Docker + basic login  
+2. Character Codex (dynamic state + history)  
+3. Per-feature endpoint selection  
+4. Vector RAG (sqlite-vec)  
+5. RAG Scanner **backend** (+ job-wrapped scans) — **frontend not started**  
+6. World-Building Chat system  
+7. Main Editor integration + MultiView / beats / outline / focus sessions  
+8. Dashboard + tab system + persistence  
+9. Project Saves — **Codex layer done**; **Story layer (chapter versioning) not started**  
+10. Agent Framework — **Phase A + B done**; Phase C not started  
+11. Lorebook Relationship Graph — **Phase G1 done**; AI edges / saved layout / pending UI not started  
+
+### Next (see backlog for detail)
+1. **P0.1** RAG Scanner frontend  
+2. **P0.2** Story-layer chapter versioning  
+3. **P0.3** Continuity glue (memory ↔ chat/scan)  
+4. P1 polish (Agent C, Graph G1.5) and P2 bugs as needed
 
 ---
 

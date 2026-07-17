@@ -35,7 +35,7 @@ export function OutlineSceneRow({ scene, storyId, chapters, characters, onMoveTo
             <div
                 className={cn(
                     "flex items-start gap-2 rounded-md border p-2",
-                    isPending && "border-dashed border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/10"
+                    isPending && "border-dashed border-amber-400/60 bg-amber-500/10"
                 )}
             >
                 <Button
@@ -53,7 +53,7 @@ export function OutlineSceneRow({ scene, storyId, chapters, characters, onMoveTo
                         {isPending && (
                             <Badge
                                 variant="outline"
-                                className="gap-1 font-normal border-amber-400/60 text-amber-800 dark:text-amber-300"
+                                className="gap-1 font-normal border-amber-400/60 text-amber-600 dark:text-amber-400"
                             >
                                 <Sparkles className="h-3 w-3" />
                                 AI Suggested

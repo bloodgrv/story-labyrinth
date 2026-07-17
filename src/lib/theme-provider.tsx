@@ -1,6 +1,15 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-export type Theme = "dark" | "light" | "system" | "sepia" | "midnight" | "forest" | "sand" | "graphite";
+export type Theme =
+    | "dark"
+    | "light"
+    | "system"
+    | "sepia"
+    | "midnight"
+    | "midnight-graphite"
+    | "forest"
+    | "sand"
+    | "graphite";
 
 // Theme ids double as the class name applied to <html> (except "system", which resolves to
 // light/dark). Keep in sync with the palettes defined in index.css.
@@ -9,13 +18,14 @@ export const THEME_OPTIONS: { id: Theme; label: string }[] = [
     { id: "dark", label: "Dark" },
     { id: "sepia", label: "Sepia" },
     { id: "midnight", label: "Midnight" },
+    { id: "midnight-graphite", label: "Eclipse" },
     { id: "forest", label: "Forest" },
     { id: "sand", label: "Black & Sand" },
     { id: "graphite", label: "Graphite" },
     { id: "system", label: "System" }
 ];
 
-const THEME_CLASSES = ["light", "dark", "sepia", "midnight", "forest", "sand", "graphite"];
+const THEME_CLASSES = ["light", "dark", "sepia", "midnight", "midnight-graphite", "forest", "sand", "graphite"];
 
 type ThemeProviderProps = {
     children: React.ReactNode;

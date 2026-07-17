@@ -13,20 +13,24 @@ import { StoriesTool } from "./tools/StoriesTool";
 import { StoryGraphTool } from "./tools/StoryGraphTool";
 import { UsersTool } from "./tools/UsersTool";
 
-// Subtle background tints for each tool
+// Subtle background tints for each tool. A single low-opacity mid-tone (rather than a
+// light-mode/50 + dark-mode/950 pair behind a `dark:` variant) so the tint stays equally subtle
+// across light, dark, and every custom theme class — `dark:` only ever matches `.dark`, so a
+// light/dark pair went stark white on the other theme classes (see index.css's .midnight/.sepia/
+// etc). See the analogous fix on Outline's pending-card highlight for the same reasoning.
 const toolTints = {
     stories: "bg-background",
     series: "bg-background",
-    editor: "bg-amber-50/10 dark:bg-amber-950/5",
-    chapters: "bg-blue-50/10 dark:bg-blue-950/5",
-    outline: "bg-rose-50/10 dark:bg-rose-950/5",
-    lorebook: "bg-cyan-50/10 dark:bg-cyan-950/5",
-    brainstorm: "bg-purple-50/10 dark:bg-purple-950/5",
-    notes: "bg-green-50/10 dark:bg-green-950/5",
+    editor: "bg-amber-500/5",
+    chapters: "bg-blue-500/5",
+    outline: "bg-rose-500/5",
+    lorebook: "bg-cyan-500/5",
+    brainstorm: "bg-purple-500/5",
+    notes: "bg-green-500/5",
     users: "bg-background",
-    research: "bg-sky-50/10 dark:bg-sky-950/5",
-    memory: "bg-teal-50/10 dark:bg-teal-950/5",
-    relationships: "bg-indigo-50/10 dark:bg-indigo-950/5"
+    research: "bg-sky-500/5",
+    memory: "bg-teal-500/5",
+    relationships: "bg-indigo-500/5"
 };
 
 export const MainContent = () => {

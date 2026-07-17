@@ -13,9 +13,11 @@ interface AdvancedSettingsProps {
     control: Control<CreateEntryForm>;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    naturalView: boolean;
+    onNaturalViewChange: (value: boolean) => void;
 }
 
-export const AdvancedSettings = ({ control, open, onOpenChange }: AdvancedSettingsProps) => (
+export const AdvancedSettings = ({ control, open, onOpenChange, naturalView, onNaturalViewChange }: AdvancedSettingsProps) => (
     <Collapsible open={open} onOpenChange={onOpenChange} className="border rounded-md p-2">
         <CollapsibleTrigger asChild>
             <Button variant="ghost" className="flex w-full justify-between p-2" type="button">
@@ -24,6 +26,17 @@ export const AdvancedSettings = ({ control, open, onOpenChange }: AdvancedSettin
             </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-4 pt-2">
+            <div className="flex items-center justify-between space-x-2 border rounded-md p-3">
+                <div>
+                    <span className="text-sm font-medium">Natural View</span>
+                    <p className="text-xs text-muted-foreground">
+                        Edit this entry as a flowing character profile instead of raw fields. Hides tags, level, and
+                        category/importance — switch back here to manage them.
+                    </p>
+                </div>
+                <Switch checked={naturalView} onCheckedChange={onNaturalViewChange} />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
                 <FormField
                     control={control}

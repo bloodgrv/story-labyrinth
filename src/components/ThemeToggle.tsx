@@ -1,4 +1,4 @@
-import { Check, Leaf, Mountain, Monitor, Moon, Palmtree, ScrollText, Sparkles, Sun } from "lucide-react";
+import { Check, Leaf, Mountain, Monitor, Moon, MoonStar, Palmtree, ScrollText, Sparkles, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -18,6 +18,7 @@ const THEME_ICONS: Record<Theme, typeof Sun> = {
     dark: Moon,
     sepia: ScrollText,
     midnight: Sparkles,
+    "midnight-graphite": MoonStar,
     forest: Leaf,
     sand: Palmtree,
     graphite: Mountain,

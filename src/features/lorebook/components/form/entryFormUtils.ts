@@ -55,6 +55,17 @@ export interface CreateEntryForm {
     generateImageOnSave?: boolean;
 }
 
+// Synchronous data-URL -> File conversion (no fetch/Blob round trip needed) so a draft's
+// extracted image can seed useForm's synchronous `defaultValues` directly.
+const dataUrlToFile = (dataUrl: string, filename: string): File => {
+    const [meta, base64] = dataUrl.split(",");
+    const mime = meta.match(/data:(.*?);base64/)?.[1] ?? "image/png";
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new File([bytes], filename, { type: mime });
+};
+
 // `draft` seeds a brand-new entry from an AI-extracted document import (see
 // documentImportService.ts) — only consulted when `entry` is absent, since an existing entry's
 // own saved values always win.
@@ -81,7 +92,8 @@ export const getDefaultFormValues = (
         status: entry?.metadata?.status || "active",
         isDisabled: entry?.isDisabled || false,
         codexEnabled: entry?.codexEnabled ?? hasCodexContent(codexState),
-        codexState
+        codexState,
+        imageFile: !entry && draft?.image ? dataUrlToFile(draft.image.dataUrl, draft.image.filename) : undefined
     };
 };
 

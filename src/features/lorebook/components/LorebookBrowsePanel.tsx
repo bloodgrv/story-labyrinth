@@ -113,7 +113,7 @@ export function LorebookBrowsePanel({
                 </div>
             </div>
 
-            <Separator className="bg-gray-300 dark:bg-gray-700" />
+            <Separator />
 
             {/* Mobile: dropdown selector */}
             <div className="sm:hidden">
@@ -140,12 +140,12 @@ export function LorebookBrowsePanel({
                 onValueChange={v => onCategoryChange(v as LorebookCategory)}
                 className="w-full hidden sm:block"
             >
-                <TabsList className="w-full justify-start bg-gray-100 dark:bg-gray-800 p-1 border border-gray-300 dark:border-gray-700">
+                <TabsList className="w-full justify-start bg-muted p-1 border border-border">
                     {CATEGORIES.map(cat => (
                         <TabsTrigger
                             key={cat}
                             value={cat}
-                            className="text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+                            className="text-sm data-[state=active]:bg-background data-[state=active]:border-b-2 data-[state=active]:border-primary"
                         >
                             {cat.charAt(0).toUpperCase() + cat.slice(1)} ({categoryCounts[cat] || 0})
                         </TabsTrigger>

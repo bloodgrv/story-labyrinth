@@ -131,6 +131,36 @@
         --sidebar-border: 240 15% 12%;
         --sidebar-ring: 255 70% 65%;
     }
+    /* Midnight Graphite — same Midnight palette, but with neutral grey text instead of white. */
+    .midnight-graphite {
+        --background: 240 15% 4%;
+        --foreground: 0 0% 65%;
+        --card: 240 15% 6%;
+        --card-foreground: 0 0% 65%;
+        --popover: 240 15% 6%;
+        --popover-foreground: 0 0% 65%;
+        --primary: 255 70% 65%;
+        --primary-foreground: 240 15% 4%;
+        --secondary: 240 15% 12%;
+        --secondary-foreground: 0 0% 60%;
+        --muted: 240 15% 12%;
+        --muted-foreground: 0 0% 42%;
+        --accent: 255 40% 20%;
+        --accent-foreground: 0 0% 65%;
+        --destructive: 0 65% 45%;
+        --destructive-foreground: 0 0% 65%;
+        --border: 240 15% 15%;
+        --input: 240 15% 15%;
+        --ring: 255 70% 65%;
+        --sidebar-background: 240 15% 5%;
+        --sidebar-foreground: 0 0% 60%;
+        --sidebar-primary: 255 70% 65%;
+        --sidebar-primary-foreground: 240 15% 4%;
+        --sidebar-accent: 240 15% 10%;
+        --sidebar-accent-foreground: 0 0% 65%;
+        --sidebar-border: 240 15% 12%;
+        --sidebar-ring: 255 70% 65%;
+    }
     /* Black & Sand — near-black with warm tan/sand foreground and accents. */
     .sand {
         --background: 30 8% 5%;

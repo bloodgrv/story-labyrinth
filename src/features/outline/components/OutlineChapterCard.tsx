@@ -105,7 +105,7 @@ export function OutlineChapterCard({
             <div
                 className={cn(
                     "rounded-lg border p-3",
-                    isPending && "border-dashed border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/10"
+                    isPending && "border-dashed border-amber-400/60 bg-amber-500/10"
                 )}
             >
                 <div className="flex items-start gap-2">
@@ -132,7 +132,7 @@ export function OutlineChapterCard({
                             {isPending && (
                                 <Badge
                                     variant="outline"
-                                    className="gap-1 font-normal border-amber-400/60 text-amber-800 dark:text-amber-300"
+                                    className="gap-1 font-normal border-amber-400/60 text-amber-600 dark:text-amber-400"
                                 >
                                     <Sparkles className="h-3 w-3" />
                                     AI Suggested

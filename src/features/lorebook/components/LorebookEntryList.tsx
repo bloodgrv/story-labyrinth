@@ -104,18 +104,13 @@ export function LorebookEntryList({
                             {searchInput}
                             <div className="flex gap-2 items-center">
                                 <div className="flex items-center space-x-2">
-                                    <Switch
-                                        id="show-disabled"
-                                        checked={showDisabled}
-                                        onCheckedChange={setShowDisabled}
-                                        className="border-2 border-gray-300 dark:border-gray-700 data-[state=unchecked]:bg-gray-200 dark:data-[state=unchecked]:bg-gray-800"
-                                    />
+                                    <Switch id="show-disabled" checked={showDisabled} onCheckedChange={setShowDisabled} />
                                     <Label htmlFor="show-disabled" className="font-medium">
                                         Show Disabled
                                     </Label>
                                 </div>
                                 <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                                    <SelectTrigger className="w-[150px] border-2 border-gray-300 dark:border-gray-700">
+                                    <SelectTrigger className="w-[150px] border-2 border-border">
                                         <SelectValue placeholder="Sort by..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -143,9 +138,9 @@ export function LorebookEntryList({
                                     <Card
                                         key={entry.id}
                                         onClick={() => onOpenEntry(entry)}
-                                        className={`cursor-pointer border-2 border-gray-300 dark:border-gray-700 shadow-sm transition-colors hover:border-primary/50 ${entry.isDisabled ? "opacity-60" : ""} ${!isEntryEditable ? "opacity-75" : ""}`}
+                                        className={`cursor-pointer border-2 border-border shadow-sm transition-colors hover:border-primary/50 ${entry.isDisabled ? "opacity-60" : ""} ${!isEntryEditable ? "opacity-75" : ""}`}
                                     >
-                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gray-50 dark:bg-transparent">
+                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                             <div className="flex items-center gap-2 min-w-0">
                                                 {entry.imageFilename && (
                                                     <img

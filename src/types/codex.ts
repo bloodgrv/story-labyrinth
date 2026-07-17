@@ -29,6 +29,10 @@ export interface DocumentImportDraft {
     description: string;
     tags: string[];
     codexState: CodexState;
+    // The largest embedded image found in the source document (PDF/DOCX). null when none found.
+    // Converted into a File client-side (see entryFormUtils.ts) to plug into the existing
+    // imageFile form field.
+    image: { dataUrl: string; filename: string } | null;
 }
 
 // "restore" marks a snapshot created by restoring an earlier one — see codexService.ts's

@@ -37,7 +37,7 @@ const tools = [
     { id: "research" as WorkspaceTool, label: "Research", icon: Search, requiresStory: false },
     { id: "notes" as WorkspaceTool, label: "Notes", icon: StickyNote, requiresStory: true },
     { id: "memory" as WorkspaceTool, label: "Memory", icon: Brain, requiresStory: true },
-    { id: "relationships" as WorkspaceTool, label: "Relationships", icon: Network, requiresStory: true }
+    { id: "relationships" as WorkspaceTool, label: "Relations", icon: Network, requiresStory: true }
 ];
 
 const ownerOnlyTools = [{ id: "users" as WorkspaceTool, label: "Users", icon: Users, requiresStory: false }];

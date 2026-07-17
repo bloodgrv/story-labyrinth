@@ -3,6 +3,8 @@ export { CodexHistoryPanel } from "./CodexHistoryPanel";
 export { CodexStateEditor } from "./CodexStateEditor";
 export { ImageUploadField } from "./ImageUploadField";
 export { LevelScopeFields } from "./LevelScopeFields";
+export { NaturalEntryView } from "./NaturalEntryView";
+export { RawEntryFields } from "./RawEntryFields";
 export { SelectField } from "./SelectField";
 export { TagsField } from "./TagsField";
 export { CATEGORIES, EMPTY_CODEX_STATE, IMPORTANCE_LEVELS, buildSubmitData, getDefaultFormValues } from "./entryFormUtils";
