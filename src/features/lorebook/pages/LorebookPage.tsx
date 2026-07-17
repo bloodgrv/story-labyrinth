@@ -1,9 +1,10 @@
 import { attempt, attemptPromise } from "@jfdi/attempt";
 import { useQueryClient } from "@tanstack/react-query";
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { lorebookApi } from "@/services/api/client";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import type { DocumentImportDraft } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
 import { randomUUID } from "@/utils/crypto";
@@ -75,6 +76,19 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
         setActiveTabIndex(openTabs.length);
         setOpenTabs(prev => [...prev, { kind: "entry", entryId: entry.id }]);
     };
+
+    // Consume the Relationships graph's "open entry" pointer (StoryContext.pendingLorebookEntryId)
+    // once entries have loaded — one-shot, mirrors useWorkspaceDeepLink.ts's own pattern. Guarded
+    // on isLoading since `entries` starts empty on first mount right after a tool switch.
+    const { pendingLorebookEntryId, setPendingLorebookEntryId } = useStoryContext();
+    useEffect(() => {
+        if (!pendingLorebookEntryId || isLoading) return;
+        const entry = entries.find(e => e.id === pendingLorebookEntryId);
+        if (entry) openEntryTab(entry);
+        else toast.error("That entry could not be found");
+        setPendingLorebookEntryId(null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pendingLorebookEntryId, isLoading, entries]);
 
     const openDraftTab = (draft: DocumentImportDraft) => {
         setActiveTabIndex(openTabs.length);

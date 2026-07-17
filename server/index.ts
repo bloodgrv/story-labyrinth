@@ -28,6 +28,7 @@ import scenebeatsRouter from "./routes/scenebeats.js";
 import seriesRouter from "./routes/series.js";
 // Import routes
 import storiesRouter from "./routes/stories.js";
+import storyGraphRouter from "./routes/storyGraph.js";
 import ttsRouter from "./routes/tts.js";
 import usersRouter from "./routes/users.js";
 
@@ -94,6 +95,11 @@ app.use("/api/agent/jobs", requireOwner, agentJobsRouter);
 // Memory approval is an editorial decision (analogous to Codex proposal approval, editor-allowed
 // today), not system administration — no requireOwner here, matching /api/codex's auth level.
 app.use("/api/agent/memories", agentMemoriesRouter);
+// Mounted at bare /api, not a resource prefix — storyGraph.ts's own routes span two path shapes
+// (/stories/:storyId/graph/... and /graph/edges/:id) that don't share one top-level segment. See
+// storyGraph.ts's own top-of-file comment. Editor-level auth (requireAuth + blockViewerMutations,
+// both already applied globally above), no requireOwner — matches /api/codex's auth level.
+app.use("/api", storyGraphRouter);
 app.use("/api/rag", ragRouter);
 app.use("/api/tts", ttsRouter);
 app.use("/api/humanizer", humanizerRouter);

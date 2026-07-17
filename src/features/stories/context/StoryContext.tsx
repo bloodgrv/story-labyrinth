@@ -11,7 +11,8 @@ export type WorkspaceTool =
     | "notes"
     | "users"
     | "research"
-    | "memory";
+    | "memory"
+    | "relationships";
 
 interface StoryContextType {
     currentStoryId: string | null;
@@ -21,6 +22,11 @@ interface StoryContextType {
     setCurrentChapterId: (chapterId: string | null) => void;
     setCurrentTool: (tool: WorkspaceTool) => void;
     resetContext: () => void;
+    // Ephemeral, one-shot cross-tool navigation pointer (Relationships graph -> Lorebook "open
+    // entry"). Deliberately NOT localStorage-persisted, unlike every other field here — it only
+    // needs to survive the single setCurrentTool("lorebook") re-render that follows it.
+    pendingLorebookEntryId: string | null;
+    setPendingLorebookEntryId: (id: string | null) => void;
 }
 
 const StoryContext = createContext<StoryContextType | undefined>(undefined);
@@ -41,6 +47,8 @@ export function StoryProvider({ children }: { children: ReactNode }) {
         if (!storedStoryId) return null;
         return localStorage.getItem(CHAPTER_KEY(storedStoryId)) || null;
     });
+
+    const [pendingLorebookEntryId, setPendingLorebookEntryId] = useState<string | null>(null);
 
     const [currentTool, setCurrentToolState] = useState<WorkspaceTool>(() => {
         const storedStoryId = localStorage.getItem(STORAGE_KEY_STORY_ID);
@@ -103,7 +111,9 @@ export function StoryProvider({ children }: { children: ReactNode }) {
                 setCurrentStoryId,
                 setCurrentChapterId,
                 setCurrentTool,
-                resetContext
+                resetContext,
+                pendingLorebookEntryId,
+                setPendingLorebookEntryId
             }}
         >
             {children}

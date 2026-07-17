@@ -10,6 +10,7 @@ import { ProjectMemoryTool } from "./tools/ProjectMemoryTool";
 import { SeriesTool } from "./tools/SeriesTool";
 import { ResearchTool } from "./tools/ResearchTool";
 import { StoriesTool } from "./tools/StoriesTool";
+import { StoryGraphTool } from "./tools/StoryGraphTool";
 import { UsersTool } from "./tools/UsersTool";
 
 // Subtle background tints for each tool
@@ -24,7 +25,8 @@ const toolTints = {
     notes: "bg-green-50/10 dark:bg-green-950/5",
     users: "bg-background",
     research: "bg-sky-50/10 dark:bg-sky-950/5",
-    memory: "bg-teal-50/10 dark:bg-teal-950/5"
+    memory: "bg-teal-50/10 dark:bg-teal-950/5",
+    relationships: "bg-indigo-50/10 dark:bg-indigo-950/5"
 };
 
 export const MainContent = () => {
@@ -54,6 +56,8 @@ export const MainContent = () => {
                 return <ResearchTool />;
             case "memory":
                 return <ProjectMemoryTool />;
+            case "relationships":
+                return <StoryGraphTool />;
             default:
                 return (
                     <div className="flex items-center justify-center h-full">
@@ -71,9 +75,15 @@ export const MainContent = () => {
     // lay out against instead of a wrapper that grows to match the content. Without this,
     // Brainstorm's own scroll-to-bottom-on-new-message effect had nowhere bounded to scroll
     // within, so it scrolled the page-level `main` itself instead — dragging the chat list
-    // sidebar off-screen along with it every time a message arrived.
+    // sidebar off-screen along with it every time a message arrived. Relationships joins this
+    // group for the same reason: React Flow's canvas needs a real bounded viewport to pan/zoom
+    // within, not a wrapper that grows to match content.
     const needsBoundedHeight =
-        currentTool === "editor" || currentTool === "outline" || currentTool === "lorebook" || currentTool === "brainstorm";
+        currentTool === "editor" ||
+        currentTool === "outline" ||
+        currentTool === "lorebook" ||
+        currentTool === "brainstorm" ||
+        currentTool === "relationships";
 
     return (
         <div

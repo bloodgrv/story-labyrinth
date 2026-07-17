@@ -13,7 +13,8 @@ const VALID_TOOLS: readonly WorkspaceTool[] = [
     "research",
     "notes",
     "users",
-    "memory"
+    "memory",
+    "relationships"
 ];
 
 // Consume `?story=&tool=` query params on mount (e.g. a deep link from a Dashboard card

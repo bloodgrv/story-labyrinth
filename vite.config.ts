@@ -31,7 +31,9 @@ export default defineConfig(() => ({
             output: {
                 manualChunks: {
                     // Split large markdown rendering dependencies
-                    "react-markdown": ["react-markdown", "remark-gfm", "rehype-raw", "rehype-sanitize"]
+                    "react-markdown": ["react-markdown", "remark-gfm", "rehype-raw", "rehype-sanitize"],
+                    // Story Graph's canvas/pan/zoom/drag-to-connect — isolated so non-graph-tool users never load it
+                    "story-graph": ["@xyflow/react"]
                 }
             }
         }

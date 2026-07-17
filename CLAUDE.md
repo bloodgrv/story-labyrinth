@@ -59,12 +59,20 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - **Phase A — implemented.** In-process, strictly serial `agentJobs`/`jobRunner.ts` (no queue library, no worker process — single Docker container, single SQLite file): `reconcile_index` (RAG index drift detection/repair), `rag_scan_chapter`/`rag_scan_story` (dual-write adapter over the existing `ragScans`/`ragScanIssues` tables), `prune_history`. Minimal read-only status/retry surface in Settings (`RecentJobsCard`). Load-bearing implementation decisions recorded in `DECISIONS.md` under "Agent Framework — Phase A (Agent Jobs), Load-Bearing Decisions"
 - **Phase B — implemented.** Factual/concrete project memory (`agentMemories`) with mandatory pending→approve lifecycle before anything is retrievable; stored as a new `agent_memory` RAG entity type (reusing `ragChunks`/`hybridSearch`, excluded from search by default unless a caller explicitly opts in via `entityTypes`). Versioned via `memoryKey` + status supersession (no separate snapshot table, unlike Codex). `distill_memory` job proposes pending rows from a scan's findings, manually enqueued only — never auto-chained after a scan. Project Memory tool/panel in the workspace sidebar (story-scoped, editor-level auth). No thematic/psychological agent pipelines — Codex remains concrete-state only. Load-bearing implementation decisions recorded in `DECISIONS.md` under "Agent Framework — Phase B (Project Persistent Memory), Load-Bearing Decisions"
 
+### Lorebook Relationship Graph
+- Design: `docs/Thin_Story_Graph_And_Lorebook_Visualization.md` — **Phase G1 implemented.** `storyGraphEdges` is the source of truth (not a metadata-only view); existing `lorebookEntries.metadata.relationships[]` data is migrated in via an idempotent, re-runnable migration and left read-only afterward
+- Nodes are lorebook entries only. Edges are a 15-value concrete/factual allowlist (`knows`, `allied_with`, `opposed_to`, `member_of`, `located_in`, `owns`, `holds`, `works_at`, `related_to`, `part_of`, `caused`, `involved_in`, `mentions`, `contradicts`, `other`) — no psychological or power-dynamic types, consistent with this project's standing "keep psychological/thematic enforcement out of scope" constraint
+- Story-scoped interactive graph tool ("Relationships" in the workspace sidebar) built on React Flow (`@xyflow/react`), ego view (1/2-hop neighborhood, centered on the alphabetically-first entry by default) and full-graph view, with create/edit/delete edges, search, and "Open entry" cross-tool navigation into the Lorebook tool
+- On lorebook entry delete, incident edges are cascade-deleted server-side (no real FK on `fromId`/`toId` — explicit cleanup call, same pattern as the RAG-index cleanup)
+- Explicitly not built this pass: AI edge suggestions, saved/persisted node layout, and a pending-edge approve/reject review UI (the `status` column exists for this without a schema change later, but nothing produces non-`active` rows yet). Load-bearing implementation decisions (library choice, source-of-truth rationale, a real query-cache invalidation gap found and fixed) recorded in `DECISIONS.md` under "Lorebook Relationship Graph — Library Choice, Source-of-Truth, and Load-Bearing Decisions"
+
 ---
 
 ## Technology Stack
 
 - Base: JonSilver/TheStoryNexus (Express + SQLite + Drizzle + Lexical)
 - Vector layer: sqlite-vec
+- Graph visualization: React Flow (`@xyflow/react`)
 - All model access via OpenAI-compatible endpoints
 - Local-first with optional LAN/Tailscale access
 
@@ -85,6 +93,7 @@ Priority order for implementation:
 8. Dashboard + tab system + persistence
 9. Project Saves (Codex + Story layers) — Codex layer (restore + timeline UI) implemented; Story layer (chapter versioning) not started
 10. Agent Framework (background jobs, scanner orchestration, DB housekeeping, cross-project memory) — Phase A (background jobs) and Phase B (project memory) both implemented; Phase C (UI polish, deferred features) not started, see `docs/Agent_Framework_And_Project_Memory_Design.md`
+11. Lorebook Relationship Graph — Phase G1 (edge table as source of truth, migration, interactive graph tool) implemented; AI edge suggestions, saved layout, and pending-edge review UI not started, see `docs/Thin_Story_Graph_And_Lorebook_Visualization.md`
 
 ---
 

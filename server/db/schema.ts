@@ -1,4 +1,5 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // Series table
 export const series = sqliteTable(
@@ -234,6 +235,61 @@ export const lorebookEntries = sqliteTable(
         levelScopeIdx: index("lorebook_level_scope_idx").on(table.level, table.scopeId),
         categoryIdx: index("lorebook_category_idx").on(table.category),
         nameIdx: index("lorebook_name_idx").on(table.name)
+    })
+);
+
+// Story Graph Edges table — directed, typed links between lorebook entries (the "thin story
+// graph", docs/Thin_Story_Graph_And_Lorebook_Visualization.md). Nodes are NOT duplicated here —
+// a node is just a lorebookEntries row referenced by fromId/toId. Source of truth for lorebook
+// relationships going forward; metadata.relationships is migrated once (server/services/
+// storyGraphService.ts's migrateStoryRelationships) and left read-only/legacy afterward.
+export const storyGraphEdges = sqliteTable(
+    "storyGraphEdges",
+    {
+        id: text("id").primaryKey(),
+        // Graph is always opened in a story context, even when an endpoint is series/global
+        // scoped. Real FK — this is a fresh CREATE TABLE (not an ALTER TABLE ADD COLUMN), so the
+        // ON DELETE clause is preserved correctly (unlike aiChats.anchorEntryId's known limitation).
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        // Lorebook entry ids. NO real FK — entries can be level='global'|'series'|'story', so an
+        // edge endpoint may legitimately point outside this story's own rows. Same loose-column
+        // convention as aiChats.anchorEntryId/agentJobs.entityId. Cleaned up in application code
+        // on entry delete — see storyGraphService.deleteEdgesForEntity, called from
+        // server/routes/lorebook.ts's DELETE /:id.
+        fromId: text("fromId").notNull(),
+        toId: text("toId").notNull(),
+        // Allowlisted, server-validated against STORY_GRAPH_EDGE_TYPES (src/types/storyGraph.ts).
+        // Concrete/factual types only — no psych/power-dynamic types.
+        edgeType: text("edgeType").notNull(),
+        label: text("label"), // optional short display override, e.g. "step-sister" for edgeType 'related_to'
+        description: text("description"),
+        // 'active' | 'pending' | 'rejected'. Every edge created by CRUD or migration this pass is
+        // 'active' — nothing in this pass produces 'pending' (AI suggestions are out of scope).
+        // Column exists now so a future AI-suggestion pass needs no schema migration.
+        status: text("status").notNull().default("active"),
+        // Optional chapter grounding. No FK — same reasoning as fromId/toId.
+        asOfChapterId: text("asOfChapterId"),
+        // 'user' | 'import' | 'ai_suggested' | 'migrated'. 'ai_suggested' is reserved for a future
+        // pass, unused this pass.
+        source: text("source").notNull(),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" })
+    },
+    table => ({
+        storyIdIdx: index("storygraphedge_story_id_idx").on(table.storyId),
+        fromIdIdx: index("storygraphedge_from_id_idx").on(table.fromId),
+        toIdIdx: index("storygraphedge_to_id_idx").on(table.toId),
+        storyEdgeTypeIdx: index("storygraphedge_story_edge_type_idx").on(table.storyId, table.edgeType),
+        statusIdx: index("storygraphedge_status_idx").on(table.status),
+        // Partial unique index — only one active edge per (storyId, fromId, toId, edgeType).
+        // Defense-in-depth alongside the application-level check in storyGraphService.createEdge
+        // (the primary enforcement — see DECISIONS.md for whether drizzle-kit actually emitted
+        // this as a genuine partial index or silently dropped/widened the WHERE clause).
+        uniqueActiveEdgeIdx: uniqueIndex("storygraphedge_unique_active_idx")
+            .on(table.storyId, table.fromId, table.toId, table.edgeType)
+            .where(sql`status = 'active'`)
     })
 );
 

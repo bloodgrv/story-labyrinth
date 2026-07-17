@@ -1,0 +1,99 @@
+// Story Graph domain types — the "thin story graph" (docs/Thin_Story_Graph_And_Lorebook_Visualization.md).
+// Nodes are lorebook entries; edges are typed, directed links stored in storyGraphEdges.
+
+export type StoryGraphEdgeType =
+    | "knows"
+    | "allied_with"
+    | "opposed_to"
+    | "member_of"
+    | "located_in"
+    | "owns"
+    | "holds"
+    | "works_at"
+    | "related_to"
+    | "part_of"
+    | "caused"
+    | "involved_in"
+    | "mentions"
+    | "contradicts"
+    | "other";
+
+// Concrete/factual types only — deliberately no psychological, power-dynamic, or corruption
+// types (design doc §4.3's explicit non-goal).
+export const STORY_GRAPH_EDGE_TYPES: StoryGraphEdgeType[] = [
+    "knows",
+    "allied_with",
+    "opposed_to",
+    "member_of",
+    "located_in",
+    "owns",
+    "holds",
+    "works_at",
+    "related_to",
+    "part_of",
+    "caused",
+    "involved_in",
+    "mentions",
+    "contradicts",
+    "other"
+];
+
+export const STORY_GRAPH_EDGE_TYPE_LABELS: Record<StoryGraphEdgeType, string> = {
+    knows: "Knows",
+    allied_with: "Allied With",
+    opposed_to: "Opposed To",
+    member_of: "Member Of",
+    located_in: "Located In",
+    owns: "Owns",
+    holds: "Holds",
+    works_at: "Works At",
+    related_to: "Related To",
+    part_of: "Part Of",
+    caused: "Caused",
+    involved_in: "Involved In",
+    mentions: "Mentions",
+    contradicts: "Contradicts",
+    other: "Other"
+};
+
+// Only 'active' is ever produced this pass (AI suggestions, which would produce 'pending', are
+// out of scope) — the type exists so a future pass needs no type-level rework.
+export type StoryGraphStatus = "active" | "pending" | "rejected";
+export type StoryGraphEdgeSource = "user" | "import" | "ai_suggested" | "migrated";
+
+export interface StoryGraphNode {
+    id: string;
+    name: string;
+    category: string;
+    level: "global" | "series" | "story";
+    isDisabled: boolean;
+    imageFilename: string | null;
+    importance: "major" | "minor" | "background" | null;
+}
+
+export interface StoryGraphEdge {
+    id: string;
+    storyId: string;
+    fromId: string;
+    toId: string;
+    edgeType: StoryGraphEdgeType;
+    label: string | null;
+    description: string | null;
+    status: StoryGraphStatus;
+    asOfChapterId: string | null;
+    source: StoryGraphEdgeSource;
+    createdAt: Date;
+    updatedAt: Date | null;
+}
+
+export interface StoryGraphResponse {
+    nodes: StoryGraphNode[];
+    edges: StoryGraphEdge[];
+    hasLegacyRelationships: boolean;
+}
+
+export interface StoryGraphMigrationResult {
+    migrated: number;
+    skipped: number;
+    skippedDetails: Array<{ entryId: string; targetId: string; reason: string }>;
+}

@@ -30,6 +30,7 @@ export { humanizerApi } from "./humanizerClient";
 export { lorebookApi } from "./lorebookClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
 export { ragApi } from "./ragClient";
+export { storyGraphApi } from "./storyGraphClient";
 export { ttsApi } from "./ttsClient";
 export { usersApi } from "./usersClient";
 

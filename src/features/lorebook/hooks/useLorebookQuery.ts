@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { lorebookApi } from "@/services/api/client";
+import { storyGraphKeys } from "@/features/story-graph/hooks/useStoryGraphQuery";
 import type { LorebookEntry } from "@/types/story";
 
 // Query keys
@@ -128,6 +129,12 @@ export const useDeleteLorebookMutation = () => {
 
             // Always invalidate lists as fallback
             queryClient.invalidateQueries({ queryKey: lorebookKeys.lists() });
+
+            // The server cascade-deletes this entry's storyGraphEdges (server/routes/lorebook.ts),
+            // but that's invisible to the graph's own query cache — without this, a just-deleted
+            // entry can linger as a ghost node/edge in the Relationships tool until the default
+            // 1-minute staleTime lapses.
+            queryClient.invalidateQueries({ queryKey: storyGraphKeys.all });
 
             toast.success("Lorebook entry deleted successfully");
         },
