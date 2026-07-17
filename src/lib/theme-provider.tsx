@@ -1,6 +1,21 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "dark" | "light" | "system";
+export type Theme = "dark" | "light" | "system" | "sepia" | "midnight" | "forest" | "sand" | "graphite";
+
+// Theme ids double as the class name applied to <html> (except "system", which resolves to
+// light/dark). Keep in sync with the palettes defined in index.css.
+export const THEME_OPTIONS: { id: Theme; label: string }[] = [
+    { id: "light", label: "Light" },
+    { id: "dark", label: "Dark" },
+    { id: "sepia", label: "Sepia" },
+    { id: "midnight", label: "Midnight" },
+    { id: "forest", label: "Forest" },
+    { id: "sand", label: "Black & Sand" },
+    { id: "graphite", label: "Graphite" },
+    { id: "system", label: "System" }
+];
+
+const THEME_CLASSES = ["light", "dark", "sepia", "midnight", "forest", "sand", "graphite"];
 
 type ThemeProviderProps = {
     children: React.ReactNode;
@@ -32,7 +47,7 @@ export function ThemeProvider({
 
     useEffect(() => {
         const root = window.document.documentElement;
-        root.classList.remove("light", "dark");
+        root.classList.remove(...THEME_CLASSES);
         const appliedTheme = theme === "system" ? getSystemTheme() : theme;
         root.classList.add(appliedTheme);
         localStorage.setItem(storageKey, theme);
@@ -43,7 +58,7 @@ export function ThemeProvider({
         const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
         const handleChange = () => {
             const root = window.document.documentElement;
-            root.classList.remove("light", "dark");
+            root.classList.remove(...THEME_CLASSES);
             root.classList.add(getSystemTheme());
         };
         mediaQuery.addEventListener("change", handleChange);

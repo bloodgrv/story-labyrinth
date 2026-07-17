@@ -71,6 +71,156 @@
         --sidebar-border: 193 50% 15%;
         --sidebar-ring: 180 50% 45%;
     }
+    /* Sepia — warm parchment/paper, for daytime reading and writing sessions. */
+    .sepia {
+        --background: 35 38% 92%;
+        --foreground: 25 35% 15%;
+        --card: 35 35% 95%;
+        --card-foreground: 25 35% 15%;
+        --popover: 35 35% 95%;
+        --popover-foreground: 25 35% 15%;
+        --primary: 25 45% 25%;
+        --primary-foreground: 35 38% 95%;
+        --secondary: 35 25% 85%;
+        --secondary-foreground: 25 35% 20%;
+        --muted: 35 25% 85%;
+        --muted-foreground: 25 20% 40%;
+        --accent: 30 40% 75%;
+        --accent-foreground: 25 35% 15%;
+        --destructive: 5 60% 40%;
+        --destructive-foreground: 35 38% 95%;
+        --border: 35 20% 75%;
+        --input: 35 20% 75%;
+        --ring: 25 45% 25%;
+        --sidebar-background: 35 35% 88%;
+        --sidebar-foreground: 25 35% 20%;
+        --sidebar-primary: 25 45% 25%;
+        --sidebar-primary-foreground: 35 38% 95%;
+        --sidebar-accent: 35 30% 80%;
+        --sidebar-accent-foreground: 25 35% 15%;
+        --sidebar-border: 35 20% 75%;
+        --sidebar-ring: 25 45% 25%;
+    }
+    /* Midnight — near-black OLED dark with a violet accent, deeper than the default dark theme. */
+    .midnight {
+        --background: 240 15% 4%;
+        --foreground: 240 10% 92%;
+        --card: 240 15% 6%;
+        --card-foreground: 240 10% 92%;
+        --popover: 240 15% 6%;
+        --popover-foreground: 240 10% 92%;
+        --primary: 255 70% 65%;
+        --primary-foreground: 240 15% 4%;
+        --secondary: 240 15% 12%;
+        --secondary-foreground: 240 10% 88%;
+        --muted: 240 15% 12%;
+        --muted-foreground: 240 8% 60%;
+        --accent: 255 40% 20%;
+        --accent-foreground: 240 10% 92%;
+        --destructive: 0 65% 45%;
+        --destructive-foreground: 240 10% 92%;
+        --border: 240 15% 15%;
+        --input: 240 15% 15%;
+        --ring: 255 70% 65%;
+        --sidebar-background: 240 15% 5%;
+        --sidebar-foreground: 240 10% 88%;
+        --sidebar-primary: 255 70% 65%;
+        --sidebar-primary-foreground: 240 15% 4%;
+        --sidebar-accent: 240 15% 10%;
+        --sidebar-accent-foreground: 240 10% 92%;
+        --sidebar-border: 240 15% 12%;
+        --sidebar-ring: 255 70% 65%;
+    }
+    /* Black & Sand — near-black with warm tan/sand foreground and accents. */
+    .sand {
+        --background: 30 8% 5%;
+        --foreground: 35 35% 78%;
+        --card: 30 8% 7%;
+        --card-foreground: 35 35% 78%;
+        --popover: 30 8% 7%;
+        --popover-foreground: 35 35% 78%;
+        --primary: 35 45% 60%;
+        --primary-foreground: 30 8% 5%;
+        --secondary: 30 8% 14%;
+        --secondary-foreground: 35 30% 75%;
+        --muted: 30 8% 14%;
+        --muted-foreground: 35 15% 55%;
+        --accent: 35 30% 22%;
+        --accent-foreground: 35 35% 82%;
+        --destructive: 5 55% 40%;
+        --destructive-foreground: 35 35% 90%;
+        --border: 30 10% 18%;
+        --input: 30 10% 18%;
+        --ring: 35 45% 60%;
+        --sidebar-background: 30 8% 4%;
+        --sidebar-foreground: 35 30% 75%;
+        --sidebar-primary: 35 45% 60%;
+        --sidebar-primary-foreground: 30 8% 5%;
+        --sidebar-accent: 30 8% 12%;
+        --sidebar-accent-foreground: 35 35% 82%;
+        --sidebar-border: 30 10% 16%;
+        --sidebar-ring: 35 45% 60%;
+    }
+    /* Graphite — mid-dark neutral grey with near-black text. */
+    .graphite {
+        --background: 0 0% 40%;
+        --foreground: 0 0% 8%;
+        --card: 0 0% 44%;
+        --card-foreground: 0 0% 8%;
+        --popover: 0 0% 44%;
+        --popover-foreground: 0 0% 8%;
+        --primary: 0 0% 10%;
+        --primary-foreground: 0 0% 95%;
+        --secondary: 0 0% 48%;
+        --secondary-foreground: 0 0% 8%;
+        --muted: 0 0% 48%;
+        --muted-foreground: 0 0% 22%;
+        --accent: 0 0% 52%;
+        --accent-foreground: 0 0% 8%;
+        --destructive: 0 55% 32%;
+        --destructive-foreground: 0 0% 95%;
+        --border: 0 0% 32%;
+        --input: 0 0% 32%;
+        --ring: 0 0% 10%;
+        --sidebar-background: 0 0% 37%;
+        --sidebar-foreground: 0 0% 8%;
+        --sidebar-primary: 0 0% 10%;
+        --sidebar-primary-foreground: 0 0% 95%;
+        --sidebar-accent: 0 0% 46%;
+        --sidebar-accent-foreground: 0 0% 8%;
+        --sidebar-border: 0 0% 30%;
+        --sidebar-ring: 0 0% 10%;
+    }
+    /* Forest — muted deep green dark theme. */
+    .forest {
+        --background: 150 25% 8%;
+        --foreground: 120 15% 88%;
+        --card: 150 25% 10%;
+        --card-foreground: 120 15% 88%;
+        --popover: 150 25% 10%;
+        --popover-foreground: 120 15% 88%;
+        --primary: 140 40% 55%;
+        --primary-foreground: 150 25% 8%;
+        --secondary: 150 20% 16%;
+        --secondary-foreground: 120 15% 85%;
+        --muted: 150 20% 16%;
+        --muted-foreground: 120 10% 60%;
+        --accent: 140 25% 20%;
+        --accent-foreground: 120 15% 88%;
+        --destructive: 5 60% 42%;
+        --destructive-foreground: 120 15% 90%;
+        --border: 150 20% 18%;
+        --input: 150 20% 18%;
+        --ring: 140 40% 55%;
+        --sidebar-background: 150 25% 7%;
+        --sidebar-foreground: 120 15% 85%;
+        --sidebar-primary: 140 40% 55%;
+        --sidebar-primary-foreground: 150 25% 8%;
+        --sidebar-accent: 150 20% 14%;
+        --sidebar-accent-foreground: 120 15% 88%;
+        --sidebar-border: 150 20% 16%;
+        --sidebar-ring: 140 40% 55%;
+    }
 }
 @layer base {
     * {
