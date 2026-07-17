@@ -47,7 +47,7 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - Full session persistence + user-configurable preferred tab setup
 - Main Editor opens last chapter + dismissible session summary
 - RAG Scanner in collapsible right rail with toggleable inline highlights
-- Project Saves split into Codex + Story layers with separate visual timelines
+- Project Saves split into Codex + Story layers with separate visual timelines — **Codex layer implemented** (per-entry snapshot timeline + restore, in the Lorebook entry editor's "History" section); Story layer (chapter/manuscript versioning — currently zero history, destructive autosave) not started, see `DECISIONS.md`'s "Project Saves — Phase 1" entry
 
 ### Deployment & Access
 - Docker-first approach
@@ -83,7 +83,7 @@ Priority order for implementation:
 6. World-Building Chat system
 7. Main Editor integration + quick-add
 8. Dashboard + tab system + persistence
-9. Project Saves (Codex + Story layers)
+9. Project Saves (Codex + Story layers) — Codex layer (restore + timeline UI) implemented; Story layer (chapter versioning) not started
 10. Agent Framework (background jobs, scanner orchestration, DB housekeeping, cross-project memory) — Phase A (background jobs) and Phase B (project memory) both implemented; Phase C (UI polish, deferred features) not started, see `docs/Agent_Framework_And_Project_Memory_Design.md`
 
 ---

@@ -31,7 +31,9 @@ export interface DocumentImportDraft {
     codexState: CodexState;
 }
 
-export type CodexSourceType = "user" | "chat" | "ai_suggestion";
+// "restore" marks a snapshot created by restoring an earlier one — see codexService.ts's
+// restoreSnapshot. Keeps restore itself part of the non-destructive history, not a silent rewind.
+export type CodexSourceType = "user" | "chat" | "ai_suggestion" | "restore";
 export type CodexPendingSourceType = "chat" | "ai";
 export type CodexPendingStatus = "pending" | "approved" | "rejected";
 
@@ -43,6 +45,9 @@ export interface CodexSnapshot {
     codexState: CodexState | null;
     sourceType: CodexSourceType;
     sourceRef: string | null;
+    // User-set name for this snapshot (Project Saves Phase 1) — null until named via the
+    // History panel. Set retroactively, not at snapshot-creation time.
+    label: string | null;
     createdAt: Date;
 }
 

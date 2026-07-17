@@ -1,4 +1,4 @@
-import type { CodexPendingChange, CodexSourceType, CodexState } from "@/types/codex";
+import type { CodexPendingChange, CodexSnapshot, CodexSourceType, CodexState } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
 import { fetchJSON } from "./apiFactory";
 
@@ -32,5 +32,16 @@ export const codexApi = {
         fetchJSON<{ entry: LorebookEntry; snapshot: unknown }>(`/codex/${entryId}/state`, {
             method: "POST",
             body: JSON.stringify(data)
+        }),
+    // Project Saves Phase 1 — snapshot history/timeline for a Codex entry.
+    getSnapshots: (entryId: string) => fetchJSON<CodexSnapshot[]>(`/codex/${entryId}/snapshots`),
+    restoreSnapshot: (entryId: string, snapshotId: string) =>
+        fetchJSON<{ entry: LorebookEntry; snapshot: CodexSnapshot }>(`/codex/${entryId}/snapshots/${snapshotId}/restore`, {
+            method: "POST"
+        }),
+    labelSnapshot: (entryId: string, snapshotId: string, label: string | null) =>
+        fetchJSON<CodexSnapshot>(`/codex/${entryId}/snapshots/${snapshotId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ label })
         })
 };

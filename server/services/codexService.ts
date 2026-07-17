@@ -9,6 +9,7 @@ import {
     createSnapshot,
     getCodexEntry,
     getPendingChangeById,
+    getSnapshotById,
     insertCodexEntry,
     resolvePendingChange,
     updateCodexEntryFields,
@@ -243,4 +244,39 @@ export const rejectPendingChange = async (
     if (!resolved) throw new Error(`Failed to resolve pending change: ${pendingChangeId}`);
 
     return resolved;
+};
+
+/**
+ * Restore an entry to an earlier snapshot's description/codexState (Project Saves Phase 1).
+ * Non-destructive: applies the snapshot's state to the live entry, then takes a NEW snapshot
+ * of the result tagged sourceType: "restore" — the restore itself becomes part of the entry's
+ * history, not a silent rewind. Note codexSnapshots only ever captured description/codexState,
+ * never tags/needsFleshingOut, so those two fields are left untouched by a restore.
+ */
+export const restoreSnapshot = async (
+    entryId: string,
+    snapshotId: string
+): Promise<{ entry: LorebookRow; snapshot: CodexSnapshot }> => {
+    const target = await getSnapshotById(snapshotId);
+    if (!target) throw new Error(`Snapshot not found: ${snapshotId}`);
+    if (target.entryId !== entryId) throw new Error(`Snapshot ${snapshotId} does not belong to entry ${entryId}`);
+
+    const existing = await getOrThrow(entryId);
+
+    const updated = await updateCodexEntryFields(entryId, {
+        description: target.description,
+        codexState: target.codexState
+    });
+    const entry = updated ?? existing;
+    if (updated) void attemptPromise(() => indexLorebookEntry(entry.id));
+
+    const snapshot = await createSnapshot({
+        entryId: entry.id,
+        description: entry.description,
+        codexState: toCodexState(entry.codexState),
+        sourceType: "restore",
+        sourceRef: snapshotId
+    });
+
+    return { entry, snapshot };
 };

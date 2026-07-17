@@ -247,8 +247,12 @@ export const codexSnapshots = sqliteTable(
             .references(() => lorebookEntries.id, { onDelete: "cascade" }),
         description: text("description").notNull(),
         codexState: text("codexState", { mode: "json" }),
-        sourceType: text("sourceType").notNull(), // 'user' | 'chat' | 'ai_suggestion'
+        sourceType: text("sourceType").notNull(), // 'user' | 'chat' | 'ai_suggestion' | 'restore'
         sourceRef: text("sourceRef"),
+        // User-set name for this snapshot (e.g. "Before the Prague rewrite") — null until named.
+        // Set retroactively via the History panel, not threaded through snapshot creation itself;
+        // see Project Saves Phase 1 in DECISIONS.md.
+        label: text("label"),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
     },
     table => ({

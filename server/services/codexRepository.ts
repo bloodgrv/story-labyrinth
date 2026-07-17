@@ -38,6 +38,7 @@ const rowToSnapshot = (row: typeof schema.codexSnapshots.$inferSelect): CodexSna
     codexState: (row.codexState as CodexState | null) ?? null,
     sourceType: row.sourceType as CodexSourceType,
     sourceRef: row.sourceRef ?? null,
+    label: row.label ?? null,
     createdAt: row.createdAt as unknown as Date
 });
 
@@ -137,6 +138,11 @@ export const getSnapshotsForEntry = async (entryId: string): Promise<CodexSnapsh
     return rows.map(rowToSnapshot);
 };
 
+export const getSnapshotById = async (snapshotId: string): Promise<CodexSnapshot | null> => {
+    const [row] = await db.select().from(schema.codexSnapshots).where(eq(schema.codexSnapshots.id, snapshotId));
+    return row ? rowToSnapshot(row) : null;
+};
+
 export const getPendingChangesForEntry = async (
     entryId: string,
     status?: CodexPendingStatus
@@ -231,10 +237,22 @@ export const createSnapshot = async (params: CreateSnapshotParams): Promise<Code
             codexState: params.codexState,
             sourceType: params.sourceType,
             sourceRef: params.sourceRef ?? null,
+            label: null,
             createdAt: new Date()
         })
         .returning();
     return rowToSnapshot(row);
+};
+
+// Set or clear a snapshot's user-given name (Project Saves Phase 1) — retroactive, not part of
+// snapshot creation. Returns null if the snapshot doesn't exist.
+export const setSnapshotLabel = async (snapshotId: string, label: string | null): Promise<CodexSnapshot | null> => {
+    const [row] = await db
+        .update(schema.codexSnapshots)
+        .set({ label })
+        .where(eq(schema.codexSnapshots.id, snapshotId))
+        .returning();
+    return row ? rowToSnapshot(row) : null;
 };
 
 export const createPendingChange = async (params: CreatePendingChangeParams): Promise<CodexPendingChange> => {

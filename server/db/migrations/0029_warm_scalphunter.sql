@@ -1,0 +1,1 @@
+ALTER TABLE `codexSnapshots` ADD `label` text;

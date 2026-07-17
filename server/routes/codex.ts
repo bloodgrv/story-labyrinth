@@ -4,7 +4,8 @@ import { parseJson } from "../lib/json.js";
 import {
     getCodexEntry,
     getPendingChangesForEntry,
-    getSnapshotsForEntry
+    getSnapshotsForEntry,
+    setSnapshotLabel
 } from "../services/codexRepository.js";
 import {
     approvePendingChange,
@@ -12,7 +13,8 @@ import {
     enableCodexForEntry,
     proposeChange,
     recordStateChange,
-    rejectPendingChange
+    rejectPendingChange,
+    restoreSnapshot
 } from "../services/codexService.js";
 import { detectNewEntitiesForChapter } from "../services/entityDetector.js";
 
@@ -209,6 +211,32 @@ router.get(
 
         const snapshots = await getSnapshotsForEntry(entry.id);
         res.json(snapshots);
+    })
+);
+
+// ── POST /api/codex/:entryId/snapshots/:snapshotId/restore ───────────────────
+// Restore the entry's description/codexState to an earlier snapshot's values. Non-destructive
+// — creates a new snapshot (sourceType: "restore") recording the restore itself.
+router.post(
+    "/:entryId/snapshots/:snapshotId/restore",
+    asyncHandler(async (req, res) => {
+        const result = await restoreSnapshot(req.params.entryId, req.params.snapshotId);
+        res.json({ entry: transformEntry(result.entry), snapshot: result.snapshot });
+    })
+);
+
+// ── PATCH /api/codex/:entryId/snapshots/:snapshotId ───────────────────────────
+// Set or clear a snapshot's user-given name. Body: { label: string | null }
+router.patch(
+    "/:entryId/snapshots/:snapshotId",
+    asyncHandler(async (req, res) => {
+        const { label } = req.body as { label?: string | null };
+        const snapshot = await setSnapshotLabel(req.params.snapshotId, label ?? null);
+        if (!snapshot) {
+            res.status(404).json({ error: "Snapshot not found" });
+            return;
+        }
+        res.json(snapshot);
     })
 );
 

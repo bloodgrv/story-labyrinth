@@ -1,4 +1,5 @@
 export { AdvancedSettings } from "./AdvancedSettings";
+export { CodexHistoryPanel } from "./CodexHistoryPanel";
 export { CodexStateEditor } from "./CodexStateEditor";
 export { ImageUploadField } from "./ImageUploadField";
 export { LevelScopeFields } from "./LevelScopeFields";

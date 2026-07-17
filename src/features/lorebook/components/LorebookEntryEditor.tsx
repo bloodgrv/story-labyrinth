@@ -23,6 +23,7 @@ import { useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/u
 import {
     AdvancedSettings,
     CATEGORIES,
+    CodexHistoryPanel,
     CodexStateEditor,
     EMPTY_CODEX_STATE,
     ImageUploadField,
@@ -261,6 +262,8 @@ export function LorebookEntryEditor({
                         />
 
                         {selectedCategory === "character" && <CodexStateEditor control={form.control} />}
+
+                        {entry?.codexEnabled && entry.id && <CodexHistoryPanel entryId={entry.id} storyId={storyId} />}
 
                         <AdvancedSettings control={form.control} open={advancedOpen} onOpenChange={setAdvancedOpen} />
 
