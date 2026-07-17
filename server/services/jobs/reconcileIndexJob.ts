@@ -4,6 +4,7 @@ import { db, schema } from "../../db/client.js";
 import { chunkText, computeContentHash } from "../embeddingService.js";
 import { extractTextFromLexical } from "../entityDetector.js";
 import { updateJobProgress } from "../agentJobsRepository.js";
+import { listMemories } from "../agentMemoriesRepository.js";
 import { buildLorebookEntryText, indexChapter, indexLorebookEntry, removeEntityFromIndex } from "../ragIndexService.js";
 import type { RagEntityType } from "../ragRepository.js";
 
@@ -29,7 +30,8 @@ const entityNeedsReindex = (currentText: string, existingChunks: ChunkSummary[])
 // Finds RAG index drift for one story and fixes it using the existing (unmodified)
 // ragIndexService.ts primitives — this job only adds the "what's out of sync" query layer,
 // which didn't exist before Phase A. Two kinds of drift:
-//   1. stale/missing chunks for a still-live lorebook entry or chapter -> reindex it
+//   1. stale/missing chunks for a still-live lorebook entry, chapter, or active agent memory
+//      -> reindex it (memories are not staleness-checked here, see below)
 //   2. orphaned chunks whose source entity no longer exists (e.g. the lorebook delete-route
 //      gap this same phase fixes) -> remove them
 export const runReconcileIndexJob = async (job: AgentJob): Promise<{
@@ -105,9 +107,17 @@ export const runReconcileIndexJob = async (job: AgentJob): Promise<{
         await reportProgress(`Checked chapter ${chapter.title}`);
     }
 
-    // Orphan pass: any indexed key with no corresponding live entity/chapter left — e.g. from
-    // the lorebook DELETE route gap fixed alongside this job, or any other path that forgets
-    // the same cleanup call in the future.
+    // Active agent memories (Phase B) also count as valid keys — without this, every approved
+    // memory's ragChunks would look orphaned to the pass below and get deleted on the next
+    // reconcile run. No staleness check needed here (unlike lorebook entries/chapters, which can
+    // drift via direct content edits elsewhere): memories are only ever content-edited through
+    // agentMemoriesService.ts's editActiveMemory, which already re-indexes synchronously.
+    const activeMemories = await listMemories({ storyId, status: "active" });
+    for (const memory of activeMemories) validKeys.add(`agent_memory:${memory.id}`);
+
+    // Orphan pass: any indexed key with no corresponding live entity/chapter/memory left — e.g.
+    // from the lorebook DELETE route gap fixed alongside this job, or any other path that
+    // forgets the same cleanup call in the future.
     let orphansRemoved = 0;
     for (const key of chunksByKey.keys()) {
         if (validKeys.has(key)) continue;

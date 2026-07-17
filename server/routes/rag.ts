@@ -4,6 +4,7 @@ import express from "express";
 import type { RagIssueStatus } from "../../src/types/ragScan.js";
 import { db, schema } from "../db/client.js";
 import { indexChapter, indexLorebookEntry, removeEntityFromIndex, search } from "../services/ragIndexService.js";
+import type { RagEntityType } from "../services/ragRepository.js";
 import {
     getScanWithIssues,
     listIssuesForStory,
@@ -15,10 +16,20 @@ import {
 
 const router = express.Router();
 
+const VALID_ENTITY_TYPES: RagEntityType[] = ["lorebook_entry", "chapter", "agent_memory"];
+
 // POST /api/rag/search — hybrid keyword + vector search scoped to a story.
-// Body: { storyId: string, query: string, limit?: number }
+// Body: { storyId: string, query: string, limit?: number, entityTypes?: RagEntityType[] }
+// entityTypes is the one place a caller can explicitly opt in to "agent_memory" — omitting it
+// (or passing an invalid value) falls through to search()'s/hybridSearch's own safe default,
+// never "all types" (design doc §4.5).
 router.post("/search", async (req, res) => {
-    const { storyId, query, limit } = req.body as { storyId?: unknown; query?: unknown; limit?: unknown };
+    const { storyId, query, limit, entityTypes } = req.body as {
+        storyId?: unknown;
+        query?: unknown;
+        limit?: unknown;
+        entityTypes?: unknown;
+    };
 
     if (typeof storyId !== "string" || !storyId.trim()) {
         res.status(400).json({ error: "storyId is required" });
@@ -29,8 +40,18 @@ router.post("/search", async (req, res) => {
         return;
     }
 
+    const parsedEntityTypes =
+        Array.isArray(entityTypes) && entityTypes.every(t => VALID_ENTITY_TYPES.includes(t as RagEntityType))
+            ? (entityTypes as RagEntityType[])
+            : undefined;
+
     const [error, results] = await attemptPromise(() =>
-        search({ storyId, query, limit: typeof limit === "number" ? limit : undefined })
+        search({
+            storyId,
+            query,
+            limit: typeof limit === "number" ? limit : undefined,
+            entityTypes: parsedEntityTypes
+        })
     );
 
     if (error) {

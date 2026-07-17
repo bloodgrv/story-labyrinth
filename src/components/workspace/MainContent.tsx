@@ -6,6 +6,7 @@ import { EditorTool } from "./tools/EditorTool";
 import { LorebookTool } from "./tools/LorebookTool";
 import { NotesTool } from "./tools/NotesTool";
 import { OutlineTool } from "./tools/OutlineTool";
+import { ProjectMemoryTool } from "./tools/ProjectMemoryTool";
 import { SeriesTool } from "./tools/SeriesTool";
 import { ResearchTool } from "./tools/ResearchTool";
 import { StoriesTool } from "./tools/StoriesTool";
@@ -22,7 +23,8 @@ const toolTints = {
     brainstorm: "bg-purple-50/10 dark:bg-purple-950/5",
     notes: "bg-green-50/10 dark:bg-green-950/5",
     users: "bg-background",
-    research: "bg-sky-50/10 dark:bg-sky-950/5"
+    research: "bg-sky-50/10 dark:bg-sky-950/5",
+    memory: "bg-teal-50/10 dark:bg-teal-950/5"
 };
 
 export const MainContent = () => {
@@ -50,6 +52,8 @@ export const MainContent = () => {
                 return <UsersTool />;
             case "research":
                 return <ResearchTool />;
+            case "memory":
+                return <ProjectMemoryTool />;
             default:
                 return (
                     <div className="flex items-center justify-center h-full">

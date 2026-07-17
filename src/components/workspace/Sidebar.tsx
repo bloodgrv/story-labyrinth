@@ -1,5 +1,6 @@
 import {
     BookOpen,
+    Brain,
     ChevronLeft,
     ChevronRight,
     FileEdit,
@@ -33,7 +34,8 @@ const tools = [
     { id: "lorebook" as WorkspaceTool, label: "Lorebook", icon: BookOpen, requiresStory: true },
     { id: "brainstorm" as WorkspaceTool, label: "Brainstorm", icon: MessageSquare, requiresStory: true },
     { id: "research" as WorkspaceTool, label: "Research", icon: Search, requiresStory: false },
-    { id: "notes" as WorkspaceTool, label: "Notes", icon: StickyNote, requiresStory: true }
+    { id: "notes" as WorkspaceTool, label: "Notes", icon: StickyNote, requiresStory: true },
+    { id: "memory" as WorkspaceTool, label: "Memory", icon: Brain, requiresStory: true }
 ];
 
 const ownerOnlyTools = [{ id: "users" as WorkspaceTool, label: "Users", icon: Users, requiresStory: false }];

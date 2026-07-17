@@ -10,7 +10,8 @@ export type WorkspaceTool =
     | "brainstorm"
     | "notes"
     | "users"
-    | "research";
+    | "research"
+    | "memory";
 
 interface StoryContextType {
     currentStoryId: string | null;

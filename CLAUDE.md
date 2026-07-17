@@ -57,7 +57,7 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 ### Agent Framework & Project Memory
 - Design: `docs/Agent_Framework_And_Project_Memory_Design.md` (supersedes `DECISIONS.md`'s earlier "RAG Index Freshness ... & Agent Framework Direction" section — shape kept, gaps filled)
 - **Phase A — implemented.** In-process, strictly serial `agentJobs`/`jobRunner.ts` (no queue library, no worker process — single Docker container, single SQLite file): `reconcile_index` (RAG index drift detection/repair), `rag_scan_chapter`/`rag_scan_story` (dual-write adapter over the existing `ragScans`/`ragScanIssues` tables), `prune_history`. Minimal read-only status/retry surface in Settings (`RecentJobsCard`). Load-bearing implementation decisions recorded in `DECISIONS.md` under "Agent Framework — Phase A (Agent Jobs), Load-Bearing Decisions"
-- **Phase B — not started.** Factual/concrete project memory (`agentMemories`) with mandatory pending→approve lifecycle before anything is retrievable; stored as a new `agent_memory` RAG entity type (reusing `ragChunks`/`hybridSearch`, excluded from search by default unless a feature opts in). No thematic/psychological agent pipelines — Codex remains concrete-state only. Do not start until Phase A has been stable through a review pass
+- **Phase B — implemented.** Factual/concrete project memory (`agentMemories`) with mandatory pending→approve lifecycle before anything is retrievable; stored as a new `agent_memory` RAG entity type (reusing `ragChunks`/`hybridSearch`, excluded from search by default unless a caller explicitly opts in via `entityTypes`). Versioned via `memoryKey` + status supersession (no separate snapshot table, unlike Codex). `distill_memory` job proposes pending rows from a scan's findings, manually enqueued only — never auto-chained after a scan. Project Memory tool/panel in the workspace sidebar (story-scoped, editor-level auth). No thematic/psychological agent pipelines — Codex remains concrete-state only. Load-bearing implementation decisions recorded in `DECISIONS.md` under "Agent Framework — Phase B (Project Persistent Memory), Load-Bearing Decisions"
 
 ---
 
@@ -84,7 +84,7 @@ Priority order for implementation:
 7. Main Editor integration + quick-add
 8. Dashboard + tab system + persistence
 9. Project Saves (Codex + Story layers)
-10. Agent Framework (background jobs, scanner orchestration, DB housekeeping, cross-project memory) — Phase A (background jobs) implemented; Phase B (project memory) not started, see `docs/Agent_Framework_And_Project_Memory_Design.md`
+10. Agent Framework (background jobs, scanner orchestration, DB housekeeping, cross-project memory) — Phase A (background jobs) and Phase B (project memory) both implemented; Phase C (UI polish, deferred features) not started, see `docs/Agent_Framework_And_Project_Memory_Design.md`
 
 ---
 

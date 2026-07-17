@@ -8,6 +8,7 @@ import { blockViewerMutations, requireAuth, requireOwner } from "./middleware/au
 import { start as startJobRunner, stop as stopJobRunner } from "./services/jobRunner.js";
 import adminRouter from "./routes/admin.js";
 import agentJobsRouter from "./routes/agentJobs.js";
+import agentMemoriesRouter from "./routes/agentMemories.js";
 import aiRouter from "./routes/ai.js";
 import authRouter from "./routes/auth.js";
 import beatsRouter from "./routes/beats.js";
@@ -90,6 +91,9 @@ app.use("/api/admin", requireOwner, adminRouter);
 // System-level infrastructure (LLM-spend-triggering, story-wide reindexing) that a
 // viewer/editor has no legitimate reason to poke at directly — matching /api/admin/ai/users.
 app.use("/api/agent/jobs", requireOwner, agentJobsRouter);
+// Memory approval is an editorial decision (analogous to Codex proposal approval, editor-allowed
+// today), not system administration — no requireOwner here, matching /api/codex's auth level.
+app.use("/api/agent/memories", agentMemoriesRouter);
 app.use("/api/rag", ragRouter);
 app.use("/api/tts", ttsRouter);
 app.use("/api/humanizer", humanizerRouter);

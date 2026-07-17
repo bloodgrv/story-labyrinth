@@ -470,6 +470,56 @@ export const agentJobs = sqliteTable(
     })
 );
 
+// Agent Memories table — Project Persistent Memory (Phase B). Metadata/lifecycle only; the
+// factual content itself is duplicated into ragChunks (entityType: "agent_memory") only once a
+// row reaches status "active" — see server/services/agentMemoriesService.ts. Unlike Codex's
+// codexSnapshots (a separate append-only history table), there is deliberately NO snapshot
+// table here: versioning is expressed purely via memoryKey + status transition (a new approved
+// row sharing a memoryKey flips the previous "active" row to "superseded" — design doc §4.2A/
+// §4.4, docs/Agent_Framework_And_Project_Memory_Design.md).
+export const agentMemories = sqliteTable(
+    "agentMemories",
+    {
+        id: text("id").primaryKey(),
+        // Nullable — null means writer/global memory, not tied to one story. Same convention as
+        // prompts.storyId/aiChats.storyId. Real FK: single possible parent table.
+        storyId: text("storyId").references(() => stories.id, { onDelete: "cascade" }),
+        // Stable slug for supersession (e.g. "fact:back-room-no-cameras"), or a fresh UUID for
+        // one-off notes/events with no natural stable identity. Deliberately NOT unique at the
+        // DB level — pending/rejected/superseded rows for the same key coexist as history; the
+        // "current" value is resolved by (memoryKey, status='active') at query time.
+        memoryKey: text("memoryKey").notNull(),
+        category: text("category").notNull(), // 'established_fact' | 'open_thread' | 'event' | 'voice_rule' | 'project_note' | 'writer_pref'
+        title: text("title").notNull(),
+        body: text("body").notNull(),
+        status: text("status").notNull().default("pending"), // 'pending' | 'active' | 'rejected' | 'superseded'
+        // Nullable FK — set only when a distill_memory job produced this row. Real FK: single
+        // possible parent table (agentJobs).
+        sourceJobId: text("sourceJobId").references(() => agentJobs.id, { onDelete: "set null" }),
+        // The ragScans.id this memory was distilled from, when applicable. NOT a real FK to
+        // ragScans on purpose — an approved memory must survive prune_history cleaning up old
+        // scan rows; sourceEvidence below keeps a readable excerpt even after the scan is gone.
+        sourceScanId: text("sourceScanId"),
+        // JSON: evidence snippets captured at proposal time, denormalized for the same reason as
+        // sourceScanId above. Shape: { source: string; label: string; excerpt: string }[]
+        sourceEvidence: text("sourceEvidence", { mode: "json" }),
+        pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+        createdBy: text("createdBy").notNull(), // 'job' | 'user' | 'chat'
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+        approvedAt: integer("approvedAt", { mode: "timestamp" })
+    },
+    table => ({
+        storyIdIdx: index("agentmemory_story_id_idx").on(table.storyId),
+        statusIdx: index("agentmemory_status_idx").on(table.status),
+        memoryKeyIdx: index("agentmemory_memory_key_idx").on(table.memoryKey),
+        // Supports the story+status list query the UI/reconcile job both need.
+        storyStatusIdx: index("agentmemory_story_status_idx").on(table.storyId, table.status),
+        // Supports the supersession lookup: "find the current active row for this memoryKey".
+        memoryKeyStatusIdx: index("agentmemory_memory_key_status_idx").on(table.memoryKey, table.status)
+    })
+);
+
 // Users table — local accounts. Registration via /api/auth/register is only allowed while
 // this table is empty (see server/routes/auth.ts) and always creates the 'owner'; further
 // users are created by an owner through /api/users.

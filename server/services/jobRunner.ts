@@ -9,6 +9,7 @@ import {
     recordJobFailure,
     recoverCrashedJobs
 } from "./agentJobsRepository.js";
+import { runDistillMemoryJob } from "./jobs/distillMemoryJob.js";
 import { runReconcileIndexJob } from "./jobs/reconcileIndexJob.js";
 import { runPruneHistoryJob } from "./jobs/pruneHistoryJob.js";
 import { runRagScanChapterJob, runRagScanStoryJob } from "./jobs/ragScanJobs.js";
@@ -32,7 +33,8 @@ const HANDLERS: Record<AgentJobType, JobHandler> = {
     reconcile_index: runReconcileIndexJob,
     rag_scan_chapter: runRagScanChapterJob,
     rag_scan_story: runRagScanStoryJob,
-    prune_history: runPruneHistoryJob
+    prune_history: runPruneHistoryJob,
+    distill_memory: runDistillMemoryJob
 };
 
 let claimIntervalId: NodeJS.Timeout | null = null;
@@ -89,6 +91,10 @@ const runScheduleTick = async (): Promise<void> => {
         // is out of scope for Phase A — omitting it from the schedule tick makes "default OFF"
         // true by construction. The only way a scan job is created in Phase A is the manual
         // POST /api/agent/jobs route. See DECISIONS.md addendum for this call.
+        //
+        // distill_memory (Phase B) is excluded from the schedule tick for the same reason —
+        // never auto-chained after a scan completes either (see distillMemoryJob.ts's own
+        // comment). Manual POST /api/agent/jobs only.
     } catch (error) {
         console.error("jobRunner: schedule tick failed:", (error as Error).message);
     }

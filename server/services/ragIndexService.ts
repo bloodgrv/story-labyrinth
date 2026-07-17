@@ -120,10 +120,30 @@ export const removeEntityFromIndex = (entityType: RagEntityType, entityId: strin
     deleteChunksForEntity(entityType, entityId);
 };
 
+// (Re)index an approved/edited agent memory (Phase B). Caller (agentMemoriesService.ts) builds
+// the indexable text and resolves storyId — global (storyId: null) memories never reach this
+// function at all, since hybridSearch is always story-scoped and a global memory has nowhere to
+// attach a ragChunks.storyId to. Same shape as indexLorebookEntry/indexChapter, just thinner
+// since there's no separate "load the row" step here (the caller already has it).
+export const indexAgentMemory = async (params: {
+    memoryId: string;
+    storyId: string;
+    text: string;
+}): Promise<{ indexed: boolean; chunks: number }> =>
+    indexEntity({ storyId: params.storyId, entityType: "agent_memory", entityId: params.memoryId, text: params.text });
+
 // Hybrid keyword + vector search scoped to a single story. Falls back to keyword-only
-// search if no embedding endpoint is configured, rather than failing outright.
-export const search = async (params: { storyId: string; query: string; limit?: number }): Promise<SearchResult[]> => {
-    const { storyId, query, limit } = params;
+// search if no embedding endpoint is configured, rather than failing outright. `entityTypes` is
+// passed straight through with no re-defaulting — hybridSearch's own DEFAULT_SEARCH_ENTITY_TYPES
+// is the single source of truth for what "omitted" means (design doc §4.5: default must exclude
+// agent_memory, never silently mean "all types").
+export const search = async (params: {
+    storyId: string;
+    query: string;
+    limit?: number;
+    entityTypes?: RagEntityType[];
+}): Promise<SearchResult[]> => {
+    const { storyId, query, limit, entityTypes } = params;
 
     let queryEmbedding: number[] | null = null;
     try {
@@ -133,5 +153,5 @@ export const search = async (params: { storyId: string; query: string; limit?: n
         console.warn("RAG search: embedding unavailable, falling back to keyword-only search:", (error as Error).message);
     }
 
-    return hybridSearch({ storyId, queryText: query, queryEmbedding, limit });
+    return hybridSearch({ storyId, queryText: query, queryEmbedding, limit, entityTypes });
 };

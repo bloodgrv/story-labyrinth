@@ -16,7 +16,8 @@ const JOB_TYPE_LABELS: Record<AgentJob["jobType"], string> = {
     reconcile_index: "Reindex reconciliation",
     rag_scan_chapter: "Chapter scan",
     rag_scan_story: "Story scan",
-    prune_history: "History cleanup"
+    prune_history: "History cleanup",
+    distill_memory: "Memory distillation"
 };
 
 interface JobRowProps {

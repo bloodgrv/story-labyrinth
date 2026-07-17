@@ -2,7 +2,13 @@ import { randomUUID } from "node:crypto";
 import { sqlite } from "../db/client.js";
 import { computeContentHash } from "./embeddingService.js";
 
-export type RagEntityType = "lorebook_entry" | "chapter";
+export type RagEntityType = "lorebook_entry" | "chapter" | "agent_memory";
+
+// Single source of truth for "entityTypes omitted" — every caller in the codebase (routes/rag.ts,
+// ragScanner.ts, chatContextService.ts) either passes this explicitly or omits the param and
+// inherits it here. Must never silently mean "all types" (design doc §4.5) — pending/active
+// memories only ever surface via an explicit opt-in entityTypes argument.
+export const DEFAULT_SEARCH_ENTITY_TYPES: RagEntityType[] = ["lorebook_entry", "chapter"];
 
 export interface RagChunkRow {
     id: string;
@@ -155,14 +161,29 @@ const RRF_K = 60;
 
 // Hybrid search: combine FTS5 keyword matches and sqlite-vec similarity matches via
 // Reciprocal Rank Fusion, then hydrate the merged chunk ids with their full content.
+//
+// entityTypes filtering (Phase B): `vec_chunks`/`fts_chunks` carry no entityType column of their
+// own. For FTS this is filtered precisely via a subquery against ragChunks alongside the MATCH
+// clause — fts_chunks is a standalone table with no virtual-table restrictions on that. For vec,
+// `storyId` is declared a sqlite-vec PARTITION KEY (see migration 0009_rag_vector_search.sql)
+// but `chunkId` is just a plain auxiliary column — combining an arbitrary chunkId-subquery filter
+// with `MATCH ... AND k = ?` is not a construct sqlite-vec is documented to support, so the vec
+// query itself stays unfiltered by entityType (still partition-filtered by storyId as before)
+// and the filter is applied at the metadata-hydration step below instead. Known, accepted
+// tradeoff: when a caller passes a restrictive entityTypes filter, vec-sourced candidates are
+// filtered *after* RRF ranking rather than during the KNN query, so the result count can
+// occasionally come in under `limit` if excluded-type chunks occupied ranked slots. This never
+// affects the default (unfiltered) path every existing caller uses today.
 export const hybridSearch = (params: {
     storyId: string;
     queryText: string;
     queryEmbedding: number[] | null;
     limit?: number;
+    entityTypes?: RagEntityType[];
 }): SearchResult[] => {
-    const { storyId, queryText, queryEmbedding, limit = 10 } = params;
+    const { storyId, queryText, queryEmbedding, limit = 10, entityTypes = DEFAULT_SEARCH_ENTITY_TYPES } = params;
     const candidatePoolSize = Math.max(limit * 3, 20);
+    const typePlaceholders = entityTypes.map(() => "?").join(",");
 
     const rrfScores = new Map<string, { score: number; matchedBy: Set<"keyword" | "vector"> }>();
 
@@ -170,9 +191,12 @@ export const hybridSearch = (params: {
     if (ftsQuery) {
         const ftsRows = sqlite
             .prepare(
-                `SELECT chunkId FROM fts_chunks WHERE fts_chunks MATCH ? AND storyId = ? ORDER BY rank LIMIT ?`
+                `SELECT chunkId FROM fts_chunks
+                 WHERE fts_chunks MATCH ? AND storyId = ?
+                   AND chunkId IN (SELECT id FROM ragChunks WHERE entityType IN (${typePlaceholders}))
+                 ORDER BY rank LIMIT ?`
             )
-            .all(ftsQuery, storyId, candidatePoolSize) as { chunkId: string }[];
+            .all(ftsQuery, storyId, ...entityTypes, candidatePoolSize) as { chunkId: string }[];
 
         ftsRows.forEach((row, rank) => {
             const entry = rrfScores.get(row.chunkId) ?? { score: 0, matchedBy: new Set() };
@@ -197,17 +221,25 @@ export const hybridSearch = (params: {
         });
     }
 
-    const ranked = [...rrfScores.entries()].sort((a, b) => b[1].score - a[1].score).slice(0, limit);
-    if (ranked.length === 0) return [];
+    const allCandidates = [...rrfScores.entries()].sort((a, b) => b[1].score - a[1].score);
+    if (allCandidates.length === 0) return [];
 
-    const placeholders = ranked.map(() => "?").join(",");
+    // Hydrate ALL ranked candidates first (not just the top `limit`), then filter by entityType,
+    // then slice to `limit` — this is where the vec side's entityType filter is actually applied
+    // (see the comment above). FTS candidates are already type-filtered at the source, so this
+    // is a no-op re-check for them, not double work that changes their ranking.
+    const candidatePlaceholders = allCandidates.map(() => "?").join(",");
     const metaRows = sqlite
-        .prepare(`SELECT id, entityType, entityId, chunkIndex, content FROM ragChunks WHERE id IN (${placeholders})`)
-        .all(...ranked.map(([chunkId]) => chunkId)) as Pick<
+        .prepare(
+            `SELECT id, entityType, entityId, chunkIndex, content FROM ragChunks
+             WHERE id IN (${candidatePlaceholders}) AND entityType IN (${typePlaceholders})`
+        )
+        .all(...allCandidates.map(([chunkId]) => chunkId), ...entityTypes) as Pick<
         RagChunkRow,
         "id" | "entityType" | "entityId" | "chunkIndex" | "content"
     >[];
     const metaById = new Map(metaRows.map(row => [row.id, row]));
+    const ranked = allCandidates.filter(([chunkId]) => metaById.has(chunkId)).slice(0, limit);
 
     return ranked
         .map(([chunkId, { score, matchedBy }]) => {

@@ -5,7 +5,13 @@ import { enqueue, getJob, listJobs, retryJob } from "../services/agentJobsReposi
 
 const router = express.Router();
 
-const JOB_TYPES: AgentJobType[] = ["reconcile_index", "rag_scan_chapter", "rag_scan_story", "prune_history"];
+const JOB_TYPES: AgentJobType[] = [
+    "reconcile_index",
+    "rag_scan_chapter",
+    "rag_scan_story",
+    "prune_history",
+    "distill_memory"
+];
 const JOB_STATUSES: AgentJobStatus[] = ["queued", "running", "completed", "failed"];
 
 // GET /api/agent/jobs?storyId=&status=&jobType=&limit= — recent jobs, most recent first.
