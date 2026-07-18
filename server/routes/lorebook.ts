@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { parseJson } from "../lib/json.js";
+import { normalizeAppearance } from "../services/codexService.js";
 import { importEntryFromDocument } from "../services/documentImportService.js";
 import { generateLorebookImage } from "../services/grokImageService.js";
 import {
@@ -25,10 +26,17 @@ interface TransformedLorebookEntry extends Omit<LorebookRow, "tags" | "metadata"
     metadata: unknown;
 }
 
+// codexState.appearance normalization (see codexService.ts's normalizeAppearance doc comment)
+// has to happen here too, not just in codexService.ts's own routes — this is the general entry
+// CRUD path (GET /lorebook/:id etc, what the entry editor actually loads), a separate read path
+// from codexService.ts's codex-specific snapshot/pending-change endpoints.
 const transform = (entry: LorebookRow): TransformedLorebookEntry => ({
     ...entry,
     tags: parseJson(entry.tags as string),
-    metadata: parseJson(entry.metadata as string | null | undefined)
+    metadata: parseJson(entry.metadata as string | null | undefined),
+    codexState: entry.codexState
+        ? { ...(entry.codexState as Record<string, unknown>), appearance: normalizeAppearance((entry.codexState as Record<string, unknown>).appearance) }
+        : entry.codexState
 });
 
 export default createCrudRouter({

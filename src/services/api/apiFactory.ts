@@ -47,14 +47,32 @@ export const fetchBlob = async (url: string, options?: RequestInit): Promise<Blo
     return response.blob();
 };
 
-// Helper for form data uploads (no Content-Type header - browser sets multipart boundary)
-export const uploadFile = async <T>(url: string, file: File): Promise<T> => {
+// Helper for form data uploads (no Content-Type header - browser sets multipart boundary).
+// `timeoutMs` is opt-in (undefined = no timeout, matching every existing caller's behavior) —
+// only document import passes one, since that's the one upload whose server-side work includes
+// a third-party LLM call that can genuinely hang (e.g. a stuck OAuth token refresh) with no
+// error ever surfacing, unlike the other callers here which are just local file processing.
+export const uploadFile = async <T>(url: string, file: File, timeoutMs?: number): Promise<T> => {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await fetch(`${API_BASE}${url}`, {
-        method: "POST",
-        body: formData
-    });
+    const controller = timeoutMs ? new AbortController() : undefined;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
+
+    let response: Response;
+    try {
+        response = await fetch(`${API_BASE}${url}`, {
+            method: "POST",
+            body: formData,
+            signal: controller?.signal
+        });
+    } catch (err) {
+        if (err instanceof Error && err.name === "AbortError")
+            throw new Error(`Timed out after ${Math.round((timeoutMs as number) / 1000)}s — check your AI provider connection and try again.`);
+        throw err;
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+    }
+
     if (!response.ok) {
         notifyIfUnauthorized(response.status, url);
         const error = await response.json().catch(() => ({ error: "Upload failed" }));

@@ -1,7 +1,15 @@
+import { randomUUID } from "node:crypto";
 import { attemptPromise } from "@jfdi/attempt";
 import type { InferSelectModel } from "drizzle-orm";
 import type { schema } from "../db/client.js";
-import type { CodexPendingChange, CodexPendingSourceType, CodexSnapshot, CodexSourceType, CodexState } from "../../src/types/codex.js";
+import type {
+    CodexCustomField,
+    CodexPendingChange,
+    CodexPendingSourceType,
+    CodexSnapshot,
+    CodexSourceType,
+    CodexState
+} from "../../src/types/codex.js";
 import type { LorebookEntry } from "../../src/types/story.js";
 import { indexLorebookEntry } from "./ragIndexService.js";
 import {
@@ -61,8 +69,33 @@ const assertCodexEnabled = (entry: LorebookRow): void => {
 const hasFields = (obj: Record<string, unknown>): boolean =>
     Object.values(obj).some(v => v !== undefined);
 
-const toCodexState = (raw: unknown): CodexState | null =>
-    (raw as CodexState | null) ?? null;
+// `appearance` changed shape 2026-07-17: was a flat CodexStateItem[] ({id, value}), now labeled
+// CodexCustomField[] ({key, label, value}) — see DECISIONS.md's "Codex Appearance Relabeling"
+// entry. codexState is stored as an unvalidated JSON blob, so any row saved before this change
+// (or a restored old snapshot) still has the old shape on disk. Normalize on every read rather
+// than a one-off backfill, since a restored historical snapshot can always reintroduce the old
+// shape — new writes go through the form/document-import paths, which already produce the new
+// shape directly, so this only ever needs to upgrade, never downgrade. Exported for
+// lorebook.ts's own read path (this file's own codex-specific endpoints are a separate route
+// from the general entry CRUD route, so both need to call this rather than just one).
+export const normalizeAppearance = (raw: unknown): CodexCustomField[] => {
+    if (!Array.isArray(raw)) return [];
+    return raw.map(item => {
+        const obj = (item ?? {}) as Record<string, unknown>;
+        if (typeof obj.label === "string") return obj as unknown as CodexCustomField;
+        return {
+            key: typeof obj.id === "string" ? obj.id : randomUUID(),
+            label: "",
+            value: typeof obj.value === "string" ? obj.value : ""
+        };
+    });
+};
+
+const toCodexState = (raw: unknown): CodexState | null => {
+    if (raw === null || raw === undefined) return null;
+    const state = raw as CodexState;
+    return { ...state, appearance: normalizeAppearance(state.appearance) };
+};
 
 // ── Service ────────────────────────────────────────────────────────────────────
 

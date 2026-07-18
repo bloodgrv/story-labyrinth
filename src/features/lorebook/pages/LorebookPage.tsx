@@ -35,11 +35,40 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
     const storyId = propStoryId ?? params.storyId;
     const seriesId = propSeriesId ?? params.seriesId;
 
+    // Open tabs (including document-import drafts, which can represent real AI-call time/cost)
+    // persist to localStorage — switching workspace tools unmounts this whole page component
+    // (MainContent.tsx only ever renders the one active tool), which would otherwise silently
+    // drop an unsaved import draft the moment the user glanced at another tool. Scoped per
+    // story/series so tabs never leak across different stories.
+    const tabsStorageKey = storyId ? `lorebook-tabs-story-${storyId}` : seriesId ? `lorebook-tabs-series-${seriesId}` : null;
+
+    const loadStoredTabs = (): { tabs: LorebookOpenTab[]; activeIndex: number } => {
+        if (tabsStorageKey) {
+            const [, stored] = attempt(() => {
+                const raw = localStorage.getItem(tabsStorageKey);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw) as { tabs: LorebookOpenTab[]; activeIndex: number };
+                if (Array.isArray(parsed.tabs) && parsed.tabs.length > 0) return parsed;
+                return null;
+            });
+            if (stored) return stored;
+        }
+        return { tabs: [{ kind: "browse" }], activeIndex: 0 };
+    };
+
     const [selectedCategory, setSelectedCategory] = useState<LorebookCategory>("character");
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [openTabs, setOpenTabs] = useState<LorebookOpenTab[]>([{ kind: "browse" }]);
-    const [activeTabIndex, setActiveTabIndex] = useState(0);
+    const [openTabs, setOpenTabs] = useState<LorebookOpenTab[]>(() => loadStoredTabs().tabs);
+    const [activeTabIndex, setActiveTabIndex] = useState(() => loadStoredTabs().activeIndex);
     const [isImportingDocument, setIsImportingDocument] = useState(false);
+
+    useEffect(() => {
+        if (!tabsStorageKey) return;
+        // Quota exceeded (a large embedded image in a draft can be a few MB of base64) fails
+        // silently rather than crashing the tab — losing persistence for this save is better
+        // than losing the tab switch the user is actually doing right now.
+        attempt(() => localStorage.setItem(tabsStorageKey, JSON.stringify({ tabs: openTabs, activeIndex: activeTabIndex })));
+    }, [openTabs, activeTabIndex, tabsStorageKey]);
 
     // Fetch appropriate entries based on context
     const { data: storyEntries, isLoading: storyLoading, refetch: refetchStory, isFetching: isFetchingStory } =

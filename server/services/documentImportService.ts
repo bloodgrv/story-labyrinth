@@ -156,7 +156,7 @@ const toDraft = (raw: unknown, image: { dataUrl: string; filename: string } | nu
         tags: asStringArray(r.tags),
         codexState: {
             wardrobe: toStateItems(r.wardrobe),
-            appearance: toStateItems(r.appearance),
+            appearance: toCustomFields(r.appearance),
             wounds: toStateItems(r.wounds),
             items: toStateItems(r.items),
             customFields: toCustomFields(r.customFields)
@@ -174,7 +174,7 @@ Read the document and return ONLY a single valid JSON object, no prose, no markd
   "description": string,
   "tags": string[],
   "wardrobe": string[],
-  "appearance": string[],
+  "appearance": [{"label": string, "value": string}],
   "wounds": string[],
   "items": string[],
   "customFields": [{"label": string, "value": string}]
@@ -183,7 +183,7 @@ Read the document and return ONLY a single valid JSON object, no prose, no markd
 Rules:
 - "description" is the full narrative profile in flowing prose, written as continuous paragraphs (not bullet lists): personality, backstory, temperament, relationships, physical appearance, narrative context — everything the document says about this subject. Physical/wardrobe details belong here too, not just in the structured fields below — do not omit or strip them from the description just because they're also captured in wardrobe/appearance/wounds/items.
 - "wardrobe": current clothing/outfit pieces, one per array entry (e.g. "shredded black oversized sweater"). Empty array if none described.
-- "appearance": physical/body/facial features, one per array entry (e.g. "jet-black asymmetrical bob"). Empty array if none described.
+- "appearance": physical/body/facial features as labeled attributes, one {"label","value"} pair per distinct feature the document calls out (e.g. {"label":"Hair","value":"jet-black asymmetrical bob"}, {"label":"Facial Features","value":"high cheekbones, pointed chin"}, {"label":"Physique","value":"exceptionally thin, skeletal frame"}). Use the document's own grouping/labels when it has them (e.g. a "Hair:"/"Facial Features:"/"Physique:" breakdown); otherwise pick a short descriptive label per feature yourself. Empty array if none described.
 - "wounds": scars, injuries, physical marks, one per array entry. Empty array if none described.
 - "items": inventory/possessions/carried objects, one per array entry. Empty array if none described.
 - "customFields": short discrete attributes that don't fit the arrays above (Age, Role, Occupation, Aesthetic, Education, etc.) as {"label","value"} pairs. Empty array if none found.

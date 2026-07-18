@@ -55,59 +55,55 @@ export function ImageUploadField({ control, setValue, entryId, hasExistingImage 
     };
 
     return (
-        <div className="border rounded-md p-3">
+        <div className="space-y-2">
             <FormLabel>Image</FormLabel>
-            <div className="mt-2 flex items-center gap-3">
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md border bg-muted flex items-center justify-center">
-                    {previewSrc ? (
-                        <img src={previewSrc} alt="" className="h-full w-full object-cover" />
-                    ) : generateImageOnSave ? (
-                        <Sparkles className="h-6 w-6 text-muted-foreground" />
-                    ) : (
-                        <ImageOff className="h-6 w-6 text-muted-foreground" />
-                    )}
-                </div>
-                <div className="flex flex-col gap-2">
-                    <label aria-label={previewSrc ? "Replace image" : "Upload image"}>
-                        <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp,image/gif"
-                            className="hidden"
-                            onChange={e => {
-                                const file = e.target.files?.[0];
-                                if (file) pickFile(file);
-                                e.target.value = "";
-                            }}
-                        />
-                        <Button type="button" variant="outline" size="sm" asChild>
-                            <span className="cursor-pointer">
-                                <Upload className="h-4 w-4 mr-1.5" />
-                                {previewSrc ? "Replace" : "Upload"}
-                            </span>
-                        </Button>
-                    </label>
-                    <Button
-                        type="button"
-                        variant={generateImageOnSave ? "secondary" : "outline"}
-                        size="sm"
-                        disabled={!description?.trim()}
-                        onClick={generateFromDescription}
-                    >
-                        <Sparkles className="h-4 w-4 mr-1.5" />
-                        Generate from Description
+            <div className="h-56 w-56 overflow-hidden rounded-md border bg-muted flex items-center justify-center">
+                {previewSrc ? (
+                    <img src={previewSrc} alt="" className="h-full w-full object-cover" />
+                ) : generateImageOnSave ? (
+                    <Sparkles className="h-10 w-10 text-muted-foreground" />
+                ) : (
+                    <ImageOff className="h-10 w-10 text-muted-foreground" />
+                )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+                <label aria-label={previewSrc ? "Replace image" : "Upload image"}>
+                    <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) pickFile(file);
+                            e.target.value = "";
+                        }}
+                    />
+                    <Button type="button" variant="outline" size="sm" asChild>
+                        <span className="cursor-pointer">
+                            <Upload className="h-4 w-4 mr-1.5" />
+                            {previewSrc ? "Replace" : "Upload"}
+                        </span>
                     </Button>
-                    {canRemove && (
-                        <Button type="button" variant="ghost" size="sm" onClick={removeImage}>
-                            <X className="h-4 w-4 mr-1.5" />
-                            Remove
-                        </Button>
-                    )}
-                </div>
+                </label>
+                <Button
+                    type="button"
+                    variant={generateImageOnSave ? "secondary" : "outline"}
+                    size="sm"
+                    disabled={!description?.trim()}
+                    onClick={generateFromDescription}
+                >
+                    <Sparkles className="h-4 w-4 mr-1.5" />
+                    Generate from Description
+                </Button>
+                {canRemove && (
+                    <Button type="button" variant="ghost" size="sm" onClick={removeImage}>
+                        <X className="h-4 w-4 mr-1.5" />
+                        Remove
+                    </Button>
+                )}
             </div>
             {generateImageOnSave && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                    Will generate a new image from the description when you save.
-                </p>
+                <p className="text-xs text-muted-foreground">Will generate a new image from the description when you save.</p>
             )}
         </div>
     );

@@ -13,25 +13,6 @@ import { StoriesTool } from "./tools/StoriesTool";
 import { StoryGraphTool } from "./tools/StoryGraphTool";
 import { UsersTool } from "./tools/UsersTool";
 
-// Subtle background tints for each tool. A single low-opacity mid-tone (rather than a
-// light-mode/50 + dark-mode/950 pair behind a `dark:` variant) so the tint stays equally subtle
-// across light, dark, and every custom theme class — `dark:` only ever matches `.dark`, so a
-// light/dark pair went stark white on the other theme classes (see index.css's .midnight/.sepia/
-// etc). See the analogous fix on Outline's pending-card highlight for the same reasoning.
-const toolTints = {
-    stories: "bg-background",
-    series: "bg-background",
-    editor: "bg-amber-500/5",
-    chapters: "bg-blue-500/5",
-    outline: "bg-rose-500/5",
-    lorebook: "bg-cyan-500/5",
-    brainstorm: "bg-purple-500/5",
-    notes: "bg-green-500/5",
-    users: "bg-background",
-    research: "bg-sky-500/5",
-    memory: "bg-teal-500/5",
-    relationships: "bg-indigo-500/5"
-};
 
 export const MainContent = () => {
     const { currentTool } = useStoryContext();
@@ -91,11 +72,7 @@ export const MainContent = () => {
 
     return (
         <div
-            className={cn(
-                "transition-colors duration-300",
-                needsBoundedHeight ? "h-full overflow-hidden" : "min-h-full",
-                toolTints[currentTool]
-            )}
+            className={cn("bg-background transition-colors duration-300", needsBoundedHeight ? "h-full overflow-hidden" : "min-h-full")}
         >
             {renderTool()}
         </div>

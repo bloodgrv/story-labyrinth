@@ -11,10 +11,16 @@ export interface CodexCustomField {
     value: string;
 }
 
-// Physical state snapshot stored per lorebook entry
+// Physical state snapshot stored per lorebook entry.
+// `appearance` is labeled fields (Hair/Facial Features/Physique/etc — see a reference character
+// sheet's "Physical Appearance" section), same shape as customFields, not a flat list like
+// wardrobe/wounds/items — those stay flat since a single free-text line per entry fits them
+// (e.g. one wardrobe item, one wound), where appearance details read better as a labeled
+// attribute the way Custom Fields already work. See DECISIONS.md's "Codex Appearance
+// Relabeling" entry for the 2026-07-17 migration of pre-existing flat-string appearance data.
 export interface CodexState {
     wardrobe: CodexStateItem[];
-    appearance: CodexStateItem[];
+    appearance: CodexCustomField[];
     wounds: CodexStateItem[];
     items: CodexStateItem[];
     customFields: CodexCustomField[];

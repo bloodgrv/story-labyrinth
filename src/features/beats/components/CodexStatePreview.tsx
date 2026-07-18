@@ -35,8 +35,8 @@ export function CodexStatePreview({ entry }: CodexStatePreviewProps) {
                 <div key={section.key} className="flex flex-wrap items-center gap-1">
                     <span className="text-xs text-muted-foreground w-16 shrink-0">{section.label}:</span>
                     {state[section.key].map(item => (
-                        <Badge key={item.id} variant="outline" className="text-xs font-normal">
-                            {item.value}
+                        <Badge key={"id" in item ? item.id : item.key} variant="outline" className="text-xs font-normal">
+                            {"label" in item && item.label ? `${item.label}: ${item.value}` : item.value}
                         </Badge>
                     ))}
                 </div>

@@ -21,12 +21,15 @@ const formatCodexState = (state: CodexState | null): string => {
     const section = (label: string, items: CodexStateItem[] | undefined) => {
         if (items?.length) lines.push(`${label}: ${items.map(i => i.value).join("; ")}`);
     };
+    const labeledFields = (fields: CodexCustomField[] | undefined) => {
+        for (const field of fields ?? []) lines.push(field.label ? `${field.label}: ${field.value}` : field.value);
+    };
 
     section("Wardrobe", state.wardrobe);
-    section("Appearance", state.appearance);
+    labeledFields(state.appearance);
     section("Wounds", state.wounds);
     section("Items", state.items);
-    for (const field of state.customFields ?? []) lines.push(`${field.label}: ${(field as CodexCustomField).value}`);
+    labeledFields(state.customFields);
 
     return lines.join("\n");
 };

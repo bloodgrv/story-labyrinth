@@ -21,8 +21,10 @@ export const lorebookApi = {
     exportGlobal: () => fetchJSON<GlobalLorebookExport>("/lorebook/global/export"),
     importGlobal: (file: File) => uploadFile<{ success: boolean }>("/lorebook/global/import", file),
     // PDF/DOCX/MD/TXT reference document -> AI-extracted draft entry (not persisted; the
-    // caller opens the normal entry-creation UI pre-filled with it for review).
-    importDocument: (file: File) => uploadFile<{ draft: DocumentImportDraft }>("/lorebook/import/document", file),
+    // caller opens the normal entry-creation UI pre-filled with it for review). 2-minute timeout
+    // (unlike other uploadFile callers) since this one includes a third-party LLM call that can
+    // genuinely hang with no error otherwise — see apiFactory.ts's uploadFile doc comment.
+    importDocument: (file: File) => uploadFile<{ draft: DocumentImportDraft }>("/lorebook/import/document", file, 120_000),
     uploadImage: (entryId: string, file: File) => uploadFile<LorebookEntry>(`/lorebook/${entryId}/image`, file),
     removeImage: (entryId: string) => fetchJSON<LorebookEntry>(`/lorebook/${entryId}/image`, { method: "DELETE" }),
     // AI-generates a portrait from the entry's own saved description (see grokImageService.ts).
