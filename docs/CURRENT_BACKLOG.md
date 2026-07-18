@@ -1,6 +1,6 @@
 # Story Nexus Fork — Current Backlog
 
-**Last updated:** 2026-07-16  
+**Last updated:** 2026-07-18  
 **Purpose:** Single source of truth for **what’s left**, after implementation order got scrambled relative to the original Phase 0 list.  
 **Canonical live status also mirrored in:** `CLAUDE.md` (architecture + high-level “done” notes) and `DECISIONS.md` (load-bearing how/why).  
 **This file wins** when those conflict on *priority of remaining work*.
@@ -42,6 +42,8 @@
 | Lorebook Relationship Graph Phase G1 | `storyGraphEdges` SoT, React Flow Relationships tool, ego + full view |
 | Lorebook entry "Natural View" (prose character profile toggle) | `NaturalEntryView.tsx`; same form data as raw fields, tags hidden; Codex auto-compile (P0.3/C5) NOT included |
 | Theme-tint fix: `MainContent.tsx` `toolTints` no longer breaks under custom (non-`.dark`) themes | Was causing a visible light "block" per tool pane on Midnight/Forest/Sand/Graphite |
+| RAG Scanner frontend (P0.1) | Editor right-rail drawer (chapter-scoped) + "Scanner" sidebar tool (story-wide, scan history, status tabs), both triggering via `POST /api/agent/jobs` (owner-only). See `DECISIONS.md` "RAG Scanner Frontend (P0.1)" |
+| Chapter alternate-version tabs (P0.2, redefined — see note below) | Flat, chat-branching-style draft tabs next to the main chapter (`ChapterVersionsPanel.tsx`), created via AI regenerate or manual duplicate, independently editable, one-way "Compile to Main" action, optional side-by-side compare toggle. See `DECISIONS.md` "Story-Layer Chapter Versioning (P0.2)" |
 
 Design docs that still say “not implemented” in their headers may be stale for A/B/G1 — trust this file + `CLAUDE.md` over those headers until they are refreshed.
 
@@ -50,51 +52,48 @@ Design docs that still say “not implemented” in their headers may be stale f
 ## Recommended build order (from here)
 
 ```
-1. RAG Scanner UI                          ← P0
-2. Story-layer Project Saves (chapters)    ← P0
-3. Continuity glue (memory ↔ chat/scan)    ← P0/P1
-4. Graph G1.5 / Agent C only if daily pain ← P1
-5. Bugfix pass                           ← P2 (anytime)
-6. Nice-to-haves                           ← P3
+1. Chapter content undo/restore (P0.2b, the real "Project Saves" gap) ← P0
+2. Continuity glue (memory ↔ chat/scan)                                ← P0/P1
+3. Graph G1.5 / Agent C only if daily pain                             ← P1
+4. Bugfix pass                                                       ← P2 (anytime)
+5. Nice-to-haves                                                       ← P3
 ```
 
 ---
 
 ## P0 — High leverage / incomplete core claims
 
-### P0.1 — RAG Scanner frontend
+### P0.1 — RAG Scanner frontend — ✅ Done (2026-07-18)
 
-**Status:** Not started  
-**Why:** Backend + agent jobs can run scans; **nothing in `src/`** consumes scan/issues APIs. `CLAUDE.md` still describes a collapsible right rail + inline highlights — that UX was never built. Old guardrail (“don’t build a throwaway manual scan button before agent framework”) is **lifted**: jobs own execution now.
-
-**Should include:**
-
-- Enqueue `rag_scan_chapter` / `rag_scan_story` via existing job API (or thin wrappers)
-- Progress surface (job +/or `ragScans` poll)
-- Issues list (open / dismiss / resolve) bound to `ragScanIssues`
-- Placement: editor right rail and/or story tool (match CLAUDE intent where practical)
-- Optional later: inline highlights in chapter text
-
-**Out of scope for first UI slice:** full dual-write retirement of `ragScans`; auto-chain `distill_memory` after every scan.
-
-**Refs:** `DECISIONS.md` (RAG Scanner; Agent Phase A); `docs/Agent_Framework_And_Project_Memory_Design.md`
+Editor right-rail drawer (`EditorToolsPanel.tsx`'s `"ragScanner"` drawer, chapter-scoped) and a story-wide "Scanner" sidebar tool (`RagScannerPanel.tsx`) both shipped — trigger via `POST /api/agent/jobs` (owner-only, per user decision), progress via job polling, issues list with Open/Resolved/Dismissed tabs bound to `ragScanIssues`. Not built this pass, still open if revisited: inline highlights in chapter text, full dual-write retirement of `ragScans`, auto-chaining `distill_memory`. See `DECISIONS.md` "RAG Scanner Frontend (P0.1) — Load-Bearing Decisions".
 
 ---
 
-### P0.2 — Project Saves — Story layer (chapter versioning)
+### P0.2 — Chapter alternate-version tabs — ✅ Done (2026-07-18), but read the note below
+
+**This shipped a different feature than this item originally described**, per direct user correction mid-build: not linear chapter-content history/undo, but chat-branching-style alternate drafts — flat tabs next to the main chapter (`ChapterVersionsPanel.tsx`), created via AI regenerate (`GenerateVersionDialog.tsx`, new `chapter_version` feature endpoint) or manual duplicate, each independently editable (`VersionEditor.tsx`, its own autosave), with an optional side-by-side compare toggle and a one-way "Compile to Main" action. `chapterVersions` table, `server/routes/chapters.ts`'s `/versions` sub-routes. See `DECISIONS.md` "Story-Layer Chapter Versioning (P0.2) — Load-Bearing Decisions" for the full scoping trail and load-bearing choices.
+
+**⚠️ The original problem this item was written to solve is still open**: chapters still have **zero linear undo history** and the main chapter's own autosave is still **fully destructive** (~1s debounce, no snapshots, no restore path) — nothing about the alternate-version-tabs feature above touches that. Compile itself is a new one-way, un-backed-up overwrite of `chapters.content`, which if anything adds one more way to lose the previous state, not fewer. If chapter-level undo/restore (mirroring the Codex snapshot/restore precedent) is still wanted, it needs to be scoped and built as a genuinely separate item — see the new backlog entry below.
+
+**Refs:** `CLAUDE.md` Project Saves; `DECISIONS.md` "Project Saves — Phase 1 (Codex Layer…)" and "Story-Layer Chapter Versioning (P0.2)"
+
+---
+
+### P0.2b — Chapter content undo/restore (NEW — the original P0.2 problem, still unsolved)
 
 **Status:** Not started  
-**Why:** Codex layer is done. Chapters still have **zero version history** and **destructive autosave** — the largest remaining half of “Project Saves.”
+**Why:** Split out from P0.2 above after that item's scope turned out to mean something else entirely (alternate drafts, not history). The original problem — chapters have zero version history and a destructive ~1s autosave, no restore path — is exactly as unsolved as it was before this session.
 
 **Should include (scope with user before coding if ambiguous):**
 
-- Non-destructive chapter content history (snapshots and/or versions)
-- Restore / compare path usable from the editor
-- Clear rules vs current ~1s autosave (when snapshot, retention, manual named saves)
+- Non-destructive chapter content history (snapshots and/or versions), most likely mirroring the Codex `codexSnapshots`/restore precedent (`DECISIONS.md` "Project Saves — Phase 1")
+- Restore path usable from the editor
+- Clear rules vs the current ~1s autosave (when to snapshot, retention/pruning policy, manual named saves) — full-content Lexical JSON snapshots are considerably heavier than Codex's structured-field snapshots (measured ~18 bytes/word in this project's demo content), so a naive per-autosave snapshot policy needs real coalescing, not a direct copy of the Codex approach
+- Decide how (or whether) this interacts with the new Compile action from P0.2 above, which is currently a real one-way overwrite with no backup
 
-**Do not** conflate with full git-like branching unless explicitly requested (`2026-06-26_Versioning_Branching_Design.md` is a separate, larger design).
+**Do not** conflate with full git-like branching unless explicitly requested (the backlog previously referenced a `2026-06-26_Versioning_Branching_Design.md` doc for this — confirmed during P0.2's work that **no such file exists in the repo**; there is no prior design to reconcile against, this would be scoped fresh).
 
-**Refs:** `CLAUDE.md` Project Saves; `DECISIONS.md` “Project Saves — Phase 1 (Codex Layer…)”
+**Refs:** `CLAUDE.md` Project Saves; `DECISIONS.md` "Project Saves — Phase 1 (Codex Layer…)" and "Story-Layer Chapter Versioning (P0.2)" (for what NOT to re-derive — the alternate-drafts data model is unrelated)
 
 ---
 
@@ -191,22 +190,15 @@ Design docs that still say “not implemented” in their headers may be stale f
 ## Suggested next Claude kickoff (copy-paste)
 
 ```text
-Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
-
-Implement the next P0 item only: P0.1 RAG Scanner frontend.
-- Use existing agent job APIs for rag_scan_chapter / rag_scan_story (do not invent a parallel scan runner).
-- Surface progress + ragScanIssues (list, dismiss/resolve).
-- Prefer editor right rail and/or story-scoped tool per CLAUDE.md UX intent.
-- Do not auto-chain distill_memory. Do not build dual-write retirement.
-- Record load-bearing UI/API choices in DECISIONS.md. Update CURRENT_BACKLOG.md when done.
-```
-
-For chapter versioning instead:
-
-```text
-Read CLAUDE.md, docs/CURRENT_BACKLOG.md, and DECISIONS.md Project Saves — Phase 1.
-Implement P0.2 Story-layer chapter versioning only.
-Scope with non-destructive history + restore usable from the editor; define interaction with current autosave.
+Read CLAUDE.md, docs/CURRENT_BACKLOG.md, and DECISIONS.md "Project Saves — Phase 1" and
+"Story-Layer Chapter Versioning (P0.2)".
+Implement P0.2b: chapter content undo/restore. This is NOT the alternate-draft-tabs feature
+P0.2 already shipped (ChapterVersionsPanel.tsx / chapterVersions table) — that's a separate,
+unrelated data model. This is linear history for the main chapter's own content, most likely
+mirroring the Codex codexSnapshots/restore precedent.
+Scope with non-destructive history + restore usable from the editor; define interaction with
+current ~1s autosave (coalescing/retention — full Lexical JSON snapshots are heavy) and with the
+existing one-way Compile action from P0.2.
 Do not build full git branching. Record decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 

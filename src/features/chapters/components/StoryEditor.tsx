@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useWorkspace } from "@/components/workspace/context/WorkspaceContext";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { ChapterVersionsPanel } from "@/features/chapter-versions/components/ChapterVersionsPanel";
 import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { EditorChatRail } from "@/features/chat/components/EditorChatRail";
 import { EditorMultiView } from "@/features/editor-multiview/components/EditorMultiView";
@@ -36,6 +37,15 @@ export function StoryEditor() {
         />
     );
 
+    // Version tabs sit above the live chapter editor, not during a focus session (distraction-
+    // free, same reasoning EditorToolsPanel already hides for) — see ChapterVersionsPanel.tsx.
+    const mainAreaContent =
+        currentChapterId && !sessionActive ? (
+            <ChapterVersionsPanel chapterId={currentChapterId}>{editorContent}</ChapterVersionsPanel>
+        ) : (
+            editorContent
+        );
+
     return (
         <div
             className={cn(
@@ -52,7 +62,7 @@ export function StoryEditor() {
                                 !isMaximised && "px-4"
                             )}
                         >
-                            {editorContent}
+                            {mainAreaContent}
                         </div>
                     </ResizablePanel>
                     <ResizableHandle withHandle />
@@ -67,7 +77,7 @@ export function StoryEditor() {
                         !isMaximised && !sessionActive && "px-4"
                     )}
                 >
-                    {editorContent}
+                    {mainAreaContent}
                 </div>
             )}
 

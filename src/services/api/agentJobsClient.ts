@@ -12,5 +12,7 @@ export const agentJobsApi = {
         return fetchJSON<{ jobs: AgentJob[] }>(`/agent/jobs${qs ? `?${qs}` : ""}`);
     },
     getById: (id: string) => fetchJSON<AgentJob>(`/agent/jobs/${id}`),
-    retry: (id: string) => fetchJSON<AgentJob>(`/agent/jobs/${id}/retry`, { method: "POST" })
+    retry: (id: string) => fetchJSON<AgentJob>(`/agent/jobs/${id}/retry`, { method: "POST" }),
+    enqueue: (params: { jobType: AgentJobType; storyId?: string; entityId?: string; payload?: unknown }) =>
+        fetchJSON<AgentJob>("/agent/jobs", { method: "POST", body: JSON.stringify(params) })
 };

@@ -8,6 +8,7 @@ import { NotesTool } from "./tools/NotesTool";
 import { OutlineTool } from "./tools/OutlineTool";
 import { ProjectMemoryTool } from "./tools/ProjectMemoryTool";
 import { SeriesTool } from "./tools/SeriesTool";
+import { RagScannerTool } from "./tools/RagScannerTool";
 import { ResearchTool } from "./tools/ResearchTool";
 import { StoriesTool } from "./tools/StoriesTool";
 import { StoryGraphTool } from "./tools/StoryGraphTool";
@@ -43,6 +44,8 @@ export const MainContent = () => {
                 return <ProjectMemoryTool />;
             case "relationships":
                 return <StoryGraphTool />;
+            case "scanner":
+                return <RagScannerTool />;
             default:
                 return (
                     <div className="flex items-center justify-center h-full">

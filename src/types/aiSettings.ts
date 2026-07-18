@@ -18,7 +18,8 @@ export type FeatureKey =
     | "outline_generation" // AI-assisted outline suggestion pass (outlineGenerator.ts)
     | "document_import" // Extract a Lorebook entry from an uploaded PDF/DOCX/MD file (documentImportService.ts)
     | "image_generation" // Generate a Lorebook entry's portrait from its description (grokImageService.ts)
-    | "agent_memory_distill"; // Distill factual project memory candidates from a RAG scan's findings (distillMemoryJob.ts)
+    | "agent_memory_distill" // Distill factual project memory candidates from a RAG scan's findings (distillMemoryJob.ts)
+    | "chapter_version"; // AI-regenerate an alternate chapter draft (chapterVersionAiService.ts)
 
 // "grok-session" is deliberately excluded — it isn't a simple OpenAI-compatible client (it proxies
 // through grok.com server-side via a bespoke SSE conversion, see grokSessionClient.ts) and is
@@ -56,7 +57,8 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
     outline_generation: "Outline Generation",
     document_import: "Document Import (Lorebook)",
     image_generation: "Image Generation (Lorebook)",
-    agent_memory_distill: "Agent Memory Distillation"
+    agent_memory_distill: "Agent Memory Distillation",
+    chapter_version: "Chapter Versions (AI Draft)"
 };
 
 export const FEATURE_KEYS: FeatureKey[] = [
@@ -70,5 +72,6 @@ export const FEATURE_KEYS: FeatureKey[] = [
     "outline_generation",
     "document_import",
     "image_generation",
-    "agent_memory_distill"
+    "agent_memory_distill",
+    "chapter_version"
 ];

@@ -5,6 +5,7 @@ import {
     ListChecks,
     type LucideIcon,
     Menu,
+    ScanSearch,
     StickyNote,
     Tags,
     User
@@ -32,18 +33,39 @@ import { ChapterOutline } from "@/features/chapters/components/ChapterOutline";
 import { ChapterPOVEditor } from "@/features/chapters/components/ChapterPOVEditor";
 import { ConcreteBeatsPanel } from "@/features/chapters/components/ConcreteBeatsPanel";
 import { MatchedTagEntries } from "@/features/chapters/components/MatchedTagEntries";
+import { ChapterScannerDrawer } from "@/features/rag-scanner/components/ChapterScannerDrawer";
 import { cn } from "@/lib/utils";
 import type { Chapter } from "@/types/story";
 
-export type DrawerType = "matchedTags" | "chapterOutline" | "chapterPOV" | "chapterNotes" | "chapterBeats" | null;
+export type DrawerType =
+    | "matchedTags"
+    | "chapterOutline"
+    | "chapterPOV"
+    | "chapterNotes"
+    | "chapterBeats"
+    | "ragScanner"
+    | null;
 
 export const sidebarButtons: { id: DrawerType; icon: LucideIcon; label: string; title: string }[] = [
     { id: "matchedTags", icon: Tags, label: "Tags", title: "Matched Tags" },
     { id: "chapterOutline", icon: BookOpen, label: "Outline", title: "Chapter Outline" },
     { id: "chapterPOV", icon: User, label: "POV", title: "Edit POV" },
     { id: "chapterNotes", icon: StickyNote, label: "Notes", title: "Chapter Notes" },
-    { id: "chapterBeats", icon: ListChecks, label: "Beats", title: "Concrete Beats" }
+    { id: "chapterBeats", icon: ListChecks, label: "Beats", title: "Concrete Beats" },
+    { id: "ragScanner", icon: ScanSearch, label: "Scanner", title: "RAG Scanner" }
 ];
+
+// Every drawer below ends with the same "Close" footer — factored out once so adding a new
+// drawer doesn't also mean repeating this boilerplate.
+function DrawerCloseFooter() {
+    return (
+        <DrawerFooter>
+            <DrawerClose asChild>
+                <Button variant="outline">Close</Button>
+            </DrawerClose>
+        </DrawerFooter>
+    );
+}
 
 interface EditorToolsPanelProps {
     openDrawer: DrawerType;
@@ -150,11 +172,7 @@ export function EditorToolsPanel({
                     <div className="px-4 overflow-y-auto max-h-[60vh]">
                         <MatchedTagEntries />
                     </div>
-                    <DrawerFooter>
-                        <DrawerClose asChild>
-                            <Button variant="outline">Close</Button>
-                        </DrawerClose>
-                    </DrawerFooter>
+                    <DrawerCloseFooter />
                 </DrawerContent>
             </Drawer>
 
@@ -168,11 +186,7 @@ export function EditorToolsPanel({
                     <div className="px-4 overflow-y-auto max-h-[60vh]">
                         {currentChapter && <ChapterOutline key={currentChapter.id} chapter={currentChapter} />}
                     </div>
-                    <DrawerFooter>
-                        <DrawerClose asChild>
-                            <Button variant="outline">Close</Button>
-                        </DrawerClose>
-                    </DrawerFooter>
+                    <DrawerCloseFooter />
                 </DrawerContent>
             </Drawer>
 
@@ -190,11 +204,26 @@ export function EditorToolsPanel({
                             <ConcreteBeatsPanel chapterId={currentChapterId} storyId={currentStoryId} />
                         )}
                     </div>
-                    <DrawerFooter>
-                        <DrawerClose asChild>
-                            <Button variant="outline">Close</Button>
-                        </DrawerClose>
-                    </DrawerFooter>
+                    <DrawerCloseFooter />
+                </DrawerContent>
+            </Drawer>
+
+            {/* RAG Scanner Drawer */}
+            <Drawer open={openDrawer === "ragScanner"} onOpenChange={open => !open && onCloseDrawer()}>
+                <DrawerContent className="max-h-[80vh]">
+                    <DrawerHeader>
+                        <DrawerTitle>RAG Scanner</DrawerTitle>
+                        <DrawerDescription>
+                            Scan this chapter against the Codex and prior chapters for contradictions and state
+                            mismatches.
+                        </DrawerDescription>
+                    </DrawerHeader>
+                    <div className="px-4 overflow-y-auto max-h-[60vh]">
+                        {currentChapterId && currentStoryId && (
+                            <ChapterScannerDrawer chapterId={currentChapterId} storyId={currentStoryId} />
+                        )}
+                    </div>
+                    <DrawerCloseFooter />
                 </DrawerContent>
             </Drawer>
 
@@ -210,11 +239,7 @@ export function EditorToolsPanel({
                     <div className="px-4 overflow-y-auto max-h-[60vh]">
                         {currentChapter && <ChapterPOVEditor chapter={currentChapter} onClose={onCloseDrawer} />}
                     </div>
-                    <DrawerFooter>
-                        <DrawerClose asChild>
-                            <Button variant="outline">Close</Button>
-                        </DrawerClose>
-                    </DrawerFooter>
+                    <DrawerCloseFooter />
                 </DrawerContent>
             </Drawer>
 

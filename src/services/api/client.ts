@@ -4,7 +4,6 @@ import type { CodexPendingChange, CodexPendingStatus, CodexState } from "@/types
 import type {
     AIChat,
     AISettings,
-    Chapter,
     DatabaseExport,
     LorebookEntry,
     Note,
@@ -24,6 +23,8 @@ import { fetchJSON, uploadFile } from "./apiFactory";
 export { agentJobsApi } from "./agentJobsClient";
 export { agentMemoriesApi } from "./agentMemoriesClient";
 export { beatsApi } from "./beatsClient";
+export { chaptersApi } from "./chaptersClient";
+export { chapterVersionsApi } from "./chapterVersionsClient";
 export { codexApi } from "./codexClient";
 export { grammarApi } from "./grammarClient";
 export { humanizerApi } from "./humanizerClient";
@@ -73,17 +74,6 @@ export const seriesApi = {
     delete: (id: string) => fetchJSON<{ success: boolean }>(`/series/${id}`, { method: "DELETE" }),
     exportSeries: (id: string) => fetchJSON<SeriesExport>(`/series/${id}/export`),
     importSeries: (file: File) => uploadFile<Series>("/series/import", file)
-};
-
-// Chapters API
-export const chaptersApi = {
-    getByStory: (storyId: string) => fetchJSON<Chapter[]>(`/chapters/story/${storyId}`),
-    getById: (id: string) => fetchJSON<Chapter>(`/chapters/${id}`),
-    create: (data: Omit<Chapter, "createdAt">) =>
-        fetchJSON<Chapter>("/chapters", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<Chapter>) =>
-        fetchJSON<Chapter>(`/chapters/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    delete: (id: string) => fetchJSON<{ success: boolean }>(`/chapters/${id}`, { method: "DELETE" })
 };
 
 // Prompts API

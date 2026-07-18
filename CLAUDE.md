@@ -48,8 +48,8 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - Everything opens in new browser tabs
 - Full session persistence + user-configurable preferred tab setup
 - Main Editor opens last chapter + dismissible session summary
-- RAG Scanner in collapsible right rail with toggleable inline highlights
-- Project Saves split into Codex + Story layers with separate visual timelines — **Codex layer implemented** (per-entry snapshot timeline + restore, in the Lorebook entry editor's "History" section); Story layer (chapter/manuscript versioning — currently zero history, destructive autosave) not started, see `DECISIONS.md`'s "Project Saves — Phase 1" entry
+- RAG Scanner in collapsible right rail (**implemented** — `EditorToolsPanel.tsx`'s Scanner drawer, chapter-scoped) plus a story-wide "Scanner" sidebar tool (scan history + full issue list); toggleable inline highlights in chapter text **not implemented**, see `DECISIONS.md`'s "RAG Scanner Frontend (P0.1)" entry
+- Project Saves split into Codex + Story layers with separate visual timelines — **Codex layer implemented** (per-entry snapshot timeline + restore, in the Lorebook entry editor's "History" section); Story layer (linear chapter/manuscript **undo history + restore**) still **not started** — see `DECISIONS.md`'s "Project Saves — Phase 1" and "Story-Layer Chapter Versioning (P0.2)" entries. A related but distinct feature shipped instead: chapter **alternate-version tabs** (`ChapterVersionsPanel.tsx`) — AI-regenerated or manually duplicated flat draft tabs next to the main chapter, independently editable, with a one-way "Compile to Main" action and an optional side-by-side compare toggle. This does not give the main chapter itself any undo/history — its own autosave is still fully destructive
 
 ### Deployment & Access
 - Docker-first approach
@@ -92,19 +92,18 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 2. Character Codex (dynamic state + history)  
 3. Per-feature endpoint selection  
 4. Vector RAG (sqlite-vec)  
-5. RAG Scanner **backend** (+ job-wrapped scans) — **frontend not started**  
+5. RAG Scanner backend + job-wrapped scans + frontend (editor drawer + story-wide tool) — **done**  
 6. World-Building Chat system  
 7. Main Editor integration + MultiView / beats / outline / focus sessions  
 8. Dashboard + tab system + persistence  
-9. Project Saves — **Codex layer done**; **Story layer (chapter versioning) not started**  
+9. Project Saves — **Codex layer done**; chapter **alternate-version tabs done** (AI/manual drafts, compile, compare — a different feature than linear history); **Story layer (chapter undo/restore) still not started**  
 10. Agent Framework — **Phase A + B done**; Phase C not started  
 11. Lorebook Relationship Graph — **Phase G1 done**; AI edges / saved layout / pending UI not started  
 
 ### Next (see backlog for detail)
-1. **P0.1** RAG Scanner frontend  
-2. **P0.2** Story-layer chapter versioning  
-3. **P0.3** Continuity glue (memory ↔ chat/scan)  
-4. P1 polish (Agent C, Graph G1.5) and P2 bugs as needed
+1. **P0.2b** Chapter content undo/restore (the original "Project Saves" Story layer gap)  
+2. **P0.3** Continuity glue (memory ↔ chat/scan)  
+3. P1 polish (Agent C, Graph G1.5) and P2 bugs as needed
 
 ---
 

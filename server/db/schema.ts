@@ -63,6 +63,33 @@ export const chapters = sqliteTable(
     })
 );
 
+// Chapter Versions — alternate drafts of a chapter (AI-regenerated or manually duplicated),
+// shown as tabs next to the main chapter in the editor. Flat, not a branching tree: every
+// version is a direct sibling, independently editable via its own autosave. The main chapter's
+// `content` stays authoritative the whole time — a version only ever affects it via an explicit
+// "compile" action (copies the version's content into chapters.content); nothing here rewires
+// what the editor, RAG index, or export treat as "the chapter." See DECISIONS.md's "Story-Layer
+// Chapter Versioning" entry for the scoping decisions (flat list, main-is-king, no auto-history).
+export const chapterVersions = sqliteTable(
+    "chapterVersions",
+    {
+        id: text("id").primaryKey(),
+        chapterId: text("chapterId")
+            .notNull()
+            .references(() => chapters.id, { onDelete: "cascade" }),
+        content: text("content").notNull(),
+        sourceType: text("sourceType").notNull(), // 'ai' | 'manual'
+        // User-set name (e.g. "Darker ending"); null shows a fallback like "Version 2" in the UI.
+        label: text("label"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        chapterIdIdx: index("chapter_version_chapter_id_idx").on(table.chapterId),
+        createdAtIdx: index("chapter_version_created_at_idx").on(table.createdAt)
+    })
+);
+
 // AI Chats table
 export const aiChats = sqliteTable(
     "aiChats",
