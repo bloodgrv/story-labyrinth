@@ -49,7 +49,7 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - Full session persistence + user-configurable preferred tab setup
 - Main Editor opens last chapter + dismissible session summary
 - RAG Scanner in collapsible right rail (**implemented** — `EditorToolsPanel.tsx`'s Scanner drawer, chapter-scoped) plus a story-wide "Scanner" sidebar tool (scan history + full issue list); toggleable inline highlights in chapter text **not implemented**, see `DECISIONS.md`'s "RAG Scanner Frontend (P0.1)" entry
-- Project Saves split into Codex + Story layers with separate visual timelines — **Codex layer implemented** (per-entry snapshot timeline + restore, in the Lorebook entry editor's "History" section); Story layer (linear chapter/manuscript **undo history + restore**) still **not started** — see `DECISIONS.md`'s "Project Saves — Phase 1" and "Story-Layer Chapter Versioning (P0.2)" entries. A related but distinct feature shipped instead: chapter **alternate-version tabs** (`ChapterVersionsPanel.tsx`) — AI-regenerated or manually duplicated flat draft tabs next to the main chapter, independently editable, with a one-way "Compile to Main" action and an optional side-by-side compare toggle. This does not give the main chapter itself any undo/history — its own autosave is still fully destructive
+- Project Saves split into Codex + Story layers with separate visual timelines — **both implemented**. Codex layer: per-entry snapshot timeline + restore, in the Lorebook entry editor's "History" section. Story layer: linear chapter-content undo history + restore (`chapterSnapshots` table, throttled ~15min auto-checkpoints + manual named saves, "History" editor drawer), see `DECISIONS.md`'s "Chapter Content Undo/Restore (P0.2b)" entry. Separately, chapter **alternate-version tabs** also shipped (`ChapterVersionsPanel.tsx`, `DECISIONS.md`'s "Story-Layer Chapter Versioning (P0.2)" entry) — AI-regenerated or manually duplicated flat draft tabs next to the main chapter, independently editable, with a one-way "Compile to Main" action (now backed by an automatic pre-compile safety checkpoint) and an optional side-by-side compare toggle. These are two distinct features — versioning (parallel drafts) and history (linear undo) — that happen to share the same chapter editor surface
 
 ### Deployment & Access
 - Docker-first approach
@@ -96,14 +96,13 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 6. World-Building Chat system  
 7. Main Editor integration + MultiView / beats / outline / focus sessions  
 8. Dashboard + tab system + persistence  
-9. Project Saves — **Codex layer done**; chapter **alternate-version tabs done** (AI/manual drafts, compile, compare — a different feature than linear history); **Story layer (chapter undo/restore) still not started**  
+9. Project Saves — **Codex layer done**; **Story layer done** (chapter undo/restore); chapter **alternate-version tabs done** too (AI/manual drafts, compile, compare — a separate feature from linear history, both now shipped)  
 10. Agent Framework — **Phase A + B done**; Phase C not started  
 11. Lorebook Relationship Graph — **Phase G1 done**; AI edges / saved layout / pending UI not started  
 
 ### Next (see backlog for detail)
-1. **P0.2b** Chapter content undo/restore (the original "Project Saves" Story layer gap)  
-2. **P0.3** Continuity glue (memory ↔ chat/scan)  
-3. P1 polish (Agent C, Graph G1.5) and P2 bugs as needed
+1. **P0.3** Continuity glue (memory ↔ chat/scan)  
+2. P1 polish (Agent C, Graph G1.5) and P2 bugs as needed
 
 ---
 

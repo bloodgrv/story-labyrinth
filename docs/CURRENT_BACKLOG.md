@@ -1,6 +1,6 @@
 # Story Nexus Fork — Current Backlog
 
-**Last updated:** 2026-07-18  
+**Last updated:** 2026-07-18 (Notes/Outline chat bridges + export packaging)  
 **Purpose:** Single source of truth for **what’s left**, after implementation order got scrambled relative to the original Phase 0 list.  
 **Canonical live status also mirrored in:** `CLAUDE.md` (architecture + high-level “done” notes) and `DECISIONS.md` (load-bearing how/why).  
 **This file wins** when those conflict on *priority of remaining work*.
@@ -44,6 +44,7 @@
 | Theme-tint fix: `MainContent.tsx` `toolTints` no longer breaks under custom (non-`.dark`) themes | Was causing a visible light "block" per tool pane on Midnight/Forest/Sand/Graphite |
 | RAG Scanner frontend (P0.1) | Editor right-rail drawer (chapter-scoped) + "Scanner" sidebar tool (story-wide, scan history, status tabs), both triggering via `POST /api/agent/jobs` (owner-only). See `DECISIONS.md` "RAG Scanner Frontend (P0.1)" |
 | Chapter alternate-version tabs (P0.2, redefined — see note below) | Flat, chat-branching-style draft tabs next to the main chapter (`ChapterVersionsPanel.tsx`), created via AI regenerate or manual duplicate, independently editable, one-way "Compile to Main" action, optional side-by-side compare toggle. See `DECISIONS.md` "Story-Layer Chapter Versioning (P0.2)" |
+| Chapter content undo/restore (P0.2b) | Linear history for the main chapter's own content (`chapterSnapshots` table, mirrors Codex snapshot/restore) — throttled ~15min auto-checkpoints, manual named saves, restore via a new "History" editor drawer. Compile (P0.2) now takes a safety checkpoint first too. See `DECISIONS.md` "Chapter Content Undo/Restore (P0.2b)" |
 
 Design docs that still say “not implemented” in their headers may be stale for A/B/G1 — trust this file + `CLAUDE.md` over those headers until they are refreshed.
 
@@ -52,11 +53,10 @@ Design docs that still say “not implemented” in their headers may be stale f
 ## Recommended build order (from here)
 
 ```
-1. Chapter content undo/restore (P0.2b, the real "Project Saves" gap) ← P0
-2. Continuity glue (memory ↔ chat/scan)                                ← P0/P1
-3. Graph G1.5 / Agent C only if daily pain                             ← P1
-4. Bugfix pass                                                       ← P2 (anytime)
-5. Nice-to-haves                                                       ← P3
+1. Continuity glue (memory ↔ chat/scan)    ← P0/P1
+2. Graph G1.5 / Agent C only if daily pain ← P1
+3. Bugfix pass                           ← P2 (anytime)
+4. Nice-to-haves                           ← P3
 ```
 
 ---
@@ -73,36 +73,55 @@ Editor right-rail drawer (`EditorToolsPanel.tsx`'s `"ragScanner"` drawer, chapte
 
 **This shipped a different feature than this item originally described**, per direct user correction mid-build: not linear chapter-content history/undo, but chat-branching-style alternate drafts — flat tabs next to the main chapter (`ChapterVersionsPanel.tsx`), created via AI regenerate (`GenerateVersionDialog.tsx`, new `chapter_version` feature endpoint) or manual duplicate, each independently editable (`VersionEditor.tsx`, its own autosave), with an optional side-by-side compare toggle and a one-way "Compile to Main" action. `chapterVersions` table, `server/routes/chapters.ts`'s `/versions` sub-routes. See `DECISIONS.md` "Story-Layer Chapter Versioning (P0.2) — Load-Bearing Decisions" for the full scoping trail and load-bearing choices.
 
-**⚠️ The original problem this item was written to solve is still open**: chapters still have **zero linear undo history** and the main chapter's own autosave is still **fully destructive** (~1s debounce, no snapshots, no restore path) — nothing about the alternate-version-tabs feature above touches that. Compile itself is a new one-way, un-backed-up overwrite of `chapters.content`, which if anything adds one more way to lose the previous state, not fewer. If chapter-level undo/restore (mirroring the Codex snapshot/restore precedent) is still wanted, it needs to be scoped and built as a genuinely separate item — see the new backlog entry below.
+**The original problem this item was written to solve was split out and is now done separately as P0.2b below** (chapters still had zero linear undo history and a fully destructive autosave when this item shipped — nothing about the alternate-version-tabs feature itself touched that).
 
 **Refs:** `CLAUDE.md` Project Saves; `DECISIONS.md` "Project Saves — Phase 1 (Codex Layer…)" and "Story-Layer Chapter Versioning (P0.2)"
 
 ---
 
-### P0.2b — Chapter content undo/restore (NEW — the original P0.2 problem, still unsolved)
+### P0.2b — Chapter content undo/restore — ✅ Done (2026-07-19)
 
-**Status:** Not started  
-**Why:** Split out from P0.2 above after that item's scope turned out to mean something else entirely (alternate drafts, not history). The original problem — chapters have zero version history and a destructive ~1s autosave, no restore path — is exactly as unsolved as it was before this session.
+Linear undo history for the main chapter's own content, mirroring the Codex `codexSnapshots`/restore precedent for real this time. New `chapterSnapshots` table (forms a restore chain, unlike P0.2's flat `chapterVersions`). Server-side throttled `'auto'` checkpoints (~15min per chapter, computed inside the chapter content `PUT` route) plus manual named saves and restore, surfaced via a new "History" drawer in `EditorToolsPanel.tsx`. Compile (P0.2) and Restore both now take an unconditional safety checkpoint before their one-way overwrite, closing the "no backup" gap P0.2 shipped with. See `DECISIONS.md` "Chapter Content Undo/Restore (P0.2b) — Load-Bearing Decisions" — including two real bugs caught live before shipping: a `createdAt` tie-break ordering bug, and a race condition where Restore/Compile could silently undo themselves seconds later via a stale-cache reload.
 
-**Should include (scope with user before coding if ambiguous):**
-
-- Non-destructive chapter content history (snapshots and/or versions), most likely mirroring the Codex `codexSnapshots`/restore precedent (`DECISIONS.md` "Project Saves — Phase 1")
-- Restore path usable from the editor
-- Clear rules vs the current ~1s autosave (when to snapshot, retention/pruning policy, manual named saves) — full-content Lexical JSON snapshots are considerably heavier than Codex's structured-field snapshots (measured ~18 bytes/word in this project's demo content), so a naive per-autosave snapshot policy needs real coalescing, not a direct copy of the Codex approach
-- Decide how (or whether) this interacts with the new Compile action from P0.2 above, which is currently a real one-way overwrite with no backup
-
-**Do not** conflate with full git-like branching unless explicitly requested (the backlog previously referenced a `2026-06-26_Versioning_Branching_Design.md` doc for this — confirmed during P0.2's work that **no such file exists in the repo**; there is no prior design to reconcile against, this would be scoped fresh).
-
-**Refs:** `CLAUDE.md` Project Saves; `DECISIONS.md` "Project Saves — Phase 1 (Codex Layer…)" and "Story-Layer Chapter Versioning (P0.2)" (for what NOT to re-derive — the alternate-drafts data model is unrelated)
+**Refs:** `CLAUDE.md` Project Saves; `DECISIONS.md` "Project Saves — Phase 1 (Codex Layer…)" and "Chapter Content Undo/Restore (P0.2b)"
 
 ---
 
-### P0.3 — Continuity glue (memory + scanner + writing loop)
+### P0.3 — Continuity glue (memory + scanner + writing loop + Notes/Outline bridges)
 
 **Status:** Not started (pieces exist in isolation)  
-**Why:** Project memory, graph, and scanner backend don’t yet form a daily continuity loop.
+**Why:** Project memory, graph, scanner, Notes, and Outline don’t yet form a daily continuity loop. Models default to lorebook+chapter RAG only; Notes/Outline are human silos.
 
-**Small, high-value slices (any order):**
+**Canonical design (Notes/Outline ↔ chat):** `docs/Notes_Outline_Chat_Bridges_Design.md` (locked 2026-07-18).
+
+#### Persistence & project packaging (required with bridges — locked)
+
+| # | Recommendation |
+|---|----------------|
+| 1 | Treat **`notes` / outline item rows as SoT** — RAG is derived cache only; toggle-off never deletes the row |
+| 2 | Add **notes (+ `includeInAi`)** to **story export/import** (`GET /stories/:id/export` omits them today) |
+| 3 | Add **outline items (+ `includeInAi`)** to story export/import (same packaging gap) |
+| 4 | **Do not export RAG chunks** — reindex after import from rows + flags |
+| 5 | **Project Saves timelines stay Codex/chapter-focused** unless note/outline history is explicitly reopened later; portable package = story JSON export/import |
+
+Also: extend **`reconcile_index`** valid keys for armed notes/outline only — never a job that deletes note rows as “orphans.”
+
+#### Notes/Outline ↔ chat slices
+
+| Slice | Description |
+|-------|-------------|
+| N0 | Story export/import includes notes (+ outline); round-trip `includeInAi`; no RAG blobs in export |
+| N1 | `notes.includeInAi` (default false) + UI toggle/badge + bulk |
+| N2 | RAG `entityType: "note"` only when armed; remove on off/delete; reconcile_index |
+| N3 | Per-chat `includeNotes` / `includeOutline` (default false) on **all chats except Editor** |
+| N4 | `chatContextService` non-canon packets when **both** gates pass (top-K, labeled working material) |
+| N5 | Manual “Save message/selection as note” |
+| N6 | AI `note-proposal` → accept/reject card |
+| O1–O4 | Same double-gate pattern for outline items |
+
+**Inclusion doctrine:** per-item AI flag AND per-chat toggle, both default OFF; Editor never gets these toggles.
+
+#### Existing memory/scanner slices (any order)
 
 | Slice | Description |
 |-------|-------------|
@@ -112,7 +131,7 @@ Editor right-rail drawer (`EditorToolsPanel.tsx`'s `"ragScanner"` drawer, chapte
 | C4 | Optional: per-story **unattended** `rag_scan_story` schedule toggle (default OFF) |
 | C5 | **Codex auto-compile from manuscript.** Not started — raised 2026-07-17. Today, Codex state (wardrobe/appearance/wounds/items) is either hand-typed in `CodexStateEditor.tsx`, or proposed conversationally by the World-Building Chat (`codex-proposal` fenced JSON → `codexPendingChange` → Approve/Reject, see `chatCodexService.ts`) — nothing scans manuscript chapters and proposes Codex updates unprompted. User wants this closer to *automatic*, agent-driven — "the agent should be compiling that as we go along, not the user." This is a bigger lift than C1–C4: needs a new job type (no `codex`-scanning job exists in `jobRunner.ts` today, unlike `distill_memory`/`rag_scan_*`), and a real decision on how far to push automation given the standing "no silent auto-chain, always manual-trigger + approve" precedent from Phase B (`DECISIONS.md`). Recommend shaping this the same way as C2 (manual "Suggest Codex updates from this scan/chapter" button → pending proposals through the *existing* approve/reject/edit-first pipeline) rather than a fully silent background job, unless the user explicitly wants to revisit the no-auto-chain precedent. Also note while investigating: `useReviseProposalMutation`/`reviseChatProposal` ("Edit First") already exist server-side for the *existing* chat-proposal pipeline but have no UI button anywhere (`ProposalCard.tsx` only wires Approve/Reject) — worth wiring up regardless of C5's automation scope. |
 
-**Refs:** Agent design Phase C; `DECISIONS.md` Phase B (no auto-distill; no suggest UI yet)
+**Refs:** `docs/Notes_Outline_Chat_Bridges_Design.md`; Agent design Phase C; `DECISIONS.md` Phase B (no auto-distill; no suggest UI yet)
 
 ---
 
@@ -164,6 +183,7 @@ Editor right-rail drawer (`EditorToolsPanel.tsx`'s `"ragScanner"` drawer, chapte
 
 | Item | Notes |
 |------|--------|
+| **Import to Outline** | **User note 2026-07-18:** add import into Outline (parallel to multi-format lorebook import). Accept outline/structure docs → chapter/scene `outlineItems` (manual confirm before bulk create). Scope formats + merge-vs-replace when picked up. Not started. |
 | Name generator | Design: Hermes `Name_Generator_Design.md` / skill reference |
 | Spellcheck / LanguageTool depth | Settings/types exist; full design may exceed current UX |
 | Gemini provider polish | `docs/gemini-provider-plan.md` |
@@ -190,16 +210,11 @@ Editor right-rail drawer (`EditorToolsPanel.tsx`'s `"ragScanner"` drawer, chapte
 ## Suggested next Claude kickoff (copy-paste)
 
 ```text
-Read CLAUDE.md, docs/CURRENT_BACKLOG.md, and DECISIONS.md "Project Saves — Phase 1" and
-"Story-Layer Chapter Versioning (P0.2)".
-Implement P0.2b: chapter content undo/restore. This is NOT the alternate-draft-tabs feature
-P0.2 already shipped (ChapterVersionsPanel.tsx / chapterVersions table) — that's a separate,
-unrelated data model. This is linear history for the main chapter's own content, most likely
-mirroring the Codex codexSnapshots/restore precedent.
-Scope with non-destructive history + restore usable from the editor; define interaction with
-current ~1s autosave (coalescing/retention — full Lexical JSON snapshots are heavy) and with the
-existing one-way Compile action from P0.2.
-Do not build full git branching. Record decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
+Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
+P0.1, P0.2, and P0.2b are all done — the next P0 item is P0.3, continuity glue between project
+memory, the RAG scanner, and the writing loop (see the P0.3 section for its C1-C5 slices; any
+order, pick the highest-value one first unless the user redirects).
+Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 
 ---
@@ -211,6 +226,7 @@ Do not build full git branching. Record decisions in DECISIONS.md; update CURREN
 | `CLAUDE.md` | Architecture + constraints + high-level done flags |
 | `DECISIONS.md` | Why/how of each shipped change |
 | `docs/CURRENT_BACKLOG.md` | **This file** — remaining work + priority |
+| `docs/Notes_Outline_Chat_Bridges_Design.md` | Notes/Outline ↔ chat double-gate + export packaging (locked 2026-07-18) |
 | `docs/Agent_Framework_And_Project_Memory_Design.md` | Agent A/B design (A/B shipped; C backlog) |
 | `docs/Thin_Story_Graph_And_Lorebook_Visualization.md` | Graph design (G1 shipped; G1.5+ backlog) |
 | Hermes `.hermes/plans/*` | Historical designs; may be stale vs CLAUDE |

@@ -24,6 +24,7 @@ export { agentJobsApi } from "./agentJobsClient";
 export { agentMemoriesApi } from "./agentMemoriesClient";
 export { beatsApi } from "./beatsClient";
 export { chaptersApi } from "./chaptersClient";
+export { chapterSnapshotsApi } from "./chapterSnapshotsClient";
 export { chapterVersionsApi } from "./chapterVersionsClient";
 export { codexApi } from "./codexClient";
 export { grammarApi } from "./grammarClient";

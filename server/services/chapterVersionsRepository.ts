@@ -2,6 +2,7 @@ import { attemptPromise } from "@jfdi/attempt";
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import type { ChapterVersion, ChapterVersionSourceType } from "../../src/types/chapterVersion.js";
+import { safetySnapshot } from "./chapterSnapshotsRepository.js";
 import { indexChapter } from "./ragIndexService.js";
 
 const rowToVersion = (row: typeof schema.chapterVersions.$inferSelect): ChapterVersion => ({
@@ -78,6 +79,11 @@ export const deleteVersion = async (versionId: string): Promise<void> => {
 // explicitly promoted). Copies the version's content into the live chapter — one-directional,
 // not a toggle — and reindexes the chapter for RAG the same way any other content change would,
 // since this bypasses the client-side autosave path that normally triggers that debounce.
+//
+// Takes an unconditional chapterSnapshots safety checkpoint of the chapter's pre-compile content
+// first (P0.2b) — when this action originally shipped it had no backup at all; closing that gap
+// was the explicit reason P0.2b's compile/restore interaction was scoped the way it was, see
+// DECISIONS.md's "Chapter Content Undo/Restore (P0.2b)" entry.
 export const compileVersionToChapter = async (
     chapterId: string,
     versionId: string
@@ -85,6 +91,10 @@ export const compileVersionToChapter = async (
     const version = await getVersionById(versionId);
     if (!version) throw new Error(`Version not found: ${versionId}`);
     if (version.chapterId !== chapterId) throw new Error(`Version ${versionId} does not belong to chapter ${chapterId}`);
+
+    const [existing] = await db.select().from(schema.chapters).where(eq(schema.chapters.id, chapterId));
+    if (!existing) throw new Error(`Chapter not found: ${chapterId}`);
+    if (existing.content !== version.content) await safetySnapshot(chapterId, existing.content, versionId);
 
     const [chapter] = await db
         .update(schema.chapters)

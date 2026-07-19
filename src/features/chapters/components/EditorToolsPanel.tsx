@@ -2,6 +2,7 @@ import {
     BookOpen,
     ChevronLeft,
     ChevronRight,
+    History,
     ListChecks,
     type LucideIcon,
     Menu,
@@ -10,6 +11,7 @@ import {
     Tags,
     User
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { DownloadMenu } from "@/components/ui/DownloadMenu";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +35,7 @@ import { ChapterOutline } from "@/features/chapters/components/ChapterOutline";
 import { ChapterPOVEditor } from "@/features/chapters/components/ChapterPOVEditor";
 import { ConcreteBeatsPanel } from "@/features/chapters/components/ConcreteBeatsPanel";
 import { MatchedTagEntries } from "@/features/chapters/components/MatchedTagEntries";
+import { ChapterHistoryDrawer } from "@/features/chapter-history/components/ChapterHistoryDrawer";
 import { ChapterScannerDrawer } from "@/features/rag-scanner/components/ChapterScannerDrawer";
 import { cn } from "@/lib/utils";
 import type { Chapter } from "@/types/story";
@@ -44,6 +47,7 @@ export type DrawerType =
     | "chapterNotes"
     | "chapterBeats"
     | "ragScanner"
+    | "chapterHistory"
     | null;
 
 export const sidebarButtons: { id: DrawerType; icon: LucideIcon; label: string; title: string }[] = [
@@ -52,7 +56,8 @@ export const sidebarButtons: { id: DrawerType; icon: LucideIcon; label: string; 
     { id: "chapterPOV", icon: User, label: "POV", title: "Edit POV" },
     { id: "chapterNotes", icon: StickyNote, label: "Notes", title: "Chapter Notes" },
     { id: "chapterBeats", icon: ListChecks, label: "Beats", title: "Concrete Beats" },
-    { id: "ragScanner", icon: ScanSearch, label: "Scanner", title: "RAG Scanner" }
+    { id: "ragScanner", icon: ScanSearch, label: "Scanner", title: "RAG Scanner" },
+    { id: "chapterHistory", icon: History, label: "History", title: "Chapter History" }
 ];
 
 // Every drawer below ends with the same "Close" footer — factored out once so adding a new
@@ -64,6 +69,37 @@ function DrawerCloseFooter() {
                 <Button variant="outline">Close</Button>
             </DrawerClose>
         </DrawerFooter>
+    );
+}
+
+// Most drawers below share the exact same Header/Description/scrollable-content/CloseFooter
+// shape and differ only in title, description, and content — factored out for the same reason
+// as DrawerCloseFooter above. The Notes drawer (a Sheet, not a Drawer, with its own footer-free
+// layout) doesn't fit this shape and stays bespoke.
+function SimpleDrawer({
+    open,
+    onClose,
+    title,
+    description,
+    children
+}: {
+    open: boolean;
+    onClose: () => void;
+    title: string;
+    description: ReactNode;
+    children: ReactNode;
+}) {
+    return (
+        <Drawer open={open} onOpenChange={o => !o && onClose()}>
+            <DrawerContent className="max-h-[80vh]">
+                <DrawerHeader>
+                    <DrawerTitle>{title}</DrawerTitle>
+                    <DrawerDescription>{description}</DrawerDescription>
+                </DrawerHeader>
+                <div className="px-4 overflow-y-auto max-h-[60vh]">{children}</div>
+                <DrawerCloseFooter />
+            </DrawerContent>
+        </Drawer>
     );
 }
 
@@ -162,86 +198,31 @@ export function EditorToolsPanel({
                 </div>
             </aside>
 
-            {/* Matched Tags Drawer */}
-            <Drawer open={openDrawer === "matchedTags"} onOpenChange={open => !open && onCloseDrawer()}>
-                <DrawerContent className="max-h-[80vh]">
-                    <DrawerHeader>
-                        <DrawerTitle>Matched Tag Entries</DrawerTitle>
-                        <DrawerDescription>Lorebook entries that match tags in your current chapter.</DrawerDescription>
-                    </DrawerHeader>
-                    <div className="px-4 overflow-y-auto max-h-[60vh]">
-                        <MatchedTagEntries />
-                    </div>
-                    <DrawerCloseFooter />
-                </DrawerContent>
-            </Drawer>
+            <SimpleDrawer open={openDrawer === "matchedTags"} onClose={onCloseDrawer} title="Matched Tag Entries" description="Lorebook entries that match tags in your current chapter.">
+                <MatchedTagEntries />
+            </SimpleDrawer>
 
-            {/* Chapter Outline Drawer */}
-            <Drawer open={openDrawer === "chapterOutline"} onOpenChange={open => !open && onCloseDrawer()}>
-                <DrawerContent className="max-h-[80vh]">
-                    <DrawerHeader>
-                        <DrawerTitle>Chapter Outline</DrawerTitle>
-                        <DrawerDescription>Outline and notes for your current chapter.</DrawerDescription>
-                    </DrawerHeader>
-                    <div className="px-4 overflow-y-auto max-h-[60vh]">
-                        {currentChapter && <ChapterOutline key={currentChapter.id} chapter={currentChapter} />}
-                    </div>
-                    <DrawerCloseFooter />
-                </DrawerContent>
-            </Drawer>
+            <SimpleDrawer open={openDrawer === "chapterOutline"} onClose={onCloseDrawer} title="Chapter Outline" description="Outline and notes for your current chapter.">
+                {currentChapter && <ChapterOutline key={currentChapter.id} chapter={currentChapter} />}
+            </SimpleDrawer>
 
-            {/* Concrete Beats Drawer */}
-            <Drawer open={openDrawer === "chapterBeats"} onOpenChange={open => !open && onCloseDrawer()}>
-                <DrawerContent className="max-h-[80vh]">
-                    <DrawerHeader>
-                        <DrawerTitle>Concrete Beats</DrawerTitle>
-                        <DrawerDescription>
-                            Physical actions, wardrobe/item changes, and other concrete beats marked in this chapter.
-                        </DrawerDescription>
-                    </DrawerHeader>
-                    <div className="px-4 overflow-y-auto max-h-[60vh]">
-                        {currentChapterId && currentStoryId && (
-                            <ConcreteBeatsPanel chapterId={currentChapterId} storyId={currentStoryId} />
-                        )}
-                    </div>
-                    <DrawerCloseFooter />
-                </DrawerContent>
-            </Drawer>
+            <SimpleDrawer open={openDrawer === "chapterBeats"} onClose={onCloseDrawer} title="Concrete Beats" description="Physical actions, wardrobe/item changes, and other concrete beats marked in this chapter.">
+                {currentChapterId && currentStoryId && <ConcreteBeatsPanel chapterId={currentChapterId} storyId={currentStoryId} />}
+            </SimpleDrawer>
 
-            {/* RAG Scanner Drawer */}
-            <Drawer open={openDrawer === "ragScanner"} onOpenChange={open => !open && onCloseDrawer()}>
-                <DrawerContent className="max-h-[80vh]">
-                    <DrawerHeader>
-                        <DrawerTitle>RAG Scanner</DrawerTitle>
-                        <DrawerDescription>
-                            Scan this chapter against the Codex and prior chapters for contradictions and state
-                            mismatches.
-                        </DrawerDescription>
-                    </DrawerHeader>
-                    <div className="px-4 overflow-y-auto max-h-[60vh]">
-                        {currentChapterId && currentStoryId && (
-                            <ChapterScannerDrawer chapterId={currentChapterId} storyId={currentStoryId} />
-                        )}
-                    </div>
-                    <DrawerCloseFooter />
-                </DrawerContent>
-            </Drawer>
+            <SimpleDrawer open={openDrawer === "ragScanner"} onClose={onCloseDrawer} title="RAG Scanner" description="Scan this chapter against the Codex and prior chapters for contradictions and state mismatches.">
+                {currentChapterId && currentStoryId && <ChapterScannerDrawer chapterId={currentChapterId} storyId={currentStoryId} />}
+            </SimpleDrawer>
 
-            {/* Chapter POV Drawer */}
-            <Drawer open={openDrawer === "chapterPOV"} onOpenChange={open => !open && onCloseDrawer()}>
-                <DrawerContent className="max-h-[80vh]">
-                    <DrawerHeader>
-                        <DrawerTitle>Edit Chapter POV</DrawerTitle>
-                        <DrawerDescription>
-                            Change the point of view character and perspective for this chapter.
-                        </DrawerDescription>
-                    </DrawerHeader>
-                    <div className="px-4 overflow-y-auto max-h-[60vh]">
-                        {currentChapter && <ChapterPOVEditor chapter={currentChapter} onClose={onCloseDrawer} />}
-                    </div>
-                    <DrawerCloseFooter />
-                </DrawerContent>
-            </Drawer>
+            <SimpleDrawer open={openDrawer === "chapterHistory"} onClose={onCloseDrawer} title="Chapter History" description="Non-destructive save history for this chapter's content — auto-checkpoints plus your own named saves, with restore.">
+                {currentChapterId && (
+                    <ChapterHistoryDrawer chapterId={currentChapterId} currentContent={currentChapter?.content} />
+                )}
+            </SimpleDrawer>
+
+            <SimpleDrawer open={openDrawer === "chapterPOV"} onClose={onCloseDrawer} title="Edit Chapter POV" description="Change the point of view character and perspective for this chapter.">
+                {currentChapter && <ChapterPOVEditor chapter={currentChapter} onClose={onCloseDrawer} />}
+            </SimpleDrawer>
 
             {/* Replace the Chapter Notes Drawer with this Sheet */}
             <Sheet open={openDrawer === "chapterNotes"} onOpenChange={open => !open && onCloseDrawer()}>

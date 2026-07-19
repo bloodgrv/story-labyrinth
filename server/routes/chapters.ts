@@ -4,6 +4,13 @@ import type { InferSelectModel } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { parseJson } from "../lib/json.js";
+import {
+    createSnapshot,
+    listSnapshotsForChapter,
+    maybeAutoSnapshot,
+    restoreSnapshot,
+    setSnapshotLabel
+} from "../services/chapterSnapshotsRepository.js";
 import { generateChapterVersionText, textToLexicalContent } from "../services/chapterVersionAiService.js";
 import {
     compileVersionToChapter,
@@ -28,7 +35,94 @@ export default createCrudRouter({
             notes: parseJson(ch.notes)
         })
     },
-    customRoutes: (router, { asyncHandler }) => {
+    customRoutes: (router, { asyncHandler, applyTransform, table }) => {
+        // ── Chapter Snapshots (P0.2b) — linear undo history for the main chapter's own content.
+        // Unrelated to Chapter Versions below — see DECISIONS.md's "Story-Layer Chapter
+        // Versioning (P0.2)" entry for why the two must not be conflated.
+
+        // PUT /api/chapters/:id — overrides the generic CRUD update (customRoutes are registered
+        // before the generic routes, see server/lib/crud.ts) so a content change can be checked
+        // for an auto-snapshot first. Every other field updates exactly as the generic path did.
+        router.put(
+            "/:id",
+            asyncHandler(async (req, res) => {
+                const { id: _id, createdAt: _createdAt, ...updates } = req.body as Record<string, unknown>;
+
+                if (typeof updates.content === "string") {
+                    const [existing] = await db.select().from(table).where(eq(table.id, req.params.id));
+                    if (existing) await maybeAutoSnapshot(req.params.id, existing.content as string, updates.content);
+                }
+
+                const result = await db.update(table).set(updates).where(eq(table.id, req.params.id)).returning();
+                const updated = Array.isArray(result) ? result[0] : result;
+                if (!updated) {
+                    res.status(404).json({ error: "Chapter not found" });
+                    return;
+                }
+                res.json(applyTransform(updated as Chapter));
+            })
+        );
+
+        // GET /api/chapters/:chapterId/snapshots — history, newest first.
+        router.get(
+            "/:chapterId/snapshots",
+            asyncHandler(async (req, res) => {
+                const snapshots = await listSnapshotsForChapter(req.params.chapterId);
+                res.json({ snapshots });
+            })
+        );
+
+        // POST /api/chapters/:chapterId/snapshots — manual named save. Snapshots the chapter's
+        // CURRENT content (as already persisted by autosave); body: { label? }.
+        router.post(
+            "/:chapterId/snapshots",
+            asyncHandler(async (req, res) => {
+                const { label } = req.body as { label?: string | null };
+                const [chapter] = await db.select().from(schema.chapters).where(eq(schema.chapters.id, req.params.chapterId));
+                if (!chapter) {
+                    res.status(404).json({ error: "Chapter not found" });
+                    return;
+                }
+                const snapshot = await createSnapshot({
+                    chapterId: req.params.chapterId,
+                    content: chapter.content,
+                    sourceType: "manual",
+                    label: label ?? null
+                });
+                res.status(201).json(snapshot);
+            })
+        );
+
+        // PATCH /api/chapters/:chapterId/snapshots/:snapshotId — set or clear a snapshot's label.
+        router.patch(
+            "/:chapterId/snapshots/:snapshotId",
+            asyncHandler(async (req, res) => {
+                const { label } = req.body as { label?: string | null };
+                const snapshot = await setSnapshotLabel(req.params.snapshotId, label ?? null);
+                if (!snapshot || snapshot.chapterId !== req.params.chapterId) {
+                    res.status(404).json({ error: "Snapshot not found" });
+                    return;
+                }
+                res.json(snapshot);
+            })
+        );
+
+        // POST /api/chapters/:chapterId/snapshots/:snapshotId/restore — non-destructive restore,
+        // see chapterSnapshotsRepository.ts's restoreSnapshot for the safety-checkpoint details.
+        router.post(
+            "/:chapterId/snapshots/:snapshotId/restore",
+            asyncHandler(async (req, res) => {
+                const [error, result] = await attemptPromise(() =>
+                    restoreSnapshot(req.params.chapterId, req.params.snapshotId)
+                );
+                if (error) {
+                    res.status(404).json({ error: error.message });
+                    return;
+                }
+                res.json({ chapter: applyTransform(result.chapter as Chapter), snapshot: result.snapshot });
+            })
+        );
+
         // ── Chapter Versions ─────────────────────────────────────────────────────────
         // Flat alternate drafts of a chapter, shown as tabs in the editor. Main chapter stays
         // king — versions only ever reach it via the explicit /compile action below. See

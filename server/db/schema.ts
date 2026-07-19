@@ -90,6 +90,34 @@ export const chapterVersions = sqliteTable(
     })
 );
 
+// Chapter Snapshots — linear undo history for the main chapter's own content (P0.2b, the
+// original "Project Saves — Story layer" problem; a different, unrelated feature from
+// chapterVersions above — see DECISIONS.md's "Story-Layer Chapter Versioning (P0.2)" entry for
+// why those two must not be conflated). Mirrors codexSnapshots' shape and restore-chain pattern
+// (sourceRef points back at what a 'restore' snapshot restored from). Unlike codexSnapshots,
+// which snapshots on every discrete mutation, chapters autosave continuously while typing, so
+// 'auto' snapshots are throttled server-side (see chapterSnapshotsRepository.ts's
+// maybeAutoSnapshot) rather than taken on every save.
+export const chapterSnapshots = sqliteTable(
+    "chapterSnapshots",
+    {
+        id: text("id").primaryKey(),
+        chapterId: text("chapterId")
+            .notNull()
+            .references(() => chapters.id, { onDelete: "cascade" }),
+        content: text("content").notNull(),
+        sourceType: text("sourceType").notNull(), // 'auto' | 'manual' | 'restore'
+        sourceRef: text("sourceRef"), // snapshotId restored from ('restore'), or the compiled versionId ('auto' safety snapshot before a Compile)
+        // User-set name (e.g. "Before the Prague rewrite"); null shows a fallback in the UI.
+        label: text("label"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        chapterIdIdx: index("chapter_snapshot_chapter_id_idx").on(table.chapterId),
+        createdAtIdx: index("chapter_snapshot_created_at_idx").on(table.createdAt)
+    })
+);
+
 // AI Chats table
 export const aiChats = sqliteTable(
     "aiChats",

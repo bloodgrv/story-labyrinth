@@ -28,6 +28,14 @@ interface StoryContextType {
     // needs to survive the single setCurrentTool("lorebook") re-render that follows it.
     pendingLorebookEntryId: string | null;
     setPendingLorebookEntryId: (id: string | null) => void;
+    // Bumped whenever a chapter's content changes from OUTSIDE the live editor's own autosave
+    // loop (currently: History drawer restore, P0.2b) — LoadChapterContentPlugin's own "only
+    // load once per chapterId" gate has no other way to learn the DB content changed out from
+    // under it, since chapters has no updatedAt column to diff against. A plain counter, not a
+    // boolean, so re-triggering with the editor already showing the same chapterId still fires
+    // the effect (a boolean set back to its own value wouldn't).
+    chapterContentRefreshToken: number;
+    refreshChapterContent: () => void;
 }
 
 const StoryContext = createContext<StoryContextType | undefined>(undefined);
@@ -50,6 +58,8 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     });
 
     const [pendingLorebookEntryId, setPendingLorebookEntryId] = useState<string | null>(null);
+    const [chapterContentRefreshToken, setChapterContentRefreshToken] = useState(0);
+    const refreshChapterContent = () => setChapterContentRefreshToken(token => token + 1);
 
     const [currentTool, setCurrentToolState] = useState<WorkspaceTool>(() => {
         const storedStoryId = localStorage.getItem(STORAGE_KEY_STORY_ID);
@@ -114,7 +124,9 @@ export function StoryProvider({ children }: { children: ReactNode }) {
                 setCurrentTool,
                 resetContext,
                 pendingLorebookEntryId,
-                setPendingLorebookEntryId
+                setPendingLorebookEntryId,
+                chapterContentRefreshToken,
+                refreshChapterContent
             }}
         >
             {children}

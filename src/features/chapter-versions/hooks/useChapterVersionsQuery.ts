@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { chapterVersionsApi } from "@/services/api/client";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import type { ChapterVersion } from "@/types/chapterVersion";
 
 export const chapterVersionKeys = {
@@ -75,12 +76,20 @@ export const useSetVersionLabelMutation = (chapterId: string) => {
 
 export const useCompileVersionMutation = (chapterId: string) => {
     const queryClient = useQueryClient();
+    const { refreshChapterContent } = useStoryContext();
     return useMutation({
         mutationFn: (versionId: string) => chapterVersionsApi.compile(chapterId, versionId),
-        onSuccess: () => {
-            // Broad prefix invalidation — chaptersKeys' own factory isn't exported, and
-            // both its "detail" and "byStory" keys share this "chapters" prefix.
+        onSuccess: result => {
+            // Write the mutation's own (already-fresh) chapter straight into the detail cache,
+            // then bump the refresh token so an already-mounted main editor actually picks up the
+            // new content — same fix, and same reason, as useChapterHistoryQuery.ts's restore
+            // mutation: relying on invalidateQueries + a background refetch left a real window
+            // where the reload could fire against still-stale cached content and get autosaved
+            // right back over the compile. chaptersKeys' own factory isn't exported, so this
+            // spells out its "detail" key shape directly; "byStory" list staleness is harmless.
+            queryClient.setQueryData(["chapters", chapterId], result.chapter);
             queryClient.invalidateQueries({ queryKey: ["chapters"] });
+            refreshChapterContent();
             toast.success("Compiled into the main chapter");
         },
         onError: (error: Error) => toast.error(error.message || "Failed to compile version")

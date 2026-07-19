@@ -3,6 +3,7 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { useEffect, useState } from "react";
 import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { useEditorChapterId } from "@/features/editor-multiview/context/EditorPaneContext";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { logger } from "@/utils/logger";
 
 export function LoadChapterContentPlugin(): null {
@@ -10,11 +11,16 @@ export function LoadChapterContentPlugin(): null {
     const currentChapterId = useEditorChapterId();
     const { data: currentChapter } = useChapterQuery(currentChapterId || "");
     const [hasLoaded, setHasLoaded] = useState(false);
+    // Bumped by an external content change (currently: History drawer restore) — see
+    // StoryContext.tsx's own comment on chapterContentRefreshToken for why a plain gate on
+    // chapterId alone can't detect this.
+    const { chapterContentRefreshToken } = useStoryContext();
 
-    // Reset hasLoaded when chapter changes
+    // Reset hasLoaded when the chapter changes, or when something outside this editor's own
+    // autosave loop changed the chapter's content in the DB.
     useEffect(() => {
         if (currentChapterId) setHasLoaded(false);
-    }, [currentChapterId]);
+    }, [currentChapterId, chapterContentRefreshToken]);
 
     // Set editor content when chapter data is available
     useEffect(() => {
