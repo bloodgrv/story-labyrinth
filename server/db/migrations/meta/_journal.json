@@ -267,6 +267,13 @@
       "when": 1784572762537,
       "tag": "0037_white_vargas",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1784585774587,
+      "tag": "0038_motionless_human_torch",
+      "breakpoints": true
     }
   ]
 }

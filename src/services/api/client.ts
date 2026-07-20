@@ -186,6 +186,9 @@ export const chatsApi = {
             wbStyle?: string;
             outlineStyle?: string;
             includePsychModule?: boolean;
+            autoInsertProse?: boolean;
+            autoAcceptCodex?: boolean;
+            autoAcceptOutline?: boolean;
         }
     ) => fetchJSON<AIChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     appendMessage: (id: string, role: "user" | "assistant", content: string) =>
@@ -219,10 +222,13 @@ export const chatsApi = {
             proposedState?: CodexState;
         }
     ) =>
-        fetchJSON(`/chats/${id}/codex-proposals`, {
-            method: "POST",
-            body: JSON.stringify({ type: "new_entry", ...data })
-        }),
+        fetchJSON<{ entry: LorebookEntry; snapshot: unknown; pendingChange: CodexPendingChange }>(
+            `/chats/${id}/codex-proposals`,
+            {
+                method: "POST",
+                body: JSON.stringify({ type: "new_entry", ...data })
+            }
+        ),
     proposeModifyEntry: (
         id: string,
         data: {

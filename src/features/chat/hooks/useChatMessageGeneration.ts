@@ -18,7 +18,7 @@ import { parseOverviewProposals } from "../services/parseOverviewProposals";
 import { parseProseProposal } from "../services/parseProseProposal";
 import type { ParsedPsychProposal } from "../services/parsePsychProposal";
 import { parsePsychProposal } from "../services/parsePsychProposal";
-import { useCreateProposalMutation } from "./useCodexProposalsQuery";
+import { useApproveProposalMutation, useCreateProposalMutation } from "./useCodexProposalsQuery";
 import type { HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
 
 interface UseChatMessageGenerationParams {
@@ -54,6 +54,11 @@ interface UseChatMessageGenerationParams {
     // P0.4 B5 — see chatContextService.ts's PSYCH_MODULE_INSTRUCTIONS). Not persisted server-side
     // — ephemeral until Accept merges it into the anchor entry's own metadata.psychProfile.
     onPsychProposal?: (messageId: string, proposal: ParsedPsychProposal) => void;
+    // P0.4 R6 — when true, every ```codex-proposal parsed from a reply is approved immediately
+    // after its pending row is created (same call ProposalTrayCard's Approve button makes), instead
+    // of waiting for a manual tray click. Editor/WB/Outline chats only (see ChatInterface.tsx's
+    // usesCodexTray-gated toggle row) — default false, doctrine requires an explicit opt-in.
+    autoAcceptCodex?: boolean;
 }
 
 interface UseChatMessageGenerationReturn {
@@ -80,12 +85,14 @@ export const useChatMessageGeneration = ({
     onLoreSuggestions,
     onOverviewProposal,
     onHandoffPackets,
-    onPsychProposal
+    onPsychProposal,
+    autoAcceptCodex
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
     const [isSending, setIsSending] = useState(false);
     const { generateWithPrompt } = useGenerateWithPrompt();
     const { isStreaming, streamedText, processStream, abort: abortStream, reset } = useStreamingGeneration();
     const createProposalMutation = useCreateProposalMutation();
+    const approveProposalMutation = useApproveProposalMutation(selectedChat.id);
 
     const abort = useCallback(() => {
         abortStream();
@@ -129,10 +136,17 @@ export const useChatMessageGeneration = ({
                     afterAssistantMessage.messages[afterAssistantMessage.messages.length - 1];
 
                 proposals.forEach(proposal =>
-                    createProposalMutation.mutate({
-                        chatId: selectedChat.id,
-                        data: { messageId: assistantMessage?.id, ...proposal }
-                    })
+                    createProposalMutation.mutate(
+                        {
+                            chatId: selectedChat.id,
+                            data: { messageId: assistantMessage?.id, ...proposal }
+                        },
+                        {
+                            onSuccess: result => {
+                                if (autoAcceptCodex) approveProposalMutation.mutate(result.pendingChange.id);
+                            }
+                        }
+                    )
                 );
 
                 if (proseProposal && assistantMessage) onProseProposal?.(assistantMessage.id, proseProposal);
@@ -160,6 +174,7 @@ export const useChatMessageGeneration = ({
             processStream,
             reset,
             createProposalMutation,
+            approveProposalMutation,
             onChatUpdate,
             onProseProposal,
             onNoteProposal,
@@ -167,7 +182,8 @@ export const useChatMessageGeneration = ({
             onLoreSuggestions,
             onOverviewProposal,
             onHandoffPackets,
-            onPsychProposal
+            onPsychProposal,
+            autoAcceptCodex
         ]
     );
 

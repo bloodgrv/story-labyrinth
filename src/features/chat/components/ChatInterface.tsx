@@ -179,6 +179,13 @@ export function ChatInterface({
     // (see chatContextService.ts's entityTypes computation).
     const [includeLorebook, setIncludeLorebook] = useState(selectedChat.includeLorebook);
     const [includeChapterSummaries, setIncludeChapterSummaries] = useState(selectedChat.includeChapterSummaries);
+    // P0.4 R6 — auto-insert/auto-accept toggles (docs/Chat_Panel_Integrations_Design.md doctrine
+    // "no silent canon unless an explicit toggle is ON"). Same local-state-persisted-after-PATCH
+    // pattern as the toggles above. autoInsertProse only rendered/used for Editor; autoAcceptOutline
+    // only rendered/used for Outline; autoAcceptCodex applies to Editor/WB/Outline (usesCodexTray).
+    const [autoInsertProse, setAutoInsertProse] = useState(selectedChat.autoInsertProse);
+    const [autoAcceptCodex, setAutoAcceptCodex] = useState(selectedChat.autoAcceptCodex);
+    const [autoAcceptOutline, setAutoAcceptOutline] = useState(selectedChat.autoAcceptOutline);
 
     const toggleIncludeNotes = (value: boolean) =>
         chatsApi.update(selectedChat.id, { includeNotes: value }).then(() => setIncludeNotes(value));
@@ -190,6 +197,12 @@ export function ChatInterface({
         chatsApi.update(selectedChat.id, { includeLorebook: value }).then(() => setIncludeLorebook(value));
     const toggleIncludeChapterSummaries = (value: boolean) =>
         chatsApi.update(selectedChat.id, { includeChapterSummaries: value }).then(() => setIncludeChapterSummaries(value));
+    const toggleAutoInsertProse = (value: boolean) =>
+        chatsApi.update(selectedChat.id, { autoInsertProse: value }).then(() => setAutoInsertProse(value));
+    const toggleAutoAcceptCodex = (value: boolean) =>
+        chatsApi.update(selectedChat.id, { autoAcceptCodex: value }).then(() => setAutoAcceptCodex(value));
+    const toggleAutoAcceptOutline = (value: boolean) =>
+        chatsApi.update(selectedChat.id, { autoAcceptOutline: value }).then(() => setAutoAcceptOutline(value));
 
     // Grounds the AI in the chat's context (chat-type framing, project synopsis, the chat's
     // anchor entry/chapter + the entry's one-hop relationships, other relevant Codex entries, and
@@ -441,53 +454,97 @@ export function ChatInterface({
     const reorderOutlineMutation = useReorderOutlineMutation(storyId ?? "");
     const deleteOutlineItemMutation = useDeleteOutlineItemMutation(storyId ?? "");
 
+    // P0.4 R6 — shared "apply" core for both the manual Accept button (handleAcceptProse below)
+    // and the auto-insert path (onProseProposal callback below), so the two never drift. Pure
+    // side-effecting apply, no proseProposals/dismiss bookkeeping — callers own that.
+    const applyProseProposal = (proposal: { text: string; target: ChapterSelectionTarget | null }): "applied" | "not-found" | "selection-changed" => {
+        if (proposal.target) {
+            const result = applyChapterSelectionReplace(proposal.target, proposal.text);
+            return result === "replaced" ? "applied" : result;
+        }
+        const editor = currentChapterId ? getActiveChapterEditor(currentChapterId) : null;
+        if (!editor) return "not-found";
+        insertProposedProse(editor, proposal.text);
+        return "applied";
+    };
+
     const { generate, isGenerating, abort, streamingContent } = useChatMessageGeneration({
         selectedChat,
         selectedPrompt,
         selectedModel,
         onChatUpdate,
         createPromptConfig,
+        autoAcceptCodex,
         onProseProposal: enableProseProposals
-            ? (messageId, proposal) =>
-                  setProseProposals(prev => ({
-                      ...prev,
-                      [messageId]: {
-                          text: proposal,
-                          // Only chapter-selection rework turns produce a prose-proposal Accept
-                          // path — Lorebook/Outline rework replies via codex-proposal/outline-
-                          // proposal instead (see reworkContext below), so a non-chapter-selection
-                          // activeRework never carries a target here.
-                          target: activeRework && activeRework.target.kind === "chapter-selection" ? activeRework.target : null
+            ? (messageId, proposal) => {
+                  // Only chapter-selection rework turns produce a prose-proposal Accept path —
+                  // Lorebook/Outline rework replies via codex-proposal/outline-proposal instead
+                  // (see reworkContext below), so a non-chapter-selection activeRework never
+                  // carries a target here.
+                  const target = activeRework && activeRework.target.kind === "chapter-selection" ? activeRework.target : null;
+                  const record = { text: proposal, target };
+                  if (autoInsertProse) {
+                      const result = applyProseProposal(record);
+                      if (result === "applied") {
+                          if (target) setActiveRework(null);
+                          toast.success("Auto-inserted into chapter");
+                          return;
                       }
-                  }))
+                      if (result === "selection-changed") {
+                          toast.warning(
+                              "Your selection changed since this rework started — inserted instead of replacing; please check placement."
+                          );
+                          setActiveRework(null);
+                          return;
+                      }
+                      // "not-found" (no matching chapter editor open) — fall through to the manual
+                      // card below so the proposed text is never silently dropped.
+                  }
+                  setProseProposals(prev => ({ ...prev, [messageId]: record }));
+              }
             : undefined,
         onNoteProposal: (messageId, proposal) => setNoteProposals(prev => ({ ...prev, [messageId]: proposal })),
         onOutlineProposals: (messageId, proposals) => {
             if (!storyId) return;
             const rest: NonCreateOutlineProposal[] = [];
             for (const proposal of proposals) {
-                if (proposal.type !== "create") {
-                    rest.push(proposal);
+                if (proposal.type === "create") {
+                    // Same "persist immediately as a row" convention the retired bulk-Generate
+                    // button used. Normally lands "pending" — appears instantly in the tree with
+                    // the existing "AI Suggested" badge + Accept/Reject controls
+                    // (OutlineChapterCard.tsx/OutlineSceneRow.tsx). When autoAcceptOutline is on,
+                    // land it "confirmed" directly instead — same end state as an instant manual
+                    // accept, skipping the badge entirely (P0.4 R6). `order: Date.now()` keeps
+                    // successive AI creates in the order the model proposed them, appended after
+                    // any existing items; the user can drag-reorder freely after accepting.
+                    createOutlineItemMutation.mutate({
+                        storyId,
+                        parentId: proposal.parentId,
+                        type: proposal.itemType,
+                        title: proposal.title,
+                        summary: proposal.summary,
+                        wordCountTarget: proposal.wordCountTarget,
+                        order: Date.now(),
+                        source: "ai_suggested",
+                        status: autoAcceptOutline ? "confirmed" : "pending",
+                        chapterId: null
+                    });
                     continue;
                 }
-                // Same "persist immediately as a pending row" convention the retired bulk-Generate
-                // button used — appears instantly in the tree with the existing "AI Suggested"
-                // badge + Accept/Reject controls (OutlineChapterCard.tsx/OutlineSceneRow.tsx), no
-                // card needed here. `order: Date.now()` keeps successive AI creates in the order
-                // the model proposed them, appended after any existing items; the user can drag-
-                // reorder freely after accepting.
-                createOutlineItemMutation.mutate({
-                    storyId,
-                    parentId: proposal.parentId,
-                    type: proposal.itemType,
-                    title: proposal.title,
-                    summary: proposal.summary,
-                    wordCountTarget: proposal.wordCountTarget,
-                    order: Date.now(),
-                    source: "ai_suggested",
-                    status: "pending",
-                    chapterId: null
-                });
+                // P0.4 R6 — edit/reorder auto-accept immediately when the toggle is on, calling the
+                // same mutations handleAcceptOutlineProposal below uses manually. delete is
+                // deliberately excluded (docs/Chat_Panel_Integrations_Design.md §4: only create/
+                // edit/reorder get the toggle) — always falls through to the ephemeral card.
+                if (autoAcceptOutline && proposal.type !== "delete") {
+                    if (proposal.type === "edit") {
+                        const { itemId, type: _type, ...fields } = proposal;
+                        updateOutlineItemMutation.mutate({ id: itemId, data: fields });
+                    } else {
+                        reorderOutlineMutation.mutate(proposal.updates);
+                    }
+                    continue;
+                }
+                rest.push(proposal);
             }
             if (rest.length > 0) setOutlineProposals(prev => ({ ...prev, [messageId]: rest }));
         },
@@ -611,25 +668,18 @@ export function ChatInterface({
         const proposal = proseProposals[messageId];
         if (!proposal) return;
 
-        if (proposal.target) {
-            const result = applyChapterSelectionReplace(proposal.target, proposal.text);
-            if (result === "not-found") {
-                toast.error("Open the chapter you want to apply this to, then try again.");
-                return; // keep the card so the user can retry after opening the chapter
-            }
-            if (result === "selection-changed")
-                toast.warning("Your selection changed since this rework started — inserted instead of replacing; please check placement.");
-            setActiveRework(null);
-            dismissProseProposal(messageId);
-            return;
+        const result = applyProseProposal(proposal);
+        if (result === "not-found") {
+            toast.error(
+                proposal.target
+                    ? "Open the chapter you want to apply this to, then try again."
+                    : "Open the chapter you want to insert into, then try again."
+            );
+            return; // keep the card so the user can retry after opening the chapter
         }
-
-        const editor = currentChapterId ? getActiveChapterEditor(currentChapterId) : null;
-        if (!editor) {
-            toast.error("Open the chapter you want to insert into, then try again.");
-            return;
-        }
-        insertProposedProse(editor, proposal.text);
+        if (result === "selection-changed")
+            toast.warning("Your selection changed since this rework started — inserted instead of replacing; please check placement.");
+        if (proposal.target) setActiveRework(null);
         dismissProseProposal(messageId);
     };
 
@@ -723,6 +773,45 @@ export function ChatInterface({
                                     </Label>
                                 </div>
                             </>
+                        )}
+                    </div>
+                )}
+
+                {usesCodexTray && (
+                    <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border p-3">
+                        {isEditorChat && (
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id={`${selectedChat.id}-auto-insert-prose`}
+                                    checked={autoInsertProse}
+                                    onCheckedChange={toggleAutoInsertProse}
+                                />
+                                <Label htmlFor={`${selectedChat.id}-auto-insert-prose`} className="text-sm font-normal">
+                                    Auto-insert prose (skip review)
+                                </Label>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                id={`${selectedChat.id}-auto-accept-codex`}
+                                checked={autoAcceptCodex}
+                                onCheckedChange={toggleAutoAcceptCodex}
+                            />
+                            <Label htmlFor={`${selectedChat.id}-auto-accept-codex`} className="text-sm font-normal">
+                                Auto-accept Codex changes
+                            </Label>
+                        </div>
+                        {isOutlineChat && (
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id={`${selectedChat.id}-auto-accept-outline`}
+                                    checked={autoAcceptOutline}
+                                    onCheckedChange={toggleAutoAcceptOutline}
+                                />
+                                <Label htmlFor={`${selectedChat.id}-auto-accept-outline`} className="text-sm font-normal">
+                                    Auto-accept outline changes (not delete)
+                                </Label>
+                            </div>
                         )}
                     </div>
                 )}

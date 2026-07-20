@@ -111,6 +111,13 @@ export interface AIChat extends BaseEntity {
     // Opt-in for the Character template's psych module (P0.4 B5) — only meaningful for
     // worldbuilding chats whose templateSlug is "character_codex". Defaults false server-side.
     includePsychModule?: boolean;
+    // Auto-insert/auto-accept toggles (P0.4 R6, docs/Chat_Panel_Integrations_Design.md doctrine
+    // "no silent canon unless an explicit toggle is ON") — all default false server-side.
+    // autoInsertProse only matters for Editor chats; autoAcceptCodex for Editor/WB/Outline;
+    // autoAcceptOutline for Outline only (create/edit/reorder, never delete).
+    autoInsertProse?: boolean;
+    autoAcceptCodex?: boolean;
+    autoAcceptOutline?: boolean;
 }
 
 export interface ChatMessage {

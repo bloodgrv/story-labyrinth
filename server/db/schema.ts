@@ -199,7 +199,13 @@ export const aiChats = sqliteTable(
         // INSTRUCTIONS and ChatInterface.tsx's handleAcceptPsych). Default false; only ever
         // offered to the model when the chat's own templateSlug is "character_codex" AND it has
         // an anchorEntryId (nowhere to attach a proposal otherwise) — see getChatContext.
-        includePsychModule: integer("includePsychModule", { mode: "boolean" }).notNull().default(false)
+        includePsychModule: integer("includePsychModule", { mode: "boolean" }).notNull().default(false),
+        // P0.4 R6 — auto-insert/auto-accept toggles (docs/Chat_Panel_Integrations_Design.md doctrine
+        // line 15: "No silent canon unless an explicit auto-accept/auto-insert toggle is ON"). All
+        // default false, per-chat, mirror includePsychModule's pattern exactly.
+        autoInsertProse: integer("autoInsertProse", { mode: "boolean" }).notNull().default(false), // Editor chats only
+        autoAcceptCodex: integer("autoAcceptCodex", { mode: "boolean" }).notNull().default(false), // Editor/WB/Outline
+        autoAcceptOutline: integer("autoAcceptOutline", { mode: "boolean" }).notNull().default(false) // Outline create/edit/reorder only, never delete
     },
     table => ({
         storyIdIdx: index("chat_story_id_idx").on(table.storyId),

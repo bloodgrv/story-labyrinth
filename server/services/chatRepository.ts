@@ -47,6 +47,9 @@ export type UpdateChatMetaFields = Partial<{
     wbStyle: string;
     outlineStyle: string;
     includePsychModule: boolean;
+    autoInsertProse: boolean;
+    autoAcceptCodex: boolean;
+    autoAcceptOutline: boolean;
 }>;
 
 // ── Queries ────────────────────────────────────────────────────────────────────
@@ -138,6 +141,9 @@ export const updateChatMeta = async (
     if (fields.wbStyle !== undefined) updates.wbStyle = fields.wbStyle;
     if (fields.outlineStyle !== undefined) updates.outlineStyle = fields.outlineStyle;
     if (fields.includePsychModule !== undefined) updates.includePsychModule = fields.includePsychModule;
+    if (fields.autoInsertProse !== undefined) updates.autoInsertProse = fields.autoInsertProse;
+    if (fields.autoAcceptCodex !== undefined) updates.autoAcceptCodex = fields.autoAcceptCodex;
+    if (fields.autoAcceptOutline !== undefined) updates.autoAcceptOutline = fields.autoAcceptOutline;
 
     const [row] = await db
         .update(schema.aiChats)
