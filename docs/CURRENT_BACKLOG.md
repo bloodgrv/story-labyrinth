@@ -45,7 +45,8 @@
 | RAG Scanner frontend (P0.1) | Editor right-rail drawer (chapter-scoped) + "Scanner" sidebar tool (story-wide, scan history, status tabs), both triggering via `POST /api/agent/jobs` (owner-only). See `DECISIONS.md` "RAG Scanner Frontend (P0.1)" |
 | Chapter alternate-version tabs (P0.2, redefined — see note below) | Flat, chat-branching-style draft tabs next to the main chapter (`ChapterVersionsPanel.tsx`), created via AI regenerate or manual duplicate, independently editable, one-way "Compile to Main" action, optional side-by-side compare toggle. See `DECISIONS.md` "Story-Layer Chapter Versioning (P0.2)" |
 | Chapter content undo/restore (P0.2b) | Linear history for the main chapter's own content (`chapterSnapshots` table, mirrors Codex snapshot/restore) — throttled ~15min auto-checkpoints, manual named saves, restore via a new "History" editor drawer. Compile (P0.2) now takes a safety checkpoint first too. See `DECISIONS.md` "Chapter Content Undo/Restore (P0.2b)" |
-| Notes/Outline ↔ Chat bridge, "Core Bridge" scope (P0.3 N0-N4, O1-O4) | Double-gate opt-in (`includeInAi` per note/outline item + `includeNotes`/`includeOutline` per chat) — schema, RAG `note`/`outline_item` entity types + reconcile_index, per-item toggle UI, story export/import round-trip, `chatContextService` non-canon packets surfaced in World-Building/Research/Editor(-excluded)/Brainstorm chats. N5/N6 (save-as-note, note-proposal) and C1-C5 (memory chat toggle) NOT included. See `DECISIONS.md` "Notes/Outline ↔ Chat Bridge (P0.3, Core Bridge scope)" |
+| Notes/Outline ↔ Chat bridge, "Core Bridge" scope (P0.3 N0-N4, O1-O4) | Double-gate opt-in (`includeInAi` per note/outline item + `includeNotes`/`includeOutline` per chat) — schema, RAG `note`/`outline_item` entity types + reconcile_index, per-item toggle UI, story export/import round-trip, `chatContextService` non-canon packets surfaced in World-Building/Research/Editor(-excluded)/Brainstorm chats. N5/N6 (save-as-note, note-proposal) NOT included. See `DECISIONS.md` "Notes/Outline ↔ Chat Bridge (P0.3, Core Bridge scope)" |
+| Project Memory chat toggle (P0.3 C1) | `aiChats.includeMemory` toggle + `resolveMemories` in `chatContextService.ts`, surfaced in the same chat UI as the Notes/Outline toggles. No per-item flag needed — every active memory is already index-eligible via Phase B's approve step. See `DECISIONS.md` "Project Memory Chat Toggle (C1)" |
 
 Design docs that still say “not implemented” in their headers may be stale for A/B/G1 — trust this file + `CLAUDE.md` over those headers until they are refreshed.
 
@@ -90,10 +91,12 @@ Linear undo history for the main chapter's own content, mirroring the Codex `cod
 
 ### P0.3 — Continuity glue (memory + scanner + writing loop + Notes/Outline bridges)
 
-**Status:** Notes/Outline bridge "Core Bridge" scope (N0-N4, O1-O4) — ✅ Done (2026-07-20). C1-C5 (project memory chat toggle) and N5/N6 (save-as-note, note-proposal chat UX) — Not started.  
+**Status:** Notes/Outline bridge "Core Bridge" scope (N0-N4, O1-O4) — ✅ Done (2026-07-20). C1 (project memory chat toggle) — ✅ Done (2026-07-20). C2-C5 and N5/N6 (save-as-note, note-proposal chat UX) — Not started.  
 **Why:** Project memory, graph, scanner, Notes, and Outline don’t yet form a daily continuity loop. Models default to lorebook+chapter RAG only; Notes/Outline are human silos.
 
 **N0-N4 + O1-O4 shipped 2026-07-20** — see `DECISIONS.md` "Notes/Outline ↔ Chat Bridge (P0.3, Core Bridge scope)" for the full load-bearing trail, including two real pre-existing bugs found (and one fixed) during verification: story export/import previously crashed on any lorebook entry with a non-null `updatedAt` (fixed), and the story `DELETE /:id` route's async transaction callback is incompatible with better-sqlite3's sync-only transaction API (not fixed — unrelated to this feature, flagged as a P2 bug below, ID B7). Brainstorm chats are wired narrower than the other chat types by deliberate design call — see that DECISIONS.md entry for why.
+
+**C1 shipped 2026-07-20, same session** — new `aiChats.includeMemory` toggle + `resolveMemories` in `chatContextService.ts`, surfaced in the same World-Building/Research/Brainstorm chat UI the Notes/Outline toggles landed in. No per-item flag needed on the memory side (every `status: "active"` memory is already index-eligible via Phase B's own approve step). See `DECISIONS.md` "Project Memory Chat Toggle (C1)".
 
 **Canonical design (Notes/Outline ↔ chat):** `docs/Notes_Outline_Chat_Bridges_Design.md` (locked 2026-07-18).
 
@@ -128,7 +131,7 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 | Slice | Description |
 |-------|-------------|
-| C1 | Opt-in **“Include project memory”** for chat / context (`entityTypes` includes `agent_memory`) |
+| C1 | ✅ Opt-in **“Include project memory”** for chat / context (`entityTypes` includes `agent_memory`) |
 | C2 | **“Suggest memories from this scan”** button → enqueue `distill_memory` (manual only; no silent auto-chain) |
 | C3 | Scanner context may **read active** `agent_memory` when opted in (factual contradiction checks) |
 | C4 | Optional: per-story **unattended** `rag_scan_story` schedule toggle (default OFF) |
@@ -243,10 +246,11 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 ```text
 Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
-P0.1, P0.2, P0.2b, and P0.3's Notes/Outline "Core Bridge" (N0-N4, O1-O4) are all done. Remaining
-P0.3 work is N5/N6 (save-as-note, note-proposal chat UX) and C1-C5 (project memory chat toggle) —
-any order, pick the highest-value one first unless the user redirects. P0.4 (chat/panel
-integrations rework) is a separate large locked design, also not started.
+P0.1, P0.2, P0.2b, P0.3's Notes/Outline "Core Bridge" (N0-N4, O1-O4), and P0.3's C1 (project
+memory chat toggle) are all done. Remaining P0.3 work is N5/N6 (save-as-note, note-proposal chat
+UX) and C2-C5 (scanner-memory integration, distill-from-scan button, scheduled scans, Codex
+auto-compile) — any order, pick the highest-value one first unless the user redirects. P0.4
+(chat/panel integrations rework) is a separate large locked design, also not started.
 Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 

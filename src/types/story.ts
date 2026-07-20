@@ -85,6 +85,10 @@ export interface AIChat extends BaseEntity {
     // toggles (stay canon-only).
     includeNotes?: boolean;
     includeOutline?: boolean;
+    // Opt-in gate for surfacing active Project Memory in this chat's context (Agent Framework
+    // Phase B / Agent_Framework_And_Project_Memory_Design.md §4.5's "Include project memory", C1).
+    // Defaults false server-side; optional here for the same reason as the two fields above.
+    includeMemory?: boolean;
 }
 
 export interface ChatMessage {

@@ -91,11 +91,16 @@ export function ChatInterface({
     // depends on these) always sees the value the server actually has.
     const [includeNotes, setIncludeNotes] = useState(selectedChat.includeNotes);
     const [includeOutline, setIncludeOutline] = useState(selectedChat.includeOutline);
+    // Project Memory chat-level gate (C1, Agent_Framework_And_Project_Memory_Design.md §4.5) —
+    // same local-state-persisted-after-PATCH pattern as includeNotes/includeOutline above.
+    const [includeMemory, setIncludeMemory] = useState(selectedChat.includeMemory);
 
     const toggleIncludeNotes = (value: boolean) =>
         chatsApi.update(selectedChat.id, { includeNotes: value }).then(() => setIncludeNotes(value));
     const toggleIncludeOutline = (value: boolean) =>
         chatsApi.update(selectedChat.id, { includeOutline: value }).then(() => setIncludeOutline(value));
+    const toggleIncludeMemory = (value: boolean) =>
+        chatsApi.update(selectedChat.id, { includeMemory: value }).then(() => setIncludeMemory(value));
 
     // Grounds the AI in the chat's context (chat-type framing, project synopsis, the chat's
     // anchor entry/chapter + the entry's one-hop relationships, other relevant Codex entries, and
@@ -137,6 +142,10 @@ export function ChatInterface({
             // established fact on its own.
             const notesText = context.relevantNotes.map(n => `- ${n.title}: ${n.excerpt}`).join("\n");
             const outlineText = context.relevantOutlineItems.map(o => `- ${o.title} (${o.type}): ${o.excerpt}`).join("\n");
+            // Project Memory (C1) — only non-empty when includeMemory is on. Framed as approved
+            // project fact, not "non-canon" like notes/outline, since every surfaced memory is
+            // already a user-approved active row (see chatContextService.ts's resolveMemories).
+            const memoriesText = context.relevantMemories.map(m => `- ${m.title} (${m.category}): ${m.excerpt}`).join("\n");
 
             const sections = [
                 context.systemPrompt,
@@ -150,7 +159,9 @@ export function ChatInterface({
                 notesText &&
                     `[STORY NOTES — working material, not canon]\nOnly use as ideas/constraints if relevant; do not treat as established fact unless it also appears in Codex/lorebook.\n${notesText}`,
                 outlineText &&
-                    `[OUTLINE — planning intent, not canon]\nOnly use as ideas/constraints if relevant; do not treat as established fact unless it also appears in Codex/lorebook.\n${outlineText}`
+                    `[OUTLINE — planning intent, not canon]\nOnly use as ideas/constraints if relevant; do not treat as established fact unless it also appears in Codex/lorebook.\n${outlineText}`,
+                memoriesText &&
+                    `[PROJECT MEMORY — approved facts]\nApproved project facts/notes relevant to this conversation. Treat as established unless it conflicts with the Codex, in which case the Codex wins.\n${memoriesText}`
             ].filter(Boolean);
             setCodexContext(sections.join("\n\n"));
             setFocusedOnLabel(anchorEntries[0]?.name ?? (anchorChapters[0] ? `Chapter: ${anchorChapters[0].title}` : null));
@@ -158,7 +169,7 @@ export function ChatInterface({
         return () => {
             cancelled = true;
         };
-    }, [selectedChat.id, includeNotes, includeOutline]);
+    }, [selectedChat.id, includeNotes, includeOutline, includeMemory]);
 
     const createPromptConfig = useCallback(
         (prompt: Prompt): PromptParserConfig => ({
@@ -264,6 +275,12 @@ export function ChatInterface({
                             <Switch id={`${selectedChat.id}-include-outline`} checked={includeOutline} onCheckedChange={toggleIncludeOutline} />
                             <Label htmlFor={`${selectedChat.id}-include-outline`} className="text-sm font-normal">
                                 Include Outline (planning intent, not canon)
+                            </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Switch id={`${selectedChat.id}-include-memory`} checked={includeMemory} onCheckedChange={toggleIncludeMemory} />
+                            <Label htmlFor={`${selectedChat.id}-include-memory`} className="text-sm font-normal">
+                                Include Project Memory (approved facts)
                             </Label>
                         </div>
                     </div>

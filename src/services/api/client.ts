@@ -189,6 +189,7 @@ export const chatsApi = {
             lastUsedModelId?: string | null;
             includeNotes?: boolean;
             includeOutline?: boolean;
+            includeMemory?: boolean;
         }
     ) => fetchJSON<AIChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     appendMessage: (id: string, role: "user" | "assistant", content: string) =>

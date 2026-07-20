@@ -138,6 +138,7 @@ router.get(
 //   lastUsedModelId: string|null   — track last model
 //   includeNotes: boolean          — Notes/Outline bridge chat-level gate (docs/Notes_Outline_Chat_Bridges_Design.md)
 //   includeOutline: boolean        — same, for outline items
+//   includeMemory: boolean         — Project Memory chat-level gate (C1, Agent_Framework_And_Project_Memory_Design.md §4.5)
 router.patch(
     "/:chatId",
     asyncHandler(async (req, res) => {
@@ -147,13 +148,14 @@ router.patch(
             return;
         }
 
-        const { messages, title, lastUsedPromptId, lastUsedModelId, includeNotes, includeOutline } = req.body as {
+        const { messages, title, lastUsedPromptId, lastUsedModelId, includeNotes, includeOutline, includeMemory } = req.body as {
             messages?: unknown[];
             title?: string;
             lastUsedPromptId?: string | null;
             lastUsedModelId?: string | null;
             includeNotes?: boolean;
             includeOutline?: boolean;
+            includeMemory?: boolean;
         };
 
         let result = chat;
@@ -174,6 +176,7 @@ router.patch(
         if (lastUsedModelId !== undefined) metaFields.lastUsedModelId = lastUsedModelId;
         if (includeNotes !== undefined) metaFields.includeNotes = includeNotes;
         if (includeOutline !== undefined) metaFields.includeOutline = includeOutline;
+        if (includeMemory !== undefined) metaFields.includeMemory = includeMemory;
 
         if (Object.keys(metaFields).length > 0) {
             result = await updateMeta(
@@ -184,6 +187,7 @@ router.patch(
                     lastUsedModelId?: string | null;
                     includeNotes?: boolean;
                     includeOutline?: boolean;
+                    includeMemory?: boolean;
                 }
             );
         }

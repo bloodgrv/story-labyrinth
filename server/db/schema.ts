@@ -158,7 +158,14 @@ export const aiChats = sqliteTable(
         // with each note/outline item's own includeInAi flag. Both default false; Editor chats
         // never expose these toggles in the UI (stay canon-only).
         includeNotes: integer("includeNotes", { mode: "boolean" }).notNull().default(false),
-        includeOutline: integer("includeOutline", { mode: "boolean" }).notNull().default(false)
+        includeOutline: integer("includeOutline", { mode: "boolean" }).notNull().default(false),
+        // Opt-in gate for surfacing active Project Memory (agentMemories, Agent Framework Phase B)
+        // in this chat's context — Agent_Framework_And_Project_Memory_Design.md §4.5's "Include
+        // project memory" toggle (C1). Unlike includeNotes/includeOutline, there's no per-item
+        // flag on the other side of this gate — every `status: "active"` memory for the story is
+        // already index-eligible (Phase B's own approve step is the gate), so this chat-level flag
+        // is the only opt-in needed.
+        includeMemory: integer("includeMemory", { mode: "boolean" }).notNull().default(false)
     },
     table => ({
         storyIdIdx: index("chat_story_id_idx").on(table.storyId),

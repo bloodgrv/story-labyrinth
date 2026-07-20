@@ -126,6 +126,20 @@ export interface ChatContextOutlineExcerpt {
     role: "search";
 }
 
+// An active Project Memory entry surfaced as context — gated on this chat's includeMemory toggle
+// only (C1, Agent_Framework_And_Project_Memory_Design.md §4.5). Unlike notes/outline, there's no
+// per-item flag on the memory side of the gate: every `status: "active"` memory is already
+// index-eligible (Phase B's approve step is the gate). Distilled/approved, so — unlike notes/
+// outline's "working material, not canon" framing — this is presented as project fact, just
+// possibly outdated if superseded since; see chatContextService.ts's framing text.
+export interface ChatContextMemoryExcerpt {
+    id: string;
+    title: string;
+    category: string;
+    excerpt: string;
+    role: "search";
+}
+
 // Assembled context for generating a chat response or proposal: the effective system
 // prompt (chat-type framing + template hint for World-Building), this chat's own unresolved
 // Codex proposals, and Codex entries / chapter passages relevant to the current topic.
@@ -142,4 +156,6 @@ export interface ChatContext {
     // see getChatContext in chatContextService.ts.
     relevantNotes: ChatContextNoteExcerpt[];
     relevantOutlineItems: ChatContextOutlineExcerpt[];
+    // Empty unless the chat's includeMemory toggle is on (C1) — see getChatContext.
+    relevantMemories: ChatContextMemoryExcerpt[];
 }

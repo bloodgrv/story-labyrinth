@@ -239,6 +239,13 @@
       "when": 1784523079494,
       "tag": "0033_cultured_magneto",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1784526240514,
+      "tag": "0034_chilly_epoch",
+      "breakpoints": true
     }
   ]
 }

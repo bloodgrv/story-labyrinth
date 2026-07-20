@@ -3,6 +3,7 @@ import type {
     ChatContext,
     ChatContextChapterPassage,
     ChatContextCodexEntry,
+    ChatContextMemoryExcerpt,
     ChatContextNoteExcerpt,
     ChatContextOutlineExcerpt,
     ChatType
@@ -261,6 +262,30 @@ const resolveOutlineItems = async (results: SearchResult[]): Promise<ChatContext
     }));
 };
 
+// Active Project Memory entries are only ever surfaced via RAG search (no anchor concept), gated
+// entirely on this chat's includeMemory toggle (see getChatContext) — every `status: "active"`
+// memory is already index-eligible on its own (agentMemoriesService.ts's approve step is the
+// gate), unlike notes/outline which need their own per-item includeInAi flag too.
+const resolveMemories = async (results: SearchResult[]): Promise<ChatContextMemoryExcerpt[]> => {
+    const memoryResults = results.filter(r => r.entityType === "agent_memory").slice(0, RELEVANT_ENTRIES_LIMIT);
+    if (memoryResults.length === 0) return [];
+
+    const memoryIds = [...new Set(memoryResults.map(r => r.entityId))];
+    const rows = await db
+        .select({ id: schema.agentMemories.id, title: schema.agentMemories.title, category: schema.agentMemories.category })
+        .from(schema.agentMemories)
+        .where(inArray(schema.agentMemories.id, memoryIds));
+    const meta = new Map(rows.map(r => [r.id, r]));
+
+    return memoryResults.map(r => ({
+        id: r.entityId,
+        title: meta.get(r.entityId)?.title ?? r.entityId,
+        category: meta.get(r.entityId)?.category ?? "unknown",
+        excerpt: r.content,
+        role: "search" as const
+    }));
+};
+
 /**
  * Assemble everything a chat needs to generate a well-grounded response or proposal:
  *   - systemPrompt: chat-type framing (+ template hint for World-Building)
@@ -279,6 +304,9 @@ const resolveOutlineItems = async (results: SearchResult[]): Promise<ChatContext
  *     chat's own includeNotes/includeOutline toggle is on (Notes_Outline_Chat_Bridges_Design.md's
  *     double gate — the other half is each note/outline item's own includeInAi flag, enforced at
  *     index time, see routes/notes.ts / routes/outline.ts)
+ *   - relevantMemories: active Project Memory entries, only populated when this chat's own
+ *     includeMemory toggle is on (C1, Agent_Framework_And_Project_Memory_Design.md §4.5) — no
+ *     separate per-memory flag, every active memory is already index-eligible on its own
  *
  * Degrades gracefully rather than failing: if the story has no indexed content, no embedding
  * endpoint is configured, or an anchor entry/chapter no longer exists, the relevant-* fields are
@@ -295,6 +323,7 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     const includeChapters = chatType === "editor";
     const includeNotes = chat.includeNotes === true;
     const includeOutline = chat.includeOutline === true;
+    const includeMemory = chat.includeMemory === true;
 
     // Only build a non-default entityTypes array when a bridge toggle is actually on — search()/
     // hybridSearch's own DEFAULT_SEARCH_ENTITY_TYPES stays the single source of truth for
@@ -302,6 +331,7 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     const entityTypes: RagEntityType[] = [...DEFAULT_SEARCH_ENTITY_TYPES];
     if (includeNotes) entityTypes.push("note");
     if (includeOutline) entityTypes.push("outline_item");
+    if (includeMemory) entityTypes.push("agent_memory");
 
     // Global chats (e.g. Research) have no storyId, so there's no per-story index/story row to
     // search/fetch, and never carry an anchorEntryId/anchorChapterId (only
@@ -320,11 +350,12 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
 
     const anchorIds = new Set(anchorEntries.map(e => e.entryId));
     const anchorChapterIds = new Set(anchorChapterPassages.map(p => p.chapterId));
-    const [searchCodexEntries, searchChapterPassages, notes, outlineItems] = await Promise.all([
+    const [searchCodexEntries, searchChapterPassages, notes, outlineItems, memories] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
         includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
         includeNotes ? resolveNotes(searchResults) : Promise.resolve([]),
-        includeOutline ? resolveOutlineItems(searchResults) : Promise.resolve([])
+        includeOutline ? resolveOutlineItems(searchResults) : Promise.resolve([]),
+        includeMemory ? resolveMemories(searchResults) : Promise.resolve([])
     ]);
 
     return {
@@ -334,6 +365,7 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
         relevantCodexEntries: [...anchorEntries, ...searchCodexEntries],
         relevantChapterPassages: [...anchorChapterPassages, ...searchChapterPassages],
         relevantNotes: notes,
-        relevantOutlineItems: outlineItems
+        relevantOutlineItems: outlineItems,
+        relevantMemories: memories
     };
 };

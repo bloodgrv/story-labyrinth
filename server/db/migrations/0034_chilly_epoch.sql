@@ -1,0 +1,1 @@
+ALTER TABLE `aiChats` ADD `includeMemory` integer DEFAULT false NOT NULL;
