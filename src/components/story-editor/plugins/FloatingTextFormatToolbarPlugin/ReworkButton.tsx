@@ -33,7 +33,7 @@ export function ReworkButton({ editor, label = "Rework in chat", initialInstruct
             toast.error("No text selected");
             return;
         }
-        requestRework({ chapterId, storyId, target, packet, initialInstruction });
+        requestRework({ panel: "editor", anchorId: chapterId, storyId, target, packet, initialInstruction });
     };
 
     return (

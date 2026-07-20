@@ -14,7 +14,7 @@ import {
 import { $isSceneBeatNode } from "@/components/story-editor/nodes/SceneBeatNode";
 import { getActiveChapterEditor } from "@/lib/activeChapterEditorStore";
 import { insertProposedProse } from "@/features/chat/services/insertProposedProse";
-import type { FocusPacket, FocusTarget } from "@/types/rework";
+import type { ChapterSelectionTarget, FocusPacket } from "@/types/rework";
 
 const WINDOW_SIZE = 500;
 
@@ -22,8 +22,8 @@ const WINDOW_SIZE = 500;
 // chat conversation — node keys + offsets, not just plain text, so applyChapterSelectionReplace
 // can re-locate and re-select the exact span later. Returns null if there's no live/non-collapsed
 // text selection (nothing to rework).
-export const captureFocusTarget = (editor: LexicalEditor, chapterId: string): FocusTarget | null => {
-    let target: FocusTarget | null = null;
+export const captureFocusTarget = (editor: LexicalEditor, chapterId: string): ChapterSelectionTarget | null => {
+    let target: ChapterSelectionTarget | null = null;
     editor.getEditorState().read(() => {
         const selection = $getSelection();
         if (!$isRangeSelection(selection) || selection.isCollapsed()) return;
@@ -122,7 +122,7 @@ export type ApplyReworkResult = "replaced" | "selection-changed" | "not-found";
 // in the meantime that the captured span no longer resolves cleanly — consistent with this
 // codebase's established "degrade to a known-good/inert state rather than guess" convention (see
 // chatContextService.ts's resolveAnchorAndRelated/resolveAnchorChapter on a stale reference).
-export const applyChapterSelectionReplace = (target: FocusTarget, newText: string): ApplyReworkResult => {
+export const applyChapterSelectionReplace = (target: ChapterSelectionTarget, newText: string): ApplyReworkResult => {
     const editor = getActiveChapterEditor(target.chapterId);
     if (!editor) return "not-found";
 

@@ -134,7 +134,8 @@ export interface Prompt extends BaseEntity {
         | "brainstorm"
         | "worldbuilding"
         | "research"
-        | "editor";
+        | "editor"
+        | "outline";
     messages: PromptMessage[];
     allowedModels: AllowedModel[];
     storyId?: string;

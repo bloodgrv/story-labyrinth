@@ -195,6 +195,28 @@ const systemPrompts: Partial<Prompt>[] = [
         ],
         allowedModels: [],
         isSystem: true
+    },
+    {
+        id: "outline-system",
+        name: "Outline",
+        promptType: "outline",
+        description: "Structure partner for the Outline tool — full outline tree always in context, proposes chapter/scene changes",
+        messages: [
+            {
+                role: "system",
+                content: "{{codex_context}}"
+            },
+            {
+                role: "user",
+                content: "Here's the chat history of our discussion: {{chat_history}}"
+            },
+            {
+                role: "user",
+                content: "{{user_input}}"
+            }
+        ],
+        allowedModels: [],
+        isSystem: true
     }
 ];
 

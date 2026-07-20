@@ -24,7 +24,7 @@ import { SectionHeading, StatCount } from "../components/DashboardSectionHelpers
 import { NewChatDialog } from "../components/NewChatDialog";
 import { PreferencesSidebar } from "../components/PreferencesSidebar";
 import { SessionCard } from "../components/SessionCard";
-import { useCreateWbChatMutation, useDashboardData } from "../hooks/useDashboardData";
+import { useDashboardData } from "../hooks/useDashboardData";
 
 // Open a same-origin path in a new browser tab.
 const openTab = (path: string) => window.open(window.location.origin + path, "_blank", "noopener,noreferrer");
@@ -53,8 +53,6 @@ export default function DashboardPage() {
     } = useDashboardData(storyId ?? "");
 
     const sessionManager = useSessionManager(storyId ?? "");
-    const createWbChatMutation = useCreateWbChatMutation(storyId ?? "");
-    const [openingOutline, setOpeningOutline] = useState(false);
 
     if (isLoadingStory) {
         return (
@@ -118,22 +116,6 @@ export default function DashboardPage() {
         : "Open the main writing workspace";
 
     const mostRecentWbChat = wbChats[0];
-    const outlineChats = wbChats.filter(c => c.templateSlug === "outline");
-    const mostRecentOutlineChat = outlineChats[0];
-
-    const handleOpenOutline = async () => {
-        if (openingOutline) return;
-        setOpeningOutline(true);
-        try {
-            let chat = mostRecentOutlineChat;
-            if (!chat) chat = await createWbChatMutation.mutateAsync({ templateSlug: "outline" });
-            const url = ROUTES.DASHBOARD.CHAT(sid, chat.id);
-            sessionManager.recordTab(url, chat.title);
-            openTab(url);
-        } finally {
-            setOpeningOutline(false);
-        }
-    };
 
     return (
         <div className="container mx-auto p-6 max-w-6xl">
@@ -244,29 +226,10 @@ export default function DashboardPage() {
                             />
                             <DashboardCard
                                 title="Outline"
-                                description={
-                                    mostRecentOutlineChat
-                                        ? `Continue "${mostRecentOutlineChat.title}"`
-                                        : "Start an Outline chat to plan story structure, chapter beats, and narrative arc"
-                                }
+                                description="Plan story structure, chapter beats, and narrative arc — with its own dedicated Outline chat"
                                 icon={BookOpen}
-                                linkedVia="Chat"
-                                actions={
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 text-xs"
-                                        onClick={handleOpenOutline}
-                                        disabled={openingOutline}
-                                    >
-                                        {openingOutline ? (
-                                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                        ) : (
-                                            <BookOpen className="h-3 w-3 mr-1" />
-                                        )}
-                                        {mostRecentOutlineChat ? "Open Outline" : "Start Outline"}
-                                    </Button>
-                                }
+                                href={workspaceTabUrl("outline")}
+                                onOpen={() => recordWorkspaceTab("outline", "Outline")}
                             />
                             <DashboardCard
                                 title="Lorebook"

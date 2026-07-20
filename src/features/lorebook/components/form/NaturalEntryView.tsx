@@ -1,4 +1,5 @@
 import { LayoutList } from "lucide-react";
+import { useRef } from "react";
 import type { Control } from "react-hook-form";
 import { useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -8,10 +9,15 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useNaturalEntryView } from "@/lib/useNaturalEntryView";
 import type { CreateEntryForm } from "./entryFormUtils";
+import { LorebookReworkButton } from "./LorebookReworkButton";
 import { NaturalLabeledFields, NaturalStateSection } from "./NaturalStateFields";
 
 interface NaturalEntryViewProps {
     control: Control<CreateEntryForm>;
+    // Same purpose as RawEntryFields' props (P0.4 R4) — this view writes to the same description
+    // RHF field, so it needs its own "Rework in chat" trigger too.
+    entryId?: string;
+    storyId?: string;
 }
 
 // Editable "character profile" presentation of the same form fields the raw-field view edits —
@@ -24,10 +30,11 @@ interface NaturalEntryViewProps {
 // mid-edit never loses data and Save/Update stays untouched. Tags are intentionally not
 // rendered here — that's the whole point of the toggle; switch back to the raw-field view to
 // manage tags.
-export function NaturalEntryView({ control }: NaturalEntryViewProps) {
+export function NaturalEntryView({ control, entryId, storyId }: NaturalEntryViewProps) {
     const codexEnabled = useWatch({ control, name: "codexEnabled" });
     const category = useWatch({ control, name: "category" });
     const [, setNaturalView] = useNaturalEntryView();
+    const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
     return (
         <div className="space-y-5">
@@ -103,9 +110,16 @@ export function NaturalEntryView({ control }: NaturalEntryViewProps) {
                 rules={{ required: "Description is required" }}
                 render={({ field }) => (
                     <FormItem>
+                        <div className="flex justify-end">
+                            <LorebookReworkButton entryId={entryId} storyId={storyId} textareaRef={descriptionRef} />
+                        </div>
                         <FormControl>
                             <Textarea
                                 {...field}
+                                ref={el => {
+                                    field.ref(el);
+                                    descriptionRef.current = el;
+                                }}
                                 placeholder="Write a flowing description..."
                                 rows={8}
                                 className="min-h-[160px] resize-y border-0 px-0 text-base leading-relaxed shadow-none focus-visible:ring-0"

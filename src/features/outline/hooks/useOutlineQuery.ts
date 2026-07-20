@@ -8,11 +8,14 @@ export const outlineKeys = {
     byStory: (storyId: string) => [...outlineKeys.all, "story", storyId] as const
 };
 
-export const useOutlineQuery = (storyId: string) =>
+// `enabled` lets a caller that only sometimes needs the list (e.g. ChatInterface.tsx, only for
+// Outline chats — see OutlineProposalCard.tsx's item-title lookup) skip the request entirely
+// rather than fetching and discarding it.
+export const useOutlineQuery = (storyId: string, enabled = true) =>
     useQuery({
         queryKey: outlineKeys.byStory(storyId),
         queryFn: () => outlineApi.getByStory(storyId),
-        enabled: !!storyId
+        enabled: !!storyId && enabled
     });
 
 export const useCreateOutlineItemMutation = (storyId: string) => {
@@ -62,18 +65,6 @@ export const useReorderOutlineMutation = (storyId: string) => {
             queryClient.invalidateQueries({ queryKey: outlineKeys.byStory(storyId) });
         },
         onError: () => toast.error("Failed to reorder outline")
-    });
-};
-
-export const useGenerateOutlineMutation = (storyId: string) => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: () => outlineApi.generate(storyId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: outlineKeys.byStory(storyId) });
-        },
-        onError: () => toast.error("Failed to generate outline suggestions")
     });
 };
 

@@ -1,4 +1,5 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import type { DocumentImportDraft } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
 import { LorebookEntryEditor } from "./LorebookEntryEditor";
 import type { LorebookCategory } from "./form";
@@ -11,6 +12,10 @@ interface CreateEntryDialogProps {
     seriesId?: string;
     entry?: LorebookEntry;
     defaultCategory?: LorebookCategory;
+    // Pre-fills a brand-new entry's name/category/description — used by the document-import
+    // flow and, since P0.4 R8, the Outline chat's "Open in WB" lore-suggestion handoff (see
+    // LorebookPage.tsx's pendingLorebookSeed consumption). Ignored when `entry` is set.
+    draftValues?: DocumentImportDraft;
 }
 
 // Thin Sheet shell around LorebookEntryEditor (form + docked World-Building chat) — see
@@ -18,7 +23,15 @@ interface CreateEntryDialogProps {
 // open-transition + entry identity so every time this Sheet opens (fresh "New Entry" click,
 // or a different entry to edit) the form mounts fresh instead of carrying over stale state
 // from the previous time it was open.
-export function CreateEntryDialog({ open, onOpenChange, storyId, seriesId, entry, defaultCategory }: CreateEntryDialogProps) {
+export function CreateEntryDialog({
+    open,
+    onOpenChange,
+    storyId,
+    seriesId,
+    entry,
+    defaultCategory,
+    draftValues
+}: CreateEntryDialogProps) {
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
@@ -40,6 +53,7 @@ export function CreateEntryDialog({ open, onOpenChange, storyId, seriesId, entry
                         seriesId={seriesId}
                         entry={entry}
                         defaultCategory={defaultCategory}
+                        draftValues={draftValues}
                         onSaved={() => onOpenChange(false)}
                         onCancel={() => onOpenChange(false)}
                     />

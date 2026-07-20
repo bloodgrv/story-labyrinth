@@ -22,6 +22,7 @@ const getPromptTypeLabel = (type: Prompt["promptType"]) => {
         worldbuilding: "World-Building",
         research: "Research",
         editor: "Editor",
+        outline: "Outline",
         other: "Other"
     };
     return labels[type];
@@ -37,6 +38,7 @@ const promptTypeOrder: Prompt["promptType"][] = [
     "worldbuilding",
     "research",
     "editor",
+    "outline",
     "other"
 ];
 

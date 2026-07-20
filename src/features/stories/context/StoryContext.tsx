@@ -1,4 +1,5 @@
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import type { LorebookEntry } from "@/types/story";
 
 export type WorkspaceTool =
     | "stories"
@@ -28,6 +29,11 @@ interface StoryContextType {
     // needs to survive the single setCurrentTool("lorebook") re-render that follows it.
     pendingLorebookEntryId: string | null;
     setPendingLorebookEntryId: (id: string | null) => void;
+    // Same posture as pendingLorebookEntryId above, for the Outline chat's "Open in WB" lore-
+    // suggestion handoff (P0.4 R8) — a suggested new entity's seed content, consumed once by
+    // LorebookPage to pre-fill CreateEntryDialog, then cleared.
+    pendingLorebookSeed: { name: string; category: LorebookEntry["category"]; blurb: string } | null;
+    setPendingLorebookSeed: (seed: { name: string; category: LorebookEntry["category"]; blurb: string } | null) => void;
     // Bumped whenever a chapter's content changes from OUTSIDE the live editor's own autosave
     // loop (currently: History drawer restore, P0.2b) — LoadChapterContentPlugin's own "only
     // load once per chapterId" gate has no other way to learn the DB content changed out from
@@ -58,6 +64,7 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     });
 
     const [pendingLorebookEntryId, setPendingLorebookEntryId] = useState<string | null>(null);
+    const [pendingLorebookSeed, setPendingLorebookSeed] = useState<StoryContextType["pendingLorebookSeed"]>(null);
     const [chapterContentRefreshToken, setChapterContentRefreshToken] = useState(0);
     const refreshChapterContent = () => setChapterContentRefreshToken(token => token + 1);
 
@@ -125,6 +132,8 @@ export function StoryProvider({ children }: { children: ReactNode }) {
                 resetContext,
                 pendingLorebookEntryId,
                 setPendingLorebookEntryId,
+                pendingLorebookSeed,
+                setPendingLorebookSeed,
                 chapterContentRefreshToken,
                 refreshChapterContent
             }}

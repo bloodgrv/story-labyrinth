@@ -15,7 +15,7 @@ import {
     verticalListSortingStrategy
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Bot, Check, ChevronDown, ChevronUp, GripVertical, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { Bot, Check, ChevronDown, ChevronUp, GripVertical, MessageSquarePlus, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,8 @@ import {
     useReorderOutlineMutation,
     useUpdateOutlineItemMutation
 } from "@/features/outline/hooks/useOutlineQuery";
+import { captureOutlineItemTarget } from "@/features/rework/adapters/outlineItemAdapter";
+import { requestRework } from "@/features/rework/pendingReworkStore";
 import { cn } from "@/lib/utils";
 import type { OutlineItem } from "@/types/outline";
 import type { LorebookEntry } from "@/types/story";
@@ -67,6 +69,20 @@ export function OutlineChapterCard({
     );
 
     const isPending = chapter.status === "pending";
+
+    // R8 — whole-row rework, binds to the Outline chat (OutlineChatRail.tsx's pendingReworkStore
+    // consumption effect). Neighbor context = adjacent chapters in story order; chapters have no
+    // parent of their own (unlike scenes).
+    const handleRework = () => {
+        const index = allChapters.findIndex(c => c.id === chapter.id);
+        const { target, packet } = captureOutlineItemTarget(
+            chapter,
+            undefined,
+            allChapters[index - 1],
+            allChapters[index + 1]
+        );
+        requestRework({ panel: "outline", anchorId: storyId, storyId, target, packet });
+    };
 
     // Scenes reorder within their own chapter via a dedicated, chapter-scoped DndContext — moving
     // a scene to a DIFFERENT chapter is a separate explicit control (the "Move to chapter" select
@@ -183,6 +199,11 @@ export function OutlineChapterCard({
                                 }
                             >
                                 <Bot className="h-4 w-4" />
+                            </Button>
+                        )}
+                        {!isPending && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8" title="Rework in chat" onClick={handleRework}>
+                                <MessageSquarePlus className="h-4 w-4" />
                             </Button>
                         )}
                         <Button

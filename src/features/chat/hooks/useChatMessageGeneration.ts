@@ -7,8 +7,12 @@ import { chatsApi } from "@/services/api/client";
 import type { AIChat, AllowedModel, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { parseCodexProposals } from "../services/parseCodexProposals";
+import type { ParsedLoreSuggestion } from "../services/parseLoreSuggestions";
+import { parseLoreSuggestions } from "../services/parseLoreSuggestions";
 import type { ParsedNoteProposal } from "../services/parseNoteProposals";
 import { parseNoteProposals } from "../services/parseNoteProposals";
+import type { ParsedOutlineProposal } from "../services/parseOutlineProposals";
+import { parseOutlineProposals } from "../services/parseOutlineProposals";
 import { parseProseProposal } from "../services/parseProseProposal";
 import { useCreateProposalMutation } from "./useCodexProposalsQuery";
 
@@ -25,6 +29,14 @@ interface UseChatMessageGenerationParams {
     // Called when a reply contains a ```note-proposal block (N6, non-Editor chats only — see
     // chatContextService.ts's NOTE_PROPOSAL_INSTRUCTIONS). Not persisted server-side either.
     onNoteProposal?: (messageId: string, proposal: ParsedNoteProposal) => void;
+    // Called with every ```outline-proposal block in a reply (Outline chats only, P0.4 R5 — see
+    // chatContextService.ts's OUTLINE_PROPOSAL_INSTRUCTIONS). The caller decides how to route each
+    // one: "create" proposals get persisted immediately as a pending outlineItems row (see
+    // ChatInterface.tsx), the rest become ephemeral accept/reject cards, same as prose/note.
+    onOutlineProposals?: (messageId: string, proposals: ParsedOutlineProposal[]) => void;
+    // Called when a reply contains a ```lore-suggestion block (Outline chats only, P0.4 R8). Never
+    // persisted server-side — ephemeral until "Open in WB" hands one off to the Lorebook tool.
+    onLoreSuggestions?: (messageId: string, suggestions: ParsedLoreSuggestion[]) => void;
 }
 
 interface UseChatMessageGenerationReturn {
@@ -46,7 +58,9 @@ export const useChatMessageGeneration = ({
     onChatUpdate,
     createPromptConfig,
     onProseProposal,
-    onNoteProposal
+    onNoteProposal,
+    onOutlineProposals,
+    onLoreSuggestions
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
     const [isSending, setIsSending] = useState(false);
     const { generateWithPrompt } = useGenerateWithPrompt();
@@ -81,7 +95,9 @@ export const useChatMessageGeneration = ({
 
                 const { cleanedContent: afterCodexStrip, proposals } = parseCodexProposals(fullResponse);
                 const { cleanedContent: afterProseStrip, proseProposal } = parseProseProposal(afterCodexStrip);
-                const { cleanedContent, noteProposal } = parseNoteProposals(afterProseStrip);
+                const { cleanedContent: afterNoteStrip, noteProposal } = parseNoteProposals(afterProseStrip);
+                const { cleanedContent: afterOutlineStrip, proposals: outlineProposals } = parseOutlineProposals(afterNoteStrip);
+                const { cleanedContent, suggestions: loreSuggestions } = parseLoreSuggestions(afterOutlineStrip);
 
                 const afterAssistantMessage = await chatsApi.appendMessage(selectedChat.id, "assistant", cleanedContent);
                 onChatUpdate(afterAssistantMessage);
@@ -98,6 +114,8 @@ export const useChatMessageGeneration = ({
 
                 if (proseProposal && assistantMessage) onProseProposal?.(assistantMessage.id, proseProposal);
                 if (noteProposal && assistantMessage) onNoteProposal?.(assistantMessage.id, noteProposal);
+                if (outlineProposals.length > 0 && assistantMessage) onOutlineProposals?.(assistantMessage.id, outlineProposals);
+                if (loreSuggestions.length > 0 && assistantMessage) onLoreSuggestions?.(assistantMessage.id, loreSuggestions);
             });
 
             if (error) {
@@ -118,7 +136,9 @@ export const useChatMessageGeneration = ({
             createProposalMutation,
             onChatUpdate,
             onProseProposal,
-            onNoteProposal
+            onNoteProposal,
+            onOutlineProposals,
+            onLoreSuggestions
         ]
     );
 

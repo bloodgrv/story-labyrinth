@@ -1,10 +1,4 @@
-import type {
-    CharacterArcEntry,
-    OutlineGenerationResult,
-    OutlineItem,
-    OutlineItemCharacterLink,
-    OutlineReorderUpdate
-} from "@/types/outline";
+import type { CharacterArcEntry, OutlineItem, OutlineItemCharacterLink, OutlineReorderUpdate } from "@/types/outline";
 import { fetchJSON } from "./apiFactory";
 
 export const outlineApi = {
@@ -16,8 +10,6 @@ export const outlineApi = {
     delete: (id: string) => fetchJSON<{ success: boolean }>(`/outline/${id}`, { method: "DELETE" }),
     reorder: (updates: OutlineReorderUpdate[]) =>
         fetchJSON<{ success: boolean }>("/outline/reorder", { method: "PATCH", body: JSON.stringify({ updates }) }),
-    generate: (storyId: string) =>
-        fetchJSON<OutlineGenerationResult>("/outline/generate", { method: "POST", body: JSON.stringify({ storyId }) }),
     rejectAllPending: (storyId: string) =>
         fetchJSON<{ success: boolean }>(`/outline/story/${storyId}/reject-all-pending`, { method: "POST" }),
     getArc: (storyId: string, characterId: string) =>

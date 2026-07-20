@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Bot, Check, GripVertical, Pencil, Sparkles, Trash2, X } from "lucide-react";
+import { Bot, Check, GripVertical, MessageSquarePlus, Pencil, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { OutlineCharacterChips } from "@/features/outline/components/OutlineCharacterChips";
 import { OutlineItemDialog } from "@/features/outline/components/OutlineItemDialog";
 import { useDeleteOutlineItemMutation, useUpdateOutlineItemMutation } from "@/features/outline/hooks/useOutlineQuery";
+import { captureOutlineItemTarget } from "@/features/rework/adapters/outlineItemAdapter";
+import { requestRework } from "@/features/rework/pendingReworkStore";
 import { cn } from "@/lib/utils";
 import type { OutlineItem } from "@/types/outline";
 import type { LorebookEntry } from "@/types/story";
@@ -29,6 +31,16 @@ export function OutlineSceneRow({ scene, storyId, chapters, characters, onMoveTo
     const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
     const isPending = scene.status === "pending";
+
+    // R8 — whole-row rework, binds to the Outline chat. Neighbor context is just the parent
+    // chapter here — prev/next scene siblings aren't threaded down to this row (only
+    // OutlineChapterCard's local `scenes` array has them), a v1 scope cut noted in
+    // outlineItemAdapter.ts's own doc comment.
+    const handleRework = () => {
+        const parentChapter = chapters.find(c => c.id === scene.parentId);
+        const { target, packet } = captureOutlineItemTarget(scene, parentChapter, undefined, undefined);
+        requestRework({ panel: "outline", anchorId: storyId, storyId, target, packet });
+    };
 
     return (
         <div ref={setNodeRef} style={style}>
@@ -105,6 +117,11 @@ export function OutlineSceneRow({ scene, storyId, chapters, characters, onMoveTo
                             }
                         >
                             <Bot className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
+                    {!isPending && (
+                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Rework in chat" onClick={handleRework}>
+                            <MessageSquarePlus className="h-3.5 w-3.5" />
                         </Button>
                     )}
                     <Button

@@ -30,11 +30,11 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - Entry editor has a "Natural View" toggle (Advanced Settings, default on) that presents an entry as an editable prose character profile instead of the raw field form, hiding tags — same underlying form data either way
 
 ### Chat System
-- Three main contexts:
+- Four main contexts, each its own `chatType` with its own chat list:
   - World-Building Chats (multiple focused chats with templates)
   - Global Info/Research Chat
   - Main Editor Chat (writing-focused)
-- Outline Chat is one of the default templates
+  - Outline Chat (structure-focused; own chat list — **not** a WB template anymore, split out P0.4 R5/R7, see `DECISIONS.md`)
 - All Codex modifications require explicit user approval (Approve / Reject / Edit First)
 - Per-chat saved prompts supported
 
@@ -102,7 +102,7 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 
 ### Next (see backlog for detail)
 1. **P0.3 done** (2026-07-20) — continuity glue (memory ↔ chat/scan) fully shipped: Notes/Outline bridge, project memory chat toggle, save-as-note/note-proposal, scanner-memory integration, unattended scan schedule, Codex auto-compile
-2. **P0.4** R4 onward (Lorebook/Outline rework, Brainstorm playbook migration, Research web search, Notes desk polish)
+2. **P0.4 R0-R8 done** (2026-07-20) — Editor selection rework + Codex tray (R0-R3); Lorebook field rework → WB chat, dedicated Outline chat with its own `chatType` (R4/R5/R7), outline row rework + "Open in WB" lore-suggestion handoff (R8). Remaining: R6 (auto-accept toggle UI, deferred) and Brainstorm/Research/Notes-desk tracks
 3. P1 polish (Agent C, Graph G1.5) and P2 bugs as needed
 
 ---

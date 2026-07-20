@@ -1,13 +1,16 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { Plus, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form } from "@/components/ui/form";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
-import { useChatTemplatesQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
+import { CodexProposalTray } from "@/features/chat/components/CodexProposalTray";
+import { useChatsByStoryQuery, useChatTemplatesQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
+import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
 import { useStoryQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
@@ -58,8 +61,51 @@ export interface LorebookEntryEditorProps {
 // anchored, no special-casing needed.
 function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId?: string }) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
+    const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
     const createMutation = useCreateChatMutation();
     const { data: templates = [] } = useChatTemplatesQuery();
+    // Same query ChatList already runs internally — needed here too to resolve which WB chat a
+    // pending "Rework in chat" request (from the description field / a Codex row) should bind to.
+    const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(storyId, "worldbuilding");
+    const pendingRework = usePendingRework();
+
+    // Bridges a lorebook-field "Rework in chat" click (LorebookReworkButton.tsx) into this panel
+    // via pendingReworkStore — mirrors EditorChatRail.tsx's find-or-create-on-rework effect, which
+    // WB never had before (it always required picking a template manually). Finds a WB chat
+    // already anchored to this entry and reuses it (most recently updated, if several); creates
+    // one if none exist (P0.4 R4).
+    useEffect(() => {
+        if (!pendingRework || pendingRework.panel !== "worldbuilding" || pendingRework.storyId !== storyId || chatsLoading) return;
+        const request = consumePendingRework();
+        if (!request) return;
+
+        const payload: InitialReworkPayload = {
+            target: request.target,
+            packet: request.packet,
+            initialInstruction: request.initialInstruction
+        };
+
+        const candidates = chats.filter(chat => chat.anchorEntryId === request.anchorId);
+        if (candidates.length === 0) {
+            createMutation.mutate(
+                { storyId, chatType: "worldbuilding", title: `Rework ${new Date().toLocaleString()}`, anchorEntryId: request.anchorId },
+                {
+                    onSuccess: newChat => {
+                        setSelectedChat(newChat);
+                        setInitialRework({ chatId: newChat.id, payload });
+                    }
+                }
+            );
+            return;
+        }
+
+        const mostRecent = [...candidates].sort(
+            (a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()
+        )[0];
+        if (candidates.length > 1) toast.info(`Continuing in "${mostRecent.title}"`);
+        setSelectedChat(mostRecent);
+        setInitialRework({ chatId: mostRecent.id, payload });
+    }, [pendingRework, storyId, chats, chatsLoading, createMutation]);
 
     const handleCreateFromTemplate = (templateSlug: WorldBuildingTemplateSlug, templateName: string) => {
         createMutation.mutate(
@@ -90,7 +136,13 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
         <div className="flex h-full border-l">
             <div className="flex-1 h-full min-h-0 min-w-0">
                 {selectedChat ? (
-                    <ChatInterface storyId={storyId} promptType="worldbuilding" selectedChat={selectedChat} onChatUpdate={setSelectedChat} />
+                    <ChatInterface
+                        storyId={storyId}
+                        promptType="worldbuilding"
+                        selectedChat={selectedChat}
+                        onChatUpdate={setSelectedChat}
+                        initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
+                    />
                 ) : (
                     <div className="flex items-center justify-center h-full flex-col gap-4 text-muted-foreground p-4">
                         <Sparkles className="h-10 w-10 text-muted-foreground/50" />
@@ -100,16 +152,23 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
                 )}
             </div>
 
-            <ChatList
-                storyId={storyId}
-                chatType="worldbuilding"
-                title="World-Building Chats"
-                emptyLabel="No world-building chats yet"
-                selectedChat={selectedChat}
-                onSelectChat={setSelectedChat}
-                renderNewChatAction={renderTemplatePicker}
-                side="right"
-            />
+            <div className="flex flex-col w-[300px] shrink-0">
+                <ChatList
+                    storyId={storyId}
+                    chatType="worldbuilding"
+                    title="World-Building Chats"
+                    emptyLabel="No world-building chats yet"
+                    selectedChat={selectedChat}
+                    onSelectChat={setSelectedChat}
+                    renderNewChatAction={renderTemplatePicker}
+                    side="right"
+                />
+                {/* Was inline ProposalCard rendering only, Approve/Reject with no Edit — moved to
+                    the same tray Editor chats use (P0.4 R4 scope decision #1) so rework turns get
+                    edit-before-approve too, not just Editor's. See ChatInterface.tsx's
+                    usesCodexTray. */}
+                {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
+            </div>
         </div>
     );
 }
@@ -213,9 +272,15 @@ export function LorebookEntryEditor({
                         />
 
                         {naturalView ? (
-                            <NaturalEntryView control={form.control} />
+                            <NaturalEntryView control={form.control} entryId={entry?.id} storyId={storyId} />
                         ) : (
-                            <RawEntryFields control={form.control} tagInput={tagInput} selectedCategory={selectedCategory} />
+                            <RawEntryFields
+                                control={form.control}
+                                tagInput={tagInput}
+                                selectedCategory={selectedCategory}
+                                entryId={entry?.id}
+                                storyId={storyId}
+                            />
                         )}
 
                         {entry?.codexEnabled && entry.id && <CodexPendingChangesPanel entryId={entry.id} storyId={storyId} />}

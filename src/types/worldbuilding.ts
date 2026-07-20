@@ -2,16 +2,13 @@ import type { CodexPendingChange } from "./codex.js";
 
 // Chat type discriminator — matches the chatType column on aiChats.
 // null / undefined → treat as 'general' at the application layer.
-export type ChatType = "worldbuilding" | "research" | "editor" | "general";
+export type ChatType = "worldbuilding" | "research" | "editor" | "outline" | "general";
 
 // Slugs for built-in World-Building Chat templates.
-export type WorldBuildingTemplateSlug =
-    | "character_codex"
-    | "outline"
-    | "locations"
-    | "factions"
-    | "timeline"
-    | "freeform";
+// "outline" was removed here (P0.4 R5) — outline planning now belongs to its own dedicated
+// Outline chat (chatType: "outline"), per docs/Chat_Panel_Integrations_Design.md §1 ("Outline
+// template — Removed from WB — outline work on Outline rail/chat").
+export type WorldBuildingTemplateSlug = "character_codex" | "locations" | "factions" | "timeline" | "freeform";
 
 export interface WorldBuildingTemplate {
     slug: WorldBuildingTemplateSlug;
@@ -31,14 +28,6 @@ export const WORLD_BUILDING_TEMPLATES: readonly WorldBuildingTemplate[] = [
         defaultTitle: "Character Development",
         systemPromptHint:
             "Focus on concrete, physical details: appearance, wardrobe, mannerisms, history. Avoid psychological analysis. When information is confirmed, suggest it as a Codex entry update."
-    },
-    {
-        slug: "outline",
-        name: "Outline",
-        description: "Plan story structure, chapter beats, and narrative arc.",
-        defaultTitle: "Story Outline",
-        systemPromptHint:
-            "Help structure the narrative arc, chapter sequence, and scene beats. Keep suggestions concrete and actionable."
     },
     {
         slug: "locations",
@@ -126,6 +115,31 @@ export interface ChatContextOutlineExcerpt {
     role: "search";
 }
 
+// One row of the full outline tree — only populated for chatType="outline" (see
+// chatContextService.ts's resolveFullOutlineTree). Unlike ChatContextOutlineExcerpt (RAG-search,
+// opt-in via includeOutline, excerpt-only), this is the Outline chat's own always-on structured
+// read: every outlineItem in the story (title + summary, not just a search excerpt), so the
+// client can reconstruct the whole chapter/scene tree, not just a ranked list.
+export interface ChatContextOutlineTreeItem {
+    id: string;
+    parentId: string | null;
+    type: "chapter" | "scene";
+    title: string;
+    summary: string | null;
+    order: number;
+    chapterId: string | null;
+}
+
+// A written chapter's title + summary (chapters.summary, distinct from any linked outlineItem's
+// own summary) — only populated for chatType="outline" (see resolveWrittenChapterSummaries).
+// Never includes chapter body content (that's Editor-only, via relevantChapterPassages).
+export interface ChatContextWrittenChapter {
+    id: string;
+    title: string;
+    summary: string | null;
+    order: number;
+}
+
 // An active Project Memory entry surfaced as context — gated on this chat's includeMemory toggle
 // only (C1, Agent_Framework_And_Project_Memory_Design.md §4.5). Unlike notes/outline, there's no
 // per-item flag on the memory side of the gate: every `status: "active"` memory is already
@@ -158,4 +172,9 @@ export interface ChatContext {
     relevantOutlineItems: ChatContextOutlineExcerpt[];
     // Empty unless the chat's includeMemory toggle is on (C1) — see getChatContext.
     relevantMemories: ChatContextMemoryExcerpt[];
+    // Empty except for chatType="outline" — the Outline chat's own always-on structured reads
+    // (P0.4 R5), not RAG-ranked and not gated by any toggle (distinct from relevantOutlineItems
+    // above, which stays the opt-in RAG-search path other chat types use).
+    outlineTree: ChatContextOutlineTreeItem[];
+    writtenChapters: ChatContextWrittenChapter[];
 }

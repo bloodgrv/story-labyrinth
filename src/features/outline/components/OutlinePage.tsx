@@ -1,20 +1,17 @@
-import { attemptPromise } from "@jfdi/attempt";
-import { Loader2, Plus, Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "react-toastify";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EditorChatRail } from "@/features/chat/components/EditorChatRail";
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { CharacterArcPanel } from "@/features/outline/components/CharacterArcPanel";
+import { OutlineChatRail } from "@/features/outline/components/OutlineChatRail";
 import { OutlineItemDialog } from "@/features/outline/components/OutlineItemDialog";
 import { OutlineTree } from "@/features/outline/components/OutlineTree";
 import {
     useCreateOutlineItemMutation,
-    useGenerateOutlineMutation,
     useOutlineQuery,
     useRejectAllPendingOutlineMutation
 } from "@/features/outline/hooks/useOutlineQuery";
@@ -34,7 +31,6 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
     );
 
     const createMutation = useCreateOutlineItemMutation(storyId);
-    const generateMutation = useGenerateOutlineMutation(storyId);
     const rejectAllMutation = useRejectAllPendingOutlineMutation(storyId);
     const [addChapterOpen, setAddChapterOpen] = useState(false);
     const isDesktop = useIsDesktopViewport();
@@ -54,26 +50,6 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
             status: "confirmed",
             chapterId: null
         });
-    };
-
-    // Unlike beat detection's silent background pass, this is always an explicit button click,
-    // so full success/error/empty-result feedback is appropriate here.
-    const handleGenerate = async () => {
-        const [error, result] = await attemptPromise(() => generateMutation.mutateAsync());
-        if (error) {
-            toast.error("Failed to generate outline suggestions");
-            return;
-        }
-        if (!result.success) {
-            toast.error(result.message ?? "Failed to generate outline suggestions");
-            return;
-        }
-        const count = result.suggestions?.filter(item => item.type === "chapter").length ?? 0;
-        toast.success(
-            count > 0
-                ? `${count} chapter suggestion${count === 1 ? "" : "s"} ready to review`
-                : "No new suggestions generated"
-        );
     };
 
     if (isLoading)
@@ -105,19 +81,6 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
                                     <Plus className="mr-1.5 h-3.5 w-3.5" />
                                     Add Chapter
                                 </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleGenerate}
-                                    disabled={generateMutation.isPending}
-                                >
-                                    {generateMutation.isPending ? (
-                                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                                    )}
-                                    Generate with AI
-                                </Button>
                             </div>
                             {pendingCount > 0 && (
                                 <Button
@@ -133,7 +96,7 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
 
                         {chapters.length === 0 ? (
                             <EmptyState
-                                message="No outline yet. Start by adding a chapter, or let AI suggest a structure for you."
+                                message="No outline yet. Start by adding a chapter, or ask the Outline chat to suggest a structure."
                                 actionLabel="Add First Chapter"
                                 onAction={() => setAddChapterOpen(true)}
                             />
@@ -166,7 +129,7 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={28} minSize={20}>
-                <EditorChatRail storyId={storyId} enableProseProposals={false} />
+                <OutlineChatRail storyId={storyId} />
             </ResizablePanel>
         </ResizablePanelGroup>
     );

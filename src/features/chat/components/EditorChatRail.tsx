@@ -63,11 +63,13 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
 
     // Bridges a "Rework in chat" click (floating toolbar, inside the Lexical composer tree) into
     // this rail (a sibling panel, outside it) via pendingReworkStore — see that file's doc
-    // comment. Finds an Editor chat already anchored to the target chapter and reuses it (most
-    // recently updated, if several — surfaced via toast since more than one legitimately-anchored
-    // chat means silently picking one is otherwise an invisible guess); creates one if none exist.
+    // comment. Only acts on requests for this rail's own panel ("editor") — WorldBuildingChatPanel
+    // and OutlineChatRail have their own consumption effects for their own panels. Finds an Editor
+    // chat already anchored to the target chapter and reuses it (most recently updated, if several
+    // — surfaced via toast since more than one legitimately-anchored chat means silently picking
+    // one is otherwise an invisible guess); creates one if none exist.
     useEffect(() => {
-        if (!pendingRework || pendingRework.storyId !== storyId || chatsLoading) return;
+        if (!pendingRework || pendingRework.panel !== "editor" || pendingRework.storyId !== storyId || chatsLoading) return;
         const request = consumePendingRework();
         if (!request) return;
 
@@ -77,14 +79,14 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
             initialInstruction: request.initialInstruction
         };
 
-        const candidates = chats.filter(chat => chat.anchorChapterId === request.chapterId);
+        const candidates = chats.filter(chat => chat.anchorChapterId === request.anchorId);
         if (candidates.length === 0) {
             createMutation.mutate(
                 {
                     storyId,
                     chatType: "editor",
                     title: `Rework ${new Date().toLocaleString()}`,
-                    anchorChapterId: request.chapterId
+                    anchorChapterId: request.anchorId
                 },
                 {
                     onSuccess: newChat => {

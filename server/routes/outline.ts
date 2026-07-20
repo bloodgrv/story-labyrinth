@@ -4,7 +4,6 @@ import type { OutlineReorderUpdate } from "../../src/types/outline.js";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { getCharacterArc } from "../services/outlineArcService.js";
-import { generateOutlineSuggestions } from "../services/outlineGenerator.js";
 import { indexOutlineItem, removeEntityFromIndex } from "../services/ragIndexService.js";
 
 type OutlineItemRow = typeof schema.outlineItems.$inferSelect;
@@ -62,27 +61,6 @@ export default createCrudRouter({
                 }
                 syncOutlineItemIndex(updated);
                 res.json(updated);
-            })
-        );
-
-        // Persists suggestions (source: "ai_suggested", status: "pending") rather than returning
-        // ephemeral candidates — same rationale as POST /api/beats/detect. Always 200; expected
-        // failure modes (no AI provider, story not found) are { success: false, message }.
-        router.post(
-            "/generate",
-            asyncHandler(async (req, res) => {
-                const { storyId } = req.body as { storyId?: string };
-                if (!storyId) {
-                    res.status(400).json({ success: false, message: "storyId is required" });
-                    return;
-                }
-
-                const [error, result] = await attemptPromise(() => generateOutlineSuggestions(storyId));
-                if (error) {
-                    res.json({ success: false, message: error.message });
-                    return;
-                }
-                res.json(result);
             })
         );
 

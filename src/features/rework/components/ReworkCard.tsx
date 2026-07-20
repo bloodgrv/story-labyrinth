@@ -8,6 +8,10 @@ import type { FocusPacket } from "@/types/rework";
 interface ReworkCardProps {
     packet: FocusPacket;
     onClear: () => void;
+    // How Accept applies here — varies per host (chapter selection replaces in place; Lorebook/
+    // Outline rework instead produces a proposal reviewed via a tray/card elsewhere). Defaults to
+    // the original chapter-editor wording so Editor's existing caller needs no change.
+    hostHint?: string;
 }
 
 const TRUNCATE_LENGTH = 160;
@@ -19,7 +23,10 @@ const truncate = (text: string) => (text.length > TRUNCATE_LENGTH ? `${text.slic
 // selection collapsed by default (so it doesn't dominate the chat panel across a long
 // conversation), with an optional disclosure for the surrounding before/after context that was
 // actually sent to the model.
-export function ReworkCard({ packet, onClear }: ReworkCardProps) {
+const DEFAULT_HOST_HINT =
+    "Talk through the change below — accepting the model's reply will replace only the highlighted selection in the chapter.";
+
+export function ReworkCard({ packet, onClear, hostHint = DEFAULT_HOST_HINT }: ReworkCardProps) {
     const [showContext, setShowContext] = useState(false);
 
     return (
@@ -56,10 +63,7 @@ export function ReworkCard({ packet, onClear }: ReworkCardProps) {
                     </CollapsibleContent>
                 </Collapsible>
 
-                <p className="text-xs text-muted-foreground">
-                    Talk through the change below — accepting the model's reply will replace only the highlighted
-                    selection in the chapter.
-                </p>
+                <p className="text-xs text-muted-foreground">{hostHint}</p>
             </CardContent>
         </Card>
     );

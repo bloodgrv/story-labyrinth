@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import type {
     ChatContext,
     ChatContextChapterPassage,
@@ -6,6 +6,8 @@ import type {
     ChatContextMemoryExcerpt,
     ChatContextNoteExcerpt,
     ChatContextOutlineExcerpt,
+    ChatContextOutlineTreeItem,
+    ChatContextWrittenChapter,
     ChatType
 } from "../../src/types/worldbuilding.js";
 import { getTemplate } from "../../src/types/worldbuilding.js";
@@ -54,6 +56,67 @@ const NOTE_PROPOSAL_INSTRUCTIONS =
     "```\n\n" +
     '"type" must be one of: idea, research, todo, other. Propose at most one note per reply.';
 
+// P0.4 R5 — Outline chat's own structure-proposal fence. "create" is handled specially client-
+// side (src/features/chat/services/parseOutlineProposals.ts): it's inserted immediately as a
+// `status: 'pending', source: 'ai_suggested'` outlineItems row, the exact mechanism the retired
+// bulk-Generate button already used, so the existing tree Accept/Reject badges
+// (OutlineChapterCard.tsx/OutlineSceneRow.tsx) handle it with no new UI. "edit"/"reorder"/"delete"
+// act on an already-confirmed row, so they're parsed into an ephemeral proposal card instead
+// (same posture as prose-proposal/note-proposal) — Accept calls the existing outline mutations
+// directly.
+const OUTLINE_PROPOSAL_INSTRUCTIONS =
+    "When you and the user agree on a structural change, propose it as an outline change — never just describe it in " +
+    "conversation as if it were already applied. All outline changes require explicit user approval before they take " +
+    "effect (new chapters/scenes appear immediately in the tree marked 'AI Suggested' for the user to accept/reject; " +
+    "edits/reorders/deletes show as a card in the chat for the user to accept/reject).\n\n" +
+    "To propose a new chapter or scene, include a fenced block in this exact form:\n\n" +
+    "```outline-proposal\n" +
+    '{"type": "create", "itemType": "chapter", "parentId": null, "title": "...", "summary": "...", "wordCountTarget": null}\n' +
+    "```\n\n" +
+    "(`itemType` is \"chapter\" or \"scene\"; `parentId` is the chapter's id when creating a scene under it, else null.)\n\n" +
+    "To propose editing an existing item's title/summary/word count target (use the itemId from the outline tree below):\n\n" +
+    "```outline-proposal\n" +
+    '{"type": "edit", "itemId": "...", "title": "...", "summary": "..."}\n' +
+    "```\n\n" +
+    "To propose reordering items:\n\n" +
+    "```outline-proposal\n" +
+    '{"type": "reorder", "updates": [{"id": "...", "order": 1, "parentId": "..."}]}\n' +
+    "```\n\n" +
+    "To propose deleting an item:\n\n" +
+    "```outline-proposal\n" +
+    '{"type": "delete", "itemId": "..."}\n' +
+    "```\n\n" +
+    "You may propose only one outline change per reply.";
+
+// P0.4 R8 — a lightweight list of candidate new lorebook entities, handed off to the
+// World-Building chat rather than created directly here (Outline is not a lore factory — see
+// docs/Chat_Panel_Integrations_Design.md §4's "New lorebook entities" row). Parsed client-side
+// into an ephemeral tray section (src/features/chat/services/parseLoreSuggestions.ts); each
+// suggestion's "Open in WB" button hands the name/category/blurb to the Lorebook tool via a URL
+// query-param handoff (different tool, different browser tab — see LorebookPage.tsx).
+const LORE_SUGGESTION_INSTRUCTIONS =
+    "If planning the outline surfaces a new character, location, or other entity worth developing in the Lorebook, " +
+    "you may suggest it — but never create it directly; that belongs in a World-Building chat.\n\n" +
+    "To suggest new lorebook entities, include a fenced block in this exact form:\n\n" +
+    "```lore-suggestion\n" +
+    '{"suggestions": [{"name": "...", "category": "character", "blurb": "one or two sentences"}]}\n' +
+    "```\n\n" +
+    '"category" must be one of: character, location, item, event, note, synopsis, starting scenario, timeline.';
+
+const OUTLINE_FRAMING =
+    "You are a structure partner for this story's outline — chapter/scene sequencing and narrative arc. " +
+    "Stay consistent with the full outline tree, the story synopsis, and the established Codex/lorebook state " +
+    "provided below. You are not a manuscript writer: never propose or write chapter prose here.\n\n" +
+    OUTLINE_PROPOSAL_INSTRUCTIONS +
+    "\n\n" +
+    CODEX_PROPOSAL_INSTRUCTIONS +
+    "\n\n" +
+    NOTE_PROPOSAL_INSTRUCTIONS +
+    "\n\n" +
+    LORE_SUGGESTION_INSTRUCTIONS +
+    "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user sees them, " +
+    "so don't reference the fenced blocks themselves in your prose; just talk about the change naturally.";
+
 const WORLDBUILDING_FRAMING =
     "You are a collaborative world-building assistant for a long-form fiction project. " +
     "Stay factually consistent with the story's established Codex state and the reference " +
@@ -99,6 +162,7 @@ const PROSE_PROPOSAL_INSTRUCTIONS =
 // adding further global system instructions.
 const buildSystemPrompt = (chatType: ChatType, templateSlug: string | null): string => {
     if (chatType === "editor") return PROSE_PROPOSAL_INSTRUCTIONS;
+    if (chatType === "outline") return OUTLINE_FRAMING;
 
     const template = templateSlug ? getTemplate(templateSlug as Parameters<typeof getTemplate>[0]) : undefined;
     return template?.systemPromptHint ? `${WORLDBUILDING_FRAMING}\n\n${template.systemPromptHint}` : WORLDBUILDING_FRAMING;
@@ -288,6 +352,55 @@ const resolveOutlineItems = async (results: SearchResult[]): Promise<ChatContext
     }));
 };
 
+// The Outline chat's own always-on structured read (P0.4 R5) — every outlineItem in the story,
+// not RAG-ranked and not gated by the includeOutline toggle (that toggle stays the *other* chat
+// types' opt-in path, see resolveOutlineItems above). Excludes rejected items (dead ends the
+// model shouldn't be planning around); includes pending ("AI Suggested", not yet accepted) ones
+// since seeing them helps the model avoid re-proposing the same thing.
+const resolveFullOutlineTree = async (storyId: string): Promise<ChatContextOutlineTreeItem[]> => {
+    const rows = await db
+        .select({
+            id: schema.outlineItems.id,
+            parentId: schema.outlineItems.parentId,
+            type: schema.outlineItems.type,
+            title: schema.outlineItems.title,
+            summary: schema.outlineItems.summary,
+            order: schema.outlineItems.order,
+            chapterId: schema.outlineItems.chapterId
+        })
+        .from(schema.outlineItems)
+        .where(and(eq(schema.outlineItems.storyId, storyId), ne(schema.outlineItems.status, "rejected")))
+        .orderBy(schema.outlineItems.order);
+
+    return rows.map(r => ({
+        id: r.id,
+        parentId: r.parentId,
+        type: r.type as "chapter" | "scene",
+        title: r.title,
+        summary: r.summary,
+        order: r.order,
+        chapterId: r.chapterId
+    }));
+};
+
+// "Written chapters: titles + summaries only" (P0.4 R5) — chapters.summary is a distinct field
+// from any linked outlineItem's own summary (see server/db/schema.ts), so this is a real, separate
+// read, not a subset of resolveFullOutlineTree above. Never includes chapter body content.
+const resolveWrittenChapterSummaries = async (storyId: string): Promise<ChatContextWrittenChapter[]> => {
+    const rows = await db
+        .select({
+            id: schema.chapters.id,
+            title: schema.chapters.title,
+            summary: schema.chapters.summary,
+            order: schema.chapters.order
+        })
+        .from(schema.chapters)
+        .where(eq(schema.chapters.storyId, storyId))
+        .orderBy(schema.chapters.order);
+
+    return rows;
+};
+
 // Active Project Memory entries are only ever surfaced via RAG search (no anchor concept), gated
 // entirely on this chat's includeMemory toggle (see getChatContext) — every `status: "active"`
 // memory is already index-eligible on its own (agentMemoriesService.ts's approve step is the
@@ -333,6 +446,9 @@ const resolveMemories = async (results: SearchResult[]): Promise<ChatContextMemo
  *   - relevantMemories: active Project Memory entries, only populated when this chat's own
  *     includeMemory toggle is on (C1, Agent_Framework_And_Project_Memory_Design.md §4.5) — no
  *     separate per-memory flag, every active memory is already index-eligible on its own
+ *   - outlineTree / writtenChapters: the Outline chat's own always-on structured reads (P0.4 R5)
+ *     — full outline tree + written chapter titles/summaries, not RAG-ranked, not toggle-gated.
+ *     Empty for every other chatType.
  *
  * Degrades gracefully rather than failing: if the story has no indexed content, no embedding
  * endpoint is configured, or an anchor entry/chapter no longer exists, the relevant-* fields are
@@ -347,6 +463,7 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     const effectiveQuery = query?.trim() || chat.title;
     const chatType = (chat.chatType ?? "general") as ChatType;
     const includeChapters = chatType === "editor";
+    const includeOutlineTree = chatType === "outline";
     const includeNotes = chat.includeNotes === true;
     const includeOutline = chat.includeOutline === true;
     const includeMemory = chat.includeMemory === true;
@@ -376,12 +493,14 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
 
     const anchorIds = new Set(anchorEntries.map(e => e.entryId));
     const anchorChapterIds = new Set(anchorChapterPassages.map(p => p.chapterId));
-    const [searchCodexEntries, searchChapterPassages, notes, outlineItems, memories] = await Promise.all([
+    const [searchCodexEntries, searchChapterPassages, notes, outlineItems, memories, outlineTree, writtenChapters] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
         includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
         includeNotes ? resolveNotes(searchResults) : Promise.resolve([]),
         includeOutline ? resolveOutlineItems(searchResults) : Promise.resolve([]),
-        includeMemory ? resolveMemories(searchResults) : Promise.resolve([])
+        includeMemory ? resolveMemories(searchResults) : Promise.resolve([]),
+        includeOutlineTree && chat.storyId ? resolveFullOutlineTree(chat.storyId) : Promise.resolve([]),
+        includeOutlineTree && chat.storyId ? resolveWrittenChapterSummaries(chat.storyId) : Promise.resolve([])
     ]);
 
     return {
@@ -392,6 +511,8 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
         relevantChapterPassages: [...anchorChapterPassages, ...searchChapterPassages],
         relevantNotes: notes,
         relevantOutlineItems: outlineItems,
-        relevantMemories: memories
+        relevantMemories: memories,
+        outlineTree,
+        writtenChapters
     };
 };

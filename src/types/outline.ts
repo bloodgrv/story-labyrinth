@@ -51,15 +51,6 @@ export interface CharacterArcEntry {
     link: OutlineItemCharacterLink;
 }
 
-// POST /api/outline/generate always responds 200 — expected failure modes (no AI provider,
-// nothing to generate from) are `{ success: false, message }`, matching the beats/humanizer/TTS
-// soft-fail convention.
-export interface OutlineGenerationResult {
-    success: boolean;
-    suggestions?: OutlineItem[];
-    message?: string;
-}
-
 // Bulk reorder/reparent payload for PATCH /api/outline/reorder — sent as a batch (rather than
 // one PUT per moved row) since a single drag can change the parentId and/or order of many
 // sibling rows at once.

@@ -12,7 +12,7 @@ import { logger } from "@/utils/logger";
 import { CreateEntryDialog } from "../components/CreateEntryDialog";
 import { LorebookBrowsePanel } from "../components/LorebookBrowsePanel";
 import { LorebookEntryTab } from "../components/LorebookEntryTab";
-import type { LorebookCategory } from "../components/form";
+import { EMPTY_CODEX_STATE, type LorebookCategory } from "../components/form";
 import { LorebookImportDraftTab } from "../components/LorebookImportDraftTab";
 import { LorebookTabStrip, type LorebookOpenTab } from "../components/LorebookTabStrip";
 import { lorebookKeys, useHierarchicalLorebookQuery, useSeriesLorebookQuery } from "../hooks/useLorebookQuery";
@@ -109,7 +109,7 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
     // Consume the Relationships graph's "open entry" pointer (StoryContext.pendingLorebookEntryId)
     // once entries have loaded — one-shot, mirrors useWorkspaceDeepLink.ts's own pattern. Guarded
     // on isLoading since `entries` starts empty on first mount right after a tool switch.
-    const { pendingLorebookEntryId, setPendingLorebookEntryId } = useStoryContext();
+    const { pendingLorebookEntryId, setPendingLorebookEntryId, pendingLorebookSeed, setPendingLorebookSeed } = useStoryContext();
     useEffect(() => {
         if (!pendingLorebookEntryId || isLoading) return;
         const entry = entries.find(e => e.id === pendingLorebookEntryId);
@@ -118,6 +118,29 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
         setPendingLorebookEntryId(null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pendingLorebookEntryId, isLoading, entries]);
+
+    // Consumes the Outline chat's "Open in WB" lore-suggestion handoff (P0.4 R8,
+    // StoryContext.pendingLorebookSeed) — same one-shot pattern as pendingLorebookEntryId above,
+    // opening CreateEntryDialog pre-filled instead of an existing entry tab. The seed is copied
+    // into local state (activeDraftSeed) rather than read directly from context at render time —
+    // pendingLorebookSeed is cleared in this same effect (so it can't re-trigger the dialog on a
+    // later remount), but CreateEntryDialog still needs the value as a prop on the render(s) that
+    // follow, after it's already null in context.
+    const [activeDraftSeed, setActiveDraftSeed] = useState<DocumentImportDraft | null>(null);
+    useEffect(() => {
+        if (!pendingLorebookSeed) return;
+        setActiveDraftSeed({
+            name: pendingLorebookSeed.name,
+            category: pendingLorebookSeed.category,
+            description: pendingLorebookSeed.blurb,
+            tags: [],
+            codexState: EMPTY_CODEX_STATE,
+            image: null
+        });
+        setIsCreateDialogOpen(true);
+        setPendingLorebookSeed(null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pendingLorebookSeed]);
 
     const openDraftTab = (draft: DocumentImportDraft) => {
         setActiveTabIndex(openTabs.length);
@@ -252,17 +275,24 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                     onImport={handleImport}
                     isImportingDocument={isImportingDocument}
                     onOpenEntry={openEntryTab}
-                    onNewEntry={() => setIsCreateDialogOpen(true)}
+                    onNewEntry={() => {
+                        setActiveDraftSeed(null);
+                        setIsCreateDialogOpen(true);
+                    }}
                 />
             )}
 
             {/* Create dialog */}
             <CreateEntryDialog
                 open={isCreateDialogOpen}
-                onOpenChange={setIsCreateDialogOpen}
+                onOpenChange={open => {
+                    setIsCreateDialogOpen(open);
+                    if (!open) setActiveDraftSeed(null);
+                }}
                 storyId={storyId}
                 seriesId={seriesId}
                 defaultCategory={selectedCategory}
+                draftValues={activeDraftSeed ?? undefined}
             />
         </div>
     );

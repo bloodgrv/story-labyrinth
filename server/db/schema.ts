@@ -704,7 +704,9 @@ export const sessions = sqliteTable(
 // chapters that already exist — set null (not cascade) so the outline node survives independent
 // of the chapter's own lifecycle.
 // `source`/`status` mirror concreteBeats' manual/ai_suggested + confirmed/pending/rejected
-// convention exactly, for the AI-assisted outlining pass (outlineGenerator.ts).
+// convention exactly, for AI-proposed chapters/scenes — now created via the Outline chat's
+// ```outline-proposal fence (P0.4 R5, chatContextService.ts), the retired standalone
+// outlineGenerator.ts service used the same convention before it was folded into that chat flow.
 export const outlineItems = sqliteTable(
     "outlineItems",
     {

@@ -1,4 +1,5 @@
 import { LayoutTemplate } from "lucide-react";
+import { useRef } from "react";
 import type { Control } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -8,6 +9,7 @@ import { useNaturalEntryView } from "@/lib/useNaturalEntryView";
 import { CATEGORIES, IMPORTANCE_LEVELS } from "./entryFormUtils";
 import type { CreateEntryForm, LorebookCategory } from "./entryFormUtils";
 import { CodexStateEditor } from "./CodexStateEditor";
+import { LorebookReworkButton } from "./LorebookReworkButton";
 import { SelectField } from "./SelectField";
 import { TagsField } from "./TagsField";
 
@@ -15,13 +17,19 @@ interface RawEntryFieldsProps {
     control: Control<CreateEntryForm>;
     tagInput: string;
     selectedCategory: LorebookCategory;
+    // Needed only for the description field's "Rework in chat" trigger (P0.4 R4) — anchors the
+    // rework to this entry's World-Building chat. Undefined for a brand-new unsaved entry, which
+    // just disables the button (see LorebookReworkButton.tsx).
+    entryId?: string;
+    storyId?: string;
 }
 
 // The original raw-field entry form (name/category/importance/tags/description/codex state) —
 // extracted out of LorebookEntryEditor.tsx so it can sit alongside NaturalEntryView.tsx as the
 // other half of the Advanced Settings "Natural View" toggle.
-export function RawEntryFields({ control, tagInput, selectedCategory }: RawEntryFieldsProps) {
+export function RawEntryFields({ control, tagInput, selectedCategory, entryId, storyId }: RawEntryFieldsProps) {
     const [, setNaturalView] = useNaturalEntryView();
+    const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
     return (
         <>
@@ -71,9 +79,19 @@ export function RawEntryFields({ control, tagInput, selectedCategory }: RawEntry
                 rules={{ required: "Description is required" }}
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Description</FormLabel>
+                        <div className="flex items-center justify-between">
+                            <FormLabel>Description</FormLabel>
+                            <LorebookReworkButton entryId={entryId} storyId={storyId} textareaRef={descriptionRef} />
+                        </div>
                         <FormControl>
-                            <Textarea {...field} rows={6} />
+                            <Textarea
+                                {...field}
+                                ref={el => {
+                                    field.ref(el);
+                                    descriptionRef.current = el;
+                                }}
+                                rows={6}
+                            />
                         </FormControl>
                         <FormMessage />
                     </FormItem>

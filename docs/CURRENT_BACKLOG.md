@@ -1,6 +1,6 @@
 # Story Nexus Fork — Current Backlog
 
-**Last updated:** 2026-07-20 (P0.3 fully done: N5/N6, C2-C5)  
+**Last updated:** 2026-07-20 (P0.4 R4/R5/R7/R8 done: Lorebook rework → WB, dedicated Outline chat, outline row rework, WB handoff)  
 **Purpose:** Single source of truth for **what’s left**, after implementation order got scrambled relative to the original Phase 0 list.  
 **Canonical live status also mirrored in:** `CLAUDE.md` (architecture + high-level “done” notes) and `DECISIONS.md` (load-bearing how/why).  
 **This file wins** when those conflict on *priority of remaining work*.
@@ -48,6 +48,7 @@
 | Notes/Outline ↔ Chat bridge, "Core Bridge" scope (P0.3 N0-N4, O1-O4) | Double-gate opt-in (`includeInAi` per note/outline item + `includeNotes`/`includeOutline` per chat) — schema, RAG `note`/`outline_item` entity types + reconcile_index, per-item toggle UI, story export/import round-trip, `chatContextService` non-canon packets surfaced in World-Building/Research/Editor(-excluded)/Brainstorm chats. N5/N6 (save-as-note, note-proposal) NOT included. See `DECISIONS.md` "Notes/Outline ↔ Chat Bridge (P0.3, Core Bridge scope)" |
 | Project Memory chat toggle (P0.3 C1) | `aiChats.includeMemory` toggle + `resolveMemories` in `chatContextService.ts`, surfaced in the same chat UI as the Notes/Outline toggles. No per-item flag needed — every active memory is already index-eligible via Phase B's approve step. See `DECISIONS.md` "Project Memory Chat Toggle (C1)" |
 | Editor Selection Rework + Codex Proposal Tray (P0.4 R0-R3) | "Rework in chat" replaces the floating toolbar's one-shot Expand/Rewrite/Shorten as the primary path — highlight → bound Editor chat with before/selection/after context → Accept replaces only that selection. Codex proposals for Editor(/Outline) chats moved to a tray under the chat list with Approve/Reject/Edit. Fixed two real pre-existing bugs found along the way (`activeChapterEditorStore` single-slot bug, chat-list cache invalidation). See `DECISIONS.md` "Editor Selection Rework + Codex Proposal Tray (P0.4 R0-R3)" |
+| Lorebook Rework → WB, Dedicated Outline Chat, Outline Row Rework, WB Handoff (P0.4 R4/R5/R7/R8) | Description-field sub-span "Rework in chat" bound to the entry's WB chat (Accept = existing codex-proposal approve flow, no new apply path); WB Codex proposals unified onto the same tray Editor uses (Approve/Edit/Reject). Outline gets a real dedicated `chatType`/`promptType: "outline"` (R7's split, done here since R5 needed it) — own chat list/rail, always-on full outline tree + written-chapter-summaries context, new `outline-proposal`/`lore-suggestion` fences, retired bulk "Generate with AI" button (`outlineGenerator.ts` deleted). Outline rows get whole-field "Rework in chat" too; lore suggestions hand off to Lorebook via the same same-tab `StoryContext` pattern the Relationships graph's "Open entry" already used. Structured-Codex-field (wardrobe/wounds/items) rework and R6 (auto-accept toggle UI) explicitly cut/deferred. See `DECISIONS.md` "P0.4 R4/R5/R7/R8" |
 
 Design docs that still say “not implemented” in their headers may be stale for A/B/G1 — trust this file + `CLAUDE.md` over those headers until they are refreshed.
 
@@ -140,16 +141,20 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 **Refs:** `docs/Notes_Outline_Chat_Bridges_Design.md`; `docs/Chat_Panel_Integrations_Design.md`; Agent design Phase C; `DECISIONS.md` Phase B (no auto-distill; no suggest UI yet)
 
+**Clarification 2026-07-19:** Keep agent memory **within existing plan** (Project Memory + Phase C as already designed). Do **not** add new unplanned agent-self / always-on / silent-learning memory. Ship planned C1–C4 and Phase C items; no scope expansion beyond the design docs.
+
 ---
 
 ### P0.4 — Chat ↔ panel integrations (selection rework + host chats)
 
-**Status:** R0-R3 — ✅ Done (2026-07-20). Design locked for WB + Editor + Outline + Brainstorm + Research + Notes desk + generalized pattern (2026-07-18); R4 onward **not implemented**  
+**Status:** R0-R3 — ✅ Done (2026-07-20). R4/R5/R7/R8 — ✅ Done (2026-07-20, same day). Design locked for WB + Editor + Outline + Brainstorm + Research + Notes desk + generalized pattern (2026-07-18); R6 and B/S/K tracks **not implemented**  
 **Canonical design:** `docs/Chat_Panel_Integrations_Design.md`
 
 **Doctrine:** Panel owns artifact; **chat governs** content; selection/focus owns span; Accept applies; no amnesiac one-shot as primary path.
 
-**R0-R3 shipped 2026-07-20** — see `DECISIONS.md` "Editor Selection Rework + Codex Proposal Tray (P0.4 R0-R3)" for the full load-bearing trail, including a real correctness bug fixed in `activeChapterEditorStore.ts` (single global slot → per-chapter map) and a second pre-existing bug found and fixed in `useCreateChatMutation`/`useUpdateChatMutation`'s cache invalidation (was invalidating a key that never matched any real query). Full live Accept round-trip (real LLM reply → replace selection) could not be exercised in this dev environment — the configured AI provider returned zero content tokens for reasons unrelated to this feature's code (see that DECISIONS.md entry) — every other piece (capture, chat binding, context delivery, tray) was verified live. `chatType` split (R6-R7) deliberately deferred — neither R0-R3 nor R4/R5/R8 strictly require it.
+**R0-R3 shipped 2026-07-20** — see `DECISIONS.md` "Editor Selection Rework + Codex Proposal Tray (P0.4 R0-R3)" for the full load-bearing trail, including a real correctness bug fixed in `activeChapterEditorStore.ts` (single global slot → per-chapter map) and a second pre-existing bug found and fixed in `useCreateChatMutation`/`useUpdateChatMutation`'s cache invalidation (was invalidating a key that never matched any real query). Full live Accept round-trip (real LLM reply → replace selection) could not be exercised in this dev environment — the configured AI provider returned zero content tokens for reasons unrelated to this feature's code (see that DECISIONS.md entry) — every other piece (capture, chat binding, context delivery, tray) was verified live.
+
+**R4/R5/R7/R8 shipped 2026-07-20, later the same day** — see `DECISIONS.md` "P0.4 R4/R5/R7/R8 — Lorebook Rework → WB, Dedicated Outline Chat, Outline Row Rework, WB Handoff" for the full load-bearing trail. Note: the backlog line below previously called R6-R7's `chatType` split "deliberately deferred — neither R0-R3 nor R4/R5/R8 strictly require it"; that was wrong for R7 specifically — Outline had no chat identity of its own (it was reusing `EditorChatRail` with `chatType="editor"`), so a real dedicated Outline chat (R5) was impossible without R7's split, which happened here as part of R5. **R6 (auto-insert/auto-accept toggle UI) stays deferred** — genuinely optional, every new proposal path here defaults to manual accept with no new toggle added. Found and fixed one real pre-existing bug along the way: `ReworkCard.tsx`'s trailing hint text was hardcoded chapter-specific ("...in the chapter"), misleading for the new Lorebook/Outline rework cases — now a `hostHint` prop varying per `FocusTarget.kind`. R4 shipped narrower than the design doc's host matrix: description-field sub-span rework only, not per-row structured-Codex-field (wardrobe/wounds/items) rework — cut for cost/value (3 components deep, no `entryId` threaded, low marginal value for short single-line fields), flagged as a fast-follow. Live-verified end to end except the actual model-generated `outline-proposal`/`lore-suggestion` fence content and the resulting "Open in WB" handoff — same "no reachable AI provider in this dev sandbox" limitation every session since R0-R3 has hit.
 
 | Slice | Description |
 |-------|-------------|
@@ -157,11 +162,11 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | R1 | ✅ **Editor:** highlight → Rework card → Editor chat (before/after/selection + full editor context) → Accept **replaces selection** |
 | R2 | ✅ Buried primary floating one-shot Expand/Rewrite/Shorten behind "More"; now chips that send instructions into host chat |
 | R3 | ✅ Editor Codex **tray under chat list** (this chat only, `CodexProposalTray.tsx`); Edit-before-approve wired (`useReviseProposalMutation`, previously unused); auto-accept still default OFF (unchanged — no auto-accept toggle added this pass) |
-| R4 | **Lorebook:** field/selection rework → **WB chat** → targeted codex/description proposal |
-| R5 | **Outline chat:** own type/rail; context pack per design §4; outline proposals (create/edit/reorder/delete) + auto-accept OFF; **retire bulk Generate button**; tray + tree badges; Codex tray; note-proposal tray; lore suggestion list |
-| R6 | Auto-insert (prose) / auto-accept (Codex/outline) toggles per host, defaults OFF |
-| R7 | Split `chatType` **editor** vs **outline** (separate chat lists) |
-| R8 | Outline→WB handoff: tray **Open in WB** from lore suggestion cards |
+| R4 | ✅ **Lorebook:** description-field sub-span rework → **WB chat** → `codex-proposal` (`modify_entry`) reviewed via the same tray Editor uses (WB's inline `ProposalCard` retired in favor of it). Structured Codex-field (wardrobe/wounds/items) rework **not included** this pass |
+| R5 | ✅ **Outline chat:** own `chatType`/`promptType: "outline"`, own rail/list (`OutlineChatRail.tsx`); always-on full outline tree + written-chapter-summaries context (`chatContextService.ts`); `outline-proposal` fence (create auto-persists as a pending tree row, edit/reorder/delete are ephemeral cards) + auto-accept OFF; **bulk Generate button retired** (`outlineGenerator.ts` deleted); Codex tray reused; note-proposal reused; `lore-suggestion` fence + tray section |
+| R6 | Auto-insert (prose) / auto-accept (Codex/outline) toggles per host, defaults OFF — **still open, deliberately** |
+| R7 | ✅ Split `chatType` **editor** vs **outline** (separate chat lists) — done as part of R5, see note above |
+| R8 | ✅ Outline row "Rework in chat" (whole title+summary, not sub-span) + tray **Open in WB** from lore-suggestion cards, via the same same-tab `StoryContext.pendingLorebookSeed` pattern the Relationships graph's "Open entry" already used |
 | B0–B4 | **Brainstorm hub:** migrate; CTA+blurb+Guided setup+style dropdown; playbook/slots; depth-adaptive writes; durable tray checklist (**Mark done** only clears active); handoffs Outline/WB/Notes/Research opt-in |
 | B5 | WB/Outline domain playbooks (shared engine); **guided start = Brainstorm pattern**; character **psych module** (MBTI/Enneagram/blurb, Grill default on); locations per Locations_And_Maps |
 | S0–S5 | **Research:** Story/Global mode; web search+fetch; citations; save-as-note on request; opt-in lore/notes context; copy-friendly blocks |
@@ -252,11 +257,12 @@ Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
 P0.1, P0.2, P0.2b, and all of P0.3 (Notes/Outline "Core Bridge" N0-N4/O1-O4, C1 project memory
 chat toggle, N5/N6 save-as-note + note-proposal, C2-C5 scanner-memory integration/distill button/
 scheduled scans/Codex auto-compile) are all done, along with P0.4's R0-R3 (Editor selection
-rework + Codex proposal tray).
-Remaining work: P0.4's R4 onward (Lorebook rework → WB chat, Outline chat own rail + tray,
-Brainstorm playbook migration, Research web search, Notes desk polish, the Editor/Outline
-chatType split) — any order, pick the highest-value one first unless the user redirects. P1
-(Agent Framework Phase C, Relationship Graph G1.5+) and P2 bugs (see that section) are also open.
+rework + Codex proposal tray) and R4/R5/R7/R8 (Lorebook rework → WB, dedicated Outline chat +
+its own chatType split, outline row rework, WB handoff).
+Remaining work: P0.4's R6 (auto-insert/auto-accept toggle UI, genuinely deferred) and the B/S/K
+tracks (Brainstorm playbook migration, Research web search, Notes desk polish) — any order, pick
+the highest-value one first unless the user redirects. P1 (Agent Framework Phase C, Relationship
+Graph G1.5+) and P2 bugs (see that section) are also open.
 Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 

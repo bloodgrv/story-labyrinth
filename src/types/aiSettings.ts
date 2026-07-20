@@ -15,7 +15,6 @@ export type FeatureKey =
     | "editor_chat" // Main Editor Chat AI calls (future)
     | "humanizer" // Humanize rewrite pass (humanizerService.ts)
     | "beat_detection" // Concrete beat suggestion pass (beatDetector.ts)
-    | "outline_generation" // AI-assisted outline suggestion pass (outlineGenerator.ts)
     | "document_import" // Extract a Lorebook entry from an uploaded PDF/DOCX/MD file (documentImportService.ts)
     | "image_generation" // Generate a Lorebook entry's portrait from its description (grokImageService.ts)
     | "agent_memory_distill" // Distill factual project memory candidates from a RAG scan's findings (distillMemoryJob.ts)
@@ -55,7 +54,6 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
     editor_chat: "Editor Chat",
     humanizer: "Humanizer",
     beat_detection: "Beat Detection",
-    outline_generation: "Outline Generation",
     document_import: "Document Import (Lorebook)",
     image_generation: "Image Generation (Lorebook)",
     agent_memory_distill: "Agent Memory Distillation",
@@ -71,7 +69,6 @@ export const FEATURE_KEYS: FeatureKey[] = [
     "editor_chat",
     "humanizer",
     "beat_detection",
-    "outline_generation",
     "document_import",
     "image_generation",
     "agent_memory_distill",
