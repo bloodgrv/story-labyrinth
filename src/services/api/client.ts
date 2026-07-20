@@ -183,6 +183,9 @@ export const chatsApi = {
             includeLorebook?: boolean;
             includeChapterSummaries?: boolean;
             brainstormStyle?: string;
+            wbStyle?: string;
+            outlineStyle?: string;
+            includePsychModule?: boolean;
         }
     ) => fetchJSON<AIChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     appendMessage: (id: string, role: "user" | "assistant", content: string) =>

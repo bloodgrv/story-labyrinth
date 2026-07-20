@@ -4,6 +4,10 @@ import type { CodexPendingChange } from "./codex.js";
 // null / undefined → treat as 'general' at the application layer.
 export type ChatType = "worldbuilding" | "research" | "editor" | "outline" | "brainstorm" | "general";
 
+// Guided-start interview depth, shared across every host that offers it (Brainstorm, WB, Outline
+// — P0.4 B0-B5). Prompt-shaping only, not a tracked interview state machine (confirmed with user).
+export type ChatStyle = "light" | "standard" | "grill";
+
 // Slugs for built-in World-Building Chat templates.
 // "outline" was removed here (P0.4 R5) — outline planning now belongs to its own dedicated
 // Outline chat (chatType: "outline"), per docs/Chat_Panel_Integrations_Design.md §1 ("Outline

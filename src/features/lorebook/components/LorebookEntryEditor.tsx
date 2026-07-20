@@ -9,19 +9,22 @@ import { Form } from "@/components/ui/form";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
 import { CodexProposalTray } from "@/features/chat/components/CodexProposalTray";
+import { GuidedSetupControl } from "@/features/chat/components/GuidedSetupControl";
 import { useChatsByStoryQuery, useChatTemplatesQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
 import { useStoryQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
 import { useNaturalEntryView } from "@/lib/useNaturalEntryView";
-import { codexApi, lorebookApi } from "@/services/api/client";
+import { codexApi, lorebookApi, chatsApi } from "@/services/api/client";
 import type { DocumentImportDraft } from "@/types/codex";
 import type { AIChat, LorebookEntry } from "@/types/story";
 import { randomUUID } from "@/utils/crypto";
 import { toastCRUD } from "@/utils/toastUtils";
-import type { WorldBuildingTemplateSlug } from "@/types/worldbuilding";
+import type { ChatStyle, WorldBuildingTemplateSlug } from "@/types/worldbuilding";
+import { getTemplate } from "@/types/worldbuilding";
 import { useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
+import { PsychProfilePanel } from "./PsychProfilePanel";
 import {
     AdvancedSettings,
     CodexHistoryPanel,
@@ -35,6 +38,16 @@ import {
     getDefaultFormValues
 } from "./form";
 import type { CreateEntryForm, LorebookCategory } from "./form";
+
+// Opening lines for WB's Guided Setup, per style — mirrors BrainstormTool.tsx's own OPENING_LINES
+// (P0.4 B5). Generic across templates (doesn't reference the template by name in the line itself;
+// the blurb above the control already does that) since a single template-aware sentence per style
+// covers all 5 templates without a 5×3 combinatorial table.
+const WB_OPENING_LINES: Record<ChatStyle, string> = {
+    light: "Let's develop this a bit — a few quick concrete questions.",
+    standard: "Let's develop this properly — interview me for what you need.",
+    grill: "Let's really dig in — grill me for the concrete details until you've got a full picture."
+};
 
 export interface LorebookEntryEditorProps {
     storyId?: string;
@@ -62,6 +75,7 @@ export interface LorebookEntryEditorProps {
 function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId?: string }) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
+    const [composerSeedText, setComposerSeedText] = useState<string | null>(null);
     const createMutation = useCreateChatMutation();
     const { data: templates = [] } = useChatTemplatesQuery();
     // Same query ChatList already runs internally — needed here too to resolve which WB chat a
@@ -114,6 +128,22 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
         );
     };
 
+    // P0.4 B5 — WB's guided-start style + Character template's opt-in psych module. Picking
+    // Grill-me on a Character-template chat also nudges the psych toggle on in the same request
+    // (design doc's "Grill-me defaults psych module ON") — a one-time nudge, not a lock; the
+    // toggle stays independently user-adjustable afterward.
+    const isCharacterTemplate = selectedChat?.templateSlug === "character_codex";
+    const handleStyleChange = (style: ChatStyle) => {
+        if (!selectedChat) return;
+        const data: Parameters<typeof chatsApi.update>[1] = { wbStyle: style };
+        if (style === "grill" && isCharacterTemplate) data.includePsychModule = true;
+        void chatsApi.update(selectedChat.id, data).then(setSelectedChat);
+    };
+    const handleTogglePsychModule = (checked: boolean) => {
+        if (!selectedChat) return;
+        void chatsApi.update(selectedChat.id, { includePsychModule: checked }).then(setSelectedChat);
+    };
+
     const renderTemplatePicker = () => (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -134,7 +164,22 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
 
     return (
         <div className="flex h-full border-l">
-            <div className="flex-1 h-full min-h-0 min-w-0">
+            <div className="flex-1 h-full min-h-0 min-w-0 flex flex-col">
+                {selectedChat && (
+                    <div className="p-3 pb-0">
+                        <GuidedSetupControl
+                            style={(selectedChat.wbStyle as ChatStyle) ?? "standard"}
+                            onStyleChange={handleStyleChange}
+                            blurb={`Develop this ${getTemplate(selectedChat.templateSlug as WorldBuildingTemplateSlug)?.name ?? "entry"} together — or run Guided setup for a structured interview.`}
+                            onGuidedSetup={style => setComposerSeedText(WB_OPENING_LINES[style])}
+                            extraToggle={
+                                isCharacterTemplate
+                                    ? { label: "Psych module", checked: selectedChat.includePsychModule ?? false, onChange: handleTogglePsychModule }
+                                    : undefined
+                            }
+                        />
+                    </div>
+                )}
                 {selectedChat ? (
                     <ChatInterface
                         storyId={storyId}
@@ -142,6 +187,7 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
                         selectedChat={selectedChat}
                         onChatUpdate={setSelectedChat}
                         initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
+                        initialComposerText={composerSeedText}
                     />
                 ) : (
                     <div className="flex items-center justify-center h-full flex-col gap-4 text-muted-foreground p-4">
@@ -286,6 +332,8 @@ export function LorebookEntryEditor({
                         {entry?.codexEnabled && entry.id && <CodexPendingChangesPanel entryId={entry.id} storyId={storyId} />}
 
                         {entry?.codexEnabled && entry.id && <CodexHistoryPanel entryId={entry.id} storyId={storyId} />}
+
+                        {entry?.category === "character" && entry.id && <PsychProfilePanel entry={entry} />}
 
                         <AdvancedSettings
                             control={form.control}

@@ -1,6 +1,6 @@
 # Story Nexus Fork — Current Backlog
 
-**Last updated:** 2026-07-20 (P0.4 B0-B4 done: Brainstorm Hub migrated to shared chat stack, Guided Setup, depth-adaptive propose, durable handoff/checklist tray)  
+**Last updated:** 2026-07-20 (P0.4 B5 done: WB + Outline guided-start, Character psych module)  
 **Purpose:** Single source of truth for **what’s left**, after implementation order got scrambled relative to the original Phase 0 list.  
 **Canonical live status also mirrored in:** `CLAUDE.md` (architecture + high-level “done” notes) and `DECISIONS.md` (load-bearing how/why).  
 **This file wins** when those conflict on *priority of remaining work*.
@@ -148,7 +148,7 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 ### P0.4 — Chat ↔ panel integrations (selection rework + host chats)
 
-**Status:** R0-R3 — ✅ Done (2026-07-20). R4/R5/R7/R8 — ✅ Done (2026-07-20, same day). B0-B4 (Brainstorm Hub) — ✅ Done (2026-07-20, same day). Design locked for WB + Editor + Outline + Brainstorm + Research + Notes desk + generalized pattern (2026-07-18); R6, B5, and the S/K tracks **not implemented**  
+**Status:** R0-R3 — ✅ Done (2026-07-20). R4/R5/R7/R8 — ✅ Done (2026-07-20, same day). B0-B4 (Brainstorm Hub) — ✅ Done (2026-07-20, same day). B5 (WB + Outline guided-start, Character psych module) — ✅ Done (2026-07-20, same day). Design locked for WB + Editor + Outline + Brainstorm + Research + Notes desk + generalized pattern (2026-07-18); R6 and the S/K tracks **not implemented**  
 **Canonical design:** `docs/Chat_Panel_Integrations_Design.md`
 
 **Doctrine:** Panel owns artifact; **chat governs** content; selection/focus owns span; Accept applies; no amnesiac one-shot as primary path.
@@ -158,6 +158,8 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 **R4/R5/R7/R8 shipped 2026-07-20, later the same day** — see `DECISIONS.md` "P0.4 R4/R5/R7/R8 — Lorebook Rework → WB, Dedicated Outline Chat, Outline Row Rework, WB Handoff" for the full load-bearing trail. Note: the backlog line below previously called R6-R7's `chatType` split "deliberately deferred — neither R0-R3 nor R4/R5/R8 strictly require it"; that was wrong for R7 specifically — Outline had no chat identity of its own (it was reusing `EditorChatRail` with `chatType="editor"`), so a real dedicated Outline chat (R5) was impossible without R7's split, which happened here as part of R5. **R6 (auto-insert/auto-accept toggle UI) stays deferred** — genuinely optional, every new proposal path here defaults to manual accept with no new toggle added. Found and fixed one real pre-existing bug along the way: `ReworkCard.tsx`'s trailing hint text was hardcoded chapter-specific ("...in the chapter"), misleading for the new Lorebook/Outline rework cases — now a `hostHint` prop varying per `FocusTarget.kind`. R4 shipped narrower than the design doc's host matrix: description-field sub-span rework only, not per-row structured-Codex-field (wardrobe/wounds/items) rework — cut for cost/value (3 components deep, no `entryId` threaded, low marginal value for short single-line fields), flagged as a fast-follow. Live-verified end to end except the actual model-generated `outline-proposal`/`lore-suggestion` fence content and the resulting "Open in WB" handoff — same "no reachable AI provider in this dev sandbox" limitation every session since R0-R3 has hit.
 
 **B0-B4 shipped 2026-07-20, still the same day** — see `DECISIONS.md` "P0.4 B0-B4 — Brainstorm Hub" for the full load-bearing trail. Migrated Brainstorm off a fully separate parallel chat implementation (own `ChatInterface`/`ChatList`/generation hook, never touching `chatContextService`) onto the shared stack with its own `chatType: "brainstorm"`. Confirmed with user via `AskUserQuestion` before building: B2's "playbook" depth is prompt-driven (Light/Standard/Grill-me system-prompt hints shaping ordinary chat), not a scripted ask/capture/confirm state machine — the only persisted "slot" concept is a fixed 5-entry known/unknown checklist (`brainstormSlots` table). Two new fences (`overview-proposal`, `handoff-packet`) persist immediately on parse as durable `brainstormChecklist` rows — a genuinely different status lifecycle (`pending→opened→done/dismissed`) than `codexPendingChanges`, since B4 requires Open/Send/Accept to perform the real write without clearing the Active queue. All four handoff destinations (Outline/WB/Notes/Research) live-verified end to end via manually-inserted checklist rows standing in for live model output (same AI-provider-unreachable limitation as every prior P0.3/P0.4 session). Found and fixed one real, previously-undiscovered bug along the way, unrelated to this feature's own code but blocking its Notes handoff: `POST /api/notes` never set the `NOT NULL` `updatedAt` column, silently 500ing on every note-creation path in the app (Notes tool's own "New Note" button included) — two-line fix, no caller behavior change.
+
+**B5 shipped 2026-07-20, still the same day** — see `DECISIONS.md` "P0.4 B5 — WB + Outline Guided-Start Playbooks + Character Psych Module" for the full load-bearing trail. User confirmed via `AskUserQuestion` to include Outline in this slice (its own locked spec didn't explicitly require guided-start UI, unlike WB's), for parity across all three playbook-style chats. `GuidedSetupControl.tsx` generalized (moved `features/brainstorm/` → `features/chat/`) so WB and Outline reuse the same shell with their own blurb/opening-lines/style-hint text (`aiChats.wbStyle`/`outlineStyle`, new `WB_STYLE_HINTS`/`OUTLINE_STYLE_HINTS`). WB's Character template gets an opt-in psych module (MBTI/Enneagram/blurb) via a new `psych-proposal` fence — deliberately **not** routed through `codexPendingChanges`/`codexSnapshots` (which stay concrete-state-only per CLAUDE.md's standing constraint); writes straight to `metadata.psychProfile` via the *existing* generic `PUT /api/lorebook/:id` route, no new server route needed. Found and fixed a real correctness bug affecting B0-B4's `brainstormStyle` too, not just B5's new columns: `ChatInterface.tsx`'s context-fetch effect never included any style/psych value in its dependency array, so changing style or the psych toggle updated the DB correctly but the component's own cached system-prompt context silently stayed stale for the next message until something else happened to refire the effect — fixed by adding the four style/psych fields to the dependency array (safe since every caller already passes a fresh chat object on change, not a mutation).
 
 | Slice | Description |
 |-------|-------------|
@@ -171,7 +173,7 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | R7 | ✅ Split `chatType` **editor** vs **outline** (separate chat lists) — done as part of R5, see note above |
 | R8 | ✅ Outline row "Rework in chat" (whole title+summary, not sub-span) + tray **Open in WB** from lore-suggestion cards, via the same same-tab `StoryContext.pendingLorebookSeed` pattern the Relationships graph's "Open entry" already used |
 | B0–B4 | ✅ **Brainstorm hub:** migrated to shared `aiChats`/`chatContextService`/`ChatInterface` stack (`chatType: "brainstorm"`); CTA+blurb+Guided setup+style dropdown (`GuidedSetupControl.tsx`); depth is prompt-driven (`STYLE_HINTS`), not a state machine, per fixed 5-slot known/unknown checklist (`brainstormSlots`); depth-adaptive `overview-proposal` (synopsis/note/opt-in memory) + `handoff-packet` (Outline/WB/Notes/Research, multi-per-reply) fences; durable tray checklist (`brainstormChecklist` table, `BrainstormChecklistTray.tsx`) — Open/Send/Accept perform the real write but only **Mark done** clears Active. WB handoff reuses `pendingLorebookSeed`; Outline/Research reuse new `StoryContext.pendingChatComposerSeed` + `ChatInterface`'s new `initialComposerText` prop; Notes handoff creates directly. Found/fixed a real pre-existing `POST /api/notes` bug (missing `updatedAt`) along the way. See `DECISIONS.md` "P0.4 B0-B4" |
-| B5 | WB/Outline domain playbooks (shared engine); **guided start = Brainstorm pattern**; character **psych module** (MBTI/Enneagram/blurb, Grill default on); locations per Locations_And_Maps — **not implemented** |
+| B5 | ✅ WB + Outline guided-start (shared `GuidedSetupControl.tsx`, per-host style hints, `wbStyle`/`outlineStyle` columns); Character template **psych module** (MBTI/Enneagram/blurb via new `psych-proposal` fence → `metadata.psychProfile`, Grill-me nudges the toggle on; deliberately outside `codexPendingChanges` — writing aid only, never Codex state). Location playbooks (per `Locations_And_Maps_Design.md`) **not included this pass** — still P3/unstarted, see that doc's own row below. See `DECISIONS.md` "P0.4 B5" |
 | S0–S5 | **Research:** Story/Global mode; web search+fetch; citations; save-as-note on request; opt-in lore/notes context; copy-friendly blocks |
 | K0–K5 | **Notes desk:** badges/filters/pin; optional `notes` chat; rework/split; promote tray (Mark done); import dump→Notes; N-gates for other chats |
 
@@ -261,12 +263,13 @@ P0.1, P0.2, P0.2b, and all of P0.3 (Notes/Outline "Core Bridge" N0-N4/O1-O4, C1 
 chat toggle, N5/N6 save-as-note + note-proposal, C2-C5 scanner-memory integration/distill button/
 scheduled scans/Codex auto-compile) are all done, along with P0.4's R0-R3 (Editor selection
 rework + Codex proposal tray), R4/R5/R7/R8 (Lorebook rework → WB, dedicated Outline chat +
-its own chatType split, outline row rework, WB handoff), and B0-B4 (Brainstorm Hub migrated to
-the shared chat stack, Guided Setup + depth-adaptive propose + durable handoff/checklist tray).
-Remaining work: P0.4's R6 (auto-insert/auto-accept toggle UI, genuinely deferred), B5 (WB/Outline
-domain playbooks), and the S/K tracks (Research web search, Notes desk polish) — any order, pick
-the highest-value one first unless the user redirects. P1 (Agent Framework Phase C, Relationship
-Graph G1.5+) and P2 bugs (see that section) are also open.
+its own chatType split, outline row rework, WB handoff), B0-B4 (Brainstorm Hub migrated to
+the shared chat stack, Guided Setup + depth-adaptive propose + durable handoff/checklist tray),
+and B5 (WB + Outline guided-start with the same shell, Character psych module).
+Remaining work: P0.4's R6 (auto-insert/auto-accept toggle UI, genuinely deferred) and the S/K
+tracks (Research web search, Notes desk polish) — any order, pick the highest-value one first
+unless the user redirects. P1 (Agent Framework Phase C, Relationship Graph G1.5+) and P2 bugs
+(see that section) are also open.
 Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 

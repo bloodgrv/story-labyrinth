@@ -6,12 +6,23 @@ import { Button } from "@/components/ui/button";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
 import { CodexProposalTray } from "@/features/chat/components/CodexProposalTray";
+import { GuidedSetupControl } from "@/features/chat/components/GuidedSetupControl";
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import type { ParsedLoreSuggestion } from "@/features/chat/services/parseLoreSuggestions";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { chatsApi } from "@/services/api/client";
 import type { AIChat } from "@/types/story";
+import type { ChatStyle } from "@/types/worldbuilding";
 import { OutlineProposalTray } from "./OutlineProposalTray";
+
+// Opening lines for Outline's Guided Setup, per style (P0.4 B5) — mirrors BrainstormTool.tsx's/
+// LorebookEntryEditor.tsx's own per-host opening-line maps.
+const OUTLINE_OPENING_LINES: Record<ChatStyle, string> = {
+    light: "Let's rough out the structure — just the high-level beats for now.",
+    standard: "Let's build out the structure — walk me through chapters and scenes.",
+    grill: "Let's plan this scene-by-scene — grill me on goal, conflict, and outcome for each."
+};
 
 const ChatErrorFallback = (error: Error, resetError: () => void) => (
     <div className="flex items-center justify-center h-full p-4">
@@ -136,9 +147,26 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
         </Button>
     );
 
+    // P0.4 B5 — Outline's guided-start style (no template/psych toggle, unlike WB — see
+    // LorebookEntryEditor.tsx's WorldBuildingChatPanel for that shape).
+    const handleStyleChange = (style: ChatStyle) => {
+        if (!selectedChat) return;
+        void chatsApi.update(selectedChat.id, { outlineStyle: style }).then(setSelectedChat);
+    };
+
     return (
         <div className="flex h-full">
-            <div className="flex-1 h-full min-h-0">
+            <div className="flex-1 h-full min-h-0 flex flex-col">
+                {selectedChat && (
+                    <div className="p-3 pb-0">
+                        <GuidedSetupControl
+                            style={(selectedChat.outlineStyle as ChatStyle) ?? "standard"}
+                            onStyleChange={handleStyleChange}
+                            blurb="Plan your story structure here — or run Guided setup for a structured interview."
+                            onGuidedSetup={style => setComposerSeedText(OUTLINE_OPENING_LINES[style])}
+                        />
+                    </div>
+                )}
                 {selectedChat ? (
                     <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[selectedChat.id]}>
                         <ChatInterface

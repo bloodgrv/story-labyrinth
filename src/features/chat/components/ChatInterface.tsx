@@ -18,6 +18,7 @@ import type { InitialReworkPayload } from "@/features/rework/pendingReworkStore"
 import { getActiveChapterEditor } from "@/lib/activeChapterEditorStore";
 import { useCreateNoteMutation } from "@/features/notes/hooks/useNotesQuery";
 import { NoteFormDialog } from "@/features/notes/components/NoteFormDialog";
+import { useUpdateLorebookMutation } from "@/features/lorebook/hooks/useLorebookQuery";
 import {
     useCreateOutlineItemMutation,
     useDeleteOutlineItemMutation,
@@ -33,6 +34,7 @@ import { NoteProposalCard } from "./NoteProposalCard";
 import { OutlineProposalCard } from "./OutlineProposalCard";
 import { ProposalCard } from "./ProposalCard";
 import { ProseProposalCard } from "./ProseProposalCard";
+import { PsychProposalCard } from "./PsychProposalCard";
 import { useChatMessageGeneration } from "../hooks/useChatMessageGeneration";
 import { useChatSystemPrompt } from "../hooks/useChatSystemPrompt";
 import { groupProposalsByMessage, useChatProposalsQuery } from "../hooks/useCodexProposalsQuery";
@@ -44,6 +46,7 @@ import type {
     ParsedOutlineEditProposal,
     ParsedOutlineReorderProposal
 } from "../services/parseOutlineProposals";
+import type { ParsedPsychProposal } from "../services/parsePsychProposal";
 
 type NonCreateOutlineProposal = ParsedOutlineEditProposal | ParsedOutlineReorderProposal | ParsedOutlineDeleteProposal;
 
@@ -107,6 +110,7 @@ export function ChatInterface({
     // below replace it) but never uses the Codex tray — it has no Codex write path at all, only
     // overview-proposal/handoff-packet (P0.4 B0-B4).
     const isBrainstormChat = promptType === "brainstorm";
+    const isWorldBuildingChat = promptType === "worldbuilding";
     const showContextSelector = !isEditorChat && !isOutlineChat && !isBrainstormChat;
     const forceStructuredContextOff = isEditorChat || isOutlineChat || isBrainstormChat;
     const usesCodexTray = isEditorChat || promptType === "worldbuilding" || isOutlineChat;
@@ -298,7 +302,26 @@ export function ChatInterface({
         return () => {
             cancelled = true;
         };
-    }, [selectedChat.id, includeNotes, includeOutline, includeMemory, includeLorebook, includeChapterSummaries, isBrainstormChat]);
+    }, [
+        selectedChat.id,
+        includeNotes,
+        includeOutline,
+        includeMemory,
+        includeLorebook,
+        includeChapterSummaries,
+        isBrainstormChat,
+        // Guided-start style + psych-module toggle (P0.4 B0-B5) live in the PARENT component
+        // (BrainstormTool/WorldBuildingChatPanel/OutlineChatRail), not local state here — without
+        // these in the dependency array, changing style/psych after the chat was first selected
+        // never refetched context, so the next message sent would silently use the stale
+        // system prompt until something else (e.g. a Notes/Outline toggle) happened to refire this
+        // effect. Each parent's handleStyleChange/handleTogglePsychModule passes a fresh chat
+        // object to onChatUpdate/setSelectedChat, so these values change reference correctly.
+        selectedChat.brainstormStyle,
+        selectedChat.wbStyle,
+        selectedChat.outlineStyle,
+        selectedChat.includePsychModule
+    ]);
 
     // Selection Rework Bridge context (docs/Chat_Panel_Integrations_Design.md §2.1) — kept
     // separate from the codexContext fetch effect above (rather than re-fetching context on every
@@ -399,6 +422,12 @@ export function ChatInterface({
     const [noteProposals, setNoteProposals] = useState<Record<string, ParsedNoteProposal>>({});
     const createNoteMutation = useCreateNoteMutation();
 
+    // P0.4 B5 — Character template's opt-in psych module. Same ephemeral-state posture as
+    // noteProposals above; only ever populated for WB chats since chatContextService.ts's
+    // PSYCH_MODULE_INSTRUCTIONS is only ever included in the WB system prompt.
+    const [psychProposals, setPsychProposals] = useState<Record<string, ParsedPsychProposal>>({});
+    const updateLorebookMutation = useUpdateLorebookMutation();
+
     // Outline chats only (P0.4 R5) — "create" proposals are persisted immediately (same mechanism
     // the retired bulk-Generate button used, see handleOutlineProposals below); edit/reorder/
     // delete stay ephemeral like prose/note proposals, keyed by messageId since a single reply can
@@ -487,7 +516,8 @@ export function ChatInterface({
                     })
                 )
             ).then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
-        }
+        },
+        onPsychProposal: (messageId, proposal) => setPsychProposals(prev => ({ ...prev, [messageId]: proposal }))
     });
 
     const dismissOutlineProposal = (messageId: string, index: number) =>
@@ -528,6 +558,35 @@ export function ChatInterface({
         if (!proposal || !storyId) return;
         createNoteMutation.mutate({ storyId, title: proposal.title, content: proposal.content, type: proposal.type });
         dismissNoteProposal(messageId);
+    };
+
+    const dismissPsychProposal = (messageId: string) =>
+        setPsychProposals(prev => {
+            const next = { ...prev };
+            delete next[messageId];
+            return next;
+        });
+
+    // P0.4 B5 — merges into the anchor entry's existing metadata rather than replacing it
+    // wholesale (metadata also holds unrelated relationships/importance/customFields — see
+    // schema.ts's lorebookEntries.metadata comment), via the same generic entry-update mutation
+    // every other lorebook edit uses. Never goes through codexPendingChanges/codexService, which
+    // stays concrete-state-only (see chatContextService.ts's PSYCH_MODULE_INSTRUCTIONS comment).
+    const handleAcceptPsych = (messageId: string) => {
+        const proposal = psychProposals[messageId];
+        const entryId = selectedChat.anchorEntryId;
+        if (!proposal || !entryId) return;
+        const entry = entryLookup.get(entryId);
+        updateLorebookMutation.mutate({
+            id: entryId,
+            data: {
+                metadata: {
+                    ...entry?.metadata,
+                    psychProfile: { ...entry?.metadata?.psychProfile, ...proposal }
+                }
+            }
+        });
+        dismissPsychProposal(messageId);
     };
 
     // N5 (Notes_Outline_Chat_Bridges_Design.md §4) — manual "Save message as note". Reuses
@@ -711,7 +770,9 @@ export function ChatInterface({
                     const proseProposal = proseProposals[messageId];
                     const noteProposal = noteProposals[messageId];
                     const outlineProposalsForMessage = outlineProposals[messageId];
-                    if (!proposals?.length && !proseProposal && !noteProposal && !outlineProposalsForMessage?.length) return null;
+                    const psychProposal = psychProposals[messageId];
+                    if (!proposals?.length && !proseProposal && !noteProposal && !outlineProposalsForMessage?.length && !psychProposal)
+                        return null;
                     return (
                         <>
                             {proposals?.map(proposal => {
@@ -750,6 +811,13 @@ export function ChatInterface({
                                     onReject={() => dismissOutlineProposal(messageId, index)}
                                 />
                             ))}
+                            {isWorldBuildingChat && psychProposal && (
+                                <PsychProposalCard
+                                    proposal={psychProposal}
+                                    onAccept={() => handleAcceptPsych(messageId)}
+                                    onReject={() => dismissPsychProposal(messageId)}
+                                />
+                            )}
                         </>
                     );
                 }}

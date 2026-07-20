@@ -4,14 +4,28 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { BrainstormChecklistTray } from "@/features/brainstorm/components/BrainstormChecklistTray";
-import { GuidedSetupControl, type BrainstormStyle } from "@/features/brainstorm/components/GuidedSetupControl";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
+import { GuidedSetupControl } from "@/features/chat/components/GuidedSetupControl";
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { LorebookProvider } from "@/features/lorebook/context/LorebookContext";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { chatsApi } from "@/services/api/client";
 import type { AIChat } from "@/types/story";
+import type { ChatStyle } from "@/types/worldbuilding";
+
+// Opening lines sent into the composer (not auto-sent — user still hits Send) when "Guided
+// setup" is clicked. Mirrors the depth each style's own system-prompt hint asks the model to
+// bring (chatContextService.ts's BRAINSTORM_STYLE_HINTS) — this doesn't run any interview logic
+// itself, it just starts the conversation in the right register (P0.4 B1/B2, confirmed
+// prompt-driven, not a tracked state machine). Moved here from GuidedSetupControl.tsx when that
+// component was generalized for WB/Outline reuse (P0.4 B5) — each host now owns its own opening
+// lines instead of the shared component hardcoding Brainstorm's.
+const OPENING_LINES: Record<ChatStyle, string> = {
+    light: "Let's rough out my story idea — keep it quick, just the essentials.",
+    standard: "Let's set up my project — walk me through the basics of premise, genre, characters, and setting.",
+    grill: "Let's do a full guided setup — grill me on the details until we've got a solid premise, genre, protagonist, setting, and central conflict nailed down."
+};
 
 const ChatErrorFallback = (error: Error, resetError: () => void) => (
     <div className="flex items-center justify-center h-full p-4">
@@ -71,7 +85,7 @@ export const BrainstormTool = () => {
         );
     };
 
-    const handleStyleChange = (style: BrainstormStyle) => {
+    const handleStyleChange = (style: ChatStyle) => {
         if (!selectedChat) return;
         void chatsApi.update(selectedChat.id, { brainstormStyle: style }).then(setSelectedChat);
     };
@@ -97,9 +111,10 @@ export const BrainstormTool = () => {
                     {selectedChat && (
                         <div className="p-4 pb-0">
                             <GuidedSetupControl
-                                style={(selectedChat.brainstormStyle as BrainstormStyle) ?? "standard"}
+                                style={(selectedChat.brainstormStyle as ChatStyle) ?? "standard"}
                                 onStyleChange={handleStyleChange}
-                                onStartGuidedSetup={setComposerSeedText}
+                                blurb="Start designing your project here — or run Guided setup for a structured interview."
+                                onGuidedSetup={style => setComposerSeedText(OPENING_LINES[style])}
                             />
                         </div>
                     )}

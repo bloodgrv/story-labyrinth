@@ -142,6 +142,9 @@ router.get(
 //   includeLorebook: boolean       — Brainstorm-only lorebook search opt-in (P0.4 B0-B4)
 //   includeChapterSummaries: bool  — Brainstorm-only chapter titles+summaries opt-in (P0.4 B0-B4)
 //   brainstormStyle: string        — Light|Standard|Grill-me (P0.4 B0-B4)
+//   wbStyle: string                — Light|Standard|Grill-me, worldbuilding chats (P0.4 B5)
+//   outlineStyle: string           — Light|Standard|Grill-me, outline chats (P0.4 B5)
+//   includePsychModule: boolean    — Character template's opt-in psych module (P0.4 B5)
 router.patch(
     "/:chatId",
     asyncHandler(async (req, res) => {
@@ -161,7 +164,10 @@ router.patch(
             includeMemory,
             includeLorebook,
             includeChapterSummaries,
-            brainstormStyle
+            brainstormStyle,
+            wbStyle,
+            outlineStyle,
+            includePsychModule
         } = req.body as {
             messages?: unknown[];
             title?: string;
@@ -173,6 +179,9 @@ router.patch(
             includeLorebook?: boolean;
             includeChapterSummaries?: boolean;
             brainstormStyle?: string;
+            wbStyle?: string;
+            outlineStyle?: string;
+            includePsychModule?: boolean;
         };
 
         let result = chat;
@@ -197,6 +206,9 @@ router.patch(
         if (includeLorebook !== undefined) metaFields.includeLorebook = includeLorebook;
         if (includeChapterSummaries !== undefined) metaFields.includeChapterSummaries = includeChapterSummaries;
         if (brainstormStyle !== undefined) metaFields.brainstormStyle = brainstormStyle;
+        if (wbStyle !== undefined) metaFields.wbStyle = wbStyle;
+        if (outlineStyle !== undefined) metaFields.outlineStyle = outlineStyle;
+        if (includePsychModule !== undefined) metaFields.includePsychModule = includePsychModule;
 
         if (Object.keys(metaFields).length > 0) {
             result = await updateMeta(
@@ -211,6 +223,9 @@ router.patch(
                     includeLorebook?: boolean;
                     includeChapterSummaries?: boolean;
                     brainstormStyle?: string;
+                    wbStyle?: string;
+                    outlineStyle?: string;
+                    includePsychModule?: boolean;
                 }
             );
         }

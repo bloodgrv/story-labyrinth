@@ -183,8 +183,23 @@ export const aiChats = sqliteTable(
         // Light | Standard | Grill-me — shapes how deeply the model interviews the user in a
         // Brainstorm chat (docs/Chat_Panel_Integrations_Design.md §5 "Style dropdown"). Confirmed
         // with user as prompt-shaping only, not a tracked interview state machine — see
-        // chatContextService.ts's STYLE_HINTS. Ignored for any other chatType.
-        brainstormStyle: text("brainstormStyle").notNull().default("standard") // 'light' | 'standard' | 'grill'
+        // chatContextService.ts's BRAINSTORM_STYLE_HINTS. Ignored for any other chatType.
+        brainstormStyle: text("brainstormStyle").notNull().default("standard"), // 'light' | 'standard' | 'grill'
+        // Same guided-start style concept as brainstormStyle, extended to WB and Outline chats
+        // (P0.4 B5, docs/Chat_Panel_Integrations_Design.md §1's "same guided-start UX model").
+        // Kept as separate columns rather than one shared "style" column so each chatType's own
+        // read stays a simple, ungated column access in chatContextService.ts's getChatContext —
+        // matches the existing convention of per-purpose typed columns over a generic shared one.
+        wbStyle: text("wbStyle").notNull().default("standard"), // 'light' | 'standard' | 'grill' — worldbuilding chats only
+        outlineStyle: text("outlineStyle").notNull().default("standard"), // 'light' | 'standard' | 'grill' — outline chats only
+        // Opt-in for the Character template's psych module (MBTI + Enneagram + freeform blurb,
+        // docs/Chat_Panel_Integrations_Design.md §1's "Character playbook — psych module").
+        // Explicitly NOT Codex state — never read by codexService.ts, stored instead on the
+        // anchor entry's own metadata.psychProfile (see chatContextService.ts's PSYCH_MODULE_
+        // INSTRUCTIONS and ChatInterface.tsx's handleAcceptPsych). Default false; only ever
+        // offered to the model when the chat's own templateSlug is "character_codex" AND it has
+        // an anchorEntryId (nowhere to attach a proposal otherwise) — see getChatContext.
+        includePsychModule: integer("includePsychModule", { mode: "boolean" }).notNull().default(false)
     },
     table => ({
         storyIdIdx: index("chat_story_id_idx").on(table.storyId),

@@ -104,6 +104,13 @@ export interface AIChat extends BaseEntity {
     // Light | Standard | Grill-me — Brainstorm's interview-depth style (P0.4 B2). Defaults
     // 'standard' server-side; ignored for any other chatType.
     brainstormStyle?: string;
+    // Same guided-start style concept, extended to WB and Outline chats (P0.4 B5) — each ignored
+    // outside its own chatType. Defaults 'standard' server-side.
+    wbStyle?: string;
+    outlineStyle?: string;
+    // Opt-in for the Character template's psych module (P0.4 B5) — only meaningful for
+    // worldbuilding chats whose templateSlug is "character_codex". Defaults false server-side.
+    includePsychModule?: boolean;
 }
 
 export interface ChatMessage {
@@ -215,6 +222,12 @@ export interface LorebookEntry extends BaseEntity {
             description?: string;
         }>;
         customFields?: Record<string, unknown>;
+        // Character template's opt-in psych module (P0.4 B5, docs/Chat_Panel_Integrations_Design.md
+        // §1's "Character playbook — psych module") — MBTI + Enneagram + freeform blurb, derived
+        // from a chat interview then propose→accept (ChatInterface.tsx's psych-proposal handling,
+        // PsychProfilePanel.tsx for display). Deliberately NOT part of codexState — writing aid
+        // only, never scanner-enforced, never a continuity "law" pipeline.
+        psychProfile?: { mbti?: string; enneagram?: string; blurb?: string };
     };
     isDisabled?: boolean;
     // Codex extension — null/undefined means plain lorebook entry

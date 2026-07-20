@@ -188,17 +188,47 @@ const BRAINSTORM_FRAMING =
 
 // Confirmed with user: depth is purely a prompt-shaping hint the model follows in ordinary
 // multi-turn chat, NOT a tracked ask/capture/confirm state machine — see BRAINSTORM_SLOTS
-// (src/types/brainstorm.ts) for the only persisted "slot" concept.
-const LIGHT_STYLE_HINT =
+// (src/types/brainstorm.ts) for the only persisted "slot" concept. P0.4 B5 extended this same
+// posture to WB/Outline (WB_STYLE_HINTS/OUTLINE_STYLE_HINTS below) — each host gets its own hint
+// text (not shared data) since "propose a short synopsis" only makes sense for Brainstorm, but
+// all three follow the same Light/Standard/Grill-me shape, folded in via resolveStyleHint.
+const BRAINSTORM_LIGHT_STYLE_HINT =
     "\n\nStyle: Light. Keep it brief — a handful of high-level questions, propose a short synopsis and a " +
     "thin handoff or two once the basics are clear. Don't push for more depth than the user is offering.";
-const STANDARD_STYLE_HINT =
+const BRAINSTORM_STANDARD_STYLE_HINT =
     "\n\nStyle: Standard. Ask enough follow-up questions to get a solid synopsis plus a useful overview note, " +
     "and propose Outline/World-Building handoffs once you have enough concrete material for them to work with.";
-const GRILL_STYLE_HINT =
+const BRAINSTORM_GRILL_STYLE_HINT =
     "\n\nStyle: Grill-me. Interview thoroughly — ask harder, more specific follow-up questions, don't accept " +
     "vague answers without probing once, and aim for richer overview notes and more complete handoffs before " +
     "moving on.";
+const BRAINSTORM_STYLE_HINTS: Record<string, string> = {
+    light: BRAINSTORM_LIGHT_STYLE_HINT,
+    standard: BRAINSTORM_STANDARD_STYLE_HINT,
+    grill: BRAINSTORM_GRILL_STYLE_HINT
+};
+
+// P0.4 B5 — World-Building's guided-start depth (docs/Chat_Panel_Integrations_Design.md §1).
+const WB_STYLE_HINTS: Record<string, string> = {
+    light: "\n\nStyle: Light. Ask a handful of concrete questions and propose a description/Codex update once " +
+        "you have enough — don't push past what the user is offering.",
+    standard: "\n\nStyle: Standard. Interview thoroughly enough to build a solid concrete profile before " +
+        "proposing — appearance, history, and role in the story, not just a first impression.",
+    grill: "\n\nStyle: Grill-me. Dig into specifics — appearance, history, mannerisms, relationships — and " +
+        "don't settle for a vague answer without asking a follow-up first."
+};
+
+// P0.4 B5 — Outline's guided-start depth.
+const OUTLINE_STYLE_HINTS: Record<string, string> = {
+    light: "\n\nStyle: Light. Keep it to quick, high-level beats — don't push for scene-level detail unless " +
+        "the user asks.",
+    standard: "\n\nStyle: Standard. Aim for a solid chapter/scene breakdown — enough structure to write from, " +
+        "not just a logline per chapter.",
+    grill: "\n\nStyle: Grill-me. Work scene-by-scene — goal, conflict, and outcome for each — and push for " +
+        "specifics before proposing a chapter/scene as settled."
+};
+
+const resolveStyleHint = (hints: Record<string, string>, style?: string): string => hints[style ?? "standard"] ?? hints.standard;
 
 // The Editor chat's only mechanism for actually changing the manuscript — mirrors the
 // Codex-proposal convention but for prose. Parsed client-side (parseProseProposal.ts) and
@@ -230,24 +260,44 @@ const PROSE_PROPOSAL_INSTRUCTIONS =
     "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user " +
     "sees them, so don't reference the blocks themselves in your prose.";
 
+// P0.4 B5 — Character template's opt-in psych module (docs/Chat_Panel_Integrations_Design.md §1
+// "Character playbook — psych module"). Only ever folded into the system prompt when the chat's
+// own includePsychModule toggle is on AND it's anchored to an entry (see getChatContext) — the
+// model is never even told this exists otherwise. Deliberately separate from
+// CODEX_PROPOSAL_INSTRUCTIONS: this is NOT Codex state (see schema.ts's includePsychModule
+// comment) — the ```psych-proposal fence is parsed client-side (parsePsychProposal.ts) into an
+// ephemeral accept/reject card, same posture as note-proposal, and Accept merges directly into
+// the anchor entry's own metadata.psychProfile via the existing generic lorebook update route
+// (ChatInterface.tsx's handleAcceptPsych) — never through codexPendingChanges/codexService,
+// which stays concrete-state-only.
+const PSYCH_MODULE_INSTRUCTIONS =
+    "This character has an opt-in psychology module enabled — a writing aid, not tracked Codex state and " +
+    "never enforced by any consistency check. Derive it from what the user actually says in this conversation, " +
+    "not assumptions — never propose a psych profile in your very first reply before any real interview has " +
+    "happened.\n\n" +
+    "To propose a psychology profile (any subset of the fields — propose only what's actually been discussed), " +
+    "include a fenced block in this exact form:\n\n" +
+    "```psych-proposal\n" +
+    '{"mbti": "...", "enneagram": "...", "blurb": "a few sentences of freeform psychological description"}\n' +
+    "```\n\n" +
+    "Propose at most one psych-proposal per reply.";
+
 // Assemble the effective system prompt for a chat: chat-type framing + template hint (World-
 // Building only). Extend the framing constants above — not the template catalogue — when
 // adding further global system instructions.
-const STYLE_HINTS: Record<string, string> = { light: LIGHT_STYLE_HINT, standard: STANDARD_STYLE_HINT, grill: GRILL_STYLE_HINT };
-
 const buildSystemPrompt = (
     chatType: ChatType,
     templateSlug: string | null,
-    brainstormStyle?: string,
-    includeMemory?: boolean
+    style?: string,
+    includeMemory?: boolean,
+    includePsychModule?: boolean
 ): string => {
     if (chatType === "editor") return PROSE_PROPOSAL_INSTRUCTIONS;
-    if (chatType === "outline") return OUTLINE_FRAMING;
+    if (chatType === "outline") return OUTLINE_FRAMING + resolveStyleHint(OUTLINE_STYLE_HINTS, style);
     if (chatType === "brainstorm") {
-        const styleHint = STYLE_HINTS[brainstormStyle ?? "standard"] ?? STANDARD_STYLE_HINT;
         return (
             BRAINSTORM_FRAMING +
-            styleHint +
+            resolveStyleHint(BRAINSTORM_STYLE_HINTS, style) +
             "\n\n" +
             OVERVIEW_PROPOSAL_INSTRUCTIONS(includeMemory === true) +
             "\n\n" +
@@ -260,7 +310,9 @@ const buildSystemPrompt = (
     }
 
     const template = templateSlug ? getTemplate(templateSlug as Parameters<typeof getTemplate>[0]) : undefined;
-    return template?.systemPromptHint ? `${WORLDBUILDING_FRAMING}\n\n${template.systemPromptHint}` : WORLDBUILDING_FRAMING;
+    const base = template?.systemPromptHint ? `${WORLDBUILDING_FRAMING}\n\n${template.systemPromptHint}` : WORLDBUILDING_FRAMING;
+    const withStyle = base + resolveStyleHint(WB_STYLE_HINTS, style);
+    return templateSlug === "character_codex" && includePsychModule ? `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}` : withStyle;
 };
 
 // `excludeIds` keeps anchor/related entries (resolveAnchorAndRelated, below) from being listed
@@ -579,6 +631,16 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     const isBrainstorm = chatType === "brainstorm";
     const includeChapterSummaries = chat.includeChapterSummaries === true;
     const includeLorebook = chat.includeLorebook === true;
+    // P0.4 B5 — each host's own guided-start style column (mirrors chat.brainstormStyle's
+    // posture: a plain column read, ignored for every other chatType). Character psych module is
+    // only ever offered when this chat is also anchored to an entry — an unanchored WB chat has
+    // nowhere to attach a psych-proposal Accept, so the model is never even told the fence exists.
+    const style =
+        chatType === "brainstorm" ? chat.brainstormStyle
+        : chatType === "worldbuilding" ? chat.wbStyle
+        : chatType === "outline" ? chat.outlineStyle
+        : undefined;
+    const includePsychModule = chat.includePsychModule === true && !!chat.anchorEntryId;
 
     // Only build a non-default entityTypes array when a bridge toggle is actually on — search()/
     // hybridSearch's own DEFAULT_SEARCH_ENTITY_TYPES stays the single source of truth for
@@ -635,7 +697,7 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     ]);
 
     return {
-        systemPrompt: buildSystemPrompt(chatType, chat.templateSlug, chat.brainstormStyle, includeMemory),
+        systemPrompt: buildSystemPrompt(chatType, chat.templateSlug, style, includeMemory, includePsychModule),
         pendingProposals,
         projectSynopsis: storyRows[0]?.synopsis ?? null,
         relevantCodexEntries: [...anchorEntries, ...searchCodexEntries],

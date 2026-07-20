@@ -16,6 +16,8 @@ import type { ParsedOutlineProposal } from "../services/parseOutlineProposals";
 import { parseOutlineProposals } from "../services/parseOutlineProposals";
 import { parseOverviewProposals } from "../services/parseOverviewProposals";
 import { parseProseProposal } from "../services/parseProseProposal";
+import type { ParsedPsychProposal } from "../services/parsePsychProposal";
+import { parsePsychProposal } from "../services/parsePsychProposal";
 import { useCreateProposalMutation } from "./useCodexProposalsQuery";
 import type { HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
 
@@ -48,6 +50,10 @@ interface UseChatMessageGenerationParams {
     // Called with every handoff in a reply's ```handoff-packet block (Brainstorm chats only,
     // P0.4 B0-B4). Same "persist immediately" posture as onOverviewProposal above.
     onHandoffPackets?: (messageId: string, packets: HandoffPacket[]) => void;
+    // Called when a reply contains a ```psych-proposal block (WB Character-template chats only,
+    // P0.4 B5 — see chatContextService.ts's PSYCH_MODULE_INSTRUCTIONS). Not persisted server-side
+    // — ephemeral until Accept merges it into the anchor entry's own metadata.psychProfile.
+    onPsychProposal?: (messageId: string, proposal: ParsedPsychProposal) => void;
 }
 
 interface UseChatMessageGenerationReturn {
@@ -73,7 +79,8 @@ export const useChatMessageGeneration = ({
     onOutlineProposals,
     onLoreSuggestions,
     onOverviewProposal,
-    onHandoffPackets
+    onHandoffPackets,
+    onPsychProposal
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
     const [isSending, setIsSending] = useState(false);
     const { generateWithPrompt } = useGenerateWithPrompt();
@@ -112,7 +119,8 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterOutlineStrip, proposals: outlineProposals } = parseOutlineProposals(afterNoteStrip);
                 const { cleanedContent: afterLoreStrip, suggestions: loreSuggestions } = parseLoreSuggestions(afterOutlineStrip);
                 const { cleanedContent: afterOverviewStrip, proposal: overviewProposal } = parseOverviewProposals(afterLoreStrip);
-                const { cleanedContent, packets: handoffPackets } = parseHandoffPackets(afterOverviewStrip);
+                const { cleanedContent: afterHandoffStrip, packets: handoffPackets } = parseHandoffPackets(afterOverviewStrip);
+                const { cleanedContent, psychProposal } = parsePsychProposal(afterHandoffStrip);
 
                 const afterAssistantMessage = await chatsApi.appendMessage(selectedChat.id, "assistant", cleanedContent);
                 onChatUpdate(afterAssistantMessage);
@@ -133,6 +141,7 @@ export const useChatMessageGeneration = ({
                 if (loreSuggestions.length > 0 && assistantMessage) onLoreSuggestions?.(assistantMessage.id, loreSuggestions);
                 if (overviewProposal && assistantMessage) onOverviewProposal?.(assistantMessage.id, overviewProposal);
                 if (handoffPackets.length > 0 && assistantMessage) onHandoffPackets?.(assistantMessage.id, handoffPackets);
+                if (psychProposal && assistantMessage) onPsychProposal?.(assistantMessage.id, psychProposal);
             });
 
             if (error) {
@@ -157,7 +166,8 @@ export const useChatMessageGeneration = ({
             onOutlineProposals,
             onLoreSuggestions,
             onOverviewProposal,
-            onHandoffPackets
+            onHandoffPackets,
+            onPsychProposal
         ]
     );
 
