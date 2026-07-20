@@ -17,7 +17,8 @@ const JOB_TYPE_LABELS: Record<AgentJob["jobType"], string> = {
     rag_scan_chapter: "Chapter scan",
     rag_scan_story: "Story scan",
     prune_history: "History cleanup",
-    distill_memory: "Memory distillation"
+    distill_memory: "Memory distillation",
+    suggest_codex_updates: "Codex update suggestions"
 };
 
 interface JobRowProps {

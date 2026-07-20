@@ -5,6 +5,7 @@ import { buildClientForFeature } from "./aiClientFactory.js";
 import { db, schema } from "../db/client.js";
 import { chunkText } from "./embeddingService.js";
 import { extractTextFromLexical } from "./entityDetector.js";
+import { listMemories } from "./agentMemoriesService.js";
 import { search } from "./ragIndexService.js";
 import type { SearchResult } from "./ragRepository.js";
 import {
@@ -86,6 +87,10 @@ const gatherContext = async (storyId: string, chapterId: string, chapterChunks: 
 
 // ── LLM prompt + response parsing ────────────────────────────────────────────────
 
+// Base prompt (no Project Memory). Kept as a separate constant from
+// SCANNER_SYSTEM_PROMPT_WITH_MEMORY below rather than always interpolating an empty section, so
+// a scan that didn't opt into memory reads exactly as it always has (no behavior change for the
+// default path) — see C3, docs/CURRENT_BACKLOG.md P0.3.
 const SCANNER_SYSTEM_PROMPT = `You are a fiction-continuity checker. You are given:
 1. The text of a chapter from a story.
 2. Reference context retrieved from the story's Codex (character/location/item state) and other chapters.
@@ -111,9 +116,51 @@ Return ONLY a valid JSON array. Each element must have exactly these fields:
 "relatedEntityName" is the name of the specific character/location/item this issue concerns, exactly as it appears
 in the reference context, or null if not applicable.`;
 
+// C3 (docs/CURRENT_BACKLOG.md P0.3) — opt-in variant that also includes the story's active
+// Project Memory (agentMemories, Phase B) as reference context, for catching contradictions
+// against approved project facts the Codex doesn't (yet) encode. Only used when the caller
+// passes includeMemory: true (per-scan opt-in, default OFF — see runChapterScan below).
+const SCANNER_SYSTEM_PROMPT_WITH_MEMORY = `You are a fiction-continuity checker. You are given:
+1. The text of a chapter from a story.
+2. Reference context retrieved from the story's Codex (character/location/item state), other chapters, and approved Project Memory (established facts/events/rules the user has already approved).
+
+Compare the chapter text against the reference context and identify factual inconsistencies. Classify each as:
+- "contradiction": the chapter states something that directly contradicts the reference context (e.g. eye color, name, a fact stated elsewhere, or an approved Project Memory fact)
+- "state_mismatch": the chapter's description of a character/item/location's physical state doesn't match the Codex's currently tracked state (e.g. wardrobe, wounds, appearance)
+- "timeline": the chapter implies a sequence or duration of events that conflicts with the reference context
+- "other": any other consistency issue worth flagging that doesn't fit the above
+
+Project Memory is approved but secondary to the Codex — if Project Memory and the Codex ever disagree with each other, do not flag it as a chapter issue (that's a project-memory/Codex sync problem, out of scope here).
+
+Only flag genuine, clearly-supported inconsistencies. Do not invent facts, and do not flag stylistic issues or matters of taste.
+If nothing is wrong, return an empty array.
+
+Return ONLY a valid JSON array. Each element must have exactly these fields:
+{
+  "issueType": "contradiction" | "state_mismatch" | "timeline" | "other",
+  "severity": "low" | "medium" | "high",
+  "description": string,
+  "evidence": [ { "source": "chapter" | "codex" | "memory", "label": string, "excerpt": string } ],
+  "suggestedFix": string | null,
+  "relatedEntityName": string | null
+}
+"relatedEntityName" is the name of the specific character/location/item this issue concerns, exactly as it appears
+in the reference context, or null if not applicable.`;
+
+// Active Project Memory for a story, formatted for direct inclusion in the scanner prompt —
+// mirrors chatContextService.ts's resolveMemories framing (approved facts, no per-item gate
+// beyond status: "active"), but reads every active memory rather than top-K RAG search since a
+// scan already processes the whole chapter, not a single conversational turn.
+const gatherMemoryContext = async (storyId: string): Promise<string> => {
+    const memories = await listMemories({ storyId, status: "active" });
+    if (memories.length === 0) return "";
+    return memories.map(m => `[Project Memory: ${m.title} (${m.category})]\n${m.body}`).join("\n\n---\n\n");
+};
+
 const buildPromptMessages = (
     chapterText: string,
-    context: LabeledResult[]
+    context: LabeledResult[],
+    memoryContext: string
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
     const contextBlock = context.length
         ? context
@@ -121,13 +168,16 @@ const buildPromptMessages = (
               .join("\n\n---\n\n")
         : "(no related Codex entries or prior chapters found)";
 
+    const referenceSection = memoryContext
+        ? `=== REFERENCE CONTEXT (Codex + prior chapters) ===\n${contextBlock.slice(0, MAX_CONTEXT_CHARS)}\n\n` +
+          `=== PROJECT MEMORY (approved facts) ===\n${memoryContext.slice(0, MAX_CONTEXT_CHARS)}`
+        : `=== REFERENCE CONTEXT (Codex + prior chapters) ===\n${contextBlock.slice(0, MAX_CONTEXT_CHARS)}`;
+
     return [
-        { role: "system", content: SCANNER_SYSTEM_PROMPT },
+        { role: "system", content: memoryContext ? SCANNER_SYSTEM_PROMPT_WITH_MEMORY : SCANNER_SYSTEM_PROMPT },
         {
             role: "user",
-            content:
-                `=== CHAPTER TEXT ===\n${chapterText.slice(0, MAX_CHAPTER_CHARS)}\n\n` +
-                `=== REFERENCE CONTEXT (Codex + prior chapters) ===\n${contextBlock.slice(0, MAX_CONTEXT_CHARS)}`
+            content: `=== CHAPTER TEXT ===\n${chapterText.slice(0, MAX_CHAPTER_CHARS)}\n\n${referenceSection}`
         }
     ];
 };
@@ -149,7 +199,8 @@ const parseEvidence = (raw: unknown): RagScanEvidence[] => {
     return raw
         .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
         .map(e => ({
-            source: e.source === "codex" ? ("codex" as const) : ("chapter" as const),
+            source:
+                e.source === "codex" ? ("codex" as const) : e.source === "memory" ? ("memory" as const) : ("chapter" as const),
             label: typeof e.label === "string" ? e.label : "",
             excerpt: typeof e.excerpt === "string" ? e.excerpt : ""
         }))
@@ -237,8 +288,10 @@ export const runChapterScan = async (params: {
     chapterId: string;
     client: OpenAI;
     model: string;
+    // C3 — opt-in per-scan flag; default false keeps the prompt/context identical to before.
+    includeMemory?: boolean;
 }): Promise<RagScanIssue[]> => {
-    const { scanId, storyId, chapterId, client, model } = params;
+    const { scanId, storyId, chapterId, client, model, includeMemory = false } = params;
 
     const [chapter] = await db.select().from(schema.chapters).where(eq(schema.chapters.id, chapterId));
     if (!chapter) throw new Error(`Chapter not found: ${chapterId}`);
@@ -247,11 +300,14 @@ export const runChapterScan = async (params: {
     if (!chapterText.trim()) return [];
 
     const chapterChunks = chunkText(chapterText);
-    const context = await gatherContext(storyId, chapterId, chapterChunks);
+    const [context, memoryContext] = await Promise.all([
+        gatherContext(storyId, chapterId, chapterChunks),
+        includeMemory ? gatherMemoryContext(storyId) : Promise.resolve("")
+    ]);
 
     const completion = await client.chat.completions.create({
         model,
-        messages: buildPromptMessages(chapterText, context),
+        messages: buildPromptMessages(chapterText, context, memoryContext),
         temperature: 0,
         max_tokens: 2048
     });
@@ -280,7 +336,7 @@ export const runChapterScan = async (params: {
 // ── Public API ─────────────────────────────────────────────────────────────────
 
 // Scan a single chapter synchronously. Throws if no 'rag_scanner' or global AI endpoint is configured.
-export const scanChapter = async (chapterId: string): Promise<{ scan: RagScan; issues: RagScanIssue[] }> => {
+export const scanChapter = async (chapterId: string, includeMemory = false): Promise<{ scan: RagScan; issues: RagScanIssue[] }> => {
     const [chapter] = await db
         .select({ id: schema.chapters.id, storyId: schema.chapters.storyId })
         .from(schema.chapters)
@@ -291,7 +347,7 @@ export const scanChapter = async (chapterId: string): Promise<{ scan: RagScan; i
 
     const scan = await createScan({ storyId: chapter.storyId, scope: "chapter", chapterId, totalChapters: 1 });
     try {
-        const issues = await runChapterScan({ scanId: scan.id, storyId: chapter.storyId, chapterId, client, model });
+        const issues = await runChapterScan({ scanId: scan.id, storyId: chapter.storyId, chapterId, client, model, includeMemory });
         const completed = await completeScan(scan.id, { model, processedChapters: 1 });
         return { scan: completed, issues };
     } catch (error) {
@@ -314,7 +370,7 @@ export const listOrderedChapterIds = async (storyId: string): Promise<string[]> 
 // Kick off a whole-story scan: chapters are scanned one at a time in the background so the
 // caller gets an immediate response and polls `getScanWithIssues(scan.id)` for progress.
 // Throws immediately (before creating the scan row) if no scanner endpoint is configured.
-export const scanStory = async (storyId: string): Promise<RagScan> => {
+export const scanStory = async (storyId: string, includeMemory = false): Promise<RagScan> => {
     const { client, model } = await requireScannerConnection();
 
     const chapterIds = await listOrderedChapterIds(storyId);
@@ -325,7 +381,7 @@ export const scanStory = async (storyId: string): Promise<RagScan> => {
         try {
             for (const [index, chapterId] of chapterIds.entries()) {
                 try {
-                    await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model });
+                    await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory });
                 } catch (error) {
                     console.error(`RAG scan: chapter ${chapterId} failed:`, (error as Error).message);
                 }

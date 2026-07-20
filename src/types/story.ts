@@ -15,6 +15,9 @@ export interface Story extends BaseEntity {
     language: string;
     synopsis?: string;
     seriesId?: string;
+    // C4 (docs/CURRENT_BACKLOG.md P0.3) — opt-in for jobRunner.ts's daily unattended rag_scan_story
+    // schedule tick. Defaults false server-side.
+    unattendedScanEnabled?: boolean;
 }
 
 // Series type

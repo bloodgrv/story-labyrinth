@@ -7,6 +7,8 @@ import { chatsApi } from "@/services/api/client";
 import type { AIChat, AllowedModel, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { parseCodexProposals } from "../services/parseCodexProposals";
+import type { ParsedNoteProposal } from "../services/parseNoteProposals";
+import { parseNoteProposals } from "../services/parseNoteProposals";
 import { parseProseProposal } from "../services/parseProseProposal";
 import { useCreateProposalMutation } from "./useCodexProposalsQuery";
 
@@ -20,6 +22,9 @@ interface UseChatMessageGenerationParams {
     // contains a ```prose-proposal block (Editor chats only — see chatContextService.ts).
     // Not persisted server-side, so the caller owns tracking it (see ChatInterface.tsx).
     onProseProposal?: (messageId: string, proposal: string) => void;
+    // Called when a reply contains a ```note-proposal block (N6, non-Editor chats only — see
+    // chatContextService.ts's NOTE_PROPOSAL_INSTRUCTIONS). Not persisted server-side either.
+    onNoteProposal?: (messageId: string, proposal: ParsedNoteProposal) => void;
 }
 
 interface UseChatMessageGenerationReturn {
@@ -40,7 +45,8 @@ export const useChatMessageGeneration = ({
     selectedModel,
     onChatUpdate,
     createPromptConfig,
-    onProseProposal
+    onProseProposal,
+    onNoteProposal
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
     const [isSending, setIsSending] = useState(false);
     const { generateWithPrompt } = useGenerateWithPrompt();
@@ -74,7 +80,8 @@ export const useChatMessageGeneration = ({
                 if (!fullResponse) return;
 
                 const { cleanedContent: afterCodexStrip, proposals } = parseCodexProposals(fullResponse);
-                const { cleanedContent, proseProposal } = parseProseProposal(afterCodexStrip);
+                const { cleanedContent: afterProseStrip, proseProposal } = parseProseProposal(afterCodexStrip);
+                const { cleanedContent, noteProposal } = parseNoteProposals(afterProseStrip);
 
                 const afterAssistantMessage = await chatsApi.appendMessage(selectedChat.id, "assistant", cleanedContent);
                 onChatUpdate(afterAssistantMessage);
@@ -90,6 +97,7 @@ export const useChatMessageGeneration = ({
                 );
 
                 if (proseProposal && assistantMessage) onProseProposal?.(assistantMessage.id, proseProposal);
+                if (noteProposal && assistantMessage) onNoteProposal?.(assistantMessage.id, noteProposal);
             });
 
             if (error) {
@@ -109,7 +117,8 @@ export const useChatMessageGeneration = ({
             reset,
             createProposalMutation,
             onChatUpdate,
-            onProseProposal
+            onProseProposal,
+            onNoteProposal
         ]
     );
 

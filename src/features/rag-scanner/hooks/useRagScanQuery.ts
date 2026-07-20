@@ -76,8 +76,8 @@ export const useScanJobWithInvalidation = (jobId: string | null, storyId: string
 export const useTriggerChapterScanMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ storyId, chapterId }: { storyId: string; chapterId: string }) =>
-            agentJobsApi.enqueue({ jobType: "rag_scan_chapter", storyId, entityId: chapterId }),
+        mutationFn: ({ storyId, chapterId, includeMemory }: { storyId: string; chapterId: string; includeMemory?: boolean }) =>
+            agentJobsApi.enqueue({ jobType: "rag_scan_chapter", storyId, entityId: chapterId, payload: { includeMemory: !!includeMemory } }),
         onSuccess: (job, { storyId }) => {
             invalidateStoryScanData(queryClient, storyId);
             toast.success(job.status === "running" ? "A scan for this chapter is already running" : "Chapter scan queued");
@@ -89,12 +89,34 @@ export const useTriggerChapterScanMutation = () => {
 export const useTriggerStoryScanMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (storyId: string) => agentJobsApi.enqueue({ jobType: "rag_scan_story", storyId }),
-        onSuccess: (job, storyId) => {
+        mutationFn: ({ storyId, includeMemory }: { storyId: string; includeMemory?: boolean }) =>
+            agentJobsApi.enqueue({ jobType: "rag_scan_story", storyId, payload: { includeMemory: !!includeMemory } }),
+        onSuccess: (job, { storyId }) => {
             invalidateStoryScanData(queryClient, storyId);
             toast.success(job.status === "running" ? "A story scan is already running" : "Story scan queued");
         },
         onError: (error: Error) => toast.error(error.message || "Failed to queue story scan")
+    });
+};
+
+// C2 (docs/CURRENT_BACKLOG.md P0.3) — "Suggest memories from this scan": manually enqueues
+// distill_memory for one completed scan. Deliberately just a thin wrapper over the existing
+// generic agentJobsApi.enqueue (no new endpoint) — distillMemoryJob.ts's own doc comment already
+// establishes this is the only way the job ever runs (no auto-chain after a scan completes).
+export const useSuggestMemoriesMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ storyId, scanId }: { storyId: string; scanId: string }) =>
+            agentJobsApi.enqueue({ jobType: "distill_memory", storyId, entityId: scanId }),
+        onSuccess: job => {
+            queryClient.invalidateQueries({ queryKey: ["agentJobs"] });
+            toast.success(
+                job.status === "running" || job.status === "queued"
+                    ? "Suggesting memories from this scan…"
+                    : "A memory-suggestion job for this scan already ran"
+            );
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to queue memory suggestion")
     });
 };
 

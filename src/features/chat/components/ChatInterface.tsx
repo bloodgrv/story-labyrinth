@@ -15,16 +15,20 @@ import { applyChapterSelectionReplace } from "@/features/rework/adapters/chapter
 import { ReworkCard } from "@/features/rework/components/ReworkCard";
 import type { InitialReworkPayload } from "@/features/rework/pendingReworkStore";
 import { getActiveChapterEditor } from "@/lib/activeChapterEditorStore";
+import { useCreateNoteMutation } from "@/features/notes/hooks/useNotesQuery";
+import { NoteFormDialog } from "@/features/notes/components/NoteFormDialog";
 import { chatsApi } from "@/services/api/client";
 import type { FocusTarget } from "@/types/rework";
-import type { AIChat, Prompt, PromptParserConfig } from "@/types/story";
+import type { AIChat, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { ChatSystemPromptControl } from "./ChatSystemPromptControl";
+import { NoteProposalCard } from "./NoteProposalCard";
 import { ProposalCard } from "./ProposalCard";
 import { ProseProposalCard } from "./ProseProposalCard";
 import { useChatMessageGeneration } from "../hooks/useChatMessageGeneration";
 import { useChatSystemPrompt } from "../hooks/useChatSystemPrompt";
 import { groupProposalsByMessage, useChatProposalsQuery } from "../hooks/useCodexProposalsQuery";
 import { insertProposedProse } from "../services/insertProposedProse";
+import type { ParsedNoteProposal } from "../services/parseNoteProposals";
 
 interface ChatInterfaceProps {
     // Absent for global chats (Research) — chapter/lorebook context selection is simply
@@ -244,6 +248,13 @@ export function ChatInterface({
     // to the plain insert-at-cursor-or-end path — see handleAcceptProse below.
     const [proseProposals, setProseProposals] = useState<Record<string, { text: string; target: FocusTarget | null }>>({});
 
+    // N6 (Notes_Outline_Chat_Bridges_Design.md §4) — same ephemeral-state posture as
+    // proseProposals above; only ever populated for non-Editor chats since
+    // chatContextService.ts's NOTE_PROPOSAL_INSTRUCTIONS is never included in the Editor system
+    // prompt, so the model has no reason to emit the fence there anyway.
+    const [noteProposals, setNoteProposals] = useState<Record<string, ParsedNoteProposal>>({});
+    const createNoteMutation = useCreateNoteMutation();
+
     const { generate, isGenerating, abort, streamingContent } = useChatMessageGeneration({
         selectedChat,
         selectedPrompt,
@@ -253,8 +264,34 @@ export function ChatInterface({
         onProseProposal: enableProseProposals
             ? (messageId, proposal) =>
                   setProseProposals(prev => ({ ...prev, [messageId]: { text: proposal, target: activeRework?.target ?? null } }))
-            : undefined
+            : undefined,
+        onNoteProposal: (messageId, proposal) => setNoteProposals(prev => ({ ...prev, [messageId]: proposal }))
     });
+
+    const dismissNoteProposal = (messageId: string) =>
+        setNoteProposals(prev => {
+            const next = { ...prev };
+            delete next[messageId];
+            return next;
+        });
+
+    const handleAcceptNote = (messageId: string) => {
+        const proposal = noteProposals[messageId];
+        if (!proposal || !storyId) return;
+        createNoteMutation.mutate({ storyId, title: proposal.title, content: proposal.content, type: proposal.type });
+        dismissNoteProposal(messageId);
+    };
+
+    // N5 (Notes_Outline_Chat_Bridges_Design.md §4) — manual "Save message as note". Reuses
+    // NoteFormDialog (the same title/type picker the Notes tool's own "New Note" flow uses) so a
+    // second bespoke dialog isn't needed; the message's own content is the note body, not editable
+    // here (the user can edit the note afterward in the Notes tool if needed).
+    const [noteSourceMessage, setNoteSourceMessage] = useState<ChatMessage | null>(null);
+    const handleSaveMessageAsNote = (title: string, type: "idea" | "research" | "todo" | "other") => {
+        if (!noteSourceMessage || !storyId) return;
+        createNoteMutation.mutate({ storyId, title, content: noteSourceMessage.content, type });
+        setNoteSourceMessage(null);
+    };
 
     const dismissProseProposal = (messageId: string) =>
         setProseProposals(prev => {
@@ -386,13 +423,17 @@ export function ChatInterface({
                 onCancelEdit={() => {}}
                 onEditContentChange={() => {}}
                 editingTextareaRef={{ current: null }}
+                // N5 — hidden entirely for Editor chats (stay canon-only) and for global chats
+                // with no storyId (Research has none to save a note against).
+                onSaveAsNote={!isEditorChat && storyId ? message => setNoteSourceMessage(message) : undefined}
                 renderProposalsForMessage={messageId => {
                     // Editor chats show Codex proposals in the CodexProposalTray under the chat
                     // list instead (docs/Chat_Panel_Integrations_Design.md §2 — "tray under chat
                     // list, no popup"); World-Building keeps this inline rendering.
                     const proposals = isEditorChat ? undefined : proposalsByMessageId[messageId];
                     const proseProposal = proseProposals[messageId];
-                    if (!proposals?.length && !proseProposal) return null;
+                    const noteProposal = noteProposals[messageId];
+                    if (!proposals?.length && !proseProposal && !noteProposal) return null;
                     return (
                         <>
                             {proposals?.map(proposal => {
@@ -415,9 +456,27 @@ export function ChatInterface({
                                     onReject={() => dismissProseProposal(messageId)}
                                 />
                             )}
+                            {noteProposal && (
+                                <NoteProposalCard
+                                    proposal={noteProposal}
+                                    onAccept={() => handleAcceptNote(messageId)}
+                                    onReject={() => dismissNoteProposal(messageId)}
+                                />
+                            )}
                         </>
                     );
                 }}
+            />
+
+            <NoteFormDialog
+                open={noteSourceMessage !== null}
+                onOpenChange={open => {
+                    if (!open) setNoteSourceMessage(null);
+                }}
+                title="Save message as note"
+                submitLabel="Save note"
+                initialTitle={noteSourceMessage?.content.slice(0, 60) ?? ""}
+                onSubmit={handleSaveMessageAsNote}
             />
 
             <MessageInputArea

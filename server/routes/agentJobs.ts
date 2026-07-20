@@ -10,7 +10,8 @@ const JOB_TYPES: AgentJobType[] = [
     "rag_scan_chapter",
     "rag_scan_story",
     "prune_history",
-    "distill_memory"
+    "distill_memory",
+    "suggest_codex_updates"
 ];
 const JOB_STATUSES: AgentJobStatus[] = ["queued", "running", "completed", "failed"];
 

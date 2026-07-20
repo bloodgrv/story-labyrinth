@@ -33,6 +33,11 @@ export const codexApi = {
             method: "POST",
             body: JSON.stringify(data)
         }),
+    // C5 (docs/CURRENT_BACKLOG.md P0.3) — pending changes for this entry regardless of source
+    // (chat OR suggest_codex_updates job); the chat-scoped proposals list (chatsApi.getProposals)
+    // only ever surfaces sourceRef-prefixed "chat:{chatId}" rows, so job-sourced ("ai") proposals
+    // need this entry-scoped list to ever become visible for approval.
+    getPending: (entryId: string) => fetchJSON<CodexPendingChange[]>(`/codex/${entryId}/pending`),
     // Project Saves Phase 1 — snapshot history/timeline for a Codex entry.
     getSnapshots: (entryId: string) => fetchJSON<CodexSnapshot[]>(`/codex/${entryId}/snapshots`),
     restoreSnapshot: (entryId: string, snapshotId: string) =>

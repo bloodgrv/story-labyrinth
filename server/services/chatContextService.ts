@@ -39,13 +39,30 @@ const CODEX_PROPOSAL_INSTRUCTIONS =
     '"level" must be "global", "series", or "story" (use "story" unless told otherwise). ' +
     '"category" must be one of: character, location, item, event, note, synopsis, starting scenario, timeline.';
 
+// N6 (Notes_Outline_Chat_Bridges_Design.md §4, "AI propose" write path) — Editor chats never get
+// this (PROSE_PROPOSAL_INSTRUCTIONS below doesn't include it), matching the doctrine that Editor
+// stays canon-only and never surfaces the Notes bridge in either direction. Unlike Codex
+// proposals, a note-proposal is never persisted server-side as a pending row — parsed client-side
+// (parseNoteProposals.ts) into an ephemeral accept/reject card, same posture as prose proposals.
+const NOTE_PROPOSAL_INSTRUCTIONS =
+    "If something worth capturing as working material comes up — an idea, a research point, a " +
+    "to-do, a loose thread — you may propose saving it as a Story Note. Notes are NOT canon and " +
+    "must never be used instead of a Codex proposal for concrete facts.\n\n" +
+    "To propose a Story Note, include a fenced block in this exact form:\n\n" +
+    "```note-proposal\n" +
+    '{"title": "...", "content": "...", "type": "idea"}\n' +
+    "```\n\n" +
+    '"type" must be one of: idea, research, todo, other. Propose at most one note per reply.';
+
 const WORLDBUILDING_FRAMING =
     "You are a collaborative world-building assistant for a long-form fiction project. " +
     "Stay factually consistent with the story's established Codex state and the reference " +
     "context provided below.\n\n" +
     CODEX_PROPOSAL_INSTRUCTIONS +
-    "\n\nWrite your normal conversational reply around the block — it's stripped out before the user sees it, " +
-    "so don't reference '```codex-proposal' or 'the block' in your prose; just talk about the proposal naturally.";
+    "\n\n" +
+    NOTE_PROPOSAL_INSTRUCTIONS +
+    "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user sees them, " +
+    "so don't reference '```codex-proposal', '```note-proposal', or 'the block' in your prose; just talk about the proposal naturally.";
 
 // The Editor chat's only mechanism for actually changing the manuscript — mirrors the
 // Codex-proposal convention but for prose. Parsed client-side (parseProseProposal.ts) and

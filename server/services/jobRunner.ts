@@ -9,6 +9,7 @@ import {
     recordJobFailure,
     recoverCrashedJobs
 } from "./agentJobsRepository.js";
+import { runSuggestCodexUpdatesJob } from "./jobs/codexCompileJob.js";
 import { runDistillMemoryJob } from "./jobs/distillMemoryJob.js";
 import { runReconcileIndexJob } from "./jobs/reconcileIndexJob.js";
 import { runPruneHistoryJob } from "./jobs/pruneHistoryJob.js";
@@ -25,7 +26,10 @@ const SCHEDULE_INTERVAL_MS = 60_000; // enqueue due periodic jobs
 
 const RECONCILE_INDEX_CADENCE_MS = 15 * 60_000; // per story, design doc §3.5 cadence table
 const PRUNE_HISTORY_CADENCE_MS = 24 * 60 * 60_000; // global
-// rag_scan_story has no cadence constant here — deliberately not auto-enqueued, see below.
+// C4 (docs/CURRENT_BACKLOG.md P0.3) — fixed daily cadence for stories that have explicitly
+// opted in via stories.unattendedScanEnabled (default false). No per-story interval setting —
+// see that column's own schema.ts comment for why a single fixed cadence was chosen.
+const UNATTENDED_SCAN_CADENCE_MS = 24 * 60 * 60_000;
 
 type JobHandler = (job: AgentJob) => Promise<unknown>;
 
@@ -34,7 +38,8 @@ const HANDLERS: Record<AgentJobType, JobHandler> = {
     rag_scan_chapter: runRagScanChapterJob,
     rag_scan_story: runRagScanStoryJob,
     prune_history: runPruneHistoryJob,
-    distill_memory: runDistillMemoryJob
+    distill_memory: runDistillMemoryJob,
+    suggest_codex_updates: runSuggestCodexUpdatesJob
 };
 
 let claimIntervalId: NodeJS.Timeout | null = null;
@@ -81,20 +86,26 @@ const maybeEnqueuePeriodic = async (jobType: AgentJobType, storyId: string | nul
 
 const runScheduleTick = async (): Promise<void> => {
     try {
-        const storyRows = await db.select({ id: schema.stories.id }).from(schema.stories);
+        const storyRows = await db
+            .select({ id: schema.stories.id, unattendedScanEnabled: schema.stories.unattendedScanEnabled })
+            .from(schema.stories);
         for (const { id: storyId } of storyRows) await maybeEnqueuePeriodic("reconcile_index", storyId, RECONCILE_INDEX_CADENCE_MS);
 
         await maybeEnqueuePeriodic("prune_history", null, PRUNE_HISTORY_CADENCE_MS);
 
-        // rag_scan_story is deliberately NOT auto-enqueued here. The design doc's "unattended
-        // scan policy: default OFF" (§3.4) has no per-story opt-in setting yet, and adding one
-        // is out of scope for Phase A — omitting it from the schedule tick makes "default OFF"
-        // true by construction. The only way a scan job is created in Phase A is the manual
-        // POST /api/agent/jobs route. See DECISIONS.md addendum for this call.
-        //
-        // distill_memory (Phase B) is excluded from the schedule tick for the same reason —
-        // never auto-chained after a scan completes either (see distillMemoryJob.ts's own
-        // comment). Manual POST /api/agent/jobs only.
+        // C4 (docs/CURRENT_BACKLOG.md P0.3) — rag_scan_story is now auto-enqueued, but ONLY for
+        // stories that explicitly opted in via unattendedScanEnabled (default false everywhere
+        // else), keeping "unattended scan policy: default OFF" (design doc §3.4) true for every
+        // story unless the user turns it on themselves. Opted-in stories get the same
+        // maybeEnqueuePeriodic dedup/cadence treatment as reconcile_index above — enqueued with
+        // no payload, i.e. includeMemory defaults false (C3 stays a manual per-scan opt-in, not
+        // folded into this unattended path).
+        for (const { id: storyId, unattendedScanEnabled } of storyRows)
+            if (unattendedScanEnabled) await maybeEnqueuePeriodic("rag_scan_story", storyId, UNATTENDED_SCAN_CADENCE_MS);
+
+        // distill_memory (Phase B) is excluded from the schedule tick — never auto-chained after
+        // a scan completes either (see distillMemoryJob.ts's own comment). Manual
+        // POST /api/agent/jobs only.
     } catch (error) {
         console.error("jobRunner: schedule tick failed:", (error as Error).message);
     }

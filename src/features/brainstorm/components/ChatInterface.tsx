@@ -6,8 +6,10 @@ import { ChatSystemPromptControl } from "@/features/chat/components/ChatSystemPr
 import { useChatSystemPrompt } from "@/features/chat/hooks/useChatSystemPrompt";
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { getFilteredEntries as getFilteredLorebookEntries } from "@/features/lorebook/utils/lorebookFilters";
+import { NoteFormDialog } from "@/features/notes/components/NoteFormDialog";
+import { useCreateNoteMutation } from "@/features/notes/hooks/useNotesQuery";
 import { chatsApi } from "@/services/api/client";
-import type { AIChat, Prompt, PromptParserConfig } from "@/types/story";
+import type { AIChat, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { useUpdateBrainstormMutation } from "../hooks/useBrainstormQuery";
 import { useChatMessages } from "../hooks/useChatMessages";
 import { useContextSelection } from "../hooks/useContextSelection";
@@ -160,6 +162,19 @@ export default function ChatInterface({ storyId, selectedChat, onChatUpdate }: C
 
     const getFilteredEntries = () => getFilteredLorebookEntries(lorebookEntries, false);
 
+    // N5 (Notes_Outline_Chat_Bridges_Design.md §4) — manual "Save message as note", same
+    // NoteFormDialog reuse as features/chat/ChatInterface.tsx. Brainstorm doesn't get N6
+    // (AI note-proposal) — its useMessageGeneration hook doesn't parse any fenced blocks at all
+    // (see that hook), unlike useChatMessageGeneration; adding fence-parsing there is out of
+    // scope for this pass and would be a bigger change than the manual save path.
+    const createNoteMutation = useCreateNoteMutation();
+    const [noteSourceMessage, setNoteSourceMessage] = useState<ChatMessage | null>(null);
+    const handleSaveMessageAsNote = (title: string, type: "idea" | "research" | "todo" | "other") => {
+        if (!noteSourceMessage) return;
+        createNoteMutation.mutate({ storyId, title, content: noteSourceMessage.content, type });
+        setNoteSourceMessage(null);
+    };
+
     const handleSubmit = async () => {
         await generate(input);
         setInput("");
@@ -233,6 +248,18 @@ export default function ChatInterface({ storyId, selectedChat, onChatUpdate }: C
                 onCancelEdit={cancelEdit}
                 onEditContentChange={setEditingContent}
                 editingTextareaRef={editingTextareaRef}
+                onSaveAsNote={message => setNoteSourceMessage(message)}
+            />
+
+            <NoteFormDialog
+                open={noteSourceMessage !== null}
+                onOpenChange={open => {
+                    if (!open) setNoteSourceMessage(null);
+                }}
+                title="Save message as note"
+                submitLabel="Save note"
+                initialTitle={noteSourceMessage?.content.slice(0, 60) ?? ""}
+                onSubmit={handleSaveMessageAsNote}
             />
 
             <MessageInputArea

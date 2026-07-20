@@ -1,0 +1,1 @@
+ALTER TABLE `stories` ADD `unattendedScanEnabled` integer DEFAULT false NOT NULL;

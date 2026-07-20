@@ -9,10 +9,15 @@ import { listOrderedChapterIds, requireScannerConnection, runChapterScan, scanCh
 // agentJobs becomes a second, thinner wrapper row for scans launched through the runner, whose
 // result references the underlying ragScans.id.
 
+// C3 (docs/CURRENT_BACKLOG.md P0.3) — per-scan opt-in, read from the job's own payload rather
+// than a story-wide setting, so arming it for one scan never silently changes another.
+const readIncludeMemory = (job: AgentJob): boolean =>
+    (job.payload as { includeMemory?: boolean } | null)?.includeMemory === true;
+
 export const runRagScanChapterJob = async (job: AgentJob): Promise<{ scanId: string; issueCount: number }> => {
     if (!job.entityId) throw new Error("rag_scan_chapter job requires entityId (chapterId)");
 
-    const { scan, issues } = await scanChapter(job.entityId);
+    const { scan, issues } = await scanChapter(job.entityId, readIncludeMemory(job));
     return { scanId: scan.id, issueCount: issues.length };
 };
 
@@ -25,6 +30,7 @@ export const runRagScanStoryJob = async (
 ): Promise<{ scanId: string; totalChapters: number; processedChapters: number }> => {
     if (!job.storyId) throw new Error("rag_scan_story job requires storyId");
     const storyId = job.storyId;
+    const includeMemory = readIncludeMemory(job);
 
     const { client, model } = await requireScannerConnection();
     const chapterIds = await listOrderedChapterIds(storyId);
@@ -33,7 +39,7 @@ export const runRagScanStoryJob = async (
     try {
         for (const [index, chapterId] of chapterIds.entries()) {
             try {
-                await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model });
+                await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory });
             } catch (error) {
                 console.error(`rag_scan_story job: chapter ${chapterId} failed:`, (error as Error).message);
             }

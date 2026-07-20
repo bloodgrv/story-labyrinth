@@ -1,4 +1,4 @@
-import { Edit, Loader2 } from "lucide-react";
+import { Edit, Loader2, StickyNote } from "lucide-react";
 import type { ReactNode } from "react";
 import type React from "react";
 import { useEffect, useRef } from "react";
@@ -27,6 +27,11 @@ interface ChatMessageListProps {
     // Renders below an assistant message's content when that message produced Codex
     // proposals — see ChatInterface in features/chat for the chats.ts-backed usage.
     renderProposalsForMessage?: (messageId: string) => ReactNode;
+    // Manual "Save as note" (N5, Notes_Outline_Chat_Bridges_Design.md §4) — omitted entirely
+    // (button hidden) for chats where saving a note doesn't make sense, e.g. Editor chats
+    // (stay canon-only) or global chats with no storyId (Research). Available on both
+    // user and assistant messages since either might be worth capturing as working material.
+    onSaveAsNote?: (message: ChatMessage) => void;
 }
 
 export function ChatMessageList({
@@ -40,7 +45,8 @@ export function ChatMessageList({
     onCancelEdit,
     onEditContentChange,
     editingTextareaRef,
-    renderProposalsForMessage
+    renderProposalsForMessage,
+    onSaveAsNote
 }: ChatMessageListProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -120,6 +126,18 @@ export function ChatMessageList({
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
                                             )}
+                                            {onSaveAsNote && (
+                                                <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
+                                                    <StickyNote className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
+                                    {message.role === "user" && !streamingMessageId && onSaveAsNote && (
+                                        <div className="absolute top-0 right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
+                                                <StickyNote className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     )}
                                 </div>

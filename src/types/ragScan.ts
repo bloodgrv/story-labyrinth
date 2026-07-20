@@ -7,7 +7,9 @@ export type RagScanScope = "chapter" | "story";
 export type RagScanStatus = "running" | "completed" | "failed";
 
 export interface RagScanEvidence {
-    source: "chapter" | "codex";
+    // "memory" (C3, docs/CURRENT_BACKLOG.md P0.3) — an active Project Memory entry cited as
+    // evidence, only possible when a scan opted into includeMemory.
+    source: "chapter" | "codex" | "memory";
     label: string;
     excerpt: string;
 }

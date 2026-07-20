@@ -1,8 +1,10 @@
-import { Loader2, ScanSearch } from "lucide-react";
+import { Lightbulb, Loader2, ScanSearch } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
@@ -10,10 +12,12 @@ import {
     useScanJobWithInvalidation,
     useStoryIssuesQuery,
     useStoryScansQuery,
+    useSuggestMemoriesMutation,
     useTriggerStoryScanMutation,
     useUpdateIssueStatusMutation
 } from "@/features/rag-scanner/hooks/useRagScanQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { useStoryQuery, useUpdateStoryMutation } from "@/features/stories/hooks/useStoriesQuery";
 import type { RagIssueStatus, RagScanStatus } from "@/types/ragScan";
 import { IssueCard } from "./IssueCard";
 
@@ -40,6 +44,8 @@ export function RagScannerPanel({ storyId }: RagScannerPanelProps) {
     const isOwner = useIsOwner();
     const [statusTab, setStatusTab] = useState<RagIssueStatus>("open");
     const [triggeredJobId, setTriggeredJobId] = useState<string | null>(null);
+    // C3 (docs/CURRENT_BACKLOG.md P0.3) — per-scan opt-in, default off; not a persisted setting.
+    const [includeMemory, setIncludeMemory] = useState(false);
     const { setCurrentChapterId, setCurrentTool } = useStoryContext();
 
     const triggerMutation = useTriggerStoryScanMutation();
@@ -48,6 +54,9 @@ export function RagScannerPanel({ storyId }: RagScannerPanelProps) {
     const { data: issuesData, isLoading: issuesLoading } = useStoryIssuesQuery(storyId, statusTab);
     const { data: chapters } = useChaptersByStoryQuery(storyId);
     const updateStatusMutation = useUpdateIssueStatusMutation(storyId);
+    const suggestMemoriesMutation = useSuggestMemoriesMutation();
+    const { data: story } = useStoryQuery(storyId);
+    const updateStoryMutation = useUpdateStoryMutation();
 
     const chapterTitleById = new Map((chapters ?? []).map(c => [c.id, c.title]));
     const isJobActive = job?.status === "queued" || job?.status === "running";
@@ -55,7 +64,7 @@ export function RagScannerPanel({ storyId }: RagScannerPanelProps) {
     const issues = issuesData?.issues ?? [];
 
     const handleScan = () => {
-        triggerMutation.mutate(storyId, { onSuccess: result => setTriggeredJobId(result.id) });
+        triggerMutation.mutate({ storyId, includeMemory }, { onSuccess: result => setTriggeredJobId(result.id) });
     };
 
     const goToChapter = (chapterId: string) => {
@@ -74,14 +83,22 @@ export function RagScannerPanel({ storyId }: RagScannerPanelProps) {
                     </p>
                 </div>
                 {isOwner ? (
-                    <Button onClick={handleScan} disabled={triggerMutation.isPending || isJobActive} className="shrink-0">
-                        {triggerMutation.isPending || isJobActive ? (
-                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                        ) : (
-                            <ScanSearch className="h-4 w-4 mr-1.5" />
-                        )}
-                        Scan whole story
-                    </Button>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                        <Button onClick={handleScan} disabled={triggerMutation.isPending || isJobActive}>
+                            {triggerMutation.isPending || isJobActive ? (
+                                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                            ) : (
+                                <ScanSearch className="h-4 w-4 mr-1.5" />
+                            )}
+                            Scan whole story
+                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Switch id="scanner-include-memory" checked={includeMemory} onCheckedChange={setIncludeMemory} />
+                            <Label htmlFor="scanner-include-memory" className="text-xs font-normal text-muted-foreground">
+                                Include Project Memory (contradiction checks)
+                            </Label>
+                        </div>
+                    </div>
                 ) : (
                     <p className="text-xs text-muted-foreground shrink-0">Only the story owner can trigger a scan.</p>
                 )}
@@ -93,6 +110,20 @@ export function RagScannerPanel({ storyId }: RagScannerPanelProps) {
                         ? `Last scan failed: ${job.error}`
                         : (job.progress?.message ?? (isJobActive ? "Scanning…" : "Scan complete."))}
                 </p>
+            )}
+
+            {isOwner && story && (
+                <div className="flex items-center gap-2 rounded-lg border border-border p-3">
+                    <Switch
+                        id="scanner-unattended-enabled"
+                        checked={!!story.unattendedScanEnabled}
+                        disabled={updateStoryMutation.isPending}
+                        onCheckedChange={checked => updateStoryMutation.mutate({ id: storyId, data: { unattendedScanEnabled: checked } })}
+                    />
+                    <Label htmlFor="scanner-unattended-enabled" className="text-sm font-normal">
+                        Run an unattended story scan automatically, about once a day
+                    </Label>
+                </div>
             )}
 
             <Card>
@@ -149,7 +180,20 @@ export function RagScannerPanel({ storyId }: RagScannerPanelProps) {
                                     )}
                                     <span className="text-muted-foreground"> · {new Date(scan.createdAt).toLocaleString()}</span>
                                 </div>
-                                <Badge variant={SCAN_STATUS_VARIANT[scan.status]}>{scan.status}</Badge>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {isOwner && scan.status === "completed" && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={suggestMemoriesMutation.isPending}
+                                            onClick={() => suggestMemoriesMutation.mutate({ storyId, scanId: scan.id })}
+                                        >
+                                            <Lightbulb className="h-3.5 w-3.5 mr-1.5" />
+                                            Suggest memories
+                                        </Button>
+                                    )}
+                                    <Badge variant={SCAN_STATUS_VARIANT[scan.status]}>{scan.status}</Badge>
+                                </div>
                             </div>
                         ))}
                     </CardContent>

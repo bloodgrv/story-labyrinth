@@ -28,7 +28,13 @@ export const stories = sqliteTable(
         synopsis: text("synopsis"),
         seriesId: text("seriesId").references(() => series.id, { onDelete: "set null" }),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-        isDemo: integer("isDemo", { mode: "boolean" })
+        isDemo: integer("isDemo", { mode: "boolean" }),
+        // C4 (docs/CURRENT_BACKLOG.md P0.3) — per-story opt-in for an unattended rag_scan_story on
+        // a fixed daily cadence (jobRunner.ts's runScheduleTick). Default false: the design doc's
+        // "unattended scan policy: default OFF" applies per-story now, not just "no setting yet".
+        // No separate interval column — a single fixed daily cadence (matching prune_history's own
+        // cadence) avoids a config surface for a feature this narrow; revisit only if requested.
+        unattendedScanEnabled: integer("unattendedScanEnabled", { mode: "boolean" }).notNull().default(false)
     },
     table => ({
         titleIdx: index("title_idx").on(table.title),

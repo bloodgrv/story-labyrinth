@@ -22,6 +22,7 @@ import { useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/u
 import {
     AdvancedSettings,
     CodexHistoryPanel,
+    CodexPendingChangesPanel,
     EMPTY_CODEX_STATE,
     ImageUploadField,
     LevelScopeFields,
@@ -216,6 +217,8 @@ export function LorebookEntryEditor({
                         ) : (
                             <RawEntryFields control={form.control} tagInput={tagInput} selectedCategory={selectedCategory} />
                         )}
+
+                        {entry?.codexEnabled && entry.id && <CodexPendingChangesPanel entryId={entry.id} storyId={storyId} />}
 
                         {entry?.codexEnabled && entry.id && <CodexHistoryPanel entryId={entry.id} storyId={storyId} />}
 

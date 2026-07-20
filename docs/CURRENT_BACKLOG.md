@@ -1,6 +1,6 @@
 # Story Nexus Fork — Current Backlog
 
-**Last updated:** 2026-07-19 (locations/maps design locked)  
+**Last updated:** 2026-07-20 (P0.3 fully done: N5/N6, C2-C5)  
 **Purpose:** Single source of truth for **what’s left**, after implementation order got scrambled relative to the original Phase 0 list.  
 **Canonical live status also mirrored in:** `CLAUDE.md` (architecture + high-level “done” notes) and `DECISIONS.md` (load-bearing how/why).  
 **This file wins** when those conflict on *priority of remaining work*.
@@ -92,7 +92,7 @@ Linear undo history for the main chapter's own content, mirroring the Codex `cod
 
 ### P0.3 — Continuity glue (memory + scanner + writing loop + Notes/Outline bridges)
 
-**Status:** Notes/Outline bridge "Core Bridge" scope (N0-N4, O1-O4) — ✅ Done (2026-07-20). C1 (project memory chat toggle) — ✅ Done (2026-07-20). C2-C5 and N5/N6 (save-as-note, note-proposal chat UX) — Not started.  
+**Status:** ✅ Fully done (2026-07-20). Notes/Outline bridge "Core Bridge" scope (N0-N4, O1-O4) — done. C1 (project memory chat toggle) — done. N5 (save message/selection as note), N6 (AI note-proposal accept/reject card), C2 ("suggest memories from this scan" button), C3 (scanner reads active Project Memory for contradiction checks, per-scan opt-in), C4 (per-story unattended scan schedule, default off), C5 (Codex auto-compile from manuscript via a new manual-trigger job + entry-scoped pending-changes review panel) — all done, same session. See `DECISIONS.md`'s "P0.3 Remaining Slices (N5/N6, C2-C5) — Load-Bearing Decisions".  
 **Why:** Project memory, graph, scanner, Notes, and Outline don’t yet form a daily continuity loop. Models default to lorebook+chapter RAG only; Notes/Outline are human silos.
 
 **N0-N4 + O1-O4 shipped 2026-07-20** — see `DECISIONS.md` "Notes/Outline ↔ Chat Bridge (P0.3, Core Bridge scope)" for the full load-bearing trail, including two real pre-existing bugs found (and one fixed) during verification: story export/import previously crashed on any lorebook entry with a non-null `updatedAt` (fixed), and the story `DELETE /:id` route's async transaction callback is incompatible with better-sqlite3's sync-only transaction API (not fixed — unrelated to this feature, flagged as a P2 bug below, ID B7). Brainstorm chats are wired narrower than the other chat types by deliberate design call — see that DECISIONS.md entry for why.
@@ -122,8 +122,8 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | N2 | ✅ RAG `entityType: "note"` only when armed; remove on off/delete; reconcile_index |
 | N3 | ✅ Per-chat `includeNotes` / `includeOutline` (default false) on **all chats except Editor** — including Brainstorm, wired narrower (see DECISIONS.md) |
 | N4 | ✅ `chatContextService` non-canon packets when **both** gates pass (top-K, labeled working material) |
-| N5 | Manual “Save message/selection as note” — not started |
-| N6 | AI `note-proposal` → accept/reject card — not started |
+| N5 | ✅ Manual "Save message as note" — hover action in `ChatMessageList.tsx` (both chat surfaces), `NoteFormDialog.tsx` reused |
+| N6 | ✅ AI `note-proposal` fence + accept/reject `NoteProposalCard.tsx` — non-Editor `features/chat` chats only (not Brainstorm, see DECISIONS.md) |
 | O1–O4 | ✅ Same double-gate pattern for outline items |
 
 **Inclusion doctrine:** per-item AI flag AND per-chat toggle, both default OFF; Editor never gets these toggles.
@@ -133,10 +133,10 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | Slice | Description |
 |-------|-------------|
 | C1 | ✅ Opt-in **“Include project memory”** for chat / context (`entityTypes` includes `agent_memory`) |
-| C2 | **“Suggest memories from this scan”** button → enqueue `distill_memory` (manual only; no silent auto-chain) |
-| C3 | Scanner context may **read active** `agent_memory` when opted in (factual contradiction checks) |
-| C4 | Optional: per-story **unattended** `rag_scan_story` schedule toggle (default OFF) |
-| C5 | **Codex auto-compile from manuscript.** Not started — raised 2026-07-17. Today, Codex state (wardrobe/appearance/wounds/items) is either hand-typed in `CodexStateEditor.tsx`, or proposed conversationally by the World-Building Chat (`codex-proposal` fenced JSON → `codexPendingChange` → Approve/Reject, see `chatCodexService.ts`) — nothing scans manuscript chapters and proposes Codex updates unprompted. User wants this closer to *automatic*, agent-driven — "the agent should be compiling that as we go along, not the user." This is a bigger lift than C1–C4: needs a new job type (no `codex`-scanning job exists in `jobRunner.ts` today, unlike `distill_memory`/`rag_scan_*`), and a real decision on how far to push automation given the standing "no silent auto-chain, always manual-trigger + approve" precedent from Phase B (`DECISIONS.md`). Recommend shaping this the same way as C2 (manual "Suggest Codex updates from this scan/chapter" button → pending proposals through the *existing* approve/reject/edit-first pipeline) rather than a fully silent background job, unless the user explicitly wants to revisit the no-auto-chain precedent. Also note while investigating: `useReviseProposalMutation`/`reviseChatProposal` ("Edit First") already exist server-side for the *existing* chat-proposal pipeline but have no UI button anywhere (`ProposalCard.tsx` only wires Approve/Reject) — worth wiring up regardless of C5's automation scope. |
+| C2 | ✅ **“Suggest memories from this scan”** button (per completed scan, `RagScannerPanel.tsx` scan history) → enqueues `distill_memory` via the existing generic `POST /api/agent/jobs` (manual only; no silent auto-chain) |
+| C3 | ✅ Scanner may **read active** `agent_memory` when opted in per-scan (`includeMemory` toggle in `RagScannerPanel.tsx`/`ChapterScannerDrawer.tsx`, carried as the job's own `payload.includeMemory` — not a persisted setting) — factual contradiction checks via a second scanner system prompt variant |
+| C4 | ✅ Per-story **unattended** `rag_scan_story` schedule toggle (default OFF) — `stories.unattendedScanEnabled` column (migration `0035_odd_nextwave.sql`), fixed daily cadence in `jobRunner.ts`'s schedule tick, toggle in `RagScannerPanel.tsx` |
+| C5 | ✅ **Codex auto-compile from manuscript** — done 2026-07-20, shaped exactly per this row's own recommendation: manual-trigger-only new `suggest_codex_updates` job (`codexCompileJob.ts`), never auto-chained, proposing updates to **existing** Codex-enabled entries only (wardrobe/appearance/wounds/items — never customFields/description/new entries) through the *existing* `codexPendingChanges` approve/reject pipeline (`sourceType: "ai"`, previously unused). New review surface added since the existing chat-scoped tray couldn't show job-sourced proposals: `CodexPendingChangesPanel.tsx` (entry-scoped, source-agnostic) next to `CodexHistoryPanel.tsx` in the Lorebook entry editor. Trigger button ("Suggest Codex updates from this chapter") lives in `ChapterScannerDrawer.tsx`. New `codex_compile` per-feature endpoint key. `useReviseProposalMutation`'s "Edit First" was NOT extended to this new panel (Approve/Reject only — no chat to revise through); still only wired for the chat-scoped tray, per the R0-R3 entry. See `DECISIONS.md`'s "P0.3 Remaining Slices (N5/N6, C2-C5)" for the full trail, including a documented stale-dev-server artifact (the user's other running session needs a restart to pick up the new job type/route/schema changes). |
 
 **Refs:** `docs/Notes_Outline_Chat_Bridges_Design.md`; `docs/Chat_Panel_Integrations_Design.md`; Agent design Phase C; `DECISIONS.md` Phase B (no auto-distill; no suggest UI yet)
 
@@ -249,13 +249,14 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 ```text
 Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
-P0.1, P0.2, P0.2b, P0.3's Notes/Outline "Core Bridge" (N0-N4, O1-O4), P0.3's C1 (project memory
-chat toggle), and P0.4's R0-R3 (Editor selection rework + Codex proposal tray) are all done.
-Remaining work: P0.3's N5/N6 (save-as-note, note-proposal chat UX) and C2-C5 (scanner-memory
-integration, distill-from-scan button, scheduled scans, Codex auto-compile); P0.4's R4 onward
-(Lorebook/Outline rework, Brainstorm playbook migration, Research web search, Notes desk polish,
-the Editor/Outline chatType split) — any order, pick the highest-value one first unless the user
-redirects.
+P0.1, P0.2, P0.2b, and all of P0.3 (Notes/Outline "Core Bridge" N0-N4/O1-O4, C1 project memory
+chat toggle, N5/N6 save-as-note + note-proposal, C2-C5 scanner-memory integration/distill button/
+scheduled scans/Codex auto-compile) are all done, along with P0.4's R0-R3 (Editor selection
+rework + Codex proposal tray).
+Remaining work: P0.4's R4 onward (Lorebook rework → WB chat, Outline chat own rail + tray,
+Brainstorm playbook migration, Research web search, Notes desk polish, the Editor/Outline
+chatType split) — any order, pick the highest-value one first unless the user redirects. P1
+(Agent Framework Phase C, Relationship Graph G1.5+) and P2 bugs (see that section) are also open.
 Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 

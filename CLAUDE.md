@@ -101,8 +101,9 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 11. Lorebook Relationship Graph — **Phase G1 done**; AI edges / saved layout / pending UI not started  
 
 ### Next (see backlog for detail)
-1. **P0.3** Continuity glue (memory ↔ chat/scan)  
-2. P1 polish (Agent C, Graph G1.5) and P2 bugs as needed
+1. **P0.3 done** (2026-07-20) — continuity glue (memory ↔ chat/scan) fully shipped: Notes/Outline bridge, project memory chat toggle, save-as-note/note-proposal, scanner-memory integration, unattended scan schedule, Codex auto-compile
+2. **P0.4** R4 onward (Lorebook/Outline rework, Brainstorm playbook migration, Research web search, Notes desk polish)
+3. P1 polish (Agent C, Graph G1.5) and P2 bugs as needed
 
 ---
 
