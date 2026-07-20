@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { Label } from "@/components/ui/label";
@@ -24,7 +25,7 @@ import {
     useReorderOutlineMutation,
     useUpdateOutlineItemMutation
 } from "@/features/outline/hooks/useOutlineQuery";
-import { chatsApi } from "@/services/api/client";
+import { brainstormApi, chatsApi } from "@/services/api/client";
 import type { ChapterSelectionTarget } from "@/types/rework";
 import type { AIChat, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { ChatSystemPromptControl } from "./ChatSystemPromptControl";
@@ -68,6 +69,12 @@ interface ChatInterfaceProps {
     // Selection Rework Bridge's active state on mount (docs/Chat_Panel_Integrations_Design.md
     // §2.1/§3). Consumed once; absent for ordinary chat opens.
     initialRework?: InitialReworkPayload | null;
+    // Prefills the composer input, distinct from initialRework — no FocusTarget/packet involved,
+    // just a starting line the user can edit before sending. Powers Brainstorm's Guided Setup
+    // button and the generalized Outline/Research handoff-composer-prefill consumption (P0.4
+    // B0-B4, StoryContext.pendingChatComposerSeed). Consumed once per identity change, same
+    // pattern as initialRework below.
+    initialComposerText?: string | null;
 }
 
 // ChatInterface for chats.ts-backed chats (World-Building, Research, Editor) — reuses the same
@@ -82,9 +89,11 @@ export function ChatInterface({
     onChatUpdate,
     enableProseProposals = true,
     onLoreSuggestions,
-    initialRework = null
+    initialRework = null,
+    initialComposerText = null
 }: ChatInterfaceProps) {
     const [input, setInput] = useState("");
+    const queryClient = useQueryClient();
     // Editor chats rely entirely on the auto-pulled codexContext (chapter passages + Codex
     // entries, fetched below) instead of the manual chapter-summary/lorebook checkboxes —
     // see chatContextService.ts and DECISIONS.md's chat-context notes.
@@ -94,8 +103,12 @@ export function ChatInterface({
     // toggles — both get an always-on structured context pack from chatContextService.ts instead).
     // See docs/Chat_Panel_Integrations_Design.md §4 (P0.4 R5).
     const isOutlineChat = promptType === "outline";
-    const showContextSelector = !isEditorChat && !isOutlineChat;
-    const forceStructuredContextOff = isEditorChat || isOutlineChat;
+    // Brainstorm agrees with Outline on "no manual context selector" (its own toggle switches
+    // below replace it) but never uses the Codex tray — it has no Codex write path at all, only
+    // overview-proposal/handoff-packet (P0.4 B0-B4).
+    const isBrainstormChat = promptType === "brainstorm";
+    const showContextSelector = !isEditorChat && !isOutlineChat && !isBrainstormChat;
+    const forceStructuredContextOff = isEditorChat || isOutlineChat || isBrainstormChat;
     const usesCodexTray = isEditorChat || promptType === "worldbuilding" || isOutlineChat;
 
     const { entries: lorebookEntries } = useLorebookContext();
@@ -114,6 +127,13 @@ export function ChatInterface({
         setActiveRework(initialRework);
         if (initialRework.initialInstruction) setInput(initialRework.initialInstruction);
     }, [initialRework]);
+
+    // Guided Setup button (Brainstorm) / generalized handoff-composer-prefill consumption
+    // (Outline, Research — see StoryContext.pendingChatComposerSeed) both just want to seed the
+    // composer with a starting line the user can edit before sending, no FocusTarget involved.
+    useEffect(() => {
+        if (initialComposerText) setInput(initialComposerText);
+    }, [initialComposerText]);
 
     const {
         prompt: selectedPrompt,
@@ -150,6 +170,11 @@ export function ChatInterface({
     // Project Memory chat-level gate (C1, Agent_Framework_And_Project_Memory_Design.md §4.5) —
     // same local-state-persisted-after-PATCH pattern as includeNotes/includeOutline above.
     const [includeMemory, setIncludeMemory] = useState(selectedChat.includeMemory);
+    // Brainstorm-only opt-in gates (P0.4 B0-B4) — same local-state-persisted-after-PATCH pattern.
+    // Lorebook search is ON by default for every other chat type; Brainstorm is the one exception
+    // (see chatContextService.ts's entityTypes computation).
+    const [includeLorebook, setIncludeLorebook] = useState(selectedChat.includeLorebook);
+    const [includeChapterSummaries, setIncludeChapterSummaries] = useState(selectedChat.includeChapterSummaries);
 
     const toggleIncludeNotes = (value: boolean) =>
         chatsApi.update(selectedChat.id, { includeNotes: value }).then(() => setIncludeNotes(value));
@@ -157,6 +182,10 @@ export function ChatInterface({
         chatsApi.update(selectedChat.id, { includeOutline: value }).then(() => setIncludeOutline(value));
     const toggleIncludeMemory = (value: boolean) =>
         chatsApi.update(selectedChat.id, { includeMemory: value }).then(() => setIncludeMemory(value));
+    const toggleIncludeLorebook = (value: boolean) =>
+        chatsApi.update(selectedChat.id, { includeLorebook: value }).then(() => setIncludeLorebook(value));
+    const toggleIncludeChapterSummaries = (value: boolean) =>
+        chatsApi.update(selectedChat.id, { includeChapterSummaries: value }).then(() => setIncludeChapterSummaries(value));
 
     // Grounds the AI in the chat's context (chat-type framing, project synopsis, the chat's
     // anchor entry/chapter + the entry's one-hop relationships, other relevant Codex entries, and
@@ -230,6 +259,17 @@ export function ChatInterface({
                 .map(c => `- Ch. ${c.order} "${c.title}": ${c.summary ?? "(no summary)"}`)
                 .join("\n");
 
+            // Brainstorm-only reads (P0.4 B0-B4) — chapterSummaries only non-empty when this
+            // chat's includeChapterSummaries toggle is on; priorSetupSlots/handoffStatus are
+            // Brainstorm's own always-on structured reads (empty for every other chatType).
+            const chapterSummariesText = context.chapterSummaries
+                .map(c => `- Ch. ${c.order} "${c.title}": ${c.summary ?? "(no summary)"}`)
+                .join("\n");
+            const setupSlotsText = context.priorSetupSlots.map(s => `- ${s.label}: ${s.status}`).join("\n");
+            const handoffStatusText = isBrainstormChat
+                ? `${context.handoffStatus.activeCount} active, ${context.handoffStatus.doneCount} done`
+                : "";
+
             const sections = [
                 context.systemPrompt,
                 context.projectSynopsis && `Project synopsis:\n${context.projectSynopsis}`,
@@ -247,7 +287,10 @@ export function ChatInterface({
                     `[PROJECT MEMORY — approved facts]\nApproved project facts/notes relevant to this conversation. Treat as established unless it conflicts with the Codex, in which case the Codex wins.\n${memoriesText}`,
                 outlineTreeText &&
                     `[OUTLINE TREE — full story structure; use the id values exactly as shown when proposing edits/reorders/deletes]\n${outlineTreeText}`,
-                writtenChaptersText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${writtenChaptersText}`
+                writtenChaptersText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${writtenChaptersText}`,
+                chapterSummariesText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${chapterSummariesText}`,
+                setupSlotsText && `[PROJECT SETUP CHECKLIST — use slotKey exactly as shown when a proposal addresses one]\n${setupSlotsText}`,
+                handoffStatusText && `[YOUR OWN PENDING PROPOSALS/HANDOFFS]\n${handoffStatusText}`
             ].filter(Boolean);
             setCodexContext(sections.join("\n\n"));
             setFocusedOnLabel(anchorEntries[0]?.name ?? (anchorChapters[0] ? `Chapter: ${anchorChapters[0].title}` : null));
@@ -255,7 +298,7 @@ export function ChatInterface({
         return () => {
             cancelled = true;
         };
-    }, [selectedChat.id, includeNotes, includeOutline, includeMemory]);
+    }, [selectedChat.id, includeNotes, includeOutline, includeMemory, includeLorebook, includeChapterSummaries, isBrainstormChat]);
 
     // Selection Rework Bridge context (docs/Chat_Panel_Integrations_Design.md §2.1) — kept
     // separate from the codexContext fetch effect above (rather than re-fetching context on every
@@ -419,7 +462,32 @@ export function ChatInterface({
             }
             if (rest.length > 0) setOutlineProposals(prev => ({ ...prev, [messageId]: rest }));
         },
-        onLoreSuggestions: (_messageId, suggestions) => onLoreSuggestions?.(suggestions)
+        onLoreSuggestions: (_messageId, suggestions) => onLoreSuggestions?.(suggestions),
+        // Brainstorm chats only (P0.4 B0-B4) — unlike prose/note/outline-edit proposals, these are
+        // persisted immediately as durable brainstormChecklist rows the moment they're parsed
+        // (B4's tray needs them durable across reloads, not ephemeral component state); the tray
+        // itself queries the server directly (BrainstormChecklistTray.tsx), so invalidating its
+        // query is all this component needs to do after the POST resolves.
+        onOverviewProposal: (messageId, proposal) => {
+            if (!storyId) return;
+            brainstormApi
+                .createChecklistItem({ chatId: selectedChat.id, storyId, kind: "overview_proposal", payload: proposal, sourceMessageId: messageId })
+                .then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
+        },
+        onHandoffPackets: (messageId, packets) => {
+            if (!storyId) return;
+            Promise.all(
+                packets.map(packet =>
+                    brainstormApi.createChecklistItem({
+                        chatId: selectedChat.id,
+                        storyId,
+                        kind: "handoff",
+                        payload: packet,
+                        sourceMessageId: messageId
+                    })
+                )
+            ).then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
+        }
     });
 
     const dismissOutlineProposal = (messageId: string, index: number) =>
@@ -573,6 +641,30 @@ export function ChatInterface({
                                 Include Project Memory (approved facts)
                             </Label>
                         </div>
+                        {isBrainstormChat && (
+                            <>
+                                <div className="flex items-center gap-2">
+                                    <Switch
+                                        id={`${selectedChat.id}-include-lorebook`}
+                                        checked={includeLorebook}
+                                        onCheckedChange={toggleIncludeLorebook}
+                                    />
+                                    <Label htmlFor={`${selectedChat.id}-include-lorebook`} className="text-sm font-normal">
+                                        Include Lorebook
+                                    </Label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Switch
+                                        id={`${selectedChat.id}-include-chapter-summaries`}
+                                        checked={includeChapterSummaries}
+                                        onCheckedChange={toggleIncludeChapterSummaries}
+                                    />
+                                    <Label htmlFor={`${selectedChat.id}-include-chapter-summaries`} className="text-sm font-normal">
+                                        Include Chapter Summaries
+                                    </Label>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 

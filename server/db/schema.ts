@@ -138,7 +138,7 @@ export const aiChats = sqliteTable(
         lastUsedPromptId: text("lastUsedPromptId"),
         lastUsedModelId: text("lastUsedModelId"),
         isDemo: integer("isDemo", { mode: "boolean" }),
-        chatType: text("chatType"), // 'worldbuilding' | 'research' | 'editor' | 'general' — null treated as 'general'
+        chatType: text("chatType"), // 'worldbuilding' | 'research' | 'editor' | 'outline' | 'brainstorm' | 'general' — null treated as 'general'
         templateSlug: text("templateSlug"), // identifies the worldbuilding template; only meaningful when chatType='worldbuilding'
         // Lorebook entry this chat was opened from (WorldBuildingChatPanel) — lets getChatContext
         // ground the AI in it directly instead of RAG search luck. Null otherwise. Plain column,
@@ -171,7 +171,20 @@ export const aiChats = sqliteTable(
         // flag on the other side of this gate — every `status: "active"` memory for the story is
         // already index-eligible (Phase B's own approve step is the gate), so this chat-level flag
         // is the only opt-in needed.
-        includeMemory: integer("includeMemory", { mode: "boolean" }).notNull().default(false)
+        includeMemory: integer("includeMemory", { mode: "boolean" }).notNull().default(false),
+        // Brainstorm-only opt-in gates (P0.4 B0-B4, docs/Chat_Panel_Integrations_Design.md §5) —
+        // unlike every other chat type, lorebook search is OFF by default for Brainstorm (it's an
+        // intake hub, not grounded in established Codex state the way WB/Editor/Outline are); see
+        // chatContextService.ts's entityTypes computation. Chapter summaries mirror the Outline
+        // chat's own always-on resolveWrittenChapterSummaries read, just toggle-gated here instead.
+        // Both default false and are ignored (never read) for any other chatType.
+        includeLorebook: integer("includeLorebook", { mode: "boolean" }).notNull().default(false),
+        includeChapterSummaries: integer("includeChapterSummaries", { mode: "boolean" }).notNull().default(false),
+        // Light | Standard | Grill-me — shapes how deeply the model interviews the user in a
+        // Brainstorm chat (docs/Chat_Panel_Integrations_Design.md §5 "Style dropdown"). Confirmed
+        // with user as prompt-shaping only, not a tracked interview state machine — see
+        // chatContextService.ts's STYLE_HINTS. Ignored for any other chatType.
+        brainstormStyle: text("brainstormStyle").notNull().default("standard") // 'light' | 'standard' | 'grill'
     },
     table => ({
         storyIdIdx: index("chat_story_id_idx").on(table.storyId),
@@ -792,5 +805,64 @@ export const notes = sqliteTable(
     table => ({
         storyIdIdx: index("note_story_id_idx").on(table.storyId),
         typeIdx: index("note_type_idx").on(table.type)
+    })
+);
+
+// Brainstorm Checklist table — P0.4 B4's durable tray backing store (docs/
+// Chat_Panel_Integrations_Design.md §5 "Persistence: items are durable DB-backed checklist
+// work"). Deliberately NOT the same status vocabulary as codexPendingChanges: Open/Send/Accept
+// must NOT resolve/remove an item the way Codex approve/reject does — only an explicit "Mark
+// done" leaves the active queue (status IN 'pending'/'opened' = Active tab; 'done'/'dismissed' =
+// Done tab). Both tray sections that need this lifecycle — "overview proposals" (synopsis/note/
+// memory writes) and "handoffs" (Outline/WB/Notes/Research) — share this one table via `kind`,
+// since both need identical Open/Send/Accept-doesn't-clear semantics; the third tray section
+// (slot checklist) is a genuinely different, simpler known/unknown model — see brainstormSlots
+// below, not this table.
+export const brainstormChecklist = sqliteTable(
+    "brainstormChecklist",
+    {
+        id: text("id").primaryKey(),
+        chatId: text("chatId")
+            .notNull()
+            .references(() => aiChats.id, { onDelete: "cascade" }),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        kind: text("kind").notNull(), // 'overview_proposal' | 'handoff'
+        status: text("status").notNull().default("pending"), // 'pending' | 'opened' | 'done' | 'dismissed'
+        // JSON: OverviewProposalPayload | HandoffPacketPayload (src/types/brainstorm.ts) — shape
+        // depends on `kind`, mirrors codexPendingChanges' single-JSON-blob-per-row convention.
+        payload: text("payload", { mode: "json" }).notNull(),
+        sourceMessageId: text("sourceMessageId"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        chatIdIdx: index("brainstormchecklist_chat_id_idx").on(table.chatId),
+        statusIdx: index("brainstormchecklist_status_idx").on(table.status)
+    })
+);
+
+// Brainstorm Slots table — P0.4 B2/B4's known/unknown project-setup checklist (the "playbook"
+// depth control, confirmed with user as prompt-driven rather than a tracked interview state
+// machine: style shapes how the model interviews in normal chat, this table only tracks whether
+// each of a small fixed set of setup slots — see BRAINSTORM_SLOTS, src/types/brainstorm.ts — has
+// been addressed yet). Rows are lazily seeded (created on first read/write, not migrated in bulk
+// for existing stories) rather than pre-populated, since the fixed slot list can grow later
+// without a migration.
+export const brainstormSlots = sqliteTable(
+    "brainstormSlots",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        slotKey: text("slotKey").notNull(),
+        status: text("status").notNull().default("unknown"), // 'unknown' | 'known'
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdIdx: index("brainstormslot_story_id_idx").on(table.storyId),
+        storySlotIdx: uniqueIndex("brainstormslot_story_slot_idx").on(table.storyId, table.slotKey)
     })
 );

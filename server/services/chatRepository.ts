@@ -41,6 +41,9 @@ export type UpdateChatMetaFields = Partial<{
     includeNotes: boolean;
     includeOutline: boolean;
     includeMemory: boolean;
+    includeLorebook: boolean;
+    includeChapterSummaries: boolean;
+    brainstormStyle: string;
 }>;
 
 // ── Queries ────────────────────────────────────────────────────────────────────
@@ -126,6 +129,9 @@ export const updateChatMeta = async (
     if (fields.includeNotes !== undefined) updates.includeNotes = fields.includeNotes;
     if (fields.includeOutline !== undefined) updates.includeOutline = fields.includeOutline;
     if (fields.includeMemory !== undefined) updates.includeMemory = fields.includeMemory;
+    if (fields.includeLorebook !== undefined) updates.includeLorebook = fields.includeLorebook;
+    if (fields.includeChapterSummaries !== undefined) updates.includeChapterSummaries = fields.includeChapterSummaries;
+    if (fields.brainstormStyle !== undefined) updates.brainstormStyle = fields.brainstormStyle;
 
     const [row] = await db
         .update(schema.aiChats)

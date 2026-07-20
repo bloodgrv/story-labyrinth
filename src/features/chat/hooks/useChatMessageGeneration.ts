@@ -7,14 +7,17 @@ import { chatsApi } from "@/services/api/client";
 import type { AIChat, AllowedModel, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { parseCodexProposals } from "../services/parseCodexProposals";
+import { parseHandoffPackets } from "../services/parseHandoffPackets";
 import type { ParsedLoreSuggestion } from "../services/parseLoreSuggestions";
 import { parseLoreSuggestions } from "../services/parseLoreSuggestions";
 import type { ParsedNoteProposal } from "../services/parseNoteProposals";
 import { parseNoteProposals } from "../services/parseNoteProposals";
 import type { ParsedOutlineProposal } from "../services/parseOutlineProposals";
 import { parseOutlineProposals } from "../services/parseOutlineProposals";
+import { parseOverviewProposals } from "../services/parseOverviewProposals";
 import { parseProseProposal } from "../services/parseProseProposal";
 import { useCreateProposalMutation } from "./useCodexProposalsQuery";
+import type { HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
 
 interface UseChatMessageGenerationParams {
     selectedChat: AIChat;
@@ -37,6 +40,14 @@ interface UseChatMessageGenerationParams {
     // Called when a reply contains a ```lore-suggestion block (Outline chats only, P0.4 R8). Never
     // persisted server-side — ephemeral until "Open in WB" hands one off to the Lorebook tool.
     onLoreSuggestions?: (messageId: string, suggestions: ParsedLoreSuggestion[]) => void;
+    // Called when a reply contains a ```overview-proposal block (Brainstorm chats only, P0.4
+    // B0-B4 — see chatContextService.ts's OVERVIEW_PROPOSAL_INSTRUCTIONS). Unlike prose/note/
+    // outline-edit proposals, the caller is expected to persist this immediately as a durable
+    // brainstormChecklist row (see ChatInterface.tsx) rather than hold it in ephemeral state.
+    onOverviewProposal?: (messageId: string, proposal: OverviewProposalPayload) => void;
+    // Called with every handoff in a reply's ```handoff-packet block (Brainstorm chats only,
+    // P0.4 B0-B4). Same "persist immediately" posture as onOverviewProposal above.
+    onHandoffPackets?: (messageId: string, packets: HandoffPacket[]) => void;
 }
 
 interface UseChatMessageGenerationReturn {
@@ -60,7 +71,9 @@ export const useChatMessageGeneration = ({
     onProseProposal,
     onNoteProposal,
     onOutlineProposals,
-    onLoreSuggestions
+    onLoreSuggestions,
+    onOverviewProposal,
+    onHandoffPackets
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
     const [isSending, setIsSending] = useState(false);
     const { generateWithPrompt } = useGenerateWithPrompt();
@@ -97,7 +110,9 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterProseStrip, proseProposal } = parseProseProposal(afterCodexStrip);
                 const { cleanedContent: afterNoteStrip, noteProposal } = parseNoteProposals(afterProseStrip);
                 const { cleanedContent: afterOutlineStrip, proposals: outlineProposals } = parseOutlineProposals(afterNoteStrip);
-                const { cleanedContent, suggestions: loreSuggestions } = parseLoreSuggestions(afterOutlineStrip);
+                const { cleanedContent: afterLoreStrip, suggestions: loreSuggestions } = parseLoreSuggestions(afterOutlineStrip);
+                const { cleanedContent: afterOverviewStrip, proposal: overviewProposal } = parseOverviewProposals(afterLoreStrip);
+                const { cleanedContent, packets: handoffPackets } = parseHandoffPackets(afterOverviewStrip);
 
                 const afterAssistantMessage = await chatsApi.appendMessage(selectedChat.id, "assistant", cleanedContent);
                 onChatUpdate(afterAssistantMessage);
@@ -116,6 +131,8 @@ export const useChatMessageGeneration = ({
                 if (noteProposal && assistantMessage) onNoteProposal?.(assistantMessage.id, noteProposal);
                 if (outlineProposals.length > 0 && assistantMessage) onOutlineProposals?.(assistantMessage.id, outlineProposals);
                 if (loreSuggestions.length > 0 && assistantMessage) onLoreSuggestions?.(assistantMessage.id, loreSuggestions);
+                if (overviewProposal && assistantMessage) onOverviewProposal?.(assistantMessage.id, overviewProposal);
+                if (handoffPackets.length > 0 && assistantMessage) onHandoffPackets?.(assistantMessage.id, handoffPackets);
             });
 
             if (error) {
@@ -138,7 +155,9 @@ export const useChatMessageGeneration = ({
             onProseProposal,
             onNoteProposal,
             onOutlineProposals,
-            onLoreSuggestions
+            onLoreSuggestions,
+            onOverviewProposal,
+            onHandoffPackets
         ]
     );
 

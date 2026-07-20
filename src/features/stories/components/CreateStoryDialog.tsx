@@ -1,4 +1,5 @@
 import { PlusCircle } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
 import { useCreateStoryMutation } from "@/features/stories/hooks/useStoriesQuery";
+import type { Story } from "@/types/story";
 import { randomUUID } from "@/utils/crypto";
 
 interface CreateStoryForm {
@@ -34,7 +36,17 @@ const defaultValues: CreateStoryForm = {
     seriesId: "none"
 };
 
-export function CreateStoryDialog() {
+interface CreateStoryDialogProps {
+    // Overrides the default "Create New Story" trigger button — e.g. StoriesTool's empty-state
+    // "Start in Brainstorm" CTA (P0.4 B1) reuses this same dialog/form rather than duplicating it.
+    trigger?: ReactNode;
+    // Fired after a successful create, in addition to the existing close+reset — e.g. the
+    // Brainstorm CTA navigates into the new story instead of leaving the user on the Stories grid
+    // (the default trigger's callers don't pass this, so behavior there is unchanged).
+    onCreated?: (story: Story) => void;
+}
+
+export function CreateStoryDialog({ trigger, onCreated }: CreateStoryDialogProps = {}) {
     const [open, setOpen] = useState(false);
     const createStoryMutation = useCreateStoryMutation();
     const { data: seriesList = [] } = useSeriesQuery();
@@ -52,9 +64,10 @@ export function CreateStoryDialog() {
                 seriesId: data.seriesId === "none" ? undefined : data.seriesId
             },
             {
-                onSuccess: () => {
+                onSuccess: story => {
                     setOpen(false);
                     form.reset(defaultValues);
+                    onCreated?.(story);
                 }
             }
         );
@@ -63,11 +76,13 @@ export function CreateStoryDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="sm" className="sm:size-default">
-                    <PlusCircle className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Create New Story</span>
-                    <span className="sm:hidden">New</span>
-                </Button>
+                {trigger ?? (
+                    <Button size="sm" className="sm:size-default">
+                        <PlusCircle className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Create New Story</span>
+                        <span className="sm:hidden">New</span>
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <Form {...form}>

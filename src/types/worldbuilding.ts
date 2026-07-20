@@ -2,7 +2,7 @@ import type { CodexPendingChange } from "./codex.js";
 
 // Chat type discriminator — matches the chatType column on aiChats.
 // null / undefined → treat as 'general' at the application layer.
-export type ChatType = "worldbuilding" | "research" | "editor" | "outline" | "general";
+export type ChatType = "worldbuilding" | "research" | "editor" | "outline" | "brainstorm" | "general";
 
 // Slugs for built-in World-Building Chat templates.
 // "outline" was removed here (P0.4 R5) — outline planning now belongs to its own dedicated
@@ -177,4 +177,17 @@ export interface ChatContext {
     // above, which stays the opt-in RAG-search path other chat types use).
     outlineTree: ChatContextOutlineTreeItem[];
     writtenChapters: ChatContextWrittenChapter[];
+    // Chapter titles+summaries, gated on this chat's own includeChapterSummaries toggle (P0.4 B0-
+    // B4) — reuses the same shape/resolver Outline's always-on writtenChapters above uses, just
+    // toggle-gated instead of chatType-gated. Empty unless the toggle is on, for any chat type
+    // (in practice only Brainstorm's UI ever exposes this toggle today).
+    chapterSummaries: ChatContextWrittenChapter[];
+    // Brainstorm's always-on setup-slot checklist (P0.4 B2/B4) — empty except for
+    // chatType="brainstorm". Every entry in BRAINSTORM_SLOTS (src/types/brainstorm.ts) is always
+    // present, defaulting to "unknown" if no brainstormSlots row exists yet for that slot.
+    priorSetupSlots: { slotKey: string; label: string; status: "known" | "unknown" }[];
+    // Count of this Brainstorm chat's own active vs. done checklist items (P0.4 B4) — empty/zero
+    // except for chatType="brainstorm", lets the model see whether prior proposals/handoffs are
+    // still sitting unresolved before proposing more.
+    handoffStatus: { activeCount: number; doneCount: number };
 }

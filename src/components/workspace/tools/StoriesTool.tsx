@@ -1,10 +1,14 @@
+import { Wand2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SearchFilter } from "@/components/ui/SearchFilter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
+import { CreateStoryDialog } from "@/features/stories/components/CreateStoryDialog";
 import { EditStoryDialog } from "@/features/stories/components/EditStoryDialog";
 import { useStoriesQuery } from "@/features/stories/hooks/useStoriesQuery";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { storyExportService } from "@/services/storyExportService";
 import type { Story } from "@/types/story";
 import { StoriesToolHeader } from "./StoriesToolHeader";
@@ -16,6 +20,7 @@ const storyMatchesSearch = (story: Story, term: string) =>
 export const StoriesTool = () => {
     const { data: stories = [], refetch: fetchStories } = useStoriesQuery();
     const { data: seriesList = [] } = useSeriesQuery();
+    const { setCurrentStoryId, setCurrentTool } = useStoryContext();
     const [editingStory, setEditingStory] = useState<Story | null>(null);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [selectedSeriesFilter, setSelectedSeriesFilter] = useState<string>("all");
@@ -45,8 +50,20 @@ export const StoriesTool = () => {
                 <StoriesToolHeader onStoriesChange={fetchStories} />
 
                 {stories.length === 0 ? (
-                    <div className="text-center text-muted-foreground">
-                        No stories yet. Create your first story to get started!
+                    <div className="text-center text-muted-foreground space-y-4">
+                        <p>No stories yet. Create your first story to get started!</p>
+                        <CreateStoryDialog
+                            trigger={
+                                <Button variant="outline" className="flex items-center gap-2">
+                                    <Wand2 className="h-4 w-4" />
+                                    Start in Brainstorm
+                                </Button>
+                            }
+                            onCreated={story => {
+                                setCurrentStoryId(story.id);
+                                setCurrentTool("brainstorm");
+                            }}
+                        />
                     </div>
                 ) : (
                     <SearchFilter

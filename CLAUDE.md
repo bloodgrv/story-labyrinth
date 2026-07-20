@@ -30,13 +30,15 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - Entry editor has a "Natural View" toggle (Advanced Settings, default on) that presents an entry as an editable prose character profile instead of the raw field form, hiding tags — same underlying form data either way
 
 ### Chat System
-- Four main contexts, each its own `chatType` with its own chat list:
+- Five main contexts, each its own `chatType` with its own chat list:
   - World-Building Chats (multiple focused chats with templates)
   - Global Info/Research Chat
   - Main Editor Chat (writing-focused)
   - Outline Chat (structure-focused; own chat list — **not** a WB template anymore, split out P0.4 R5/R7, see `DECISIONS.md`)
+  - Brainstorm Chat (project intake/orientation hub; own chat list — migrated off a separate parallel stack onto this shared one in P0.4 B0-B4, see `DECISIONS.md`)
 - All Codex modifications require explicit user approval (Approve / Reject / Edit First)
 - Per-chat saved prompts supported
+- **Brainstorm** (P0.4 B0-B4, **implemented**) — intake/orientation hub, not a structure desk or lore factory. Composer blurb + Guided Setup button + Light/Standard/Grill-me style dropdown (prompt-driven depth, not a tracked interview state machine — confirmed with user); opt-in toggles for Notes/Outline/Memory/Lorebook/Chapter Summaries (Lorebook defaults OFF here, unlike every other chat type). Writes only through two fences — `overview-proposal` (synopsis/overview note/opt-in memory) and `handoff-packet` (Outline/WB/Notes/Research, multiple per reply) — never direct Codex/outline/prose writes. Durable tray (`brainstormChecklist` table): Open/Send/Accept perform the real write but stay in the Active queue, only "Mark done" moves an item to Done. Separate `brainstormSlots` table backs a fixed 5-slot known/unknown project-setup checklist. B5 (WB/Outline domain playbooks) and the S/K/R6 tracks are still open — see `docs/CURRENT_BACKLOG.md`.
 
 ### RAG Systems
 - Vector RAG uses sqlite-vec (hybrid FTS5 + vector)
@@ -102,7 +104,7 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 
 ### Next (see backlog for detail)
 1. **P0.3 done** (2026-07-20) — continuity glue (memory ↔ chat/scan) fully shipped: Notes/Outline bridge, project memory chat toggle, save-as-note/note-proposal, scanner-memory integration, unattended scan schedule, Codex auto-compile
-2. **P0.4 R0-R8 done** (2026-07-20) — Editor selection rework + Codex tray (R0-R3); Lorebook field rework → WB chat, dedicated Outline chat with its own `chatType` (R4/R5/R7), outline row rework + "Open in WB" lore-suggestion handoff (R8). Remaining: R6 (auto-accept toggle UI, deferred) and Brainstorm/Research/Notes-desk tracks
+2. **P0.4 R0-R8 + B0-B4 done** (2026-07-20) — Editor selection rework + Codex tray (R0-R3); Lorebook field rework → WB chat, dedicated Outline chat with its own `chatType` (R4/R5/R7), outline row rework + "Open in WB" lore-suggestion handoff (R8); Brainstorm Hub migrated onto the shared chat stack with Guided Setup, depth-adaptive propose, and a durable handoff/checklist tray (B0-B4). Remaining: R6 (auto-accept toggle UI, deferred), B5 (WB/Outline domain playbooks), and the Research/Notes-desk (S/K) tracks
 3. P1 polish (Agent C, Graph G1.5) and P2 bugs as needed
 
 ---

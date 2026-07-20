@@ -29,8 +29,15 @@ export default createCrudRouter({
         router.post(
             "/",
             asyncHandler(async (req, res) => {
-                const { id: _id, createdAt: _createdAt, ...rest } = req.body;
-                const data = { id: req.body.id || crypto.randomUUID(), ...rest, createdAt: new Date() };
+                // notesApi.create's own type (Omit<Note, "id"|"createdAt"|"updatedAt">) promises
+                // the caller never has to supply these — updatedAt was missing here despite that
+                // contract, which failed every create with a NOT NULL constraint error (found
+                // while verifying the Brainstorm handoff-to-Notes path, P0.4 B0-B4; also blocked
+                // the pre-existing "Save message as note"/note-proposal/New Note paths, all of
+                // which call this same route with no updatedAt in the body).
+                const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = req.body;
+                const now = new Date();
+                const data = { id: req.body.id || crypto.randomUUID(), ...rest, createdAt: now, updatedAt: now };
                 const [created] = await db.insert(table).values(data).returning();
                 syncNoteIndex(created as NoteRow);
                 res.status(201).json(created);

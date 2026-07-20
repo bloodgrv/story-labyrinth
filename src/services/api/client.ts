@@ -23,6 +23,7 @@ import { fetchJSON, uploadFile } from "./apiFactory";
 export { agentJobsApi } from "./agentJobsClient";
 export { agentMemoriesApi } from "./agentMemoriesClient";
 export { beatsApi } from "./beatsClient";
+export { brainstormApi } from "./brainstormClient";
 export { chaptersApi } from "./chaptersClient";
 export { chapterSnapshotsApi } from "./chapterSnapshotsClient";
 export { chapterVersionsApi } from "./chapterVersionsClient";
@@ -126,17 +127,6 @@ export const grokOAuthApi = {
         })
 };
 
-// Brainstorm (AI Chats) API
-export const brainstormApi = {
-    getByStory: (storyId: string) => fetchJSON<AIChat[]>(`/brainstorm/story/${storyId}`),
-    getById: (id: string) => fetchJSON<AIChat>(`/brainstorm/${id}`),
-    create: (data: Omit<AIChat, "createdAt">) =>
-        fetchJSON<AIChat>("/brainstorm", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<AIChat>) =>
-        fetchJSON<AIChat>(`/brainstorm/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    delete: (id: string) => fetchJSON<{ success: boolean }>(`/brainstorm/${id}`, { method: "DELETE" })
-};
-
 // Scene Beats API
 export const scenebeatsApi = {
     getByChapter: (chapterId: string) => fetchJSON<SceneBeat[]>(`/scenebeats/chapter/${chapterId}`),
@@ -190,6 +180,9 @@ export const chatsApi = {
             includeNotes?: boolean;
             includeOutline?: boolean;
             includeMemory?: boolean;
+            includeLorebook?: boolean;
+            includeChapterSummaries?: boolean;
+            brainstormStyle?: string;
         }
     ) => fetchJSON<AIChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     appendMessage: (id: string, role: "user" | "assistant", content: string) =>

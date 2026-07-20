@@ -1,18 +1,17 @@
-import { AlertCircle, Check, ChevronsUpDown, MessageSquarePlus, Plus, RefreshCcw } from "lucide-react";
-import { useState } from "react";
+import { AlertCircle, MessageSquare, Plus, RefreshCcw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import ChatInterface from "@/features/brainstorm/components/ChatInterface";
-import ChatList from "@/features/brainstorm/components/ChatList";
-import { useBrainstormByStoryQuery, useCreateBrainstormMutation } from "@/features/brainstorm/hooks/useBrainstormQuery";
+import { BrainstormChecklistTray } from "@/features/brainstorm/components/BrainstormChecklistTray";
+import { GuidedSetupControl, type BrainstormStyle } from "@/features/brainstorm/components/GuidedSetupControl";
+import { ChatInterface } from "@/features/chat/components/ChatInterface";
+import { ChatList } from "@/features/chat/components/ChatList";
+import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { LorebookProvider } from "@/features/lorebook/context/LorebookContext";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
-import { cn } from "@/lib/utils";
+import { chatsApi } from "@/services/api/client";
 import type { AIChat } from "@/types/story";
-import { randomUUID } from "@/utils/crypto";
 
 const ChatErrorFallback = (error: Error, resetError: () => void) => (
     <div className="flex items-center justify-center h-full p-4">
@@ -35,12 +34,54 @@ const ChatErrorFallback = (error: Error, resetError: () => void) => (
     </div>
 );
 
+// P0.4 B0-B4 — Brainstorm migrated off its own parallel chat stack onto the shared
+// aiChats/chatContextService/ChatInterface stack (chatType: "brainstorm"), same move Outline
+// made in R5/R7. No separate tree/rail split needed here (unlike Outline) — the chat + tray IS
+// the whole tool, so this top-level tool component doubles as the "rail" OutlineChatRail is.
 export const BrainstormTool = () => {
     const { currentStoryId } = useStoryContext();
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
-    const [mobileOpen, setMobileOpen] = useState(false);
-    const createMutation = useCreateBrainstormMutation();
-    const { data: chats = [] } = useBrainstormByStoryQuery(currentStoryId || "");
+    const [composerSeedText, setComposerSeedText] = useState<string | null>(null);
+    const createMutation = useCreateChatMutation();
+    const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(currentStoryId ?? "", "brainstorm");
+
+    const mostRecentChat = (candidates: AIChat[]): AIChat =>
+        [...candidates].sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime())[0];
+
+    // Auto-select on first load: reuse the story's most recent Brainstorm chat, or create one —
+    // same pattern as OutlineChatRail's auto-select effect.
+    useEffect(() => {
+        if (!currentStoryId || selectedChat || chatsLoading) return;
+        if (chats.length > 0) {
+            setSelectedChat(mostRecentChat(chats));
+            return;
+        }
+        createMutation.mutate(
+            { storyId: currentStoryId, chatType: "brainstorm", title: "Brainstorm" },
+            { onSuccess: newChat => setSelectedChat(newChat) }
+        );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chats, chatsLoading, selectedChat, currentStoryId]);
+
+    const handleCreateNewChat = () => {
+        if (!currentStoryId) return;
+        createMutation.mutate(
+            { storyId: currentStoryId, chatType: "brainstorm", title: `New Chat ${new Date().toLocaleString()}` },
+            { onSuccess: newChat => setSelectedChat(newChat) }
+        );
+    };
+
+    const handleStyleChange = (style: BrainstormStyle) => {
+        if (!selectedChat) return;
+        void chatsApi.update(selectedChat.id, { brainstormStyle: style }).then(setSelectedChat);
+    };
+
+    const renderNewChatButton = () => (
+        <Button variant="outline" size="sm" onClick={handleCreateNewChat} className="flex items-center gap-1">
+            <Plus className="h-4 w-4" />
+            New Chat
+        </Button>
+    );
 
     if (!currentStoryId)
         return (
@@ -49,110 +90,50 @@ export const BrainstormTool = () => {
             </div>
         );
 
-    const handleCreateNewChat = () => {
-        createMutation.mutate(
-            {
-                id: randomUUID(),
-                storyId: currentStoryId,
-                title: `New Chat ${new Date().toLocaleString()}`,
-                messages: [],
-                updatedAt: new Date()
-            },
-            {
-                onSuccess: newChat => {
-                    setSelectedChat(newChat);
-                    setMobileOpen(false);
-                }
-            }
-        );
-    };
-
     return (
         <LorebookProvider storyId={currentStoryId}>
-            <div className="flex flex-col md:flex-row h-full">
-                {/* Mobile: dropdown chat selector */}
-                <div className="md:hidden p-2 border-b flex gap-2">
-                    <Popover open={mobileOpen} onOpenChange={setMobileOpen}>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={mobileOpen}
-                                aria-controls="chats-listbox"
-                                className="flex-1 justify-between"
-                            >
-                                <span className="truncate">{selectedChat ? selectedChat.title : "Select chat..."}</span>
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[calc(100vw-2rem)] p-0" align="start">
-                            <Command id="chats-listbox">
-                                <CommandInput placeholder="Search chats..." />
-                                <CommandList>
-                                    <CommandEmpty>No chats found.</CommandEmpty>
-                                    <CommandGroup>
-                                        {chats.map(chat => (
-                                            <CommandItem
-                                                key={chat.id}
-                                                value={chat.title}
-                                                onSelect={() => {
-                                                    setSelectedChat(chat);
-                                                    setMobileOpen(false);
-                                                }}
-                                            >
-                                                <Check
-                                                    className={cn(
-                                                        "mr-2 h-4 w-4",
-                                                        selectedChat?.id === chat.id ? "opacity-100" : "opacity-0"
-                                                    )}
-                                                />
-                                                <span className="truncate">{chat.title}</span>
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                    <Button size="icon" onClick={handleCreateNewChat} title="New Chat">
-                        <Plus className="h-4 w-4" />
-                    </Button>
-                </div>
-
-                <div className="flex-1 h-full min-h-0">
+            <div className="flex h-full">
+                <div className="flex-1 h-full min-h-0 flex flex-col">
+                    {selectedChat && (
+                        <div className="p-4 pb-0">
+                            <GuidedSetupControl
+                                style={(selectedChat.brainstormStyle as BrainstormStyle) ?? "standard"}
+                                onStyleChange={handleStyleChange}
+                                onStartGuidedSetup={setComposerSeedText}
+                            />
+                        </div>
+                    )}
                     {selectedChat ? (
                         <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[selectedChat.id]}>
                             <ChatInterface
                                 storyId={currentStoryId}
+                                promptType="brainstorm"
                                 selectedChat={selectedChat}
                                 onChatUpdate={setSelectedChat}
+                                enableProseProposals={false}
+                                initialComposerText={composerSeedText}
                             />
                         </ErrorBoundary>
                     ) : (
-                        <div className="flex items-center justify-center h-full flex-col gap-6 text-muted-foreground p-4">
-                            <MessageSquarePlus className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground/50" />
-                            <div className="text-center max-w-md">
-                                <h3 className="text-lg md:text-xl font-semibold mb-2">No Chat Selected</h3>
-                                <p className="mb-6 text-sm md:text-base">
-                                    Select a chat or create a new one to start brainstorming.
-                                </p>
-                                <Button onClick={handleCreateNewChat} className="flex items-center gap-2">
-                                    <MessageSquarePlus className="h-4 w-4" />
-                                    Create New Chat
-                                </Button>
-                            </div>
+                        <div className="flex items-center justify-center h-full flex-col gap-4 text-muted-foreground p-4">
+                            <MessageSquare className="h-10 w-10 text-muted-foreground/50" />
+                            <p className="text-sm text-center max-w-xs">Setting up your Brainstorm chat…</p>
                         </div>
                     )}
                 </div>
 
-                {/* Desktop: sidebar */}
-                <div className="hidden md:block">
+                <div className="flex flex-col w-[250px] sm:w-[300px] shrink-0">
                     <ChatList
                         storyId={currentStoryId}
+                        chatType="brainstorm"
+                        title="Brainstorm Chats"
+                        emptyLabel="No brainstorm chats yet"
                         selectedChat={selectedChat}
                         onSelectChat={setSelectedChat}
+                        renderNewChatAction={renderNewChatButton}
                         side="right"
                     />
+                    {selectedChat && <BrainstormChecklistTray chatId={selectedChat.id} storyId={currentStoryId} />}
                 </div>
             </div>
         </LorebookProvider>

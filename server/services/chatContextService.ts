@@ -11,6 +11,9 @@ import type {
     ChatType
 } from "../../src/types/worldbuilding.js";
 import { getTemplate } from "../../src/types/worldbuilding.js";
+import { BRAINSTORM_SLOTS } from "../../src/types/brainstorm.js";
+import { getChecklistCounts } from "./brainstormChecklistService.js";
+import { getSlots } from "./brainstormSlotsService.js";
 import { db, schema } from "../db/client.js";
 import { parseJson } from "../lib/json.js";
 import { getChatCodexProposals } from "./chatCodexService.js";
@@ -103,6 +106,50 @@ const LORE_SUGGESTION_INSTRUCTIONS =
     "```\n\n" +
     '"category" must be one of: character, location, item, event, note, synopsis, starting scenario, timeline.';
 
+// P0.4 B0-B4 — Brainstorm's only two write paths: a synopsis/note/memory proposal, or a handoff
+// packet to another chat/tool. Never Codex/outline/prose — Brainstorm is an intake hub, not a
+// structure desk or lore factory (docs/Chat_Panel_Integrations_Design.md §5's "Not:" list).
+//
+// "memory" is only offered when the chat's own includeMemory toggle is on (mirrored by
+// buildSystemPrompt below) — same opt-in gate C1 already established, not a new concept.
+const OVERVIEW_PROPOSAL_INSTRUCTIONS = (includeMemory: boolean): string =>
+    "As the project overview takes shape, propose capturing it — never just state it in conversation as if it " +
+    "were already saved. All overview proposals require explicit user approval before they take effect.\n\n" +
+    "To propose the story synopsis, include a fenced block in this exact form:\n\n" +
+    "```overview-proposal\n" +
+    '{"proposalType": "synopsis", "content": "...", "slotKey": "premise"}\n' +
+    "```\n\n" +
+    "To propose an overview note (idea, research point, loose thread — not canon):\n\n" +
+    "```overview-proposal\n" +
+    '{"proposalType": "note", "title": "...", "content": "...", "noteType": "idea", "slotKey": "setting"}\n' +
+    "```\n\n" +
+    (includeMemory
+        ? "To propose a Project Memory entry (an approved project fact worth remembering across sessions):\n\n" +
+          "```overview-proposal\n" +
+          '{"proposalType": "memory", "title": "...", "body": "...", "category": "project_note", "slotKey": "protagonist"}\n' +
+          "```\n\n"
+        : "") +
+    '"slotKey", if the proposal addresses one of the setup checklist slots shown below, must be one of: ' +
+    `${BRAINSTORM_SLOTS.map(s => s.key).join(", ")} — omit it otherwise. ` +
+    '"noteType" must be one of: idea, research, todo, other. Propose at most one overview-proposal per reply.';
+
+// Handoffs are lightweight suggestions, not deep creates — Brainstorm never builds outline items
+// or lorebook entries directly; the destination chat/tool governs the real work (docs/
+// Chat_Panel_Integrations_Design.md §5's "Direct outline items: none", "Direct lorebook/Codex
+// deep: none"). seedName/seedCategory are only read for destination "worldbuilding" (feeds the
+// existing pendingLorebookSeed pre-fill, same shape as the Outline chat's lore-suggestion, R8).
+const HANDOFF_PACKET_INSTRUCTIONS =
+    "When the conversation surfaces something ready to hand off to a more specialized chat, propose a handoff " +
+    "— never act as if it's already been sent. The user reviews and opens/sends each handoff themselves.\n\n" +
+    "To propose one or more handoffs, include a fenced block in this exact form:\n\n" +
+    "```handoff-packet\n" +
+    '{"handoffs": [{"destination": "outline", "summary": "one-line summary", "detail": "longer paste-ready text for that chat"}]}\n' +
+    "```\n\n" +
+    '"destination" must be one of: outline (structure/spine work), worldbuilding (a specific character/location/' +
+    "item worth developing — also include \"seedName\" and \"seedCategory\"), notes (working material worth " +
+    'saving as-is), research (a question worth looking into). "seedCategory" must be one of: character, ' +
+    "location, item, event, note, synopsis, starting scenario, timeline.";
+
 const OUTLINE_FRAMING =
     "You are a structure partner for this story's outline — chapter/scene sequencing and narrative arc. " +
     "Stay consistent with the full outline tree, the story synopsis, and the established Codex/lorebook state " +
@@ -126,6 +173,32 @@ const WORLDBUILDING_FRAMING =
     NOTE_PROPOSAL_INSTRUCTIONS +
     "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user sees them, " +
     "so don't reference '```codex-proposal', '```note-proposal', or 'the block' in your prose; just talk about the proposal naturally.";
+
+// P0.4 B0-B4 — Brainstorm is a project intake/orientation hub, not any of the specialized desks
+// it hands work off to. Explicitly NOT a manuscript writer, structure desk, or Codex/lore
+// factory — those stay Editor/Outline/World-Building's jobs (docs/Chat_Panel_Integrations_Design.md
+// §5's "Not:" list). Depth/interview style is layered on via STYLE_HINTS below, not encoded here.
+const BRAINSTORM_FRAMING =
+    "You are a project intake and orientation assistant for a long-form fiction project — helping the user " +
+    "figure out and articulate what their story is before the specialized desks (Outline for structure, " +
+    "World-Building for lore/characters, the Editor for prose) take over. You are NOT a structure desk, " +
+    "not a lore factory, and never write manuscript prose here. Ask questions, help the user think out loud, " +
+    "and propose capturing what emerges — you never assume something is settled until the user confirms it " +
+    "and it's proposed and accepted below.";
+
+// Confirmed with user: depth is purely a prompt-shaping hint the model follows in ordinary
+// multi-turn chat, NOT a tracked ask/capture/confirm state machine — see BRAINSTORM_SLOTS
+// (src/types/brainstorm.ts) for the only persisted "slot" concept.
+const LIGHT_STYLE_HINT =
+    "\n\nStyle: Light. Keep it brief — a handful of high-level questions, propose a short synopsis and a " +
+    "thin handoff or two once the basics are clear. Don't push for more depth than the user is offering.";
+const STANDARD_STYLE_HINT =
+    "\n\nStyle: Standard. Ask enough follow-up questions to get a solid synopsis plus a useful overview note, " +
+    "and propose Outline/World-Building handoffs once you have enough concrete material for them to work with.";
+const GRILL_STYLE_HINT =
+    "\n\nStyle: Grill-me. Interview thoroughly — ask harder, more specific follow-up questions, don't accept " +
+    "vague answers without probing once, and aim for richer overview notes and more complete handoffs before " +
+    "moving on.";
 
 // The Editor chat's only mechanism for actually changing the manuscript — mirrors the
 // Codex-proposal convention but for prose. Parsed client-side (parseProseProposal.ts) and
@@ -160,9 +233,31 @@ const PROSE_PROPOSAL_INSTRUCTIONS =
 // Assemble the effective system prompt for a chat: chat-type framing + template hint (World-
 // Building only). Extend the framing constants above — not the template catalogue — when
 // adding further global system instructions.
-const buildSystemPrompt = (chatType: ChatType, templateSlug: string | null): string => {
+const STYLE_HINTS: Record<string, string> = { light: LIGHT_STYLE_HINT, standard: STANDARD_STYLE_HINT, grill: GRILL_STYLE_HINT };
+
+const buildSystemPrompt = (
+    chatType: ChatType,
+    templateSlug: string | null,
+    brainstormStyle?: string,
+    includeMemory?: boolean
+): string => {
     if (chatType === "editor") return PROSE_PROPOSAL_INSTRUCTIONS;
     if (chatType === "outline") return OUTLINE_FRAMING;
+    if (chatType === "brainstorm") {
+        const styleHint = STYLE_HINTS[brainstormStyle ?? "standard"] ?? STANDARD_STYLE_HINT;
+        return (
+            BRAINSTORM_FRAMING +
+            styleHint +
+            "\n\n" +
+            OVERVIEW_PROPOSAL_INSTRUCTIONS(includeMemory === true) +
+            "\n\n" +
+            HANDOFF_PACKET_INSTRUCTIONS +
+            "\n\n" +
+            NOTE_PROPOSAL_INSTRUCTIONS +
+            "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user " +
+            "sees them, so don't reference the fenced blocks themselves in your prose; just talk about the proposal naturally."
+        );
+    }
 
     const template = templateSlug ? getTemplate(templateSlug as Parameters<typeof getTemplate>[0]) : undefined;
     return template?.systemPromptHint ? `${WORLDBUILDING_FRAMING}\n\n${template.systemPromptHint}` : WORLDBUILDING_FRAMING;
@@ -425,6 +520,16 @@ const resolveMemories = async (results: SearchResult[]): Promise<ChatContextMemo
     }));
 };
 
+// Lets the model see whether prior proposals/handoffs from this same Brainstorm chat are still
+// sitting unresolved (status pending/opened) before proposing more (P0.4 B4).
+const resolveHandoffStatus = async (chatId: string) => {
+    const [active, done] = await Promise.all([
+        getChecklistCounts(chatId, "active"),
+        getChecklistCounts(chatId, "done")
+    ]);
+    return { activeCount: active, doneCount: done };
+};
+
 /**
  * Assemble everything a chat needs to generate a well-grounded response or proposal:
  *   - systemPrompt: chat-type framing (+ template hint for World-Building)
@@ -449,6 +554,10 @@ const resolveMemories = async (results: SearchResult[]): Promise<ChatContextMemo
  *   - outlineTree / writtenChapters: the Outline chat's own always-on structured reads (P0.4 R5)
  *     — full outline tree + written chapter titles/summaries, not RAG-ranked, not toggle-gated.
  *     Empty for every other chatType.
+ *   - chapterSummaries: written chapter titles+summaries, populated when this chat's own
+ *     includeChapterSummaries toggle is on (P0.4 B0-B4) — reuses writtenChapters' own resolver.
+ *   - priorSetupSlots / handoffStatus: Brainstorm's always-on setup-slot checklist + this chat's
+ *     own checklist activity counts (P0.4 B2/B4). Empty/zero for every other chatType.
  *
  * Degrades gracefully rather than failing: if the story has no indexed content, no embedding
  * endpoint is configured, or an anchor entry/chapter no longer exists, the relevant-* fields are
@@ -467,11 +576,19 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     const includeNotes = chat.includeNotes === true;
     const includeOutline = chat.includeOutline === true;
     const includeMemory = chat.includeMemory === true;
+    const isBrainstorm = chatType === "brainstorm";
+    const includeChapterSummaries = chat.includeChapterSummaries === true;
+    const includeLorebook = chat.includeLorebook === true;
 
     // Only build a non-default entityTypes array when a bridge toggle is actually on — search()/
     // hybridSearch's own DEFAULT_SEARCH_ENTITY_TYPES stays the single source of truth for
-    // "omitted" otherwise (design doc §4.5).
-    const entityTypes: RagEntityType[] = [...DEFAULT_SEARCH_ENTITY_TYPES];
+    // "omitted" otherwise (design doc §4.5). Brainstorm is the one exception where a default-ON
+    // entity type (lorebook_entry) needs to become opt-in too — every other chat type's lorebook
+    // search stays always-on, unchanged (P0.4 B0-B4, design doc §5's "Lorebook | Opt-in").
+    const entityTypes: RagEntityType[] = isBrainstorm
+        ? DEFAULT_SEARCH_ENTITY_TYPES.filter(t => t !== "lorebook_entry")
+        : [...DEFAULT_SEARCH_ENTITY_TYPES];
+    if (isBrainstorm && includeLorebook) entityTypes.push("lorebook_entry");
     if (includeNotes) entityTypes.push("note");
     if (includeOutline) entityTypes.push("outline_item");
     if (includeMemory) entityTypes.push("agent_memory");
@@ -493,18 +610,32 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
 
     const anchorIds = new Set(anchorEntries.map(e => e.entryId));
     const anchorChapterIds = new Set(anchorChapterPassages.map(p => p.chapterId));
-    const [searchCodexEntries, searchChapterPassages, notes, outlineItems, memories, outlineTree, writtenChapters] = await Promise.all([
+    const [
+        searchCodexEntries,
+        searchChapterPassages,
+        notes,
+        outlineItems,
+        memories,
+        outlineTree,
+        writtenChapters,
+        chapterSummaries,
+        priorSetupSlots,
+        handoffStatus
+    ] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
         includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
         includeNotes ? resolveNotes(searchResults) : Promise.resolve([]),
         includeOutline ? resolveOutlineItems(searchResults) : Promise.resolve([]),
         includeMemory ? resolveMemories(searchResults) : Promise.resolve([]),
         includeOutlineTree && chat.storyId ? resolveFullOutlineTree(chat.storyId) : Promise.resolve([]),
-        includeOutlineTree && chat.storyId ? resolveWrittenChapterSummaries(chat.storyId) : Promise.resolve([])
+        includeOutlineTree && chat.storyId ? resolveWrittenChapterSummaries(chat.storyId) : Promise.resolve([]),
+        includeChapterSummaries && chat.storyId ? resolveWrittenChapterSummaries(chat.storyId) : Promise.resolve([]),
+        isBrainstorm && chat.storyId ? getSlots(chat.storyId) : Promise.resolve([]),
+        isBrainstorm ? resolveHandoffStatus(chatId) : Promise.resolve({ activeCount: 0, doneCount: 0 })
     ]);
 
     return {
-        systemPrompt: buildSystemPrompt(chatType, chat.templateSlug),
+        systemPrompt: buildSystemPrompt(chatType, chat.templateSlug, chat.brainstormStyle, includeMemory),
         pendingProposals,
         projectSynopsis: storyRows[0]?.synopsis ?? null,
         relevantCodexEntries: [...anchorEntries, ...searchCodexEntries],
@@ -513,6 +644,9 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
         relevantOutlineItems: outlineItems,
         relevantMemories: memories,
         outlineTree,
-        writtenChapters
+        writtenChapters,
+        chapterSummaries,
+        priorSetupSlots,
+        handoffStatus
     };
 };

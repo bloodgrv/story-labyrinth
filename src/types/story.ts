@@ -96,6 +96,14 @@ export interface AIChat extends BaseEntity {
     // Phase B / Agent_Framework_And_Project_Memory_Design.md §4.5's "Include project memory", C1).
     // Defaults false server-side; optional here for the same reason as the two fields above.
     includeMemory?: boolean;
+    // Brainstorm-only opt-in gates (P0.4 B0-B4, docs/Chat_Panel_Integrations_Design.md §5) —
+    // lorebook search and chapter titles+summaries are OFF by default for Brainstorm, unlike
+    // every other chat type. Ignored for any other chatType. Defaults false server-side.
+    includeLorebook?: boolean;
+    includeChapterSummaries?: boolean;
+    // Light | Standard | Grill-me — Brainstorm's interview-depth style (P0.4 B2). Defaults
+    // 'standard' server-side; ignored for any other chatType.
+    brainstormStyle?: string;
 }
 
 export interface ChatMessage {

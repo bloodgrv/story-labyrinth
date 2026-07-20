@@ -9,6 +9,7 @@ import { CodexProposalTray } from "@/features/chat/components/CodexProposalTray"
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import type { ParsedLoreSuggestion } from "@/features/chat/services/parseLoreSuggestions";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import type { AIChat } from "@/types/story";
 import { OutlineProposalTray } from "./OutlineProposalTray";
 
@@ -52,6 +53,8 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
     const createMutation = useCreateChatMutation();
     const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(storyId, "outline");
     const pendingRework = usePendingRework();
+    const { pendingChatComposerSeed, setPendingChatComposerSeed } = useStoryContext();
+    const [composerSeedText, setComposerSeedText] = useState<string | null>(null);
 
     const mostRecentChat = (candidates: AIChat[]): AIChat =>
         [...candidates].sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime())[0];
@@ -70,6 +73,17 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
         );
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [chats, chatsLoading, selectedChat, storyId]);
+
+    // Brainstorm's "Handoff → Outline" tray action (P0.4 B0-B4) — same one-shot consumption
+    // posture as LorebookPage.tsx's pendingLorebookSeed effect, generalized via
+    // StoryContext.pendingChatComposerSeed. Just prefills the composer via ChatInterface's
+    // initialComposerText prop below; the auto-select effect above already guarantees a chat
+    // exists to receive it.
+    useEffect(() => {
+        if (!pendingChatComposerSeed || pendingChatComposerSeed.tool !== "outline" || !selectedChat) return;
+        setComposerSeedText(pendingChatComposerSeed.text);
+        setPendingChatComposerSeed(null);
+    }, [pendingChatComposerSeed, selectedChat, setPendingChatComposerSeed]);
 
     // Bridges a "Rework in chat" click on an outline row (OutlineChapterCard.tsx/
     // OutlineSceneRow.tsx, P0.4 R8) into this rail via pendingReworkStore — mirrors
@@ -134,6 +148,7 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
                             onChatUpdate={setSelectedChat}
                             enableProseProposals={false}
                             initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
+                            initialComposerText={composerSeedText}
                             onLoreSuggestions={suggestions => setLoreSuggestions(prev => [...prev, ...suggestions])}
                         />
                     </ErrorBoundary>

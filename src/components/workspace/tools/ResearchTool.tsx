@@ -1,10 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Loader2, RefreshCcw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { LorebookProvider } from "@/features/lorebook/context/LorebookContext";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { chatsApi } from "@/services/api/client";
 
 const ChatErrorFallback = (error: Error, resetError: () => void) => (
@@ -38,6 +40,18 @@ export const ResearchTool = () => {
         queryFn: () => chatsApi.getOrCreateGlobal("research", "Research")
     });
 
+    // Brainstorm's "Handoff → Research" tray action (P0.4 B0-B4) — same one-shot consumption
+    // posture as OutlineChatRail's, generalized via StoryContext.pendingChatComposerSeed. Research
+    // has no per-story chat identity to auto-select (it's the one global chat), so this just waits
+    // for `chat` to load, then prefills the composer.
+    const { pendingChatComposerSeed, setPendingChatComposerSeed } = useStoryContext();
+    const [composerSeedText, setComposerSeedText] = useState<string | null>(null);
+    useEffect(() => {
+        if (!pendingChatComposerSeed || pendingChatComposerSeed.tool !== "research" || !chat) return;
+        setComposerSeedText(pendingChatComposerSeed.text);
+        setPendingChatComposerSeed(null);
+    }, [pendingChatComposerSeed, chat, setPendingChatComposerSeed]);
+
     if (isLoading || !chat)
         return (
             <div className="h-full flex items-center justify-center">
@@ -52,6 +66,7 @@ export const ResearchTool = () => {
                     promptType="research"
                     selectedChat={chat}
                     onChatUpdate={updated => queryClient.setQueryData(["chats", "global", "research"], updated)}
+                    initialComposerText={composerSeedText}
                 />
             </ErrorBoundary>
         </LorebookProvider>
