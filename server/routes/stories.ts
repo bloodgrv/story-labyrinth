@@ -5,11 +5,15 @@ import multer from "multer";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { generateEpub } from "../services/epubGenerator.js";
+import { indexNote, indexOutlineItem } from "../services/ragIndexService.js";
 
 type ImportedChapter = InferSelectModel<typeof schema.chapters>;
 type ImportedLorebookEntry = InferSelectModel<typeof schema.lorebookEntries>;
 type ImportedSceneBeat = InferSelectModel<typeof schema.sceneBeats>;
 type ImportedAiChat = InferSelectModel<typeof schema.aiChats>;
+type ImportedNote = InferSelectModel<typeof schema.notes>;
+type ImportedOutlineItem = InferSelectModel<typeof schema.outlineItems>;
+type ImportedOutlineItemCharacter = InferSelectModel<typeof schema.outlineItemCharacters>;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -45,10 +49,16 @@ export default createCrudRouter({
                             and(eq(schema.lorebookEntries.level, "story"), eq(schema.lorebookEntries.scopeId, storyId))
                         );
 
-                    const [chapters, sceneBeats, aiChats] = await Promise.all([
+                    const [chapters, sceneBeats, aiChats, notes, outlineItems, outlineItemCharacters] = await Promise.all([
                         db.select().from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
                         db.select().from(schema.sceneBeats).where(eq(schema.sceneBeats.storyId, storyId)),
-                        db.select().from(schema.aiChats).where(eq(schema.aiChats.storyId, storyId))
+                        db.select().from(schema.aiChats).where(eq(schema.aiChats.storyId, storyId)),
+                        db.select().from(schema.notes).where(eq(schema.notes.storyId, storyId)),
+                        db.select().from(schema.outlineItems).where(eq(schema.outlineItems.storyId, storyId)),
+                        db
+                            .select()
+                            .from(schema.outlineItemCharacters)
+                            .where(eq(schema.outlineItemCharacters.storyId, storyId))
                     ]);
 
                     return {
@@ -60,7 +70,10 @@ export default createCrudRouter({
                         chapters,
                         lorebookEntries,
                         sceneBeats,
-                        aiChats
+                        aiChats,
+                        notes,
+                        outlineItems,
+                        outlineItemCharacters
                     };
                 });
 
@@ -159,7 +172,13 @@ export default createCrudRouter({
                                     level: "story", // Force to story level on import
                                     scopeId: newStoryId, // Assign to new story
                                     storyId: newStoryId, // Temporary for Phase 1
-                                    createdAt: new Date()
+                                    createdAt: new Date(),
+                                    // Pre-existing bug fixed here (found while verifying P0.3's export/import
+                                    // work): entry.updatedAt survives the ...entry spread as a JSON string (this
+                                    // object round-tripped through export/import JSON), and without this override
+                                    // drizzle's insert calls .getTime() on it as if it were still a Date and throws.
+                                    // createdAt above was already handled this way; updatedAt was the gap.
+                                    updatedAt: entry.updatedAt ? new Date() : null
                                 };
                             })
                             .filter(
@@ -197,6 +216,83 @@ export default createCrudRouter({
                         await db.insert(schema.aiChats).values(newChats);
                     }
 
+                    // Notes (P0.3 N0) — same shape as sceneBeats: new id, reassigned storyId,
+                    // includeInAi carried through as-is. RAG chunks are never exported/imported
+                    // (design doc §3/§8) — reindexed below, after every row is safely inserted.
+                    const importedNotes: Array<{ id: string; storyId: string; text: string }> = [];
+                    if (storyData.notes?.length) {
+                        const newNotes = storyData.notes.map((note: ImportedNote) => {
+                            const newNoteId = crypto.randomUUID();
+                            if (note.includeInAi) importedNotes.push({ id: newNoteId, storyId: newStoryId, text: [note.title, note.content].filter(Boolean).join("\n\n") });
+                            return {
+                                ...note,
+                                id: newNoteId,
+                                storyId: newStoryId,
+                                createdAt: new Date(),
+                                updatedAt: new Date()
+                            };
+                        });
+                        await db.insert(schema.notes).values(newNotes);
+                    }
+
+                    // Outline items (P0.3 N0) — needs a two-pass insert: parentId self-references
+                    // another outline item's OLD id, and chapterId cross-references the chapters
+                    // idMap already populated above. Pass 1 assigns every new id up front so pass 2
+                    // can remap both references regardless of insertion order.
+                    const outlineIdMap = new Map<string, string>();
+                    if (storyData.outlineItems?.length)
+                        for (const item of storyData.outlineItems as ImportedOutlineItem[]) outlineIdMap.set(item.id, crypto.randomUUID());
+
+                    const importedOutlineItems: Array<{ id: string; storyId: string; text: string }> = [];
+                    if (storyData.outlineItems?.length) {
+                        const newOutlineItems = (storyData.outlineItems as ImportedOutlineItem[]).map(item => {
+                            const newItemId = outlineIdMap.get(item.id) as string;
+                            if (item.includeInAi) importedOutlineItems.push({ id: newItemId, storyId: newStoryId, text: [item.title, item.summary].filter(Boolean).join("\n\n") });
+                            return {
+                                ...item,
+                                id: newItemId,
+                                storyId: newStoryId,
+                                parentId: item.parentId ? (outlineIdMap.get(item.parentId) ?? null) : null,
+                                chapterId: item.chapterId ? (idMap.get(item.chapterId) ?? item.chapterId) : null,
+                                createdAt: new Date(),
+                                updatedAt: new Date()
+                            };
+                        });
+                        await db.insert(schema.outlineItems).values(newOutlineItems);
+                    }
+
+                    // Outline item character-arc links — skip (with a warning, not a hard failure,
+                    // matching the lorebook-entry skip-invalid pattern above) if either side of the
+                    // link isn't found in the id maps (e.g. a stale/missing reference).
+                    if (storyData.outlineItemCharacters?.length) {
+                        const newLinks = (storyData.outlineItemCharacters as ImportedOutlineItemCharacter[])
+                            .map(link => {
+                                const newOutlineItemId = outlineIdMap.get(link.outlineItemId);
+                                const newCharacterId = idMap.get(link.characterId);
+                                if (!newOutlineItemId || !newCharacterId) {
+                                    console.warn(`Skipping outline character link ${link.id}: missing outline item or character reference`);
+                                    return null;
+                                }
+                                return {
+                                    ...link,
+                                    id: crypto.randomUUID(),
+                                    storyId: newStoryId,
+                                    outlineItemId: newOutlineItemId,
+                                    characterId: newCharacterId,
+                                    createdAt: new Date()
+                                };
+                            })
+                            .filter((link): link is NonNullable<typeof link> => link !== null);
+                        if (newLinks.length > 0) await db.insert(schema.outlineItemCharacters).values(newLinks);
+                    }
+
+                    // Reindex armed notes/outline items now that every row has landed with its
+                    // final id/storyId — the export never ships raw ragChunks (design doc §3/§8),
+                    // so this is the only place imported content becomes searchable again.
+                    // Fire-and-forget, same posture as lorebook.ts's indexLorebookEntry calls.
+                    for (const note of importedNotes) void attemptPromise(() => indexNote({ noteId: note.id, storyId: note.storyId, text: note.text }));
+                    for (const item of importedOutlineItems) void attemptPromise(() => indexOutlineItem({ outlineItemId: item.id, storyId: item.storyId, text: item.text }));
+
                     return newStoryId;
                 });
 
@@ -213,7 +309,10 @@ export default createCrudRouter({
                         chapters: storyData.chapters?.length || 0,
                         lorebookEntries: storyData.lorebookEntries?.length || 0,
                         sceneBeats: storyData.sceneBeats?.length || 0,
-                        aiChats: storyData.aiChats?.length || 0
+                        aiChats: storyData.aiChats?.length || 0,
+                        notes: storyData.notes?.length || 0,
+                        outlineItems: storyData.outlineItems?.length || 0,
+                        outlineItemCharacters: storyData.outlineItemCharacters?.length || 0
                     }
                 });
             })

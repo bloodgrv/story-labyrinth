@@ -136,6 +136,8 @@ router.get(
 //   title: string                  — rename the chat
 //   lastUsedPromptId: string|null  — track last prompt
 //   lastUsedModelId: string|null   — track last model
+//   includeNotes: boolean          — Notes/Outline bridge chat-level gate (docs/Notes_Outline_Chat_Bridges_Design.md)
+//   includeOutline: boolean        — same, for outline items
 router.patch(
     "/:chatId",
     asyncHandler(async (req, res) => {
@@ -145,11 +147,13 @@ router.patch(
             return;
         }
 
-        const { messages, title, lastUsedPromptId, lastUsedModelId } = req.body as {
+        const { messages, title, lastUsedPromptId, lastUsedModelId, includeNotes, includeOutline } = req.body as {
             messages?: unknown[];
             title?: string;
             lastUsedPromptId?: string | null;
             lastUsedModelId?: string | null;
+            includeNotes?: boolean;
+            includeOutline?: boolean;
         };
 
         let result = chat;
@@ -168,11 +172,19 @@ router.patch(
         if (title !== undefined) metaFields.title = title;
         if (lastUsedPromptId !== undefined) metaFields.lastUsedPromptId = lastUsedPromptId;
         if (lastUsedModelId !== undefined) metaFields.lastUsedModelId = lastUsedModelId;
+        if (includeNotes !== undefined) metaFields.includeNotes = includeNotes;
+        if (includeOutline !== undefined) metaFields.includeOutline = includeOutline;
 
         if (Object.keys(metaFields).length > 0) {
             result = await updateMeta(
                 req.params.chatId,
-                metaFields as { title?: string; lastUsedPromptId?: string | null; lastUsedModelId?: string | null }
+                metaFields as {
+                    title?: string;
+                    lastUsedPromptId?: string | null;
+                    lastUsedModelId?: string | null;
+                    includeNotes?: boolean;
+                    includeOutline?: boolean;
+                }
             );
         }
 

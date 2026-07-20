@@ -38,6 +38,8 @@ export type UpdateChatMetaFields = Partial<{
     title: string;
     lastUsedPromptId: string | null;
     lastUsedModelId: string | null;
+    includeNotes: boolean;
+    includeOutline: boolean;
 }>;
 
 // ── Queries ────────────────────────────────────────────────────────────────────
@@ -120,6 +122,8 @@ export const updateChatMeta = async (
     if (fields.title !== undefined) updates.title = fields.title;
     if (fields.lastUsedPromptId !== undefined) updates.lastUsedPromptId = fields.lastUsedPromptId;
     if (fields.lastUsedModelId !== undefined) updates.lastUsedModelId = fields.lastUsedModelId;
+    if (fields.includeNotes !== undefined) updates.includeNotes = fields.includeNotes;
+    if (fields.includeOutline !== undefined) updates.includeOutline = fields.includeOutline;
 
     const [row] = await db
         .update(schema.aiChats)

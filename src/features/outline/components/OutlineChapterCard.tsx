@@ -15,7 +15,7 @@ import {
     verticalListSortingStrategy
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Check, ChevronDown, ChevronUp, GripVertical, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { Bot, Check, ChevronDown, ChevronUp, GripVertical, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -149,6 +149,12 @@ export function OutlineChapterCard({
                             <Badge variant="outline" className="font-normal">
                                 {scenes.length} scene{scenes.length === 1 ? "" : "s"}
                             </Badge>
+                            {chapter.includeInAi && (
+                                <Badge variant="outline" className="gap-1 font-normal">
+                                    <Bot className="h-3 w-3" />
+                                    In AI context
+                                </Badge>
+                            )}
                         </div>
                         {chapter.summary && <p className="text-sm text-muted-foreground">{chapter.summary}</p>}
                         <OutlineCharacterChips outlineItemId={chapter.id} storyId={storyId} characters={characters} />
@@ -164,6 +170,19 @@ export function OutlineChapterCard({
                                 onClick={() => setAddSceneOpen(true)}
                             >
                                 <Plus className="h-4 w-4" />
+                            </Button>
+                        )}
+                        {!isPending && (
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className={cn("h-8 w-8", chapter.includeInAi && "text-primary")}
+                                title={chapter.includeInAi ? "Exclude from AI chats" : "Include in AI chats (non-canon working material)"}
+                                onClick={() =>
+                                    updateMutation.mutate({ id: chapter.id, data: { includeInAi: !chapter.includeInAi } })
+                                }
+                            >
+                                <Bot className="h-4 w-4" />
                             </Button>
                         )}
                         <Button

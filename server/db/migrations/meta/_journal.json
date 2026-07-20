@@ -232,6 +232,13 @@
       "when": 1784386449290,
       "tag": "0032_green_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1784523079494,
+      "tag": "0033_cultured_magneto",
+      "breakpoints": true
     }
   ]
 }

@@ -24,6 +24,9 @@ export interface OutlineItem {
     source: OutlineItemSource;
     status: OutlineItemStatus;
     chapterId?: string | null;
+    // Opt-in gate for the Notes/Outline ↔ chat bridge — see aiChats.includeOutline on AIChat.
+    // Defaults false server-side; optional here since creation never needs to specify it.
+    includeInAi?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }

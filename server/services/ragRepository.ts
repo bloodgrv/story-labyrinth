@@ -2,12 +2,13 @@ import { randomUUID } from "node:crypto";
 import { sqlite } from "../db/client.js";
 import { computeContentHash } from "./embeddingService.js";
 
-export type RagEntityType = "lorebook_entry" | "chapter" | "agent_memory";
+export type RagEntityType = "lorebook_entry" | "chapter" | "agent_memory" | "note" | "outline_item";
 
 // Single source of truth for "entityTypes omitted" — every caller in the codebase (routes/rag.ts,
 // ragScanner.ts, chatContextService.ts) either passes this explicitly or omits the param and
 // inherits it here. Must never silently mean "all types" (design doc §4.5) — pending/active
-// memories only ever surface via an explicit opt-in entityTypes argument.
+// memories, and notes/outline items, only ever surface via an explicit opt-in entityTypes
+// argument (Notes_Outline_Chat_Bridges_Design.md's double gate).
 export const DEFAULT_SEARCH_ENTITY_TYPES: RagEntityType[] = ["lorebook_entry", "chapter"];
 
 export interface RagChunkRow {

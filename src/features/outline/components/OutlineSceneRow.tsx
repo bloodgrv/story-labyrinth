@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Check, GripVertical, Pencil, Sparkles, Trash2, X } from "lucide-react";
+import { Bot, Check, GripVertical, Pencil, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,12 @@ export function OutlineSceneRow({ scene, storyId, chapters, characters, onMoveTo
                                 ~{scene.wordCountTarget.toLocaleString()} words
                             </Badge>
                         ) : null}
+                        {scene.includeInAi && (
+                            <Badge variant="outline" className="gap-1 font-normal">
+                                <Bot className="h-3 w-3" />
+                                In AI context
+                            </Badge>
+                        )}
                     </div>
                     {scene.summary && <p className="text-xs text-muted-foreground">{scene.summary}</p>}
                     <OutlineCharacterChips outlineItemId={scene.id} storyId={storyId} characters={characters} />
@@ -87,6 +93,19 @@ export function OutlineSceneRow({ scene, storyId, chapters, characters, onMoveTo
                                 ))}
                             </SelectContent>
                         </Select>
+                    )}
+                    {!isPending && (
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className={cn("h-7 w-7", scene.includeInAi && "text-primary")}
+                            title={scene.includeInAi ? "Exclude from AI chats" : "Include in AI chats (non-canon working material)"}
+                            onClick={() =>
+                                updateMutation.mutate({ id: scene.id, data: { includeInAi: !scene.includeInAi } })
+                            }
+                        >
+                            <Bot className="h-3.5 w-3.5" />
+                        </Button>
                     )}
                     <Button
                         size="icon"

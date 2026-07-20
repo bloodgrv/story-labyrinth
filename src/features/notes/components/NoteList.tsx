@@ -105,6 +105,10 @@ export default function NoteList({ storyId, selectedNoteId, onSelectNote }: Note
                                     e.stopPropagation();
                                     handleDeleteNote(note.id);
                                 }}
+                                onToggleIncludeInAi={e => {
+                                    e.stopPropagation();
+                                    updateNoteMutation.mutate({ id: note.id, data: { includeInAi: !note.includeInAi } });
+                                }}
                             />
                         ))
                     )}

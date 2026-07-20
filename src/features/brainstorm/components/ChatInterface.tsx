@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { ChatSystemPromptControl } from "@/features/chat/components/ChatSystemPromptControl";
 import { useChatSystemPrompt } from "@/features/chat/hooks/useChatSystemPrompt";
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { getFilteredEntries as getFilteredLorebookEntries } from "@/features/lorebook/utils/lorebookFilters";
+import { chatsApi } from "@/services/api/client";
 import type { AIChat, Prompt, PromptParserConfig } from "@/types/story";
 import { useUpdateBrainstormMutation } from "../hooks/useBrainstormQuery";
 import { useChatMessages } from "../hooks/useChatMessages";
@@ -53,12 +56,51 @@ export default function ChatInterface({ storyId, selectedChat, onChatUpdate }: C
         clearSelections
     } = useContextSelection();
 
+    // Notes/Outline bridge chat-level gate (docs/Notes_Outline_Chat_Bridges_Design.md). Brainstorm
+    // deliberately stays manual-only for lorebook/chapter context (the ContextSelector above) —
+    // unlike World-Building/Research/Editor chats, it never calls chatContextService's full
+    // getChatContext for that. This only pulls the notes/outline non-canon packet (see the
+    // useEffect below), so arming these toggles can't silently change Brainstorm's existing
+    // lorebook/chapter behavior.
+    const [includeNotes, setIncludeNotes] = useState(selectedChat.includeNotes);
+    const [includeOutline, setIncludeOutline] = useState(selectedChat.includeOutline);
+    const [notesOutlineContext, setNotesOutlineContext] = useState("");
+
+    const toggleIncludeNotes = (value: boolean) =>
+        updateChatMutation.mutateAsync({ id: selectedChat.id, data: { includeNotes: value } }).then(() => setIncludeNotes(value));
+    const toggleIncludeOutline = (value: boolean) =>
+        updateChatMutation.mutateAsync({ id: selectedChat.id, data: { includeOutline: value } }).then(() => setIncludeOutline(value));
+
+    useEffect(() => {
+        if (!includeNotes && !includeOutline) {
+            setNotesOutlineContext("");
+            return;
+        }
+        let cancelled = false;
+        chatsApi.getContext(selectedChat.id).then(context => {
+            if (cancelled) return;
+            const notesText = context.relevantNotes.map(n => `- ${n.title}: ${n.excerpt}`).join("\n");
+            const outlineText = context.relevantOutlineItems.map(o => `- ${o.title} (${o.type}): ${o.excerpt}`).join("\n");
+            const sections = [
+                notesText &&
+                    `[STORY NOTES — working material, not canon]\nOnly use as ideas/constraints if relevant; do not treat as established fact unless it also appears in Codex/lorebook.\n${notesText}`,
+                outlineText &&
+                    `[OUTLINE — planning intent, not canon]\nOnly use as ideas/constraints if relevant; do not treat as established fact unless it also appears in Codex/lorebook.\n${outlineText}`
+            ].filter(Boolean);
+            setNotesOutlineContext(sections.join("\n\n"));
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedChat.id, includeNotes, includeOutline]);
+
     const createPromptConfig = useCallback(
         (prompt: Prompt): PromptParserConfig => ({
             promptId: prompt.id,
             storyId,
             scenebeat: input.trim(),
             additionalContext: {
+                codexContext: notesOutlineContext,
                 chatHistory: selectedChat.messages.map(msg => ({
                     role: msg.role,
                     content: msg.content
@@ -72,6 +114,7 @@ export default function ChatInterface({ storyId, selectedChat, onChatUpdate }: C
         [
             input,
             storyId,
+            notesOutlineContext,
             selectedChat.messages,
             includeFullContext,
             selectedSummaries,
@@ -131,6 +174,21 @@ export default function ChatInterface({ storyId, selectedChat, onChatUpdate }: C
                     selectedModel={selectedModel}
                     onSelectModel={selectModel}
                 />
+
+                <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border p-3">
+                    <div className="flex items-center gap-2">
+                        <Switch id={`${selectedChat.id}-include-notes`} checked={includeNotes} onCheckedChange={toggleIncludeNotes} />
+                        <Label htmlFor={`${selectedChat.id}-include-notes`} className="text-sm font-normal">
+                            Include Notes (working material, not canon)
+                        </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Switch id={`${selectedChat.id}-include-outline`} checked={includeOutline} onCheckedChange={toggleIncludeOutline} />
+                        <Label htmlFor={`${selectedChat.id}-include-outline`} className="text-sm font-normal">
+                            Include Outline (planning intent, not canon)
+                        </Label>
+                    </div>
+                </div>
 
                 <ContextSelector
                     includeFullContext={includeFullContext}

@@ -135,6 +135,25 @@ export const indexAgentMemory = async (params: {
 }): Promise<{ indexed: boolean; chunks: number }> =>
     indexEntity({ storyId: params.storyId, entityType: "agent_memory", entityId: params.memoryId, text: params.text });
 
+// (Re)index a Story Note, only ever called when the note's own includeInAi flag is true (see
+// routes/notes.ts) — notes are opt-in working material, not always-on like lorebook/chapter. Same
+// thin shape as indexAgentMemory: caller already has the row and builds the indexable text.
+export const indexNote = async (params: {
+    noteId: string;
+    storyId: string;
+    text: string;
+}): Promise<{ indexed: boolean; chunks: number }> =>
+    indexEntity({ storyId: params.storyId, entityType: "note", entityId: params.noteId, text: params.text });
+
+// (Re)index an Outline item, only ever called when the item's own includeInAi flag is true (see
+// routes/outline.ts) — same opt-in posture as indexNote.
+export const indexOutlineItem = async (params: {
+    outlineItemId: string;
+    storyId: string;
+    text: string;
+}): Promise<{ indexed: boolean; chunks: number }> =>
+    indexEntity({ storyId: params.storyId, entityType: "outline_item", entityId: params.outlineItemId, text: params.text });
+
 // Hybrid keyword + vector search scoped to a single story. Falls back to keyword-only
 // search if no embedding endpoint is configured, rather than failing outright. `entityTypes` is
 // passed straight through with no re-defaulting — hybridSearch's own DEFAULT_SEARCH_ENTITY_TYPES

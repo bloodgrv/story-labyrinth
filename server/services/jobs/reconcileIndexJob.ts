@@ -115,6 +115,23 @@ export const runReconcileIndexJob = async (job: AgentJob): Promise<{
     const activeMemories = await listMemories({ storyId, status: "active" });
     for (const memory of activeMemories) validKeys.add(`agent_memory:${memory.id}`);
 
+    // Armed (includeInAi=true) notes/outline items also count as valid keys, same posture as
+    // agent_memory above — no staleness check needed, since routes/notes.ts and routes/outline.ts
+    // always reindex synchronously on write. Per the bridge design doc's "Index hygiene" section,
+    // this job may only add/remove ragChunks — it must never delete note/outline rows, even for
+    // ones with includeInAi=false (those simply aren't in validKeys and have no chunks anyway).
+    const armedNotes = await db
+        .select({ id: schema.notes.id })
+        .from(schema.notes)
+        .where(and(eq(schema.notes.storyId, storyId), eq(schema.notes.includeInAi, true)));
+    for (const note of armedNotes) validKeys.add(`note:${note.id}`);
+
+    const armedOutlineItems = await db
+        .select({ id: schema.outlineItems.id })
+        .from(schema.outlineItems)
+        .where(and(eq(schema.outlineItems.storyId, storyId), eq(schema.outlineItems.includeInAi, true)));
+    for (const item of armedOutlineItems) validKeys.add(`outline_item:${item.id}`);
+
     // Orphan pass: any indexed key with no corresponding live entity/chapter/memory left — e.g.
     // from the lorebook DELETE route gap fixed alongside this job, or any other path that
     // forgets the same cleanup call in the future.

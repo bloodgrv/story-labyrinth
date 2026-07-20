@@ -104,6 +104,28 @@ export interface ChatContextChapterPassage {
     role: "anchor" | "search";
 }
 
+// A Story Note surfaced as context — only populated when BOTH the note's own includeInAi flag
+// and this chat's includeNotes toggle are on (docs/Notes_Outline_Chat_Bridges_Design.md's double
+// gate). No anchor concept (notes aren't opened "from" a chat the way an entry/chapter can be) —
+// always found via RAG hybrid search, so always "search". Non-canon working material, never
+// treated as established fact by itself — see chatContextService.ts's framing text.
+export interface ChatContextNoteExcerpt {
+    id: string;
+    title: string;
+    excerpt: string;
+    role: "search";
+}
+
+// An Outline item surfaced as context — same double-gate posture as ChatContextNoteExcerpt, via
+// includeInAi + this chat's includeOutline toggle. Planning intent, not canon.
+export interface ChatContextOutlineExcerpt {
+    id: string;
+    title: string;
+    type: "chapter" | "scene";
+    excerpt: string;
+    role: "search";
+}
+
 // Assembled context for generating a chat response or proposal: the effective system
 // prompt (chat-type framing + template hint for World-Building), this chat's own unresolved
 // Codex proposals, and Codex entries / chapter passages relevant to the current topic.
@@ -116,4 +138,8 @@ export interface ChatContext {
     projectSynopsis: string | null;
     relevantCodexEntries: ChatContextCodexEntry[];
     relevantChapterPassages: ChatContextChapterPassage[];
+    // Empty unless the chat's includeNotes/includeOutline toggle is on (Notes/Outline bridge) —
+    // see getChatContext in chatContextService.ts.
+    relevantNotes: ChatContextNoteExcerpt[];
+    relevantOutlineItems: ChatContextOutlineExcerpt[];
 }

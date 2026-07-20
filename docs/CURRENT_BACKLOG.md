@@ -1,6 +1,6 @@
 # Story Nexus Fork — Current Backlog
 
-**Last updated:** 2026-07-18 (Notes/Outline chat bridges + export packaging)  
+**Last updated:** 2026-07-19 (locations/maps design locked)  
 **Purpose:** Single source of truth for **what’s left**, after implementation order got scrambled relative to the original Phase 0 list.  
 **Canonical live status also mirrored in:** `CLAUDE.md` (architecture + high-level “done” notes) and `DECISIONS.md` (load-bearing how/why).  
 **This file wins** when those conflict on *priority of remaining work*.
@@ -45,6 +45,7 @@
 | RAG Scanner frontend (P0.1) | Editor right-rail drawer (chapter-scoped) + "Scanner" sidebar tool (story-wide, scan history, status tabs), both triggering via `POST /api/agent/jobs` (owner-only). See `DECISIONS.md` "RAG Scanner Frontend (P0.1)" |
 | Chapter alternate-version tabs (P0.2, redefined — see note below) | Flat, chat-branching-style draft tabs next to the main chapter (`ChapterVersionsPanel.tsx`), created via AI regenerate or manual duplicate, independently editable, one-way "Compile to Main" action, optional side-by-side compare toggle. See `DECISIONS.md` "Story-Layer Chapter Versioning (P0.2)" |
 | Chapter content undo/restore (P0.2b) | Linear history for the main chapter's own content (`chapterSnapshots` table, mirrors Codex snapshot/restore) — throttled ~15min auto-checkpoints, manual named saves, restore via a new "History" editor drawer. Compile (P0.2) now takes a safety checkpoint first too. See `DECISIONS.md` "Chapter Content Undo/Restore (P0.2b)" |
+| Notes/Outline ↔ Chat bridge, "Core Bridge" scope (P0.3 N0-N4, O1-O4) | Double-gate opt-in (`includeInAi` per note/outline item + `includeNotes`/`includeOutline` per chat) — schema, RAG `note`/`outline_item` entity types + reconcile_index, per-item toggle UI, story export/import round-trip, `chatContextService` non-canon packets surfaced in World-Building/Research/Editor(-excluded)/Brainstorm chats. N5/N6 (save-as-note, note-proposal) and C1-C5 (memory chat toggle) NOT included. See `DECISIONS.md` "Notes/Outline ↔ Chat Bridge (P0.3, Core Bridge scope)" |
 
 Design docs that still say “not implemented” in their headers may be stale for A/B/G1 — trust this file + `CLAUDE.md` over those headers until they are refreshed.
 
@@ -89,8 +90,10 @@ Linear undo history for the main chapter's own content, mirroring the Codex `cod
 
 ### P0.3 — Continuity glue (memory + scanner + writing loop + Notes/Outline bridges)
 
-**Status:** Not started (pieces exist in isolation)  
+**Status:** Notes/Outline bridge "Core Bridge" scope (N0-N4, O1-O4) — ✅ Done (2026-07-20). C1-C5 (project memory chat toggle) and N5/N6 (save-as-note, note-proposal chat UX) — Not started.  
 **Why:** Project memory, graph, scanner, Notes, and Outline don’t yet form a daily continuity loop. Models default to lorebook+chapter RAG only; Notes/Outline are human silos.
+
+**N0-N4 + O1-O4 shipped 2026-07-20** — see `DECISIONS.md` "Notes/Outline ↔ Chat Bridge (P0.3, Core Bridge scope)" for the full load-bearing trail, including two real pre-existing bugs found (and one fixed) during verification: story export/import previously crashed on any lorebook entry with a non-null `updatedAt` (fixed), and the story `DELETE /:id` route's async transaction callback is incompatible with better-sqlite3's sync-only transaction API (not fixed — unrelated to this feature, flagged as a P2 bug below, ID B7). Brainstorm chats are wired narrower than the other chat types by deliberate design call — see that DECISIONS.md entry for why.
 
 **Canonical design (Notes/Outline ↔ chat):** `docs/Notes_Outline_Chat_Bridges_Design.md` (locked 2026-07-18).
 
@@ -110,14 +113,14 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 | Slice | Description |
 |-------|-------------|
-| N0 | Story export/import includes notes (+ outline); round-trip `includeInAi`; no RAG blobs in export |
-| N1 | `notes.includeInAi` (default false) + UI toggle/badge + bulk |
-| N2 | RAG `entityType: "note"` only when armed; remove on off/delete; reconcile_index |
-| N3 | Per-chat `includeNotes` / `includeOutline` (default false) on **all chats except Editor** |
-| N4 | `chatContextService` non-canon packets when **both** gates pass (top-K, labeled working material) |
-| N5 | Manual “Save message/selection as note” |
-| N6 | AI `note-proposal` → accept/reject card |
-| O1–O4 | Same double-gate pattern for outline items |
+| N0 | ✅ Story export/import includes notes (+ outline); round-trip `includeInAi`; no RAG blobs in export |
+| N1 | ✅ `notes.includeInAi` (default false) + UI toggle/badge (bulk enable not built — single-item toggle only) |
+| N2 | ✅ RAG `entityType: "note"` only when armed; remove on off/delete; reconcile_index |
+| N3 | ✅ Per-chat `includeNotes` / `includeOutline` (default false) on **all chats except Editor** — including Brainstorm, wired narrower (see DECISIONS.md) |
+| N4 | ✅ `chatContextService` non-canon packets when **both** gates pass (top-K, labeled working material) |
+| N5 | Manual “Save message/selection as note” — not started |
+| N6 | AI `note-proposal` → accept/reject card — not started |
+| O1–O4 | ✅ Same double-gate pattern for outline items |
 
 **Inclusion doctrine:** per-item AI flag AND per-chat toggle, both default OFF; Editor never gets these toggles.
 
@@ -131,7 +134,34 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | C4 | Optional: per-story **unattended** `rag_scan_story` schedule toggle (default OFF) |
 | C5 | **Codex auto-compile from manuscript.** Not started — raised 2026-07-17. Today, Codex state (wardrobe/appearance/wounds/items) is either hand-typed in `CodexStateEditor.tsx`, or proposed conversationally by the World-Building Chat (`codex-proposal` fenced JSON → `codexPendingChange` → Approve/Reject, see `chatCodexService.ts`) — nothing scans manuscript chapters and proposes Codex updates unprompted. User wants this closer to *automatic*, agent-driven — "the agent should be compiling that as we go along, not the user." This is a bigger lift than C1–C4: needs a new job type (no `codex`-scanning job exists in `jobRunner.ts` today, unlike `distill_memory`/`rag_scan_*`), and a real decision on how far to push automation given the standing "no silent auto-chain, always manual-trigger + approve" precedent from Phase B (`DECISIONS.md`). Recommend shaping this the same way as C2 (manual "Suggest Codex updates from this scan/chapter" button → pending proposals through the *existing* approve/reject/edit-first pipeline) rather than a fully silent background job, unless the user explicitly wants to revisit the no-auto-chain precedent. Also note while investigating: `useReviseProposalMutation`/`reviseChatProposal` ("Edit First") already exist server-side for the *existing* chat-proposal pipeline but have no UI button anywhere (`ProposalCard.tsx` only wires Approve/Reject) — worth wiring up regardless of C5's automation scope. |
 
-**Refs:** `docs/Notes_Outline_Chat_Bridges_Design.md`; Agent design Phase C; `DECISIONS.md` Phase B (no auto-distill; no suggest UI yet)
+**Refs:** `docs/Notes_Outline_Chat_Bridges_Design.md`; `docs/Chat_Panel_Integrations_Design.md`; Agent design Phase C; `DECISIONS.md` Phase B (no auto-distill; no suggest UI yet)
+
+---
+
+### P0.4 — Chat ↔ panel integrations (selection rework + host chats)
+
+**Status:** Design locked for WB + Editor + Outline + Brainstorm + Research + Notes desk + generalized pattern (2026-07-18); **not implemented**  
+**Canonical design:** `docs/Chat_Panel_Integrations_Design.md`
+
+**Doctrine:** Panel owns artifact; **chat governs** content; selection/focus owns span; Accept applies; no amnesiac one-shot as primary path.
+
+| Slice | Description |
+|-------|-------------|
+| R0 | Shared FocusTarget / FocusPacket / ReworkCard shell |
+| R1 | **Editor:** highlight → Rework card → Editor chat (before/after/selection + full editor context) → Accept **replaces selection** |
+| R2 | Bury primary floating one-shot Expand/Rewrite/Shorten; optional chips send instructions into host chat |
+| R3 | Editor Codex **tray under chat list** (this chat only); Edit-before-approve in tray; auto-accept default OFF |
+| R4 | **Lorebook:** field/selection rework → **WB chat** → targeted codex/description proposal |
+| R5 | **Outline chat:** own type/rail; context pack per design §4; outline proposals (create/edit/reorder/delete) + auto-accept OFF; **retire bulk Generate button**; tray + tree badges; Codex tray; note-proposal tray; lore suggestion list |
+| R6 | Auto-insert (prose) / auto-accept (Codex/outline) toggles per host, defaults OFF |
+| R7 | Split `chatType` **editor** vs **outline** (separate chat lists) |
+| R8 | Outline→WB handoff: tray **Open in WB** from lore suggestion cards |
+| B0–B4 | **Brainstorm hub:** migrate; CTA+blurb+Guided setup+style dropdown; playbook/slots; depth-adaptive writes; durable tray checklist (**Mark done** only clears active); handoffs Outline/WB/Notes/Research opt-in |
+| B5 | WB/Outline domain playbooks (shared engine); **guided start = Brainstorm pattern**; character **psych module** (MBTI/Enneagram/blurb, Grill default on); locations per Locations_And_Maps |
+| S0–S5 | **Research:** Story/Global mode; web search+fetch; citations; save-as-note on request; opt-in lore/notes context; copy-friendly blocks |
+| K0–K5 | **Notes desk:** badges/filters/pin; optional `notes` chat; rework/split; promote tray (Mark done); import dump→Notes; N-gates for other chats |
+
+**Also locked (see design doc):** full §1–§7 (WB, Editor, rework, Outline, Brainstorm, Research, Notes desk).
 
 ---
 
@@ -176,6 +206,7 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | B4 | **Story scan job restarts from chapter 0 after crash** | Visibility yes; mid-scan resume no |
 | B5 | **Legacy `metadata.relationships` wiped on lorebook save** | Edge table is SoT; don’t re-depend on metadata JSON for links |
 | B6 | Stale design-doc headers | Update Agent/Graph design status lines when convenient |
+| B7 | **Story `DELETE /:id` always 500s** | `db.transaction(async tx => {...})` — better-sqlite3's transaction API is sync-only and rejects an async callback with `TypeError: Transaction function cannot return a promise`. Found 2026-07-20 while verifying P0.3 export/import (unrelated to that feature). Needs restructuring the lorebook-cascade + story-delete two-step to not need `async`/`await` inside the transaction callback. |
 
 ---
 
@@ -184,7 +215,8 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | Item | Notes |
 |------|--------|
 | **Import to Outline** | **User note 2026-07-18:** add import into Outline (parallel to multi-format lorebook import). Accept outline/structure docs → chapter/scene `outlineItems` (manual confirm before bulk create). Scope formats + merge-vs-replace when picked up. Not started. |
-| Name generator | Design: Hermes `Name_Generator_Design.md` / skill reference |
+| **Name generator** | **Gaps closed 2026-07-19 (v0.3).** Design: `docs/Name_Generator_Design.md` (+ Hermes plans mirror). **Not started.** Slices NG0–NG7: schema → API → seed core → panel → syntax → import → optional tool. P3 until explicitly promoted. |
+| **Locations & maps** | **Locked 2026-07-19.** Design: `docs/Locations_And_Maps_Design.md`. Location grill in playbook v1; map SoT = graph then layout text (images illustration only); mood + map image presets; entry layout + Story Map tool; light place sheet now, full place-Codex later. Slices L0–L5. P3 / promote with playbooks. |
 | Spellcheck / LanguageTool depth | Settings/types exist; full design may exceed current UX |
 | Gemini provider polish | `docs/gemini-provider-plan.md` |
 | Mobile responsive overhaul | `docs/mobile-responsive-refactor-plan.md`, issue-58 plan |
@@ -211,9 +243,10 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 ```text
 Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
-P0.1, P0.2, and P0.2b are all done — the next P0 item is P0.3, continuity glue between project
-memory, the RAG scanner, and the writing loop (see the P0.3 section for its C1-C5 slices; any
-order, pick the highest-value one first unless the user redirects).
+P0.1, P0.2, P0.2b, and P0.3's Notes/Outline "Core Bridge" (N0-N4, O1-O4) are all done. Remaining
+P0.3 work is N5/N6 (save-as-note, note-proposal chat UX) and C1-C5 (project memory chat toggle) —
+any order, pick the highest-value one first unless the user redirects. P0.4 (chat/panel
+integrations rework) is a separate large locked design, also not started.
 Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 
@@ -227,6 +260,9 @@ Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when do
 | `DECISIONS.md` | Why/how of each shipped change |
 | `docs/CURRENT_BACKLOG.md` | **This file** — remaining work + priority |
 | `docs/Notes_Outline_Chat_Bridges_Design.md` | Notes/Outline ↔ chat double-gate + export packaging (locked 2026-07-18) |
+| `docs/Chat_Panel_Integrations_Design.md` | WB/Editor locks, selection rework, generalized panel↔chat pattern |
+| `docs/Name_Generator_Design.md` | Name generator v0.3 (gaps closed 2026-07-19); NG0–NG7 |
+| `docs/Locations_And_Maps_Design.md` | Location playbooks, place sheet, Story Map, image presets (locked 2026-07-19) |
 | `docs/Agent_Framework_And_Project_Memory_Design.md` | Agent A/B design (A/B shipped; C backlog) |
 | `docs/Thin_Story_Graph_And_Lorebook_Visualization.md` | Graph design (G1 shipped; G1.5+ backlog) |
 | Hermes `.hermes/plans/*` | Historical designs; may be stale vs CLAUDE |

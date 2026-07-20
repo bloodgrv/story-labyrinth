@@ -16,7 +16,7 @@ import {
 
 const router = express.Router();
 
-const VALID_ENTITY_TYPES: RagEntityType[] = ["lorebook_entry", "chapter", "agent_memory"];
+const VALID_ENTITY_TYPES: RagEntityType[] = ["lorebook_entry", "chapter", "agent_memory", "note", "outline_item"];
 
 // POST /api/rag/search — hybrid keyword + vector search scoped to a story.
 // Body: { storyId: string, query: string, limit?: number, entityTypes?: RagEntityType[] }

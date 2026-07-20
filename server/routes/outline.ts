@@ -5,6 +5,23 @@ import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { getCharacterArc } from "../services/outlineArcService.js";
 import { generateOutlineSuggestions } from "../services/outlineGenerator.js";
+import { indexOutlineItem, removeEntityFromIndex } from "../services/ragIndexService.js";
+
+type OutlineItemRow = typeof schema.outlineItems.$inferSelect;
+
+const buildOutlineItemText = (item: Pick<OutlineItemRow, "title" | "summary">): string =>
+    [item.title, item.summary].filter(Boolean).join("\n\n");
+
+// Indexes or de-indexes an outline item per its own includeInAi flag (the Notes/Outline ↔ chat
+// bridge's per-item gate — docs/Notes_Outline_Chat_Bridges_Design.md). Same fire-and-forget /
+// synchronous-removal split as notes.ts's syncNoteIndex.
+const syncOutlineItemIndex = (item: OutlineItemRow) => {
+    if (item.includeInAi)
+        void attemptPromise(() =>
+            indexOutlineItem({ outlineItemId: item.id, storyId: item.storyId, text: buildOutlineItemText(item) })
+        );
+    else removeEntityFromIndex("outline_item", item.id);
+};
 
 export default createCrudRouter({
     table: schema.outlineItems,
@@ -23,6 +40,7 @@ export default createCrudRouter({
                     .insert(schema.outlineItems)
                     .values({ id: req.body.id || crypto.randomUUID(), ...rest, createdAt: now, updatedAt: now })
                     .returning();
+                syncOutlineItemIndex(created);
                 res.status(201).json(created);
             })
         );
@@ -42,6 +60,7 @@ export default createCrudRouter({
                     res.status(404).json({ error: "Outline item not found" });
                     return;
                 }
+                syncOutlineItemIndex(updated);
                 res.json(updated);
             })
         );
@@ -149,6 +168,7 @@ export default createCrudRouter({
                     .delete(schema.outlineItemCharacters)
                     .where(inArray(schema.outlineItemCharacters.outlineItemId, allIds));
                 await db.delete(schema.outlineItems).where(inArray(schema.outlineItems.id, allIds));
+                for (const id of allIds) removeEntityFromIndex("outline_item", id);
                 res.json({ success: true });
             })
         );

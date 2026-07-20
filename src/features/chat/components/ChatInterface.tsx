@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { ChatMessageList } from "@/features/brainstorm/components/ChatMessageList";
 import { ContextSelector } from "@/features/brainstorm/components/ContextSelector";
 import { MessageInputArea } from "@/features/brainstorm/components/MessageInputArea";
@@ -83,6 +85,18 @@ export function ChatInterface({
         clearSelections
     } = useContextSelection();
 
+    // Notes/Outline bridge chat-level gate (docs/Notes_Outline_Chat_Bridges_Design.md) — mirrors
+    // the lastUsedModelId pattern above (local state, persisted via chatsApi.update). Local state
+    // only updates after the PATCH resolves so the codexContext refetch effect below (which
+    // depends on these) always sees the value the server actually has.
+    const [includeNotes, setIncludeNotes] = useState(selectedChat.includeNotes);
+    const [includeOutline, setIncludeOutline] = useState(selectedChat.includeOutline);
+
+    const toggleIncludeNotes = (value: boolean) =>
+        chatsApi.update(selectedChat.id, { includeNotes: value }).then(() => setIncludeNotes(value));
+    const toggleIncludeOutline = (value: boolean) =>
+        chatsApi.update(selectedChat.id, { includeOutline: value }).then(() => setIncludeOutline(value));
+
     // Grounds the AI in the chat's context (chat-type framing, project synopsis, the chat's
     // anchor entry/chapter + the entry's one-hop relationships, other relevant Codex entries, and
     // — for Editor chats only — other relevant chapter passages) plus the ```codex-proposal /
@@ -116,6 +130,14 @@ export function ChatInterface({
             const anchorChapterText = anchorChapters.map(formatChapter).join("\n");
             const searchChapterText = searchChapters.map(formatChapter).join("\n");
 
+            // Notes/Outline bridge (docs/Notes_Outline_Chat_Bridges_Design.md) — only non-empty
+            // when this chat's includeNotes/includeOutline toggle is on, since getChatContext only
+            // populates these arrays in that case. Labeled explicitly as non-canon working
+            // material, per the design doc's exact framing (§3), so the model never treats it as
+            // established fact on its own.
+            const notesText = context.relevantNotes.map(n => `- ${n.title}: ${n.excerpt}`).join("\n");
+            const outlineText = context.relevantOutlineItems.map(o => `- ${o.title} (${o.type}): ${o.excerpt}`).join("\n");
+
             const sections = [
                 context.systemPrompt,
                 context.projectSynopsis && `Project synopsis:\n${context.projectSynopsis}`,
@@ -124,7 +146,11 @@ export function ChatInterface({
                 searchText && `Other relevant Codex entries:\n${searchText}`,
                 anchorChapterText &&
                     `Focused chapter (this chat is anchored to it — treat as current, authoritative):\n${anchorChapterText}`,
-                searchChapterText && `Other relevant chapter passages:\n${searchChapterText}`
+                searchChapterText && `Other relevant chapter passages:\n${searchChapterText}`,
+                notesText &&
+                    `[STORY NOTES — working material, not canon]\nOnly use as ideas/constraints if relevant; do not treat as established fact unless it also appears in Codex/lorebook.\n${notesText}`,
+                outlineText &&
+                    `[OUTLINE — planning intent, not canon]\nOnly use as ideas/constraints if relevant; do not treat as established fact unless it also appears in Codex/lorebook.\n${outlineText}`
             ].filter(Boolean);
             setCodexContext(sections.join("\n\n"));
             setFocusedOnLabel(anchorEntries[0]?.name ?? (anchorChapters[0] ? `Chapter: ${anchorChapters[0].title}` : null));
@@ -132,7 +158,7 @@ export function ChatInterface({
         return () => {
             cancelled = true;
         };
-    }, [selectedChat.id]);
+    }, [selectedChat.id, includeNotes, includeOutline]);
 
     const createPromptConfig = useCallback(
         (prompt: Prompt): PromptParserConfig => ({
@@ -225,6 +251,23 @@ export function ChatInterface({
                     selectedModel={selectedModel}
                     onSelectModel={selectModel}
                 />
+
+                {!isEditorChat && (
+                    <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border p-3">
+                        <div className="flex items-center gap-2">
+                            <Switch id={`${selectedChat.id}-include-notes`} checked={includeNotes} onCheckedChange={toggleIncludeNotes} />
+                            <Label htmlFor={`${selectedChat.id}-include-notes`} className="text-sm font-normal">
+                                Include Notes (working material, not canon)
+                            </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Switch id={`${selectedChat.id}-include-outline`} checked={includeOutline} onCheckedChange={toggleIncludeOutline} />
+                            <Label htmlFor={`${selectedChat.id}-include-outline`} className="text-sm font-normal">
+                                Include Outline (planning intent, not canon)
+                            </Label>
+                        </div>
+                    </div>
+                )}
 
                 {!isEditorChat && (
                     <ContextSelector

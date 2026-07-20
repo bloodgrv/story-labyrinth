@@ -1,12 +1,19 @@
 import { and, eq, inArray } from "drizzle-orm";
-import type { ChatContext, ChatContextChapterPassage, ChatContextCodexEntry, ChatType } from "../../src/types/worldbuilding.js";
+import type {
+    ChatContext,
+    ChatContextChapterPassage,
+    ChatContextCodexEntry,
+    ChatContextNoteExcerpt,
+    ChatContextOutlineExcerpt,
+    ChatType
+} from "../../src/types/worldbuilding.js";
 import { getTemplate } from "../../src/types/worldbuilding.js";
 import { db, schema } from "../db/client.js";
 import { parseJson } from "../lib/json.js";
 import { getChatCodexProposals } from "./chatCodexService.js";
 import { getChatById } from "./chatRepository.js";
 import { search } from "./ragIndexService.js";
-import type { SearchResult } from "./ragRepository.js";
+import { DEFAULT_SEARCH_ENTITY_TYPES, type RagEntityType, type SearchResult } from "./ragRepository.js";
 
 const RELEVANT_ENTRIES_LIMIT = 8;
 const SEARCH_POOL_SIZE = RELEVANT_ENTRIES_LIMIT * 2;
@@ -213,6 +220,47 @@ const resolveAnchorChapter = async (anchorChapterId: string | null): Promise<Cha
     return chunks.map(c => ({ chapterId: chapterRow.id, title: chapterRow.title, excerpt: c.content, role: "anchor" as const }));
 };
 
+// Notes are only ever surfaced via RAG search (no anchor concept) — gated entirely on the
+// double gate already having passed (note.includeInAi AND this chat's includeNotes, see
+// getChatContext, which only adds "note" to entityTypes when the chat toggle is on; a note
+// without includeInAi never gets indexed at all — see routes/notes.ts).
+const resolveNotes = async (results: SearchResult[]): Promise<ChatContextNoteExcerpt[]> => {
+    const noteResults = results.filter(r => r.entityType === "note").slice(0, RELEVANT_ENTRIES_LIMIT);
+    if (noteResults.length === 0) return [];
+
+    const noteIds = [...new Set(noteResults.map(r => r.entityId))];
+    const rows = await db.select({ id: schema.notes.id, title: schema.notes.title }).from(schema.notes).where(inArray(schema.notes.id, noteIds));
+    const meta = new Map(rows.map(r => [r.id, r]));
+
+    return noteResults.map(r => ({
+        id: r.entityId,
+        title: meta.get(r.entityId)?.title ?? r.entityId,
+        excerpt: r.content,
+        role: "search" as const
+    }));
+};
+
+// Same posture as resolveNotes, for outline items — gated on this chat's includeOutline toggle.
+const resolveOutlineItems = async (results: SearchResult[]): Promise<ChatContextOutlineExcerpt[]> => {
+    const itemResults = results.filter(r => r.entityType === "outline_item").slice(0, RELEVANT_ENTRIES_LIMIT);
+    if (itemResults.length === 0) return [];
+
+    const itemIds = [...new Set(itemResults.map(r => r.entityId))];
+    const rows = await db
+        .select({ id: schema.outlineItems.id, title: schema.outlineItems.title, type: schema.outlineItems.type })
+        .from(schema.outlineItems)
+        .where(inArray(schema.outlineItems.id, itemIds));
+    const meta = new Map(rows.map(r => [r.id, r]));
+
+    return itemResults.map(r => ({
+        id: r.entityId,
+        title: meta.get(r.entityId)?.title ?? r.entityId,
+        type: (meta.get(r.entityId)?.type as "chapter" | "scene" | undefined) ?? "scene",
+        excerpt: r.content,
+        role: "search" as const
+    }));
+};
+
 /**
  * Assemble everything a chat needs to generate a well-grounded response or proposal:
  *   - systemPrompt: chat-type framing (+ template hint for World-Building)
@@ -227,6 +275,10 @@ const resolveAnchorChapter = async (anchorChapterId: string | null): Promise<Cha
  *     Editor chats only), pulled directly from its own ragChunks — always included, not
  *     RAG-ranked — followed by whatever else the RAG search surfaces (chapter entity type only
  *     populates for Editor chats)
+ *   - relevantNotes / relevantOutlineItems: non-canon working material, only populated when this
+ *     chat's own includeNotes/includeOutline toggle is on (Notes_Outline_Chat_Bridges_Design.md's
+ *     double gate — the other half is each note/outline item's own includeInAi flag, enforced at
+ *     index time, see routes/notes.ts / routes/outline.ts)
  *
  * Degrades gracefully rather than failing: if the story has no indexed content, no embedding
  * endpoint is configured, or an anchor entry/chapter no longer exists, the relevant-* fields are
@@ -241,6 +293,15 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     const effectiveQuery = query?.trim() || chat.title;
     const chatType = (chat.chatType ?? "general") as ChatType;
     const includeChapters = chatType === "editor";
+    const includeNotes = chat.includeNotes === true;
+    const includeOutline = chat.includeOutline === true;
+
+    // Only build a non-default entityTypes array when a bridge toggle is actually on — search()/
+    // hybridSearch's own DEFAULT_SEARCH_ENTITY_TYPES stays the single source of truth for
+    // "omitted" otherwise (design doc §4.5).
+    const entityTypes: RagEntityType[] = [...DEFAULT_SEARCH_ENTITY_TYPES];
+    if (includeNotes) entityTypes.push("note");
+    if (includeOutline) entityTypes.push("outline_item");
 
     // Global chats (e.g. Research) have no storyId, so there's no per-story index/story row to
     // search/fetch, and never carry an anchorEntryId/anchorChapterId (only
@@ -248,7 +309,7 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     const [pendingProposals, searchResults, storyRows, anchorEntries, anchorChapterPassages] = await Promise.all([
         getChatCodexProposals(chatId, "pending"),
         chat.storyId
-            ? search({ storyId: chat.storyId, query: effectiveQuery, limit: SEARCH_POOL_SIZE })
+            ? search({ storyId: chat.storyId, query: effectiveQuery, limit: SEARCH_POOL_SIZE, entityTypes })
             : Promise.resolve([]),
         chat.storyId
             ? db.select({ synopsis: schema.stories.synopsis }).from(schema.stories).where(eq(schema.stories.id, chat.storyId))
@@ -259,9 +320,11 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
 
     const anchorIds = new Set(anchorEntries.map(e => e.entryId));
     const anchorChapterIds = new Set(anchorChapterPassages.map(p => p.chapterId));
-    const [searchCodexEntries, searchChapterPassages] = await Promise.all([
+    const [searchCodexEntries, searchChapterPassages, notes, outlineItems] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
-        includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([])
+        includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
+        includeNotes ? resolveNotes(searchResults) : Promise.resolve([]),
+        includeOutline ? resolveOutlineItems(searchResults) : Promise.resolve([])
     ]);
 
     return {
@@ -269,6 +332,8 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
         pendingProposals,
         projectSynopsis: storyRows[0]?.synopsis ?? null,
         relevantCodexEntries: [...anchorEntries, ...searchCodexEntries],
-        relevantChapterPassages: [...anchorChapterPassages, ...searchChapterPassages]
+        relevantChapterPassages: [...anchorChapterPassages, ...searchChapterPassages],
+        relevantNotes: notes,
+        relevantOutlineItems: outlineItems
     };
 };

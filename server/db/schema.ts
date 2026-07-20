@@ -152,7 +152,13 @@ export const aiChats = sqliteTable(
         // one of anchorEntryId/anchorChapterId set, never both — each is written only by its own
         // creation path (createWorldBuildingChat vs createGenericChat). Plain column, not a real
         // FK — same reasoning as anchorEntryId above.
-        anchorChapterId: text("anchorChapterId")
+        anchorChapterId: text("anchorChapterId"),
+        // Per-chat opt-in gates for the Notes/Outline ↔ chat bridge
+        // (docs/Notes_Outline_Chat_Bridges_Design.md) — the other half of the double gate, paired
+        // with each note/outline item's own includeInAi flag. Both default false; Editor chats
+        // never expose these toggles in the UI (stay canon-only).
+        includeNotes: integer("includeNotes", { mode: "boolean" }).notNull().default(false),
+        includeOutline: integer("includeOutline", { mode: "boolean" }).notNull().default(false)
     },
     table => ({
         storyIdIdx: index("chat_story_id_idx").on(table.storyId),
@@ -702,6 +708,11 @@ export const outlineItems = sqliteTable(
         source: text("source").notNull().default("manual"), // 'manual' | 'ai_suggested'
         status: text("status").notNull().default("confirmed"), // 'confirmed' | 'pending' | 'rejected'
         chapterId: text("chapterId").references(() => chapters.id, { onDelete: "set null" }),
+        // Opt-in gate for the Notes/Outline ↔ chat bridge (docs/Notes_Outline_Chat_Bridges_Design.md)
+        // — must ALSO be paired with the reading chat's own includeOutline flag (aiChats) before
+        // this item is eligible for RAG indexing/retrieval. Defaults false: outline items are
+        // planning intent, not canon, and never surface to a chat unless explicitly armed.
+        includeInAi: integer("includeInAi", { mode: "boolean" }).notNull().default(false),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
         updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
     },
@@ -754,6 +765,11 @@ export const notes = sqliteTable(
         title: text("title").notNull(),
         content: text("content").notNull(),
         type: text("type").notNull(), // 'idea' | 'research' | 'todo' | 'other'
+        // Opt-in gate for the Notes/Outline ↔ chat bridge (docs/Notes_Outline_Chat_Bridges_Design.md)
+        // — must ALSO be paired with the reading chat's own includeNotes flag (aiChats) before this
+        // note is eligible for RAG indexing/retrieval. Defaults false: notes are untrusted/working
+        // material, not canon, and never surface to a chat unless explicitly armed.
+        includeInAi: integer("includeInAi", { mode: "boolean" }).notNull().default(false),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
         updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
         isDemo: integer("isDemo", { mode: "boolean" })
