@@ -214,6 +214,7 @@ const TextFormatFloatingToolbar = ({
                         <FormatButtons editor={editor} isBold={isBold} isItalic={isItalic} isUnderline={isUnderline} />
                         <Separator orientation="vertical" className="mx-1 h-6" />
                         <GenerateButtons
+                            editor={editor}
                             isLoading={isLoading}
                             error={error?.message || null}
                             prompts={prompts}

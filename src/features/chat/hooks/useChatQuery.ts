@@ -33,7 +33,13 @@ export const useCreateChatMutation = () => {
             anchorChapterId?: string | null;
         }) => chatsApi.create(data),
         onSuccess: chat => {
-            queryClient.invalidateQueries({ queryKey: chatKeys.byStory(chat.storyId ?? "") });
+            // Invalidate the shorter ["chats","story",storyId] prefix, not
+            // chatKeys.byStory(storyId) (== [..., "all"]) — React Query's invalidateQueries only
+            // matches queries whose key STARTS WITH the given key, so invalidating the
+            // type-suffixed "all" key never touched any type-specific list (["chats","story",
+            // storyId,"editor"] etc.) at all, meaning ChatList never picked up a chat the moment
+            // after it was created. The 3-element prefix matches every typed list for this story.
+            queryClient.invalidateQueries({ queryKey: ["chats", "story", chat.storyId ?? ""] });
         },
         onError: (error: Error) => toast.error(error.message || "Failed to create chat")
     });
@@ -50,7 +56,9 @@ export const useUpdateChatMutation = () => {
             data: { messages?: unknown[]; title?: string; lastUsedPromptId?: string | null; lastUsedModelId?: string | null };
         }) => chatsApi.update(id, data),
         onSuccess: chat => {
-            queryClient.invalidateQueries({ queryKey: chatKeys.byStory(chat.storyId ?? "") });
+            // Same prefix-invalidation fix as useCreateChatMutation above — chatKeys.byStory(storyId)
+            // alone (the type-suffixed "all" key) never matched any type-specific ChatList query.
+            queryClient.invalidateQueries({ queryKey: ["chats", "story", chat.storyId ?? ""] });
         },
         onError: (error: Error) => toast.error(error.message || "Failed to update chat")
     });

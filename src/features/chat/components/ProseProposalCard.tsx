@@ -4,6 +4,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 interface ProseProposalCardProps {
     text: string;
+    // True when this proposal was generated during an active Selection Rework (a FocusTarget was
+    // captured for the turn that produced it) — Accept replaces that selection instead of
+    // inserting a new paragraph, so the header copy should say so.
+    replacesSelection?: boolean;
     onAccept: () => void;
     onReject: () => void;
 }
@@ -11,11 +15,13 @@ interface ProseProposalCardProps {
 // Sibling to ProposalCard.tsx, for the ```prose-proposal convention (see parseProseProposal.ts)
 // rather than Codex changes. No persisted "pending" row backs this — like Scene Beat's own
 // stream-preview, it lives only in the chat's local React state until the user acts on it.
-export function ProseProposalCard({ text, onAccept, onReject }: ProseProposalCardProps) {
+export function ProseProposalCard({ text, replacesSelection = false, onAccept, onReject }: ProseProposalCardProps) {
     return (
         <Card className="border-dashed">
             <CardHeader className="pb-2">
-                <span className="text-sm text-muted-foreground">Proposes to add this to the chapter</span>
+                <span className="text-sm text-muted-foreground">
+                    {replacesSelection ? "Proposes to replace your selection" : "Proposes to add this to the chapter"}
+                </span>
             </CardHeader>
             <CardContent className="space-y-3">
                 <p className="text-sm whitespace-pre-wrap">{text}</p>

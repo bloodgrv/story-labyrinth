@@ -1,12 +1,15 @@
 import { AlertCircle, MessageSquare, Plus, RefreshCcw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import type { AIChat } from "@/types/story";
 import { ChatInterface } from "./ChatInterface";
 import { ChatList } from "./ChatList";
-import { useCreateChatMutation } from "../hooks/useChatQuery";
+import { CodexProposalTray } from "./CodexProposalTray";
+import { useChatsByStoryQuery, useCreateChatMutation } from "../hooks/useChatQuery";
 
 const ChatErrorFallback = (error: Error, resetError: () => void) => (
     <div className="flex items-center justify-center h-full p-4">
@@ -47,7 +50,59 @@ interface EditorChatRailProps {
 // chats per story (not a single unbounded thread) so context stays manageable per chapter/arc.
 export function EditorChatRail({ storyId, enableProseProposals = true, anchorChapterId }: EditorChatRailProps) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
+    // Tracks which chat a captured rework payload belongs to, not just the payload itself — so
+    // if the user manually switches chats via ChatList right after a rework resolves (or any
+    // other reason selectedChat changes), a stale rework never gets applied to the wrong chat.
+    const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
     const createMutation = useCreateChatMutation();
+    // Same query ChatList already runs internally (chatKeys.byStory(storyId, "editor")) — React
+    // Query dedupes the request, this just gives this component a copy of the list too, needed
+    // to resolve which chat a pending rework request should bind to.
+    const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(storyId, "editor");
+    const pendingRework = usePendingRework();
+
+    // Bridges a "Rework in chat" click (floating toolbar, inside the Lexical composer tree) into
+    // this rail (a sibling panel, outside it) via pendingReworkStore — see that file's doc
+    // comment. Finds an Editor chat already anchored to the target chapter and reuses it (most
+    // recently updated, if several — surfaced via toast since more than one legitimately-anchored
+    // chat means silently picking one is otherwise an invisible guess); creates one if none exist.
+    useEffect(() => {
+        if (!pendingRework || pendingRework.storyId !== storyId || chatsLoading) return;
+        const request = consumePendingRework();
+        if (!request) return;
+
+        const payload: InitialReworkPayload = {
+            target: request.target,
+            packet: request.packet,
+            initialInstruction: request.initialInstruction
+        };
+
+        const candidates = chats.filter(chat => chat.anchorChapterId === request.chapterId);
+        if (candidates.length === 0) {
+            createMutation.mutate(
+                {
+                    storyId,
+                    chatType: "editor",
+                    title: `Rework ${new Date().toLocaleString()}`,
+                    anchorChapterId: request.chapterId
+                },
+                {
+                    onSuccess: newChat => {
+                        setSelectedChat(newChat);
+                        setInitialRework({ chatId: newChat.id, payload });
+                    }
+                }
+            );
+            return;
+        }
+
+        const mostRecent = [...candidates].sort(
+            (a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()
+        )[0];
+        if (candidates.length > 1) toast.info(`Continuing in "${mostRecent.title}"`);
+        setSelectedChat(mostRecent);
+        setInitialRework({ chatId: mostRecent.id, payload });
+    }, [pendingRework, storyId, chats, chatsLoading, createMutation]);
 
     const handleCreateNewChat = () => {
         createMutation.mutate(
@@ -74,6 +129,7 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
                             selectedChat={selectedChat}
                             onChatUpdate={setSelectedChat}
                             enableProseProposals={enableProseProposals}
+                            initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
                         />
                     </ErrorBoundary>
                 ) : (
@@ -85,16 +141,19 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
                 )}
             </div>
 
-            <ChatList
-                storyId={storyId}
-                chatType="editor"
-                title="Editor Chats"
-                emptyLabel="No editor chats yet"
-                selectedChat={selectedChat}
-                onSelectChat={setSelectedChat}
-                renderNewChatAction={renderNewChatButton}
-                side="right"
-            />
+            <div className="flex flex-col w-[250px] sm:w-[300px] shrink-0">
+                <ChatList
+                    storyId={storyId}
+                    chatType="editor"
+                    title="Editor Chats"
+                    emptyLabel="No editor chats yet"
+                    selectedChat={selectedChat}
+                    onSelectChat={setSelectedChat}
+                    renderNewChatAction={renderNewChatButton}
+                    side="right"
+                />
+                {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
+            </div>
         </div>
     );
 }

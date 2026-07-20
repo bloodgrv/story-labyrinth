@@ -47,6 +47,7 @@
 | Chapter content undo/restore (P0.2b) | Linear history for the main chapter's own content (`chapterSnapshots` table, mirrors Codex snapshot/restore) — throttled ~15min auto-checkpoints, manual named saves, restore via a new "History" editor drawer. Compile (P0.2) now takes a safety checkpoint first too. See `DECISIONS.md` "Chapter Content Undo/Restore (P0.2b)" |
 | Notes/Outline ↔ Chat bridge, "Core Bridge" scope (P0.3 N0-N4, O1-O4) | Double-gate opt-in (`includeInAi` per note/outline item + `includeNotes`/`includeOutline` per chat) — schema, RAG `note`/`outline_item` entity types + reconcile_index, per-item toggle UI, story export/import round-trip, `chatContextService` non-canon packets surfaced in World-Building/Research/Editor(-excluded)/Brainstorm chats. N5/N6 (save-as-note, note-proposal) NOT included. See `DECISIONS.md` "Notes/Outline ↔ Chat Bridge (P0.3, Core Bridge scope)" |
 | Project Memory chat toggle (P0.3 C1) | `aiChats.includeMemory` toggle + `resolveMemories` in `chatContextService.ts`, surfaced in the same chat UI as the Notes/Outline toggles. No per-item flag needed — every active memory is already index-eligible via Phase B's approve step. See `DECISIONS.md` "Project Memory Chat Toggle (C1)" |
+| Editor Selection Rework + Codex Proposal Tray (P0.4 R0-R3) | "Rework in chat" replaces the floating toolbar's one-shot Expand/Rewrite/Shorten as the primary path — highlight → bound Editor chat with before/selection/after context → Accept replaces only that selection. Codex proposals for Editor(/Outline) chats moved to a tray under the chat list with Approve/Reject/Edit. Fixed two real pre-existing bugs found along the way (`activeChapterEditorStore` single-slot bug, chat-list cache invalidation). See `DECISIONS.md` "Editor Selection Rework + Codex Proposal Tray (P0.4 R0-R3)" |
 
 Design docs that still say “not implemented” in their headers may be stale for A/B/G1 — trust this file + `CLAUDE.md` over those headers until they are refreshed.
 
@@ -143,17 +144,19 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 ### P0.4 — Chat ↔ panel integrations (selection rework + host chats)
 
-**Status:** Design locked for WB + Editor + Outline + Brainstorm + Research + Notes desk + generalized pattern (2026-07-18); **not implemented**  
+**Status:** R0-R3 — ✅ Done (2026-07-20). Design locked for WB + Editor + Outline + Brainstorm + Research + Notes desk + generalized pattern (2026-07-18); R4 onward **not implemented**  
 **Canonical design:** `docs/Chat_Panel_Integrations_Design.md`
 
 **Doctrine:** Panel owns artifact; **chat governs** content; selection/focus owns span; Accept applies; no amnesiac one-shot as primary path.
 
+**R0-R3 shipped 2026-07-20** — see `DECISIONS.md` "Editor Selection Rework + Codex Proposal Tray (P0.4 R0-R3)" for the full load-bearing trail, including a real correctness bug fixed in `activeChapterEditorStore.ts` (single global slot → per-chapter map) and a second pre-existing bug found and fixed in `useCreateChatMutation`/`useUpdateChatMutation`'s cache invalidation (was invalidating a key that never matched any real query). Full live Accept round-trip (real LLM reply → replace selection) could not be exercised in this dev environment — the configured AI provider returned zero content tokens for reasons unrelated to this feature's code (see that DECISIONS.md entry) — every other piece (capture, chat binding, context delivery, tray) was verified live. `chatType` split (R6-R7) deliberately deferred — neither R0-R3 nor R4/R5/R8 strictly require it.
+
 | Slice | Description |
 |-------|-------------|
-| R0 | Shared FocusTarget / FocusPacket / ReworkCard shell |
-| R1 | **Editor:** highlight → Rework card → Editor chat (before/after/selection + full editor context) → Accept **replaces selection** |
-| R2 | Bury primary floating one-shot Expand/Rewrite/Shorten; optional chips send instructions into host chat |
-| R3 | Editor Codex **tray under chat list** (this chat only); Edit-before-approve in tray; auto-accept default OFF |
+| R0 | ✅ Shared FocusTarget / FocusPacket / ReworkCard shell (`src/types/rework.ts`, `src/features/rework/`) |
+| R1 | ✅ **Editor:** highlight → Rework card → Editor chat (before/after/selection + full editor context) → Accept **replaces selection** |
+| R2 | ✅ Buried primary floating one-shot Expand/Rewrite/Shorten behind "More"; now chips that send instructions into host chat |
+| R3 | ✅ Editor Codex **tray under chat list** (this chat only, `CodexProposalTray.tsx`); Edit-before-approve wired (`useReviseProposalMutation`, previously unused); auto-accept still default OFF (unchanged — no auto-accept toggle added this pass) |
 | R4 | **Lorebook:** field/selection rework → **WB chat** → targeted codex/description proposal |
 | R5 | **Outline chat:** own type/rail; context pack per design §4; outline proposals (create/edit/reorder/delete) + auto-accept OFF; **retire bulk Generate button**; tray + tree badges; Codex tray; note-proposal tray; lore suggestion list |
 | R6 | Auto-insert (prose) / auto-accept (Codex/outline) toggles per host, defaults OFF |
@@ -246,11 +249,13 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 ```text
 Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
-P0.1, P0.2, P0.2b, P0.3's Notes/Outline "Core Bridge" (N0-N4, O1-O4), and P0.3's C1 (project
-memory chat toggle) are all done. Remaining P0.3 work is N5/N6 (save-as-note, note-proposal chat
-UX) and C2-C5 (scanner-memory integration, distill-from-scan button, scheduled scans, Codex
-auto-compile) — any order, pick the highest-value one first unless the user redirects. P0.4
-(chat/panel integrations rework) is a separate large locked design, also not started.
+P0.1, P0.2, P0.2b, P0.3's Notes/Outline "Core Bridge" (N0-N4, O1-O4), P0.3's C1 (project memory
+chat toggle), and P0.4's R0-R3 (Editor selection rework + Codex proposal tray) are all done.
+Remaining work: P0.3's N5/N6 (save-as-note, note-proposal chat UX) and C2-C5 (scanner-memory
+integration, distill-from-scan button, scheduled scans, Codex auto-compile); P0.4's R4 onward
+(Lorebook/Outline rework, Brainstorm playbook migration, Research web search, Notes desk polish,
+the Editor/Outline chatType split) — any order, pick the highest-value one first unless the user
+redirects.
 Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 

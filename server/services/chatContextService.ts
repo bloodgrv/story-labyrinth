@@ -52,6 +52,12 @@ const WORLDBUILDING_FRAMING =
 // rendered as an accept/reject card; accepting inserts the text as a new paragraph at the
 // user's cursor (or appended to the chapter if there's no cursor context) — see
 // src/features/chat/hooks/useChatMessageGeneration.ts. Never edits the document directly.
+//
+// The same ```prose-proposal fence also carries Selection Rework replies (docs/
+// Chat_Panel_Integrations_Design.md §2.1/§3.3) — reused rather than a second fence type, since
+// "replace this selection" vs "insert as a new paragraph" is purely a client-side distinction
+// (ChatInterface.tsx tracks whether a FocusTarget was active for the turn that produced each
+// proposal, see its proseProposals state) that the model never needs to encode itself.
 const PROSE_PROPOSAL_INSTRUCTIONS =
     "You are a writing companion embedded in this chapter's editor — a collaborator, not a ghostwriter. " +
     "Stay consistent with this story's established Codex state and the chapter excerpts provided below. " +
@@ -62,6 +68,9 @@ const PROSE_PROPOSAL_INSTRUCTIONS =
     "Your proposed prose text goes here, as plain prose (not JSON).\n" +
     "```\n\n" +
     "You may propose only one piece of prose per reply. " +
+    "If the conversation includes a [SELECTION REWORK] block with BEFORE/SELECTION/AFTER context, " +
+    "your proposed prose should be a replacement for SELECTION only — do not repeat BEFORE or AFTER " +
+    "in the fenced block. " +
     "You may also propose Codex changes in the same reply, using the convention below, if the " +
     "conversation surfaces a concrete fact worth recording.\n\n" +
     CODEX_PROPOSAL_INSTRUCTIONS +

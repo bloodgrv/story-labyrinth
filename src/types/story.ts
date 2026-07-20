@@ -79,6 +79,10 @@ export interface AIChat extends BaseEntity {
     // The Lorebook entry this chat was opened from (WorldBuildingChatPanel), for direct
     // grounding in getChatContext — null for chats not opened from an entry.
     anchorEntryId?: string | null;
+    // The chapter this chat was opened while focused on (EditorChatRail), for direct grounding
+    // in getChatContext and for resolving which Editor chat a "Rework in chat" request binds to
+    // (see EditorChatRail.tsx) — null for chats not anchored to a chapter.
+    anchorChapterId?: string | null;
     // Double-gate opt-in for the Notes/Outline ↔ chat bridge (docs/Notes_Outline_Chat_Bridges_Design.md)
     // — paired with each note/outline item's own includeInAi flag. Both default false server-side
     // (optional here since creation never needs to specify them); Editor chats never expose these

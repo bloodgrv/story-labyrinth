@@ -11,8 +11,12 @@ import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQu
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { getFilteredEntries as getFilteredLorebookEntries } from "@/features/lorebook/utils/lorebookFilters";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { applyChapterSelectionReplace } from "@/features/rework/adapters/chapterSelectionAdapter";
+import { ReworkCard } from "@/features/rework/components/ReworkCard";
+import type { InitialReworkPayload } from "@/features/rework/pendingReworkStore";
 import { getActiveChapterEditor } from "@/lib/activeChapterEditorStore";
 import { chatsApi } from "@/services/api/client";
+import type { FocusTarget } from "@/types/rework";
 import type { AIChat, Prompt, PromptParserConfig } from "@/types/story";
 import { ChatSystemPromptControl } from "./ChatSystemPromptControl";
 import { ProposalCard } from "./ProposalCard";
@@ -35,6 +39,10 @@ interface ChatInterfaceProps {
     // ```prose-proposal reply is still parsed/stripped from the visible text but never rendered
     // as an actionable card.
     enableProseProposals?: boolean;
+    // A "Rework in chat" request EditorChatRail resolved to this specific chat — seeds the
+    // Selection Rework Bridge's active state on mount (docs/Chat_Panel_Integrations_Design.md
+    // §2.1/§3). Consumed once; absent for ordinary chat opens.
+    initialRework?: InitialReworkPayload | null;
 }
 
 // ChatInterface for chats.ts-backed chats (World-Building, Research, Editor) — reuses the same
@@ -47,7 +55,8 @@ export function ChatInterface({
     promptType,
     selectedChat,
     onChatUpdate,
-    enableProseProposals = true
+    enableProseProposals = true,
+    initialRework = null
 }: ChatInterfaceProps) {
     const [input, setInput] = useState("");
     // Editor chats rely entirely on the auto-pulled codexContext (chapter passages + Codex
@@ -58,6 +67,19 @@ export function ChatInterface({
     const { entries: lorebookEntries } = useLorebookContext();
     const { data: chapters = [] } = useChaptersByStoryQuery(storyId ?? "");
     const { currentChapterId } = useStoryContext();
+
+    // Selection Rework Bridge (docs/Chat_Panel_Integrations_Design.md §2.1/§3) — EditorChatRail
+    // hands down a fresh `initialRework` object each time a NEW rework request resolves to this
+    // chat (never reusing the same object reference across two different requests), so keying
+    // this effect on the prop's identity naturally gives consume-once-per-request semantics
+    // without extra bookkeeping — including the case where the same already-open chat receives a
+    // second, different rework request later.
+    const [activeRework, setActiveRework] = useState(initialRework);
+    useEffect(() => {
+        if (!initialRework) return;
+        setActiveRework(initialRework);
+        if (initialRework.initialInstruction) setInput(initialRework.initialInstruction);
+    }, [initialRework]);
 
     const {
         prompt: selectedPrompt,
@@ -171,13 +193,29 @@ export function ChatInterface({
         };
     }, [selectedChat.id, includeNotes, includeOutline, includeMemory]);
 
+    // Selection Rework Bridge context (docs/Chat_Panel_Integrations_Design.md §2.1) — kept
+    // separate from the codexContext fetch effect above (rather than re-fetching context on every
+    // rework open/close) since it's derived purely from the locally-captured FocusPacket, not
+    // anything server-side.
+    const reworkContext = useMemo(() => {
+        if (!activeRework) return "";
+        const { before, selection, after, beforeTruncated, afterTruncated } = activeRework.packet;
+        return (
+            `[SELECTION REWORK]\nThe user has highlighted this passage in the chapter to rework. Propose a replacement ` +
+            `for SELECTION only — do not repeat BEFORE/AFTER in your reply.\n` +
+            `BEFORE${beforeTruncated ? " (truncated)" : ""}: ${before}\n` +
+            `SELECTION: ${selection}\n` +
+            `AFTER${afterTruncated ? " (truncated)" : ""}: ${after}`
+        );
+    }, [activeRework]);
+
     const createPromptConfig = useCallback(
         (prompt: Prompt): PromptParserConfig => ({
             promptId: prompt.id,
             storyId: storyId ?? "",
             scenebeat: input.trim(),
             additionalContext: {
-                codexContext,
+                codexContext: [codexContext, reworkContext].filter(Boolean).join("\n\n"),
                 chatHistory: selectedChat.messages.map(msg => ({ role: msg.role, content: msg.content })),
                 includeFullContext: isEditorChat ? false : includeFullContext,
                 selectedSummaries: isEditorChat || includeFullContext ? [] : selectedSummaries,
@@ -185,12 +223,26 @@ export function ChatInterface({
                 selectedChapterContent: isEditorChat || includeFullContext ? [] : selectedChapterContent
             }
         }),
-        [input, storyId, codexContext, selectedChat.messages, isEditorChat, includeFullContext, selectedSummaries, selectedItems, selectedChapterContent]
+        [
+            input,
+            storyId,
+            codexContext,
+            reworkContext,
+            selectedChat.messages,
+            isEditorChat,
+            includeFullContext,
+            selectedSummaries,
+            selectedItems,
+            selectedChapterContent
+        ]
     );
 
     // Prose proposals aren't persisted server-side (unlike Codex proposals) — they live only in
     // this component's state until Accept/Reject, matching ProseProposalCard's own doc comment.
-    const [proseProposals, setProseProposals] = useState<Record<string, string>>({});
+    // Each carries the FocusTarget active when it was generated (or null for an ordinary,
+    // non-rework turn), so Accept knows whether to replace that captured selection or fall back
+    // to the plain insert-at-cursor-or-end path — see handleAcceptProse below.
+    const [proseProposals, setProseProposals] = useState<Record<string, { text: string; target: FocusTarget | null }>>({});
 
     const { generate, isGenerating, abort, streamingContent } = useChatMessageGeneration({
         selectedChat,
@@ -199,7 +251,8 @@ export function ChatInterface({
         onChatUpdate,
         createPromptConfig,
         onProseProposal: enableProseProposals
-            ? (messageId, proposal) => setProseProposals(prev => ({ ...prev, [messageId]: proposal }))
+            ? (messageId, proposal) =>
+                  setProseProposals(prev => ({ ...prev, [messageId]: { text: proposal, target: activeRework?.target ?? null } }))
             : undefined
     });
 
@@ -211,14 +264,28 @@ export function ChatInterface({
         });
 
     const handleAcceptProse = (messageId: string) => {
-        const text = proseProposals[messageId];
-        if (!text) return;
+        const proposal = proseProposals[messageId];
+        if (!proposal) return;
+
+        if (proposal.target) {
+            const result = applyChapterSelectionReplace(proposal.target, proposal.text);
+            if (result === "not-found") {
+                toast.error("Open the chapter you want to apply this to, then try again.");
+                return; // keep the card so the user can retry after opening the chapter
+            }
+            if (result === "selection-changed")
+                toast.warning("Your selection changed since this rework started — inserted instead of replacing; please check placement.");
+            setActiveRework(null);
+            dismissProseProposal(messageId);
+            return;
+        }
+
         const editor = currentChapterId ? getActiveChapterEditor(currentChapterId) : null;
         if (!editor) {
             toast.error("Open the chapter you want to insert into, then try again.");
             return;
         }
-        insertProposedProse(editor, text);
+        insertProposedProse(editor, proposal.text);
         dismissProseProposal(messageId);
     };
 
@@ -262,6 +329,8 @@ export function ChatInterface({
                     selectedModel={selectedModel}
                     onSelectModel={selectModel}
                 />
+
+                {activeRework && <ReworkCard packet={activeRework.packet} onClear={() => setActiveRework(null)} />}
 
                 {!isEditorChat && (
                     <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border p-3">
@@ -318,7 +387,10 @@ export function ChatInterface({
                 onEditContentChange={() => {}}
                 editingTextareaRef={{ current: null }}
                 renderProposalsForMessage={messageId => {
-                    const proposals = proposalsByMessageId[messageId];
+                    // Editor chats show Codex proposals in the CodexProposalTray under the chat
+                    // list instead (docs/Chat_Panel_Integrations_Design.md §2 — "tray under chat
+                    // list, no popup"); World-Building keeps this inline rendering.
+                    const proposals = isEditorChat ? undefined : proposalsByMessageId[messageId];
                     const proseProposal = proseProposals[messageId];
                     if (!proposals?.length && !proseProposal) return null;
                     return (
@@ -337,7 +409,8 @@ export function ChatInterface({
                             })}
                             {proseProposal && (
                                 <ProseProposalCard
-                                    text={proseProposal}
+                                    text={proseProposal.text}
+                                    replacesSelection={proseProposal.target !== null}
                                     onAccept={() => handleAcceptProse(messageId)}
                                     onReject={() => dismissProseProposal(messageId)}
                                 />
