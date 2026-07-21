@@ -6,7 +6,8 @@ export const storyGraphKeys = {
     all: ["storyGraph"] as const,
     graph: (storyId: string) => [...storyGraphKeys.all, "graph", storyId] as const,
     neighborhood: (storyId: string, entryId: string, depth: 1 | 2) =>
-        [...storyGraphKeys.all, "neighborhood", storyId, entryId, depth] as const
+        [...storyGraphKeys.all, "neighborhood", storyId, entryId, depth] as const,
+    pending: (storyId: string) => [...storyGraphKeys.all, "pending", storyId] as const
 };
 
 export const useStoryGraphQuery = (storyId: string | null) =>
@@ -21,6 +22,13 @@ export const useNeighborhoodQuery = (storyId: string | null, entryId: string | n
         queryKey: storyGraphKeys.neighborhood(storyId ?? "", entryId ?? "", depth),
         queryFn: () => storyGraphApi.getNeighborhood(storyId as string, entryId as string, depth),
         enabled: !!storyId && !!entryId
+    });
+
+export const usePendingEdgesQuery = (storyId: string | null) =>
+    useQuery({
+        queryKey: storyGraphKeys.pending(storyId ?? ""),
+        queryFn: () => storyGraphApi.listPending(storyId as string),
+        enabled: !!storyId
     });
 
 // Broad invalidation (storyGraphKeys.all) rather than a targeted key — small dataset, and a
@@ -41,7 +49,14 @@ export const useCreateEdgeMutation = () => {
             data
         }: {
             storyId: string;
-            data: { fromId: string; toId: string; edgeType: string; label?: string | null; description?: string | null };
+            data: {
+                fromId: string;
+                toId: string;
+                edgeType: string;
+                label?: string | null;
+                description?: string | null;
+                asPending?: boolean;
+            };
         }) => storyGraphApi.createEdge(storyId, data),
         ...invalidateAndToast(queryClient, "Edge created")
     });
@@ -66,6 +81,22 @@ export const useDeleteEdgeMutation = () => {
     return useMutation({
         mutationFn: (id: string) => storyGraphApi.deleteEdge(id),
         ...invalidateAndToast(queryClient, "Edge deleted")
+    });
+};
+
+export const useApproveEdgeMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => storyGraphApi.approveEdge(id),
+        ...invalidateAndToast(queryClient, "Edge approved")
+    });
+};
+
+export const useRejectEdgeMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => storyGraphApi.rejectEdge(id),
+        ...invalidateAndToast(queryClient, "Edge rejected")
     });
 };
 

@@ -198,9 +198,9 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 ### P1.2 — Relationship Graph G1.5+
 
-- AI **suggest edges** → `status: pending` only; approve/reject UI
+- ✅ **Pending-edge review — done (2026-07-21).** `GET /stories/:storyId/graph/pending` + `POST /graph/edges/:id/approve`/`reject` (mirrors `agentMemories.ts`'s approve/reject idiom), new `PendingEdgesPanel.tsx` surfaced as a third "Pending" tab (with live count badge) on `StoryGraphCanvas.tsx`, alongside Ego/Full. Since nothing previously produced non-`active` rows, a minimal manual producer was added too: an opt-in "Propose for review" `Switch` on `EdgeEditDialog.tsx`'s create form (`asPending` → `status: "pending", source: "user"`, no new `source` value). `approveEdge` re-checks the active-edge conflict at approval time (not just creation time) and returns a clean 400 on conflict rather than a raw constraint error. No schema/migration change needed — `status` already existed for exactly this. Deliberately **not** built this pass: AI-suggested edges themselves (separate item below), dashed-edge-in-canvas rendering / click-to-approve on the graph itself (review is a dedicated list tab instead), persisted layout. See `DECISIONS.md`'s "Lorebook Relationship Graph — Pending-Edge Review UI (P1.2)" entry.
+- AI **suggest edges** → `status: pending` only; approve/reject UI (the review UI above is ready to receive these rows unchanged)
 - **Persist layout** (`storyGraphLayout` or equivalent)
-- Pending-edge review (column already exists; nothing produces non-`active` rows yet)
 - Optional: reindex lorebook text when edges change so RAG sees relationships
 
 **Refs:** `docs/Thin_Story_Graph_And_Lorebook_Visualization.md`; `DECISIONS.md` Lorebook Relationship Graph
@@ -229,6 +229,7 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | B5 | **Legacy `metadata.relationships` wiped on lorebook save** | Edge table is SoT; don’t re-depend on metadata JSON for links |
 | B6 | Stale design-doc headers | Update Agent/Graph design status lines when convenient |
 | B7 | **Story `DELETE /:id` always 500s** | `db.transaction(async tx => {...})` — better-sqlite3's transaction API is sync-only and rejects an async callback with `TypeError: Transaction function cannot return a promise`. Found 2026-07-20 while verifying P0.3 export/import (unrelated to that feature). Needs restructuring the lorebook-cascade + story-delete two-step to not need `async`/`await` inside the transaction callback. |
+| B8 | **Lorebook browse density** | **Design locked 2026-07-21.** Doc: `docs/Lorebook_Browse_Density_Design.md`. Cards-only grid today (`LorebookEntryList`) gets long at novel scale. Add **Cards \| List** toggle (global `localStorage`); smart default List if category count ≥ 12 and no pref; compact row (name/level/importance/tags); keep search/sort. Slices **L0–L3**. **Not started.** |
 
 ---
 
@@ -236,8 +237,9 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 | Item | Notes |
 |------|--------|
-| **Planning talk list (queued topics)** | **Living list:** `docs/SN_Planning_Talk_List.md`. T1 UI moodboard, T2 Lexical editor, T3 Amazon/KDP text standards, **T4 local token/context used–left meter** — discuss only until promoted. |
+| **Planning talk list (queued topics)** | **Living list:** `docs/SN_Planning_Talk_List.md`. T2 Lexical, T3 Amazon/KDP, T4 local token meter (discuss). T1 chrome locked/shipped. Transfer log + Settings IA design-locked P3. |
 | **UI visual direction** | **Locked 2026-07-21, chrome pass complete 2026-07-21** (talk list **T1**). Chrome: **Linear A + Raycast accents**. Doc: `docs/UI_Visual_Direction.md`. Canonical mocks: Eclipse + Light Linear+Raycast PNGs in `docs/design-mocks/`. Token/chrome pass only; no shell rewrite. **V0/V1/V2 all done 2026-07-21** — V0: per-theme `--raycast-a`/`--raycast-b`/`--accent-glow`/`--accent-glow-strength` + tightened `--radius`. V1: topbar gradient hairline, sidebar active-rail bar+glow, cmd-palette hover glow, opt-in `Button variant="gradient"` (demoed on Notes' empty-state CTA). V2: chat user-bubble ring+glow, Research Story/Global pill gradient underline — deliberately stops before manuscript prose. Live-verified across Dark/Mist/Abyss, no console errors. Open follow-ups (default theme choice, exact glow dial, Light's button hue) don't block calling this done. |
+| **Transfer log + Settings IA** | **Design locked 2026-07-21.** Doc: `docs/Transfer_Log_And_Settings_IA_Design.md`. Settings sub-nav (Appearance / Providers & keys / Local / Feature routing / Writing tools / **Logs** / Data). **Logs → Transfers**: story-scoped send journal (desk→desk seeds only; proposed+opened; 30d UI / 90d hard delete); `deskTransfers` table; origin jump + re-seed; all seed writers v1. Slices **S0** then **T0–T3**. **Not started** (code). P3 until promoted. |
 | **Lexical editor (deepen)** | **To discuss** (talk list **T2**). Polish/extend existing Lexical stack — not a rip-and-replace. Scope TBD in grill. |
 | **Amazon / KDP text standards** | **To discuss** (talk list **T3**). Manuscript + export alignment with Kindle/KDP expectations. Scope TBD. |
 | **Context / token meter (local)** | **To discuss** (talk list **T4**). **Token / context used vs left meter** aimed at **local models** (e.g. LM Studio). Not packet-transparency UI. Scope TBD. |
@@ -274,9 +276,9 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
 P0.1–P0.4 are all done (R/B/S/K tracks, R0–R8/B0–B5/S0–S5/K0–K5).
 Chat Shuttle (H0–H7, docs/Chat_Shuttle_Design.md) is also done (2026-07-21).
-Remaining design-locked follow-on: docs/Outline_Import_Design.md (OI0–OI8) — P3 until promoted.
-Recommended: P1 polish (Agent Framework Phase C, Graph G1.5+), or promote Outline Import/
-Name Generator/Locations & Maps from P3.
+Design-locked P3 follow-ons: Outline Import (OI0–OI8); Transfer log + Settings IA (S0, T0–T3,
+docs/Transfer_Log_And_Settings_IA_Design.md); Name Generator; Locations & Maps.
+Recommended: P1 polish (Agent Framework Phase C, Graph G1.5+), or promote a P3 item.
 Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 
@@ -295,6 +297,9 @@ Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when do
 | `docs/Name_Generator_Design.md` | Name generator v0.3 (gaps closed 2026-07-19); NG0–NG7 |
 | `docs/Outline_Import_Design.md` | Import to Outline (**locked** 2026-07-20); OI0–OI8; parked Brainstorm/story-import note |
 | `docs/Chat_Shuttle_Design.md` | Cross-desk chat shuttle (**locked** 2026-07-20); H0–H7 **shipped 2026-07-21** — see `DECISIONS.md` |
+| `docs/Transfer_Log_And_Settings_IA_Design.md` | Settings IA + desk **send** transfer log (**locked** 2026-07-21); S0, T0–T3 — not started |
+| `docs/Lorebook_Browse_Density_Design.md` | Lorebook Cards\|List toggle (**locked** 2026-07-21); L0–L3 — P2 B8, not started |
+| `docs/UI_Visual_Direction.md` | Linear A + Raycast chrome (**locked/shipped** 2026-07-21) |
 | `docs/Locations_And_Maps_Design.md` | Location playbooks, place sheet, Story Map, image presets (locked 2026-07-19) |
 | `docs/Agent_Framework_And_Project_Memory_Design.md` | Agent A/B design (A/B shipped; C backlog) |
 | `docs/Thin_Story_Graph_And_Lorebook_Visualization.md` | Graph design (G1 shipped; G1.5+ backlog) |

@@ -2,11 +2,14 @@ import { attemptPromise } from "@jfdi/attempt";
 import express from "express";
 import { STORY_GRAPH_EDGE_TYPES } from "../../src/types/storyGraph.js";
 import {
+    approveEdge,
     createEdge,
     deleteEdge,
     getNeighborhood,
     getStoryGraph,
+    listPendingEdges,
     migrateStoryRelationships,
+    rejectEdge,
     updateEdge
 } from "../services/storyGraphService.js";
 
@@ -37,13 +40,23 @@ router.get("/stories/:storyId/graph/neighborhood/:entryId", async (req, res) => 
     res.json(result);
 });
 
+router.get("/stories/:storyId/graph/pending", async (req, res) => {
+    const [error, result] = await attemptPromise(() => listPendingEdges(req.params.storyId));
+    if (error) {
+        res.status(500).json({ error: "Failed to load pending edges", details: error.message });
+        return;
+    }
+    res.json({ pending: result });
+});
+
 router.post("/stories/:storyId/graph/edges", async (req, res) => {
-    const { fromId, toId, edgeType, label, description } = req.body as {
+    const { fromId, toId, edgeType, label, description, asPending } = req.body as {
         fromId?: unknown;
         toId?: unknown;
         edgeType?: unknown;
         label?: unknown;
         description?: unknown;
+        asPending?: unknown;
     };
 
     if (typeof fromId !== "string" || !fromId.trim() || typeof toId !== "string" || !toId.trim()) {
@@ -62,7 +75,8 @@ router.post("/stories/:storyId/graph/edges", async (req, res) => {
             toId,
             edgeType,
             label: typeof label === "string" ? label : null,
-            description: typeof description === "string" ? description : null
+            description: typeof description === "string" ? description : null,
+            status: asPending === true ? "pending" : "active"
         })
     );
     if (error) {
@@ -101,6 +115,24 @@ router.delete("/graph/edges/:id", async (req, res) => {
         return;
     }
     res.json({ success: true });
+});
+
+router.post("/graph/edges/:id/approve", async (req, res) => {
+    const [error, result] = await attemptPromise(() => approveEdge(req.params.id));
+    if (error) {
+        res.status(400).json({ error: "Failed to approve edge", details: error.message });
+        return;
+    }
+    res.json(result);
+});
+
+router.post("/graph/edges/:id/reject", async (req, res) => {
+    const [error, result] = await attemptPromise(() => rejectEdge(req.params.id));
+    if (error) {
+        res.status(400).json({ error: "Failed to reject edge", details: error.message });
+        return;
+    }
+    res.json(result);
 });
 
 router.post("/stories/:storyId/graph/migrate-from-metadata", async (req, res) => {

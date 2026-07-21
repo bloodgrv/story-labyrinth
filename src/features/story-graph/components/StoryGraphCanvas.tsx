@@ -16,12 +16,13 @@ import { toast } from "react-toastify";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import type { StoryGraphEdge, StoryGraphNode } from "@/types/storyGraph";
-import { useNeighborhoodQuery, useStoryGraphQuery } from "../hooks/useStoryGraphQuery";
+import { useNeighborhoodQuery, usePendingEdgesQuery, useStoryGraphQuery } from "../hooks/useStoryGraphQuery";
 import { layoutEgo, layoutGrid } from "../lib/layout";
 import { EdgeEditDialog } from "./EdgeEditDialog";
 import { GraphMigrationBanner } from "./GraphMigrationBanner";
 import { GraphNodeSidePanel } from "./GraphNodeSidePanel";
 import { GraphSearchBox } from "./GraphSearchBox";
+import { PendingEdgesPanel } from "./PendingEdgesPanel";
 import { StoryGraphEdgeLabelComponent, type StoryGraphFlowEdge } from "./StoryGraphEdgeLabel";
 import { StoryGraphNodeComponent, type StoryGraphFlowNode } from "./StoryGraphNode";
 
@@ -43,7 +44,9 @@ function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
     const sortedNodes = useMemo(() => [...allNodes].sort((a, b) => a.name.localeCompare(b.name)), [allNodes]);
     const allNodesById = useMemo(() => new Map(allNodes.map(n => [n.id, n])), [allNodes]);
 
-    const [viewMode, setViewMode] = useState<"ego" | "full">("ego");
+    const [viewMode, setViewMode] = useState<"ego" | "full" | "pending">("ego");
+    const pendingQuery = usePendingEdgesQuery(storyId);
+    const pendingCount = pendingQuery.data?.pending.length ?? 0;
     const [centerEntryId, setCenterEntryId] = useState<string | null>(null);
     const [depth, setDepth] = useState<1 | 2>(1);
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -158,10 +161,11 @@ function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
         <div className="h-full flex flex-col">
             <div className="flex items-center justify-between gap-3 p-2 border-b bg-background/80 backdrop-blur">
                 <div className="flex items-center gap-2">
-                    <Tabs value={viewMode} onValueChange={v => setViewMode(v as "ego" | "full")}>
+                    <Tabs value={viewMode} onValueChange={v => setViewMode(v as "ego" | "full" | "pending")}>
                         <TabsList>
                             <TabsTrigger value="ego">Ego view</TabsTrigger>
                             <TabsTrigger value="full">Full graph</TabsTrigger>
+                            <TabsTrigger value="pending">Pending{pendingCount > 0 ? ` (${pendingCount})` : ""}</TabsTrigger>
                         </TabsList>
                     </Tabs>
                     {viewMode === "ego" && (
@@ -173,48 +177,55 @@ function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
                         </Tabs>
                     )}
                 </div>
-                <GraphSearchBox nodes={sortedNodes} onSelect={handleSearchSelect} />
+                {viewMode !== "pending" && <GraphSearchBox nodes={sortedNodes} onSelect={handleSearchSelect} />}
             </div>
 
-            {hasLegacyRelationships ? (
-                <div className="p-2 border-b">
-                    <GraphMigrationBanner storyId={storyId} variant="legacy" />
-                </div>
-            ) : totalEdgeCount === 0 ? (
-                <div className="p-2 border-b">
-                    <GraphMigrationBanner storyId={storyId} variant="empty" />
-                </div>
-            ) : null}
+            {viewMode !== "pending" &&
+                (hasLegacyRelationships ? (
+                    <div className="p-2 border-b">
+                        <GraphMigrationBanner storyId={storyId} variant="legacy" />
+                    </div>
+                ) : totalEdgeCount === 0 ? (
+                    <div className="p-2 border-b">
+                        <GraphMigrationBanner storyId={storyId} variant="empty" />
+                    </div>
+                ) : null)}
 
             <div className="relative flex-1">
-                <ReactFlow
-                    nodes={flowNodes}
-                    edges={flowEdges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    onNodeClick={onNodeClick}
-                    onPaneClick={() => setSelectedNodeId(null)}
-                    nodeTypes={nodeTypes}
-                    edgeTypes={edgeTypes}
-                    fitView
-                    proOptions={{ hideAttribution: true }}
-                >
-                    <Background />
-                    <Controls />
-                    <MiniMap pannable zoomable className="!bg-background" />
-                </ReactFlow>
+                {viewMode === "pending" ? (
+                    <PendingEdgesPanel storyId={storyId} />
+                ) : (
+                    <>
+                        <ReactFlow
+                            nodes={flowNodes}
+                            edges={flowEdges}
+                            onNodesChange={onNodesChange}
+                            onEdgesChange={onEdgesChange}
+                            onConnect={onConnect}
+                            onNodeClick={onNodeClick}
+                            onPaneClick={() => setSelectedNodeId(null)}
+                            nodeTypes={nodeTypes}
+                            edgeTypes={edgeTypes}
+                            fitView
+                            proOptions={{ hideAttribution: true }}
+                        >
+                            <Background />
+                            <Controls />
+                            <MiniMap pannable zoomable className="!bg-background" />
+                        </ReactFlow>
 
-                {selectedNode && (
-                    <GraphNodeSidePanel
-                        node={selectedNode}
-                        edges={displayedEdges}
-                        nodesById={allNodesById}
-                        onOpenEntry={handleOpenEntry}
-                        onAddEdgeFrom={openAddEdgeDialog}
-                        onEditEdge={openEditDialog}
-                        onClose={() => setSelectedNodeId(null)}
-                    />
+                        {selectedNode && (
+                            <GraphNodeSidePanel
+                                node={selectedNode}
+                                edges={displayedEdges}
+                                nodesById={allNodesById}
+                                onOpenEntry={handleOpenEntry}
+                                onAddEdgeFrom={openAddEdgeDialog}
+                                onEditEdge={openEditDialog}
+                                onClose={() => setSelectedNodeId(null)}
+                            />
+                        )}
+                    </>
                 )}
             </div>
 

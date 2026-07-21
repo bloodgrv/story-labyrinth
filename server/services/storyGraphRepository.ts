@@ -74,7 +74,14 @@ export const listActiveEdgesForStory = async (storyId: string): Promise<StoryGra
         .where(and(eq(schema.storyGraphEdges.storyId, storyId), eq(schema.storyGraphEdges.status, "active")))
         .orderBy(desc(schema.storyGraphEdges.createdAt));
 
-export type UpdateEdgeFields = Partial<{ edgeType: string; label: string | null; description: string | null }>;
+export const listPendingEdgesForStory = async (storyId: string): Promise<StoryGraphEdgeRow[]> =>
+    db
+        .select()
+        .from(schema.storyGraphEdges)
+        .where(and(eq(schema.storyGraphEdges.storyId, storyId), eq(schema.storyGraphEdges.status, "pending")))
+        .orderBy(desc(schema.storyGraphEdges.createdAt));
+
+export type UpdateEdgeFields = Partial<{ edgeType: string; label: string | null; description: string | null; status: string }>;
 
 export const updateEdgeRow = async (id: string, updates: UpdateEdgeFields): Promise<StoryGraphEdgeRow | undefined> => {
     if (Object.keys(updates).length === 0) return getEdge(id);

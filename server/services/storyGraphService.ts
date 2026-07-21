@@ -16,6 +16,7 @@ import {
     insertEdge,
     type LorebookRow,
     listActiveEdgesForStory,
+    listPendingEdgesForStory,
     listVisibleEntriesForStory,
     updateEdgeRow
 } from "./storyGraphRepository.js";
@@ -73,6 +74,7 @@ export type CreateEdgeInput = {
     edgeType: string;
     label?: string | null;
     description?: string | null;
+    status?: "active" | "pending";
 };
 
 export const createEdge = async (input: CreateEdgeInput): Promise<StoryGraphEdge> => {
@@ -84,8 +86,13 @@ export const createEdge = async (input: CreateEdgeInput): Promise<StoryGraphEdge
     if (!visibleIds.has(input.fromId)) throw new Error(`fromId does not resolve to an entry visible to this story: ${input.fromId}`);
     if (!visibleIds.has(input.toId)) throw new Error(`toId does not resolve to an entry visible to this story: ${input.toId}`);
 
-    const existing = await findActiveEdge(input.storyId, input.fromId, input.toId, input.edgeType);
-    if (existing) throw new Error("An active edge of this type already exists between these entries");
+    const status = input.status ?? "active";
+    // Dedup only guards active edges — duplicate pending proposals are harmless (no unique
+    // constraint blocks them) and shouldn't block a "propose for review" action.
+    if (status === "active") {
+        const existing = await findActiveEdge(input.storyId, input.fromId, input.toId, input.edgeType);
+        if (existing) throw new Error("An active edge of this type already exists between these entries");
+    }
 
     const row = await insertEdge({
         storyId: input.storyId,
@@ -94,7 +101,7 @@ export const createEdge = async (input: CreateEdgeInput): Promise<StoryGraphEdge
         edgeType: input.edgeType,
         label: input.label ?? null,
         description: input.description ?? null,
-        status: "active",
+        status,
         source: "user"
     });
     return rowToEdge(row);
@@ -111,6 +118,45 @@ export const updateEdge = async (id: string, input: UpdateEdgeInput): Promise<St
 
 export const deleteEdge = async (id: string): Promise<void> => {
     await deleteEdgeRow(id);
+};
+
+// ── Pending-edge review ────────────────────────────────────────────────────────
+
+export type PendingEdgeWithNames = { edge: StoryGraphEdge; fromName: string; toName: string };
+
+// Names resolved server-side rather than left to the frontend's already-loaded node list:
+// getStoryGraph's node set only includes global/series entries referenced by an *active* edge,
+// so a pending edge between two such entries wouldn't otherwise resolve a name client-side.
+export const listPendingEdges = async (storyId: string): Promise<PendingEdgeWithNames[]> => {
+    const [rows, visibleEntries] = await Promise.all([listPendingEdgesForStory(storyId), listVisibleEntriesForStory(storyId)]);
+    const nameById = new Map(visibleEntries.map(e => [e.id, e.name]));
+    return rows.map(row => {
+        const edge = rowToEdge(row);
+        return { edge, fromName: nameById.get(edge.fromId) ?? edge.fromId, toName: nameById.get(edge.toId) ?? edge.toId };
+    });
+};
+
+export const approveEdge = async (id: string): Promise<StoryGraphEdge> => {
+    const existing = await getEdge(id);
+    if (!existing) throw new Error(`Edge not found: ${id}`);
+    if (existing.status !== "pending") throw new Error(`Edge is not pending (status: ${existing.status})`);
+
+    const conflict = await findActiveEdge(existing.storyId, existing.fromId, existing.toId, existing.edgeType);
+    if (conflict) throw new Error("An active edge of this type already exists between these entries");
+
+    const row = await updateEdgeRow(id, { status: "active" });
+    if (!row) throw new Error(`Edge not found: ${id}`);
+    return rowToEdge(row);
+};
+
+export const rejectEdge = async (id: string): Promise<StoryGraphEdge> => {
+    const existing = await getEdge(id);
+    if (!existing) throw new Error(`Edge not found: ${id}`);
+    if (existing.status !== "pending") throw new Error(`Edge is not pending (status: ${existing.status})`);
+
+    const row = await updateEdgeRow(id, { status: "rejected" });
+    if (!row) throw new Error(`Edge not found: ${id}`);
+    return rowToEdge(row);
 };
 
 // Called from server/routes/lorebook.ts's DELETE /:id — the delete-cascade for edges, since no

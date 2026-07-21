@@ -56,8 +56,9 @@ export const STORY_GRAPH_EDGE_TYPE_LABELS: Record<StoryGraphEdgeType, string> = 
     other: "Other"
 };
 
-// Only 'active' is ever produced this pass (AI suggestions, which would produce 'pending', are
-// out of scope) — the type exists so a future pass needs no type-level rework.
+// 'pending' is produced by the manual "Propose for review" toggle on edge create, and reviewed
+// via the Pending tab's approve/reject actions. AI-suggested edges (a separate, larger effort)
+// would write into this same 'pending' lane later — no further type-level rework needed.
 export type StoryGraphStatus = "active" | "pending" | "rejected";
 export type StoryGraphEdgeSource = "user" | "import" | "ai_suggested" | "migrated";
 
@@ -96,4 +97,12 @@ export interface StoryGraphMigrationResult {
     migrated: number;
     skipped: number;
     skippedDetails: Array<{ entryId: string; targetId: string; reason: string }>;
+}
+
+// A pending edge with its endpoint names resolved server-side (names aren't otherwise guaranteed
+// resolvable client-side — see storyGraphService.ts's listPendingEdges comment).
+export interface StoryGraphPendingEdge {
+    edge: StoryGraphEdge;
+    fromName: string;
+    toName: string;
 }

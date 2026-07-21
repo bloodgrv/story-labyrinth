@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { STORY_GRAPH_EDGE_TYPES, STORY_GRAPH_EDGE_TYPE_LABELS } from "@/types/storyGraph";
 import type { StoryGraphEdge, StoryGraphEdgeType, StoryGraphNode } from "@/types/storyGraph";
@@ -39,6 +40,7 @@ export function EdgeEditDialog({ open, onOpenChange, storyId, nodes, edge, initi
     const [edgeType, setEdgeType] = useState<StoryGraphEdgeType>(edge?.edgeType ?? "knows");
     const [label, setLabel] = useState(edge?.label ?? "");
     const [description, setDescription] = useState(edge?.description ?? "");
+    const [asPending, setAsPending] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
     const createMutation = useCreateEdgeMutation();
@@ -54,6 +56,7 @@ export function EdgeEditDialog({ open, onOpenChange, storyId, nodes, edge, initi
         setEdgeType(edge?.edgeType ?? "knows");
         setLabel(edge?.label ?? "");
         setDescription(edge?.description ?? "");
+        setAsPending(false);
     }, [open, edge, initialFromId, initialToId]);
 
     const nodeName = (id: string) => nodes.find(n => n.id === id)?.name ?? id;
@@ -70,7 +73,10 @@ export function EdgeEditDialog({ open, onOpenChange, storyId, nodes, edge, initi
         }
         if (!fromId || !toId) return;
         createMutation.mutate(
-            { storyId, data: { fromId, toId, edgeType, label: label.trim() || null, description: description.trim() || null } },
+            {
+                storyId,
+                data: { fromId, toId, edgeType, label: label.trim() || null, description: description.trim() || null, asPending }
+            },
             { onSuccess: () => onOpenChange(false) }
         );
     };
@@ -161,6 +167,17 @@ export function EdgeEditDialog({ open, onOpenChange, storyId, nodes, edge, initi
                             <Label>Description (optional)</Label>
                             <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} />
                         </div>
+                        {!isEdit && (
+                            <div className="flex items-center justify-between gap-3 rounded border px-3 py-2">
+                                <div>
+                                    <Label htmlFor="propose-for-review">Propose for review</Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        Save as a pending suggestion instead of adding it directly — review it later in the Pending tab.
+                                    </p>
+                                </div>
+                                <Switch id="propose-for-review" checked={asPending} onCheckedChange={setAsPending} />
+                            </div>
+                        )}
                     </div>
                     <DialogFooter className="sm:justify-between">
                         {isEdit ? (
