@@ -26,7 +26,12 @@ export interface BrainstormSlot {
     status: BrainstormSlotStatus;
 }
 
-export type BrainstormChecklistKind = "overview_proposal" | "handoff";
+// "note_split" (P0.4 K2/K3) reuses this same table/status lifecycle for the Notes chat's
+// split-dump-into-many-notes proposal — see NOTE_SPLIT_PROPOSAL_INSTRUCTIONS (chatContextService.ts)
+// and NotesChecklistTray.tsx. The table/service/route are chatType-agnostic (confirmed before
+// adding this — no chatType check anywhere in the checklist write path), so no schema change was
+// needed to add a third kind.
+export type BrainstormChecklistKind = "overview_proposal" | "handoff" | "note_split";
 export type BrainstormChecklistStatus = "pending" | "opened" | "done" | "dismissed";
 
 // ```overview-proposal fence payload (chatContextService.ts's OVERVIEW_PROPOSAL_INSTRUCTIONS) —
@@ -49,7 +54,15 @@ export interface HandoffPacket {
     seedCategory?: LorebookEntry["category"];
 }
 
-export type BrainstormChecklistPayload = OverviewProposalPayload | HandoffPacket;
+// ```note-split-proposal fence payload (NOTE_SPLIT_PROPOSAL_INSTRUCTIONS) — P0.4 K2/K4's
+// paste-a-dump-and-split-it-into-many-notes capability. One fence, one payload, many notes —
+// mirrors overview-proposal/handoff-packet's "array inside one fence" shape rather than requiring
+// the model to emit N separate note-proposal fences (note-proposal stays capped at one per reply).
+export interface NoteSplitProposalPayload {
+    notes: { title: string; content: string; type: "idea" | "research" | "todo" | "other" }[];
+}
+
+export type BrainstormChecklistPayload = OverviewProposalPayload | HandoffPacket | NoteSplitProposalPayload;
 
 export interface BrainstormChecklistItem {
     id: string;

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import systemPrompts from "../../src/data/systemPrompts.js";
 import type { Prompt } from "../../src/types/story.js";
 import { db, schema } from "./client.js";
@@ -38,5 +38,33 @@ export const seedSystemPrompts = async () => {
     } catch (error) {
         console.error("Error seeding system prompts:", error);
         throw error;
+    }
+};
+
+// P0.4 K-track prerequisite fix — seedSystemPrompts above only ever INSERTS missing promptTypes,
+// never updates an existing row's content, so a stale seed (like "research-system"'s pre-S1
+// static system message, which never referenced {{codex_context}} and so silently dropped
+// RESEARCH_FRAMING/web-search context before it ever reached the model — see DECISIONS.md "P0.4
+// K0-K5") stays broken forever on any already-provisioned database. This patches known-stale
+// system prompts in place, idempotently: only touches a row if its current content is missing
+// the token the fix adds, so re-running on every boot is safe and a no-op once fixed.
+const STALE_PROMPT_FIXES: { promptType: string; requiredToken: string }[] = [{ promptType: "research", requiredToken: "{{codex_context}}" }];
+
+export const patchStaleSystemPrompts = async () => {
+    for (const { promptType, requiredToken } of STALE_PROMPT_FIXES) {
+        const [existing] = await db
+            .select()
+            .from(schema.prompts)
+            .where(and(eq(schema.prompts.isSystem, true), eq(schema.prompts.promptType, promptType)));
+        if (!existing) continue; // not seeded yet — seedSystemPrompts will insert the already-correct version
+
+        const currentContent = JSON.stringify(existing.messages ?? "");
+        if (currentContent.includes(requiredToken)) continue; // already fixed (or a user has since customized it correctly)
+
+        const correctPrompt = systemPrompts.find((p: Partial<Prompt>) => p.promptType === promptType);
+        if (!correctPrompt?.messages) continue;
+
+        await db.update(schema.prompts).set({ messages: correctPrompt.messages }).where(eq(schema.prompts.id, existing.id));
+        console.log(`Patched stale system prompt content for promptType "${promptType}" (missing ${requiredToken})`);
     }
 };

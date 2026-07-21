@@ -15,7 +15,7 @@ import type { FocusPacket, FocusTarget } from "@/types/rework";
 // entryId for World-Building, storyId for Outline — Outline chats aren't per-item anchored, see
 // OutlineChatRail.tsx).
 export interface PendingReworkRequest {
-    panel: "editor" | "worldbuilding" | "outline";
+    panel: "editor" | "worldbuilding" | "outline" | "notes";
     anchorId: string;
     storyId: string;
     target: FocusTarget;

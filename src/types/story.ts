@@ -160,7 +160,8 @@ export interface Prompt extends BaseEntity {
         | "worldbuilding"
         | "research"
         | "editor"
-        | "outline";
+        | "outline"
+        | "notes";
     messages: PromptMessage[];
     allowedModels: AllowedModel[];
     storyId?: string;
@@ -209,6 +210,8 @@ export interface Note extends BaseEntity {
     // Opt-in gate for the Notes/Outline ↔ chat bridge — see aiChats.includeNotes on AIChat above.
     // Defaults false server-side; optional here since creation never needs to specify it.
     includeInAi?: boolean;
+    // P0.4 K0 — pins to the top of the Notes list. Defaults false server-side.
+    pinned?: boolean;
 }
 
 // Lorebook types

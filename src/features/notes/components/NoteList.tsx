@@ -1,11 +1,13 @@
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { type MouseEvent, useState } from "react";
+import { ChevronLeft, ChevronRight, Plus, Sparkles } from "lucide-react";
+import { type MouseEvent, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Note } from "@/types/story";
 import { useCreateNoteMutation, useDeleteNoteMutation, useNotesByStoryQuery, useUpdateNoteMutation } from "../hooks/useNotesQuery";
-import { NoteFormDialog } from "./NoteFormDialog";
+import { NOTE_TYPES, NoteFormDialog } from "./NoteFormDialog";
 import { NoteListItem } from "./NoteListItem";
 
 interface NoteListProps {
@@ -13,6 +15,14 @@ interface NoteListProps {
     selectedNoteId: string | null;
     onSelectNote: (note: Note | null) => void;
 }
+
+// K0 — pinned notes float to the top regardless of the active sort/filter, then most-recently
+// updated first within each group.
+const sortNotes = (notes: Note[]): Note[] =>
+    [...notes].sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
 
 export default function NoteList({ storyId, selectedNoteId, onSelectNote }: NoteListProps) {
     const { data: notes = [] } = useNotesByStoryQuery(storyId);
@@ -24,6 +34,24 @@ export default function NoteList({ storyId, selectedNoteId, onSelectNote }: Note
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isNewNoteDialogOpen, setIsNewNoteDialogOpen] = useState(false);
     const [editingNote, setEditingNote] = useState<Note | null>(null);
+
+    // K0 — client-side filters over the already-fetched story notes list; no new query needed.
+    const [typeFilter, setTypeFilter] = useState<Note["type"] | "all">("all");
+    const [armedOnly, setArmedOnly] = useState(false);
+    const [search, setSearch] = useState("");
+
+    const armedCount = useMemo(() => notes.filter(n => n.includeInAi).length, [notes]);
+    const filteredNotes = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        return sortNotes(
+            notes.filter(
+                n =>
+                    (typeFilter === "all" || n.type === typeFilter) &&
+                    (!armedOnly || n.includeInAi) &&
+                    (!q || n.title.toLowerCase().includes(q))
+            )
+        );
+    }, [notes, typeFilter, armedOnly, search]);
 
     const handleDeleteNote = async (noteId: string) => {
         await deleteNoteMutation.mutateAsync(noteId);
@@ -69,9 +97,11 @@ export default function NoteList({ storyId, selectedNoteId, onSelectNote }: Note
             </button>
 
             <div className={cn("h-full overflow-y-auto", isCollapsed ? "hidden" : "block")}>
-                <div className="p-4 border-b border-input">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="font-semibold text-foreground">Notes</h2>
+                <div className="p-4 border-b border-input space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h2 className="font-semibold text-foreground">
+                            Notes <span className="text-xs font-normal text-muted-foreground">({notes.length})</span>
+                        </h2>
                         <Button
                             variant="outline"
                             size="sm"
@@ -81,6 +111,34 @@ export default function NoteList({ storyId, selectedNoteId, onSelectNote }: Note
                             <Plus className="h-4 w-4" />
                             New Note
                         </Button>
+                    </div>
+                    <Input placeholder="Search notes..." value={search} onChange={e => setSearch(e.target.value)} className="h-8 text-sm" />
+                    <div className="flex items-center gap-2">
+                        <Select value={typeFilter} onValueChange={v => setTypeFilter(v as Note["type"] | "all")}>
+                            <SelectTrigger className="h-8 text-xs flex-1">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All types</SelectItem>
+                                {NOTE_TYPES.map(t => (
+                                    <SelectItem key={t.value} value={t.value}>
+                                        {t.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <button
+                            type="button"
+                            onClick={() => setArmedOnly(v => !v)}
+                            className={cn(
+                                "flex items-center gap-1 shrink-0 text-xs px-2 h-8 rounded-md border",
+                                armedOnly ? "border-primary text-primary bg-primary/10" : "border-input text-muted-foreground"
+                            )}
+                            title="Show AI-armed notes only"
+                        >
+                            <Sparkles className="h-3 w-3" />
+                            {armedCount}
+                        </button>
                     </div>
                 </div>
                 <ul className="overflow-y-auto flex-1">
@@ -93,8 +151,10 @@ export default function NoteList({ storyId, selectedNoteId, onSelectNote }: Note
                                 className="p-8"
                             />
                         </li>
+                    ) : filteredNotes.length === 0 ? (
+                        <li className="p-4 text-sm text-muted-foreground text-center">No notes match these filters.</li>
                     ) : (
-                        notes.map(note => (
+                        filteredNotes.map(note => (
                             <NoteListItem
                                 key={note.id}
                                 note={note}
@@ -108,6 +168,10 @@ export default function NoteList({ storyId, selectedNoteId, onSelectNote }: Note
                                 onToggleIncludeInAi={e => {
                                     e.stopPropagation();
                                     updateNoteMutation.mutate({ id: note.id, data: { includeInAi: !note.includeInAi } });
+                                }}
+                                onTogglePinned={e => {
+                                    e.stopPropagation();
+                                    updateNoteMutation.mutate({ id: note.id, data: { pinned: !note.pinned } });
                                 }}
                             />
                         ))

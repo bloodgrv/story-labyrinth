@@ -23,6 +23,7 @@ const getPromptTypeLabel = (type: Prompt["promptType"]) => {
         research: "Research",
         editor: "Editor",
         outline: "Outline",
+        notes: "Notes",
         other: "Other"
     };
     return labels[type];
@@ -39,6 +40,7 @@ const promptTypeOrder: Prompt["promptType"][] = [
     "research",
     "editor",
     "outline",
+    "notes",
     "other"
 ];
 

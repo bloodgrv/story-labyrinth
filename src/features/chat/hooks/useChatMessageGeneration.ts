@@ -10,6 +10,7 @@ import { parseCodexProposals } from "../services/parseCodexProposals";
 import { parseHandoffPackets } from "../services/parseHandoffPackets";
 import type { ParsedLoreSuggestion } from "../services/parseLoreSuggestions";
 import { parseLoreSuggestions } from "../services/parseLoreSuggestions";
+import { parseNoteSplitProposal } from "../services/parseNoteSplitProposal";
 import type { ParsedNoteProposal } from "../services/parseNoteProposals";
 import { parseNoteProposals } from "../services/parseNoteProposals";
 import type { ParsedOutlineProposal } from "../services/parseOutlineProposals";
@@ -19,7 +20,7 @@ import { parseProseProposal } from "../services/parseProseProposal";
 import type { ParsedPsychProposal } from "../services/parsePsychProposal";
 import { parsePsychProposal } from "../services/parsePsychProposal";
 import { useApproveProposalMutation, useCreateProposalMutation } from "./useCodexProposalsQuery";
-import type { HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
+import type { HandoffPacket, NoteSplitProposalPayload, OverviewProposalPayload } from "@/types/brainstorm";
 
 interface UseChatMessageGenerationParams {
     selectedChat: AIChat;
@@ -58,6 +59,10 @@ interface UseChatMessageGenerationParams {
     // P0.4 B5 — see chatContextService.ts's PSYCH_MODULE_INSTRUCTIONS). Not persisted server-side
     // — ephemeral until Accept merges it into the anchor entry's own metadata.psychProfile.
     onPsychProposal?: (messageId: string, proposal: ParsedPsychProposal) => void;
+    // Called when a reply contains a ```note-split-proposal block (Notes chats only, P0.4 K2 —
+    // see chatContextService.ts's NOTE_SPLIT_PROPOSAL_INSTRUCTIONS). Same "persist immediately as
+    // a durable brainstormChecklist row" posture as onOverviewProposal/onHandoffPackets above.
+    onNoteSplitProposal?: (messageId: string, proposal: NoteSplitProposalPayload) => void;
     // P0.4 R6 — when true, every ```codex-proposal parsed from a reply is approved immediately
     // after its pending row is created (same call ProposalTrayCard's Approve button makes), instead
     // of waiting for a manual tray click. Editor/WB/Outline chats only (see ChatInterface.tsx's
@@ -90,6 +95,7 @@ export const useChatMessageGeneration = ({
     onOverviewProposal,
     onHandoffPackets,
     onPsychProposal,
+    onNoteSplitProposal,
     autoAcceptCodex
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
     const [isSending, setIsSending] = useState(false);
@@ -131,7 +137,8 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterLoreStrip, suggestions: loreSuggestions } = parseLoreSuggestions(afterOutlineStrip);
                 const { cleanedContent: afterOverviewStrip, proposal: overviewProposal } = parseOverviewProposals(afterLoreStrip);
                 const { cleanedContent: afterHandoffStrip, packets: handoffPackets } = parseHandoffPackets(afterOverviewStrip);
-                const { cleanedContent, psychProposal } = parsePsychProposal(afterHandoffStrip);
+                const { cleanedContent: afterSplitStrip, proposal: noteSplitProposal } = parseNoteSplitProposal(afterHandoffStrip);
+                const { cleanedContent, psychProposal } = parsePsychProposal(afterSplitStrip);
 
                 const afterAssistantMessage = await chatsApi.appendMessage(selectedChat.id, "assistant", cleanedContent);
                 onChatUpdate(afterAssistantMessage);
@@ -159,6 +166,7 @@ export const useChatMessageGeneration = ({
                 if (loreSuggestions.length > 0 && assistantMessage) onLoreSuggestions?.(assistantMessage.id, loreSuggestions);
                 if (overviewProposal && assistantMessage) onOverviewProposal?.(assistantMessage.id, overviewProposal);
                 if (handoffPackets.length > 0 && assistantMessage) onHandoffPackets?.(assistantMessage.id, handoffPackets);
+                if (noteSplitProposal && assistantMessage) onNoteSplitProposal?.(assistantMessage.id, noteSplitProposal);
                 if (psychProposal && assistantMessage) onPsychProposal?.(assistantMessage.id, psychProposal);
             });
 
@@ -187,6 +195,7 @@ export const useChatMessageGeneration = ({
             onOverviewProposal,
             onHandoffPackets,
             onPsychProposal,
+            onNoteSplitProposal,
             autoAcceptCodex
         ]
     );

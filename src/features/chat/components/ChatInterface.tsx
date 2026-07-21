@@ -16,7 +16,7 @@ import { applyChapterSelectionReplace } from "@/features/rework/adapters/chapter
 import { ReworkCard } from "@/features/rework/components/ReworkCard";
 import type { InitialReworkPayload } from "@/features/rework/pendingReworkStore";
 import { getActiveChapterEditor } from "@/lib/activeChapterEditorStore";
-import { useCreateNoteMutation } from "@/features/notes/hooks/useNotesQuery";
+import { useCreateNoteMutation, useUpdateNoteMutation } from "@/features/notes/hooks/useNotesQuery";
 import { NoteFormDialog } from "@/features/notes/components/NoteFormDialog";
 import { useUpdateLorebookMutation } from "@/features/lorebook/hooks/useLorebookQuery";
 import {
@@ -78,6 +78,11 @@ interface ChatInterfaceProps {
     // B0-B4, StoryContext.pendingChatComposerSeed). Consumed once per identity change, same
     // pattern as initialRework below.
     initialComposerText?: string | null;
+    // Notes chats only (P0.4 K1) — whichever note is currently open in the Notes tool
+    // (NotesTool.tsx's own selectedNoteId), threaded into the mount-time context fetch so the
+    // desk context pack's "focused note" read (chatContextService.ts's resolveFocusedNote)
+    // reflects what the user is actually looking at.
+    focusedNoteId?: string;
 }
 
 // ChatInterface for chats.ts-backed chats (World-Building, Research, Editor) — reuses the same
@@ -93,7 +98,8 @@ export function ChatInterface({
     enableProseProposals = true,
     onLoreSuggestions,
     initialRework = null,
-    initialComposerText = null
+    initialComposerText = null,
+    focusedNoteId
 }: ChatInterfaceProps) {
     const [input, setInput] = useState("");
     const queryClient = useQueryClient();
@@ -115,8 +121,13 @@ export function ChatInterface({
     // toggles below replace it) but never uses the Codex tray — it has no Codex/outline/prose
     // write path at all, only note-proposal (P0.4 S0-S5, docs/Chat_Panel_Integrations_Design.md §6).
     const isResearchChat = promptType === "research";
-    const showContextSelector = !isEditorChat && !isOutlineChat && !isBrainstormChat && !isResearchChat;
-    const forceStructuredContextOff = isEditorChat || isOutlineChat || isBrainstormChat || isResearchChat;
+    // Notes agrees with Outline/Brainstorm/Research on "no manual context selector" — its own
+    // always-on desk reads (all notes + focused note) plus opt-in Lorebook/Outline toggles below
+    // replace it. Never uses the Codex tray — no Codex/outline/prose write path, only
+    // note-proposal/note-split-proposal/promote (P0.4 K0-K5, docs/Chat_Panel_Integrations_Design.md §7).
+    const isNotesChat = promptType === "notes";
+    const showContextSelector = !isEditorChat && !isOutlineChat && !isBrainstormChat && !isResearchChat && !isNotesChat;
+    const forceStructuredContextOff = isEditorChat || isOutlineChat || isBrainstormChat || isResearchChat || isNotesChat;
     const usesCodexTray = isEditorChat || promptType === "worldbuilding" || isOutlineChat;
 
     const { entries: lorebookEntries } = useLorebookContext();
@@ -228,7 +239,7 @@ export function ChatInterface({
     const [focusedOnLabel, setFocusedOnLabel] = useState<string | null>(null);
     useEffect(() => {
         let cancelled = false;
-        chatsApi.getContext(selectedChat.id).then(context => {
+        chatsApi.getContext(selectedChat.id, undefined, focusedNoteId).then(context => {
             if (cancelled) return;
 
             const anchorEntries = context.relevantCodexEntries.filter(e => e.role === "anchor");
@@ -296,6 +307,14 @@ export function ChatInterface({
                 ? `${context.handoffStatus.activeCount} active, ${context.handoffStatus.doneCount} done`
                 : "";
 
+            // Notes chat's own always-on desk reads (P0.4 K1) — allNotes lists every story note's
+            // title/type (not gated by includeInAi, a desk privilege), focusedNote is the full
+            // body of whichever note is currently open in the Notes tool.
+            const allNotesText = context.allNotes.map(n => `- ${n.title} (${n.type}) [id: ${n.id}]`).join("\n");
+            const focusedNoteText = context.focusedNote
+                ? `- ${context.focusedNote.title} (${context.focusedNote.type}${context.focusedNote.pinned ? ", pinned" : ""}) [id: ${context.focusedNote.id}]\n${context.focusedNote.content}`
+                : "";
+
             const sections = [
                 context.systemPrompt,
                 context.projectSynopsis && `Project synopsis:\n${context.projectSynopsis}`,
@@ -316,7 +335,9 @@ export function ChatInterface({
                 writtenChaptersText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${writtenChaptersText}`,
                 chapterSummariesText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${chapterSummariesText}`,
                 setupSlotsText && `[PROJECT SETUP CHECKLIST — use slotKey exactly as shown when a proposal addresses one]\n${setupSlotsText}`,
-                handoffStatusText && `[YOUR OWN PENDING PROPOSALS/HANDOFFS]\n${handoffStatusText}`
+                handoffStatusText && `[YOUR OWN PENDING PROPOSALS/HANDOFFS]\n${handoffStatusText}`,
+                allNotesText && `[ALL STORY NOTES — titles/types only; use the id values exactly as shown if referencing one]\n${allNotesText}`,
+                focusedNoteText && `[FOCUSED NOTE — currently open in the Notes tool, treat as current]\n${focusedNoteText}`
             ].filter(Boolean);
             setCodexContext(sections.join("\n\n"));
             setFocusedOnLabel(anchorEntries[0]?.name ?? (anchorChapters[0] ? `Chapter: ${anchorChapters[0].title}` : null));
@@ -332,6 +353,7 @@ export function ChatInterface({
         includeLorebook,
         includeChapterSummaries,
         isBrainstormChat,
+        focusedNoteId,
         // Guided-start style + psych-module toggle (P0.4 B0-B5) live in the PARENT component
         // (BrainstormTool/WorldBuildingChatPanel/OutlineChatRail), not local state here — without
         // these in the dependency array, changing style/psych after the chat was first selected
@@ -381,6 +403,12 @@ export function ChatInterface({
                     `BEFORE/AFTER below. Reply with an \`\`\`outline-proposal ("edit") for itemId "${activeRework.target.outlineItemId}" ` +
                     `— only include the fields that should change.\n${beforeLabel}\nCURRENT TITLE + SUMMARY: ${selection}\n${afterLabel}`
                 );
+            case "note-item":
+                return (
+                    `[NOTE REWORK]\nThe user wants to rework this note as a whole (whole-note only, no sub-span). Reply with a ` +
+                    `\`\`\`note-proposal for the COMPLETE updated note — title and content, reassembling anything unchanged ` +
+                    `yourself; do not propose only a fragment.\nCURRENT TITLE + CONTENT: ${selection}`
+                );
             default:
                 return "";
         }
@@ -397,6 +425,8 @@ export function ChatInterface({
                 return "Talk through the change below — the model's reply will propose a Codex change reviewed in the tray, not replace this text directly.";
             case "outline-item":
                 return "Talk through the change below — the model's reply will propose an outline change reviewed as a card, not replace this text directly.";
+            case "note-item":
+                return "Talk through the change below — the model's reply will propose an updated note reviewed here, not replace this text directly.";
             default:
                 return undefined;
         }
@@ -443,6 +473,7 @@ export function ChatInterface({
     // prompt, so the model has no reason to emit the fence there anyway.
     const [noteProposals, setNoteProposals] = useState<Record<string, ParsedNoteProposal>>({});
     const createNoteMutation = useCreateNoteMutation();
+    const updateNoteMutation = useUpdateNoteMutation();
 
     // P0.4 B5 — Character template's opt-in psych module. Same ephemeral-state posture as
     // noteProposals above; only ever populated for WB chats since chatContextService.ts's
@@ -583,7 +614,16 @@ export function ChatInterface({
                 )
             ).then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
         },
-        onPsychProposal: (messageId, proposal) => setPsychProposals(prev => ({ ...prev, [messageId]: proposal }))
+        onPsychProposal: (messageId, proposal) => setPsychProposals(prev => ({ ...prev, [messageId]: proposal })),
+        // Notes chats only (P0.4 K2/K4) — same "persist immediately as a durable checklist row"
+        // posture as onOverviewProposal/onHandoffPackets above; NotesChecklistTray.tsx handles the
+        // "Accept all" write.
+        onNoteSplitProposal: (messageId, proposal) => {
+            if (!storyId) return;
+            brainstormApi
+                .createChecklistItem({ chatId: selectedChat.id, storyId, kind: "note_split", payload: proposal, sourceMessageId: messageId })
+                .then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
+        }
     });
 
     const dismissOutlineProposal = (messageId: string, index: number) =>
@@ -619,10 +659,19 @@ export function ChatInterface({
             return next;
         });
 
+    // P0.4 K2 — a note-item rework in progress means this note-proposal is the UPDATED note, not
+    // a new one; same activeRework-branching pattern handleAcceptProse uses for chapter-selection
+    // rework. No fence format change — note-proposal's {title, content, type} payload is reused
+    // as-is, only the Accept target differs.
     const handleAcceptNote = (messageId: string) => {
         const proposal = noteProposals[messageId];
         if (!proposal || !storyId) return;
-        createNoteMutation.mutate({ storyId, title: proposal.title, content: proposal.content, type: proposal.type });
+        if (activeRework && activeRework.target.kind === "note-item") {
+            updateNoteMutation.mutate({ id: activeRework.target.noteId, data: { title: proposal.title, content: proposal.content } });
+            setActiveRework(null);
+        } else {
+            createNoteMutation.mutate({ storyId, title: proposal.title, content: proposal.content, type: proposal.type });
+        }
         dismissNoteProposal(messageId);
     };
 
@@ -751,12 +800,16 @@ export function ChatInterface({
 
                 {!isEditorChat && (
                     <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border p-3">
-                        <div className="flex items-center gap-2">
-                            <Switch id={`${selectedChat.id}-include-notes`} checked={includeNotes} onCheckedChange={toggleIncludeNotes} />
-                            <Label htmlFor={`${selectedChat.id}-include-notes`} className="text-sm font-normal">
-                                Include Notes (working material, not canon)
-                            </Label>
-                        </div>
+                        {/* Include Notes (the bridge toggle) is meaningless for the Notes chat itself — it
+                            already gets privileged always-on reads (allNotes/focusedNote) instead. */}
+                        {!isNotesChat && (
+                            <div className="flex items-center gap-2">
+                                <Switch id={`${selectedChat.id}-include-notes`} checked={includeNotes} onCheckedChange={toggleIncludeNotes} />
+                                <Label htmlFor={`${selectedChat.id}-include-notes`} className="text-sm font-normal">
+                                    Include Notes (working material, not canon)
+                                </Label>
+                            </div>
+                        )}
                         {!isOutlineChat && !isResearchChat && (
                             <div className="flex items-center gap-2">
                                 <Switch id={`${selectedChat.id}-include-outline`} checked={includeOutline} onCheckedChange={toggleIncludeOutline} />
@@ -765,7 +818,7 @@ export function ChatInterface({
                                 </Label>
                             </div>
                         )}
-                        {!isResearchChat && (
+                        {!isResearchChat && !isNotesChat && (
                             <div className="flex items-center gap-2">
                                 <Switch id={`${selectedChat.id}-include-memory`} checked={includeMemory} onCheckedChange={toggleIncludeMemory} />
                                 <Label htmlFor={`${selectedChat.id}-include-memory`} className="text-sm font-normal">
@@ -773,9 +826,9 @@ export function ChatInterface({
                                 </Label>
                             </div>
                         )}
-                        {/* Lorebook is Brainstorm/Research-only opt-in — every other chat type's lorebook
-                            search stays always-on (see chatContextService.ts's entityTypes computation). */}
-                        {(isBrainstormChat || isResearchChat) && (
+                        {/* Lorebook is Brainstorm/Research/Notes-only opt-in — every other chat type's
+                            lorebook search stays always-on (see chatContextService.ts's entityTypes computation). */}
+                        {(isBrainstormChat || isResearchChat || isNotesChat) && (
                             <div className="flex items-center gap-2">
                                 <Switch
                                     id={`${selectedChat.id}-include-lorebook`}

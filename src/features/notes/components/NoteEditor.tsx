@@ -1,7 +1,9 @@
-import { Save } from "lucide-react";
+import { MessageSquarePlus, Save } from "lucide-react";
 import { useState } from "react";
 import Editor from "react-simple-wysiwyg";
 import { Button } from "@/components/ui/button";
+import { captureNoteItemTarget } from "@/features/rework/adapters/noteItemAdapter";
+import { requestRework } from "@/features/rework/pendingReworkStore";
 import { cn } from "@/lib/utils";
 import { useNoteQuery, useUpdateNoteMutation } from "../hooks/useNotesQuery";
 
@@ -13,21 +15,26 @@ export default function NoteEditor({ selectedNoteId }: NoteEditorProps) {
     const { data: selectedNote } = useNoteQuery(selectedNoteId || "");
     const updateNoteMutation = useUpdateNoteMutation();
 
-    if (!selectedNoteId || !selectedNote) 
+    if (!selectedNoteId || !selectedNote)
         return (
             <div className="h-full flex items-center justify-center text-muted-foreground">
                 <p>Select a note to start editing</p>
             </div>
         );
-    
+
 
     return <NoteEditorContent note={selectedNote} updateMutation={updateNoteMutation} />;
 }
 
 interface NoteEditorContentProps {
-    note: { id: string; title: string; content: string; updatedAt: Date };
+    note: { id: string; storyId: string; title: string; content: string; updatedAt: Date };
     updateMutation: ReturnType<typeof useUpdateNoteMutation>;
 }
+
+// Strips markup for the rework capture's plain-text preview only — the note's own stored
+// content (WYSIWYG HTML) is untouched; this is purely what gets shown in the ReworkCard/sent to
+// the model as CURRENT TITLE + CONTENT.
+const stripHtml = (html: string): string => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
 function NoteEditorContent({ note, updateMutation }: NoteEditorContentProps) {
     const [content, setContent] = useState(note.content);
@@ -39,6 +46,13 @@ function NoteEditorContent({ note, updateMutation }: NoteEditorContentProps) {
         });
     };
 
+    // P0.4 K2 — whole-note rework, binds to the story's Notes chat (NotesChatRail.tsx's
+    // pendingReworkStore consumption effect). No sub-span selection (see noteItemAdapter.ts).
+    const handleRework = () => {
+        const { target, packet } = captureNoteItemTarget({ id: note.id, title: note.title, content: stripHtml(content) });
+        requestRework({ panel: "notes", anchorId: note.id, storyId: note.storyId, target, packet });
+    };
+
     return (
         <div className="h-full flex flex-col">
             <div className="border-b border-input p-4 flex items-center justify-between">
@@ -48,10 +62,16 @@ function NoteEditorContent({ note, updateMutation }: NoteEditorContentProps) {
                         Last updated: {new Date(note.updatedAt).toLocaleString()}
                     </p>
                 </div>
-                <Button onClick={handleSave} disabled={updateMutation.isPending} className="flex items-center gap-2">
-                    <Save className="h-4 w-4" />
-                    Save
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={handleRework} className="flex items-center gap-1">
+                        <MessageSquarePlus className="h-3 w-3" />
+                        Rework in chat
+                    </Button>
+                    <Button onClick={handleSave} disabled={updateMutation.isPending} className="flex items-center gap-2">
+                        <Save className="h-4 w-4" />
+                        Save
+                    </Button>
+                </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
                 <Editor

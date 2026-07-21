@@ -824,6 +824,9 @@ export const notes = sqliteTable(
         // note is eligible for RAG indexing/retrieval. Defaults false: notes are untrusted/working
         // material, not canon, and never surface to a chat unless explicitly armed.
         includeInAi: integer("includeInAi", { mode: "boolean" }).notNull().default(false),
+        // P0.4 K0 — pin to the top of the Notes list. A plain UI convenience flag, unrelated to
+        // includeInAi (a note can be pinned without being AI-armed, or vice versa).
+        pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
         updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
         isDemo: integer("isDemo", { mode: "boolean" })

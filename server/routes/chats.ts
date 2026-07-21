@@ -355,7 +355,8 @@ router.patch(
 // unresolved Codex proposals, and Codex entries relevant to `query` (via the RAG hybrid
 // index — defaults to the chat's title when omitted). Meant to be fetched before sending
 // a message to the AI provider, so responses/proposals are grounded in current Codex state.
-// Query param: query (optional)
+// Query params: query (optional), focusedNoteId (optional — Notes chats only, P0.4 K1: whichever
+// note is currently open in the Notes tool, see getChatContext's resolveFocusedNote)
 router.get(
     "/:chatId/context",
     asyncHandler(async (req, res) => {
@@ -364,8 +365,8 @@ router.get(
             res.status(404).json({ error: "Chat not found" });
             return;
         }
-        const { query } = req.query as { query?: string };
-        const context = await getChatContext(req.params.chatId, query);
+        const { query, focusedNoteId } = req.query as { query?: string; focusedNoteId?: string };
+        const context = await getChatContext(req.params.chatId, query, focusedNoteId);
         res.json(context);
     })
 );

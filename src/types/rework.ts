@@ -42,6 +42,16 @@ export type FocusTarget =
           kind: "outline-item";
           outlineItemId: string;
           text: string;
+      }
+    | {
+          // P0.4 K2 — whole-note rework only, no sub-span. react-simple-wysiwyg's contentEditable
+          // body has neither Lexical's node-key selection (chapter case) nor a plain <textarea>'s
+          // character offsets (lorebook-field case), so precise span capture was deliberately
+          // scoped out this pass (same kind of narrowing R4 did for structured Codex fields) —
+          // shaped identically to outline-item for that reason.
+          kind: "note-item";
+          noteId: string;
+          text: string;
       };
 
 // Narrowed alias for call sites that only ever handle the chapter-editor case (Lexical re-resolve

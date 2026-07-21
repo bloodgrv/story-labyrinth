@@ -66,17 +66,14 @@ export function BrainstormChecklistTray({ chatId, storyId }: BrainstormChecklist
     };
 
     // WB reuses the existing pendingLorebookSeed handoff mechanism unchanged (same shape a
-    // lore-suggestion already produces). Notes has no chat rail of its own yet (K1 not built) so
-    // "Send" just creates the note directly, no navigation. Outline/Research both prefill that
-    // chat's composer via the generalized pendingChatComposerSeed (see StoryContext.tsx,
-    // OutlineChatRail.tsx, ResearchTool.tsx).
+    // lore-suggestion already produces). Notes now has its own chat rail (P0.4 K1) so "notes"
+    // navigates+seeds the same as Outline/Research, matching every other destination's behavior —
+    // previously (before K1) it just created the note directly with no navigation.
     const handleOpenHandoff = (item: BrainstormChecklistItem) => {
         const payload = item.payload as HandoffPacket;
         if (payload.destination === "worldbuilding") {
             setPendingLorebookSeed({ name: payload.seedName || payload.summary.slice(0, 60), category: payload.seedCategory ?? "character", blurb: payload.summary });
             setCurrentTool("lorebook");
-        } else if (payload.destination === "notes") {
-            createNote.mutate({ storyId, title: payload.summary.slice(0, 60), content: payload.detail, type: "idea" });
         } else {
             setPendingChatComposerSeed({ tool: payload.destination, text: payload.detail });
             setCurrentTool(payload.destination);
@@ -116,7 +113,7 @@ export function BrainstormChecklistTray({ chatId, storyId }: BrainstormChecklist
                             ) : (
                                 <Button size="sm" onClick={() => handleOpenHandoff(item)} disabled={isBusy}>
                                     <ExternalLink className="h-4 w-4 mr-1" />
-                                    {(item.payload as HandoffPacket).destination === "notes" ? "Send" : "Open"}
+                                    Open
                                 </Button>
                             )}
                             <Button size="sm" variant="ghost" onClick={() => markDone(item.id)} disabled={updateStatus.isPending}>

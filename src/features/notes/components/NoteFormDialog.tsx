@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Note } from "@/types/story";
 
-const NOTE_TYPES: Array<{ value: Note["type"]; label: string }> = [
+export const NOTE_TYPES: Array<{ value: Note["type"]; label: string }> = [
     { value: "idea", label: "Idea" },
     { value: "research", label: "Research" },
     { value: "todo", label: "To-Do" },

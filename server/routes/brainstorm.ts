@@ -50,8 +50,10 @@ router.post("/checklist", async (req, res) => {
         res.status(400).json({ error: "chatId, storyId, and payload are required" });
         return;
     }
-    if (kind !== "overview_proposal" && kind !== "handoff") {
-        res.status(400).json({ error: "kind must be 'overview_proposal' or 'handoff'" });
+    // "note_split" (P0.4 K2/K3) reuses this same generic table/route for the Notes chat's
+    // split-dump-into-many-notes proposal — see NotesChecklistTray.tsx.
+    if (kind !== "overview_proposal" && kind !== "handoff" && kind !== "note_split") {
+        res.status(400).json({ error: "kind must be 'overview_proposal', 'handoff', or 'note_split'" });
         return;
     }
 

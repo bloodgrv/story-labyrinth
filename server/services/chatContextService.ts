@@ -196,6 +196,60 @@ const RESEARCH_FRAMING =
     "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user " +
     "sees them, so don't reference the fenced blocks themselves in your prose.";
 
+// P0.4 K2/K4 — split a large pasted block of text into several typed notes in one action (the
+// concrete implementation of "Import dump → Notes", K4) — one fence carrying an array, not N
+// separate note-proposal fences (note-proposal itself stays capped at one per reply). Persisted
+// immediately as a durable checklist row (kind: "note_split", reusing brainstormChecklist's
+// already chatType-agnostic table/service/route — see NotesChecklistTray.tsx), same posture as
+// handoff-packet/overview-proposal below.
+const NOTE_SPLIT_PROPOSAL_INSTRUCTIONS =
+    "When the user pastes or describes a large block of material that should become several separate notes, " +
+    "propose splitting it — never just summarize it back as one big note. All splits require explicit user " +
+    "approval (Accept all) before any note is created.\n\n" +
+    "To propose a split, include a fenced block in this exact form:\n\n" +
+    "```note-split-proposal\n" +
+    '{"notes": [{"title": "...", "content": "...", "type": "idea"}, {"title": "...", "content": "...", "type": "research"}]}\n' +
+    "```\n\n" +
+    '"type" must be one of: idea, research, todo, other. Propose at most one split per reply.';
+
+// P0.4 K3 — Notes' "promote" writes reuse the exact overview-proposal/handoff-packet fence
+// contracts Brainstorm already established (same parsers, same durable-checklist persistence,
+// same tray Accept semantics — see NotesChecklistTray.tsx) but with Notes-flavored instruction
+// text: promote → synopsis only (no "note"/"memory" overview-proposal sub-types — those are
+// Brainstorm-specific concepts with no analog here), promote → WB/Outline only (no "notes"/
+// "research" handoff destinations — promoting a note to itself makes no sense, and Research isn't
+// a promote target per docs/Chat_Panel_Integrations_Design.md §7's Writes table).
+const NOTES_PROMOTE_INSTRUCTIONS =
+    "When a note is ready to become real story canon, propose promoting it — never act as if it's already " +
+    "been applied. The user reviews and accepts each promotion in the tray.\n\n" +
+    "To propose promoting a note's content into the story synopsis:\n\n" +
+    "```overview-proposal\n" +
+    '{"proposalType": "synopsis", "content": "..."}\n' +
+    "```\n\n" +
+    "To propose promoting a note to World-Building or Outline (the destination chat does the real work — " +
+    "this is a handoff, not a direct create):\n\n" +
+    "```handoff-packet\n" +
+    '{"handoffs": [{"destination": "worldbuilding", "summary": "one-line summary", "detail": "longer paste-ready text", "seedName": "...", "seedCategory": "character"}]}\n' +
+    "```\n\n" +
+    '"destination" must be "worldbuilding" or "outline" only here. For "worldbuilding", also include ' +
+    '"seedName" and "seedCategory" (one of: character, location, item, event, note, synopsis, starting ' +
+    "scenario, timeline).";
+
+// P0.4 K1 — Notes desk framing (docs/Chat_Panel_Integrations_Design.md §7's Job/Not lines
+// verbatim). No Codex-proposal, no outline-proposal, no prose-proposal — Notes never writes
+// canon directly, only working material plus propose→accept promotions.
+const NOTES_FRAMING =
+    "You are a working-material desk for a long-form fiction project — help organize, refine, split, and " +
+    "promote Notes. You are NOT a web research desk, a setup-grill interview, a Codex factory, or a " +
+    "manuscript editor, and you never propose Codex, outline structure, or chapter prose changes here.\n\n" +
+    NOTE_PROPOSAL_INSTRUCTIONS +
+    "\n\n" +
+    NOTE_SPLIT_PROPOSAL_INSTRUCTIONS +
+    "\n\n" +
+    NOTES_PROMOTE_INSTRUCTIONS +
+    "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user " +
+    "sees them, so don't reference the fenced blocks themselves in your prose.";
+
 // P0.4 B0-B4 — Brainstorm is a project intake/orientation hub, not any of the specialized desks
 // it hands work off to. Explicitly NOT a manuscript writer, structure desk, or Codex/lore
 // factory — those stay Editor/Outline/World-Building's jobs (docs/Chat_Panel_Integrations_Design.md
@@ -317,6 +371,7 @@ const buildSystemPrompt = (
     if (chatType === "editor") return PROSE_PROPOSAL_INSTRUCTIONS;
     if (chatType === "outline") return OUTLINE_FRAMING + resolveStyleHint(OUTLINE_STYLE_HINTS, style);
     if (chatType === "research") return RESEARCH_FRAMING;
+    if (chatType === "notes") return NOTES_FRAMING;
     if (chatType === "brainstorm") {
         return (
             BRAINSTORM_FRAMING +
@@ -522,6 +577,39 @@ const resolveOutlineItems = async (results: SearchResult[]): Promise<ChatContext
     }));
 };
 
+// The Notes chat's own always-on structured read (P0.4 K1) — every note in the story, titles/
+// types only (not full content, that's resolveFocusedNote below), not RAG-ranked, and — unlike
+// resolveNotes above — deliberately NOT gated by includeInAi. Design doc §7: "Other story notes |
+// All story notes (desk privilege — not limited to armed)" — the Notes tool is the note's own
+// home, so seeing the full list regardless of AI-arm status is expected, not a bridge leak.
+const resolveAllStoryNotes = async (storyId: string): Promise<{ id: string; title: string; type: string; updatedAt: Date }[]> =>
+    db
+        .select({ id: schema.notes.id, title: schema.notes.title, type: schema.notes.type, updatedAt: schema.notes.updatedAt })
+        .from(schema.notes)
+        .where(eq(schema.notes.storyId, storyId))
+        .orderBy(schema.notes.updatedAt);
+
+// The Notes chat's "focused note" read (P0.4 K1) — full body of whichever note is currently open
+// in the Notes tool (NotesTool.tsx passes its own selectedNoteId down, see ChatInterface.tsx's
+// focusedNoteId prop). Same "always include, not RAG-ranked" posture as resolveAnchorChapter;
+// degrades to null rather than throwing if the note was deleted since the id was captured.
+const resolveFocusedNote = async (
+    noteId: string | null
+): Promise<{ id: string; title: string; content: string; type: string; pinned: boolean } | null> => {
+    if (!noteId) return null;
+    const [note] = await db
+        .select({
+            id: schema.notes.id,
+            title: schema.notes.title,
+            content: schema.notes.content,
+            type: schema.notes.type,
+            pinned: schema.notes.pinned
+        })
+        .from(schema.notes)
+        .where(eq(schema.notes.id, noteId));
+    return note ?? null;
+};
+
 // The Outline chat's own always-on structured read (P0.4 R5) — every outlineItem in the story,
 // not RAG-ranked and not gated by the includeOutline toggle (that toggle stays the *other* chat
 // types' opt-in path, see resolveOutlineItems above). Excludes rejected items (dead ends the
@@ -660,6 +748,10 @@ const resolveWebSearch = async (
  *   - webSearchResults / fetchedPages: Research's live web search (P0.4 S1), only populated for
  *     chatType="research" with webSearchEnabled on AND an explicit `query` passed in (never the
  *     chat.title fallback) — see resolveWebSearch/explicitQuery below.
+ *   - allNotes / focusedNote: the Notes chat's own always-on desk reads (P0.4 K1) — every story
+ *     note's title/type (not gated by includeInAi, a "desk privilege") and the full body of
+ *     whichever note is currently open in the Notes tool (the `focusedNoteId` param). Empty/null
+ *     for every other chatType.
  *
  * Degrades gracefully rather than failing: if the story has no indexed content, no embedding
  * endpoint is configured, or an anchor entry/chapter no longer exists, the relevant-* fields are
@@ -667,7 +759,7 @@ const resolveWebSearch = async (
  * unavailable; resolveAnchorAndRelated/resolveAnchorChapter return [] rather than throwing on a
  * missing anchor).
  */
-export const getChatContext = async (chatId: string, query?: string): Promise<ChatContext> => {
+export const getChatContext = async (chatId: string, query?: string, focusedNoteId?: string): Promise<ChatContext> => {
     const chat = await getChatById(chatId);
     if (!chat) throw new Error(`Chat not found: ${chatId}`);
 
@@ -684,6 +776,7 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     const includeMemory = chat.includeMemory === true;
     const isBrainstorm = chatType === "brainstorm";
     const isResearch = chatType === "research";
+    const isNotes = chatType === "notes";
     const includeChapterSummaries = chat.includeChapterSummaries === true;
     const includeLorebook = chat.includeLorebook === true;
     const webSearchEnabled = isResearch && chat.webSearchEnabled !== false;
@@ -700,21 +793,24 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
 
     // Only build a non-default entityTypes array when a bridge toggle is actually on — search()/
     // hybridSearch's own DEFAULT_SEARCH_ENTITY_TYPES stays the single source of truth for
-    // "omitted" otherwise (design doc §4.5). Brainstorm and Research both need lorebook_entry to
-    // become opt-in (P0.4 B0-B4 / S4) — every other chat type's lorebook search stays always-on,
-    // unchanged. Research additionally gets NO default entities at all (not even "chapter",
-    // unlike every other non-Brainstorm chat type) — design doc §6: "Outline/chapters OFF, Full
-    // manuscript RAG OFF" — it's a research-notes desk, not grounded in the manuscript.
+    // "omitted" otherwise (design doc §4.5). Brainstorm/Research/Notes all need lorebook_entry to
+    // become opt-in (P0.4 B0-B4 / S4 / K1) — every other chat type's lorebook search stays
+    // always-on, unchanged. Research and Notes additionally get NO default entities at all (not
+    // even "chapter") — design doc §6/§7: both are explicitly "chapters/manuscript OFF."
     let entityTypes: RagEntityType[];
     if (isBrainstorm) {
         entityTypes = DEFAULT_SEARCH_ENTITY_TYPES.filter(t => t !== "lorebook_entry");
         if (includeLorebook) entityTypes.push("lorebook_entry");
-    } else if (isResearch) {
+    } else if (isResearch || isNotes) {
         entityTypes = includeLorebook ? ["lorebook_entry"] : [];
     } else {
         entityTypes = [...DEFAULT_SEARCH_ENTITY_TYPES];
     }
-    if (includeNotes) entityTypes.push("note");
+    // includeNotes is the "other chats reading Notes via the bridge" toggle — meaningless for the
+    // Notes chat itself, which already gets privileged always-on reads (resolveAllStoryNotes/
+    // resolveFocusedNote below) instead of the RAG-search path. Never shown as a toggle for Notes
+    // chats (ChatInterface.tsx), but excluded here too as defense in depth.
+    if (includeNotes && !isNotes) entityTypes.push("note");
     if (includeOutline) entityTypes.push("outline_item");
     if (includeMemory) entityTypes.push("agent_memory");
 
@@ -748,18 +844,22 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
         writtenChapters,
         chapterSummaries,
         priorSetupSlots,
-        handoffStatus
+        handoffStatus,
+        allNotes,
+        focusedNote
     ] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
         includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
-        includeNotes ? resolveNotes(searchResults) : Promise.resolve([]),
+        includeNotes && !isNotes ? resolveNotes(searchResults) : Promise.resolve([]),
         includeOutline ? resolveOutlineItems(searchResults) : Promise.resolve([]),
         includeMemory ? resolveMemories(searchResults) : Promise.resolve([]),
         includeOutlineTree && chat.storyId ? resolveFullOutlineTree(chat.storyId) : Promise.resolve([]),
         includeOutlineTree && chat.storyId ? resolveWrittenChapterSummaries(chat.storyId) : Promise.resolve([]),
         includeChapterSummaries && chat.storyId ? resolveWrittenChapterSummaries(chat.storyId) : Promise.resolve([]),
         isBrainstorm && chat.storyId ? getSlots(chat.storyId) : Promise.resolve([]),
-        isBrainstorm ? resolveHandoffStatus(chatId) : Promise.resolve({ activeCount: 0, doneCount: 0 })
+        isBrainstorm ? resolveHandoffStatus(chatId) : Promise.resolve({ activeCount: 0, doneCount: 0 }),
+        isNotes && chat.storyId ? resolveAllStoryNotes(chat.storyId) : Promise.resolve([]),
+        isNotes ? resolveFocusedNote(focusedNoteId ?? null) : Promise.resolve(null)
     ]);
 
     return {
@@ -777,6 +877,8 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
         priorSetupSlots,
         handoffStatus,
         webSearchResults: webSearch.results,
-        fetchedPages: webSearch.pages
+        fetchedPages: webSearch.pages,
+        allNotes,
+        focusedNote
     };
 };

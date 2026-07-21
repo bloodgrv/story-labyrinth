@@ -198,8 +198,12 @@ export const chatsApi = {
 
     // Context for generating a response/proposal: system prompt, this chat's own pending
     // proposals, and Codex entries relevant to `query` (via the RAG hybrid index).
-    getContext: (id: string, query?: string) => {
-        const q = query ? `?${new URLSearchParams({ query })}` : "";
+    // focusedNoteId (P0.4 K1, Notes chats only) — whichever note is currently open in the Notes tool.
+    getContext: (id: string, query?: string, focusedNoteId?: string) => {
+        const params: Record<string, string> = {};
+        if (query) params.query = query;
+        if (focusedNoteId) params.focusedNoteId = focusedNoteId;
+        const q = Object.keys(params).length > 0 ? `?${new URLSearchParams(params)}` : "";
         return fetchJSON<ChatContext>(`/chats/${id}/context${q}`);
     },
 

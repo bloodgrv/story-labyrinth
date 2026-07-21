@@ -155,12 +155,11 @@ const systemPrompts: Partial<Prompt>[] = [
         id: "research-system",
         name: "Research",
         promptType: "research",
-        description: "General research/reference assistant, not scoped to any single story",
+        description: "Web research desk — Story mode (light story seasoning) or Global mode, live web search + citations (P0.4 S0-S5)",
         messages: [
             {
                 role: "system",
-                content:
-                    "You are a research assistant helping a fiction writer gather background information, verify facts, and think through worldbuilding or craft questions that aren't tied to any single story. Be concise, accurate, and cite reasoning where it helps the writer judge reliability."
+                content: "{{codex_context}}"
             },
             {
                 role: "user",
@@ -201,6 +200,28 @@ const systemPrompts: Partial<Prompt>[] = [
         name: "Outline",
         promptType: "outline",
         description: "Structure partner for the Outline tool — full outline tree always in context, proposes chapter/scene changes",
+        messages: [
+            {
+                role: "system",
+                content: "{{codex_context}}"
+            },
+            {
+                role: "user",
+                content: "Here's the chat history of our discussion: {{chat_history}}"
+            },
+            {
+                role: "user",
+                content: "{{user_input}}"
+            }
+        ],
+        allowedModels: [],
+        isSystem: true
+    },
+    {
+        id: "notes-system",
+        name: "Notes",
+        promptType: "notes",
+        description: "Working-material desk for the Notes tool — organize, rework, split, and promote notes (P0.4 K0-K5)",
         messages: [
             {
                 role: "system",

@@ -3,7 +3,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runMigrations } from "./db/migrate.js";
-import { seedSystemPrompts } from "./db/seedSystemPrompts.js";
+import { patchStaleSystemPrompts, seedSystemPrompts } from "./db/seedSystemPrompts.js";
 import { blockViewerMutations, requireAuth, requireOwner } from "./middleware/auth.js";
 import { start as startJobRunner, stop as stopJobRunner } from "./services/jobRunner.js";
 import adminRouter from "./routes/admin.js";
@@ -46,6 +46,7 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 const initializeDatabase = async () => {
     runMigrations();
     await seedSystemPrompts();
+    await patchStaleSystemPrompts();
     await startJobRunner();
 };
 

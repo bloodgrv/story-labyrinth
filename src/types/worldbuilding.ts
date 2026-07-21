@@ -2,7 +2,7 @@ import type { CodexPendingChange } from "./codex.js";
 
 // Chat type discriminator — matches the chatType column on aiChats.
 // null / undefined → treat as 'general' at the application layer.
-export type ChatType = "worldbuilding" | "research" | "editor" | "outline" | "brainstorm" | "general";
+export type ChatType = "worldbuilding" | "research" | "editor" | "outline" | "brainstorm" | "notes" | "general";
 
 // Guided-start interview depth, shared across every host that offers it (Brainstorm, WB, Outline
 // — P0.4 B0-B5). Prompt-shaping only, not a tracked interview state machine (confirmed with user).
@@ -200,4 +200,10 @@ export interface ChatContext {
     // handleSubmit). fetchedPages covers any http(s) URL found in that same query text.
     webSearchResults: { title: string; url: string; snippet: string }[];
     fetchedPages: { url: string; title: string; text: string }[];
+    // Notes chat's own always-on desk reads (P0.4 K1) — empty/null except for chatType="notes".
+    // allNotes: every story note's title/type, NOT gated by includeInAi (desk privilege — see
+    // docs/Chat_Panel_Integrations_Design.md §7). focusedNote: full body of whichever note is
+    // currently open in the Notes tool (getChatContext's focusedNoteId param).
+    allNotes: { id: string; title: string; type: string; updatedAt: Date }[];
+    focusedNote: { id: string; title: string; content: string; type: string; pinned: boolean } | null;
 }
