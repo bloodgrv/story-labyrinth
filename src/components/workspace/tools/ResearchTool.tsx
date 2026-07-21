@@ -106,10 +106,16 @@ export const ResearchTool = () => {
             <div className="p-4 pb-0">
                 <Tabs value={mode} onValueChange={value => setMode(value as ResearchMode)}>
                     <TabsList>
-                        <TabsTrigger value="story" disabled={!currentStoryId}>
+                        <TabsTrigger
+                            value="story"
+                            disabled={!currentStoryId}
+                            className={mode === "story" ? "raycast-pill-active" : ""}
+                        >
                             Story
                         </TabsTrigger>
-                        <TabsTrigger value="global">Global</TabsTrigger>
+                        <TabsTrigger value="global" className={mode === "global" ? "raycast-pill-active" : ""}>
+                            Global
+                        </TabsTrigger>
                     </TabsList>
                 </Tabs>
             </div>

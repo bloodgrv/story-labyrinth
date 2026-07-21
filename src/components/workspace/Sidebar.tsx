@@ -79,7 +79,8 @@ export const Sidebar = () => {
                                 className={cn(
                                     "w-full gap-2",
                                     collapsed ? "justify-center px-0" : "justify-start",
-                                    isDisabled && "opacity-50 cursor-not-allowed"
+                                    isDisabled && "opacity-50 cursor-not-allowed",
+                                    isActive && "raycast-rail-active"
                                 )}
                                 onClick={() => handleToolClick(tool.id, tool.requiresStory)}
                                 disabled={isDisabled}

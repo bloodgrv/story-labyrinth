@@ -198,7 +198,7 @@ export const NotesTool = () => {
                             <div className="text-center max-w-md">
                                 <h3 className="text-lg md:text-xl font-semibold mb-2">No Note Selected</h3>
                                 <p className="mb-6 text-sm md:text-base">Select a note or create a new one.</p>
-                                <Button onClick={handleCreateNote} className="flex items-center gap-2">
+                                <Button variant="gradient" onClick={handleCreateNote} className="flex items-center gap-2">
                                     <Plus className="h-4 w-4" />
                                     Create New Note
                                 </Button>

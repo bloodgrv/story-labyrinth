@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 @layer base {
+    /*
+     * Linear + Raycast chrome tokens (V0, docs/UI_Visual_Direction.md).
+     * --raycast-a/--raycast-b: 2-stop gradient for accent surfaces (primary CTA, active rail, glow).
+     * Derived from each theme's own --primary (a = --primary; b = --primary lightened/darkened
+     * ~14pts away from mid-lightness) so every palette gets a real 2-stop gradient instead of a
+     * flat one, even where --primary and --ring already coincide.
+     * --accent-glow: glow color (aliases --raycast-a). --accent-glow-strength: unitless 0-1
+     * opacity dial, tuned per theme brightness — darker themes glow stronger, light/sepia softer.
+     * Not consumed by any component yet; V1 (shell chrome) is what applies these.
+     */
     :root {
         --background: 0 0% 100%;
         --foreground: 224 71.4% 4.1%;
@@ -22,12 +32,16 @@
         --border: 220 13% 70%;
         --input: 220 13% 70%;
         --ring: 224 71.4% 4.1%;
+        --raycast-a: 220.9 39.3% 11%;
+        --raycast-b: 220.9 39.3% 25%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.25;
         --chart-1: 12 76% 61%;
         --chart-2: 173 58% 39%;
         --chart-3: 197 37% 24%;
         --chart-4: 43 74% 66%;
         --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
+        --radius: 0.375rem;
         --sidebar-background: 0 0% 98%;
         --sidebar-foreground: 240 5.3% 26.1%;
         --sidebar-primary: 240 5.9% 10%;
@@ -57,6 +71,10 @@
         --border: 195 50% 15%;
         --input: 195 50% 15%;
         --ring: 186 8% 65%;
+        --raycast-a: 186 8% 85%;
+        --raycast-b: 186 8% 71%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.6;
         --chart-1: 180 60% 45%;
         --chart-2: 150 50% 40%;
         --chart-3: 45 70% 45%;
@@ -92,6 +110,10 @@
         --border: 35 20% 75%;
         --input: 35 20% 75%;
         --ring: 25 45% 25%;
+        --raycast-a: 25 45% 25%;
+        --raycast-b: 25 45% 39%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.25;
         --sidebar-background: 35 35% 88%;
         --sidebar-foreground: 25 35% 20%;
         --sidebar-primary: 25 45% 25%;
@@ -122,6 +144,10 @@
         --border: 240 15% 15%;
         --input: 240 15% 15%;
         --ring: 255 70% 65%;
+        --raycast-a: 255 70% 65%;
+        --raycast-b: 255 70% 51%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.65;
         --sidebar-background: 240 15% 5%;
         --sidebar-foreground: 240 10% 88%;
         --sidebar-primary: 255 70% 65%;
@@ -152,6 +178,10 @@
         --border: 240 15% 15%;
         --input: 240 15% 15%;
         --ring: 255 70% 65%;
+        --raycast-a: 255 70% 65%;
+        --raycast-b: 255 70% 51%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.65;
         --sidebar-background: 240 15% 5%;
         --sidebar-foreground: 0 0% 60%;
         --sidebar-primary: 255 70% 65%;
@@ -182,6 +212,10 @@
         --border: 30 10% 18%;
         --input: 30 10% 18%;
         --ring: 35 45% 60%;
+        --raycast-a: 35 45% 60%;
+        --raycast-b: 35 45% 46%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.6;
         --sidebar-background: 30 8% 4%;
         --sidebar-foreground: 35 30% 75%;
         --sidebar-primary: 35 45% 60%;
@@ -212,6 +246,10 @@
         --border: 0 0% 32%;
         --input: 0 0% 32%;
         --ring: 0 0% 10%;
+        --raycast-a: 0 0% 10%;
+        --raycast-b: 0 0% 24%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.45;
         --sidebar-background: 0 0% 37%;
         --sidebar-foreground: 0 0% 8%;
         --sidebar-primary: 0 0% 10%;
@@ -242,6 +280,10 @@
         --border: 150 20% 18%;
         --input: 150 20% 18%;
         --ring: 140 40% 55%;
+        --raycast-a: 140 40% 55%;
+        --raycast-b: 140 40% 41%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.6;
         --sidebar-background: 150 25% 7%;
         --sidebar-foreground: 120 15% 85%;
         --sidebar-primary: 140 40% 55%;
@@ -272,6 +314,10 @@
         --border: 225 14% 82%;
         --input: 225 14% 82%;
         --ring: 242 55% 58%;
+        --raycast-a: 242 55% 58%;
+        --raycast-b: 242 55% 44%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.25;
         --sidebar-background: 225 18% 94%;
         --sidebar-foreground: 228 18% 18%;
         --sidebar-primary: 242 55% 58%;
@@ -302,6 +348,10 @@
         --border: 32 18% 78%;
         --input: 32 18% 78%;
         --ring: 30 42% 48%;
+        --raycast-a: 30 42% 48%;
+        --raycast-b: 30 42% 62%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.25;
         --sidebar-background: 34 28% 91%;
         --sidebar-foreground: 30 20% 18%;
         --sidebar-primary: 30 42% 48%;
@@ -332,6 +382,10 @@
         --border: 32 22% 23%;
         --input: 32 22% 23%;
         --ring: 32 55% 64%;
+        --raycast-a: 32 55% 64%;
+        --raycast-b: 32 55% 50%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.55;
         --sidebar-background: 32 30% 11%;
         --sidebar-foreground: 38 30% 76%;
         --sidebar-primary: 32 55% 64%;
@@ -362,6 +416,10 @@
         --border: 215 25% 14%;
         --input: 215 25% 14%;
         --ring: 210 100% 68%;
+        --raycast-a: 210 100% 68%;
+        --raycast-b: 210 100% 54%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.7;
         --sidebar-background: 215 42% 4%;
         --sidebar-foreground: 210 16% 78%;
         --sidebar-primary: 210 100% 68%;
@@ -392,6 +450,10 @@
         --border: 140 35% 14%;
         --input: 140 35% 14%;
         --ring: 140 100% 50%;
+        --raycast-a: 140 100% 50%;
+        --raycast-b: 140 100% 36%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.7;
         --sidebar-background: 140 45% 2%;
         --sidebar-foreground: 130 40% 72%;
         --sidebar-primary: 140 100% 50%;
@@ -422,6 +484,10 @@
         --border: 320 10% 18%;
         --input: 320 10% 18%;
         --ring: 0 62% 65%;
+        --raycast-a: 0 62% 65%;
+        --raycast-b: 0 62% 51%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.6;
         --sidebar-background: 320 12% 6%;
         --sidebar-foreground: 10 14% 82%;
         --sidebar-primary: 0 62% 65%;
@@ -452,6 +518,10 @@
         --border: 32 12% 58%;
         --input: 32 12% 58%;
         --ring: 28 40% 32%;
+        --raycast-a: 28 40% 32%;
+        --raycast-b: 28 40% 46%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.35;
         --sidebar-background: 32 14% 68%;
         --sidebar-foreground: 30 12% 12%;
         --sidebar-primary: 28 40% 32%;
@@ -482,6 +552,10 @@
         --border: 220 10% 56%;
         --input: 220 10% 56%;
         --ring: 230 28% 30%;
+        --raycast-a: 230 28% 30%;
+        --raycast-b: 230 28% 44%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.35;
         --sidebar-background: 220 10% 66%;
         --sidebar-foreground: 224 18% 12%;
         --sidebar-primary: 230 28% 30%;
@@ -512,6 +586,10 @@
         --border: 140 12% 56%;
         --input: 140 12% 56%;
         --ring: 150 28% 28%;
+        --raycast-a: 150 28% 28%;
+        --raycast-b: 150 28% 42%;
+        --accent-glow: var(--raycast-a);
+        --accent-glow-strength: 0.35;
         --sidebar-background: 140 12% 67%;
         --sidebar-foreground: 150 16% 12%;
         --sidebar-primary: 150 28% 28%;
@@ -529,6 +607,105 @@
     body {
         @apply bg-background text-foreground;
         overflow-x: hidden;
+    }
+}
+
+/*
+ * Linear + Raycast chrome (V1, docs/UI_Visual_Direction.md).
+ * Consumes the V0 tokens (--raycast-a/-b, --accent-glow, --accent-glow-strength) defined per
+ * theme above. Kept as opt-in utility classes, not baked into the default Button/Card/etc.
+ * styling — per the design doc's own "Don't: full-app gradients or rainbow accents" rule, this
+ * energy is for specific accent surfaces (active rail, primary CTA, cmd palette trigger), not
+ * every element.
+ */
+@layer utilities {
+    /* Topbar: gradient wash across the existing bottom hairline. */
+    .raycast-hairline {
+        position: relative;
+    }
+    .raycast-hairline::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -1px;
+        height: 1px;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            hsl(var(--raycast-a) / 0.5) 30%,
+            hsl(var(--raycast-b) / 0.5) 70%,
+            transparent
+        );
+        pointer-events: none;
+    }
+
+    /* Sidebar rail: active item gets a 2px left primary bar + soft glow. */
+    .raycast-rail-active {
+        position: relative;
+    }
+    .raycast-rail-active::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 4px;
+        bottom: 4px;
+        width: 2px;
+        border-radius: 1px;
+        background: hsl(var(--raycast-a));
+        box-shadow: 0 0 8px hsl(var(--accent-glow) / var(--accent-glow-strength));
+        pointer-events: none;
+    }
+
+    /* Command palette trigger: soft glow ring on hover/focus, not a permanent outline. */
+    .raycast-cmdk-trigger:hover,
+    .raycast-cmdk-trigger:focus-visible {
+        box-shadow:
+            0 0 0 1px hsl(var(--raycast-a) / 0.35),
+            0 0 10px hsl(var(--accent-glow) / calc(var(--accent-glow-strength) * 0.5));
+    }
+
+    /* Primary CTA gradient — opt-in Button variant="gradient", not the Button default. */
+    .raycast-gradient-primary {
+        background: linear-gradient(135deg, hsl(var(--raycast-a)), hsl(var(--raycast-b)));
+        box-shadow:
+            0 0 0 1px hsl(var(--raycast-a) / 0.25),
+            0 2px 10px hsl(var(--accent-glow) / calc(var(--accent-glow-strength) * 0.6));
+    }
+    .raycast-gradient-primary:hover {
+        filter: brightness(1.06);
+    }
+
+    /*
+     * V2 — chat/AI accents (docs/UI_Visual_Direction.md). Stops here: manuscript prose/editor
+     * surfaces deliberately never get these classes.
+     */
+
+    /* User chat bubble: soft edge glow layered over the existing solid bg-primary fill —
+       doesn't change the fill itself, just adds a restrained ring + glow around it. */
+    .raycast-user-bubble {
+        box-shadow:
+            0 0 0 1px hsl(var(--raycast-a) / 0.4),
+            0 0 14px hsl(var(--accent-glow) / calc(var(--accent-glow-strength) * 0.45));
+    }
+
+    /* Desk/mode pill (e.g. Research's Story/Global toggle): gradient wash as a thin active
+       underline, not a full background swap — avoids fighting the Tabs primitive's own
+       data-[state=active] background/shadow classes entirely. */
+    .raycast-pill-active {
+        position: relative;
+    }
+    .raycast-pill-active::after {
+        content: "";
+        position: absolute;
+        left: 18%;
+        right: 18%;
+        bottom: 2px;
+        height: 2px;
+        border-radius: 1px;
+        background: linear-gradient(90deg, hsl(var(--raycast-a)), hsl(var(--raycast-b)));
+        box-shadow: 0 0 6px hsl(var(--accent-glow) / calc(var(--accent-glow-strength) * 0.5));
+        pointer-events: none;
     }
 }
 

@@ -84,7 +84,9 @@ export function ChatMessageList({
                     >
                         <div
                             className={`max-w-[85%] rounded-lg px-4 py-3 ${
-                                message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                                message.role === "user"
+                                    ? "bg-primary text-primary-foreground raycast-user-bubble"
+                                    : "bg-muted"
                             }`}
                         >
                             {message.role === "assistant" && editingMessageId === message.id ? (
