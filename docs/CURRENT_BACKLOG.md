@@ -1,6 +1,6 @@
 # Story Nexus Fork — Current Backlog
 
-**Last updated:** 2026-07-21 (Chat Shuttle H0-H7 shipped — all of P0.4 was already done, plus this P3 item)  
+**Last updated:** 2026-07-21 (B8 Lorebook browse density L0-L3 shipped)  
 **Purpose:** Single source of truth for **what’s left**, after implementation order got scrambled relative to the original Phase 0 list.  
 **Canonical live status also mirrored in:** `CLAUDE.md` (architecture + high-level “done” notes) and `DECISIONS.md` (load-bearing how/why).  
 **This file wins** when those conflict on *priority of remaining work*.
@@ -229,7 +229,8 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | B5 | **Legacy `metadata.relationships` wiped on lorebook save** | Edge table is SoT; don’t re-depend on metadata JSON for links |
 | B6 | Stale design-doc headers | Update Agent/Graph design status lines when convenient |
 | B7 | **Story `DELETE /:id` always 500s** | `db.transaction(async tx => {...})` — better-sqlite3's transaction API is sync-only and rejects an async callback with `TypeError: Transaction function cannot return a promise`. Found 2026-07-20 while verifying P0.3 export/import (unrelated to that feature). Needs restructuring the lorebook-cascade + story-delete two-step to not need `async`/`await` inside the transaction callback. |
-| B8 | **Lorebook browse density** | **Design locked 2026-07-21.** Doc: `docs/Lorebook_Browse_Density_Design.md`. Cards-only grid today (`LorebookEntryList`) gets long at novel scale. Add **Cards \| List** toggle (global `localStorage`); smart default List if category count ≥ 12 and no pref; compact row (name/level/importance/tags); keep search/sort. Slices **L0–L3**. **Not started.** |
+| B8 | **Lorebook browse density** | ✅ **Done (2026-07-21).** Doc: `docs/Lorebook_Browse_Density_Design.md`. Slices **L0–L3** all shipped: global `sn-lorebook-browse-view` localStorage pref + segmented Cards\|List control (`LorebookEntryList.tsx` toolbar); compact `LorebookEntryRow.tsx` (thumb · name · level badge · importance · up to 3 tag chips, no description/category chip) vs. extracted `LorebookEntryCard.tsx` for the existing card grid; smart default (List when selected category's entry count ≥ 12, else Cards) via `useLorebookBrowseView.ts`, recomputed each render only while no explicit pref is stored; row actions hidden-until-hover on desktop (`sm:` breakpoint), always-visible on touch. Live-verified in the Browser pane: toggle, smart default at low count, list-row content, reload persistence, click-to-open still routes into the entry tab. |
+| B9 | **Folders (cosmetic org)** | **Design locked 2026-07-21.** Doc: `docs/Folders_Org_Design.md`. User folders for **lorebook** (per story/series + category) and **all chat lists** (per story + chatType). Nested max depth 3; one engine; DnD + menus; delete folder unfiles/moves up; search + crumbs; export round-trip; **no RAG/AI effect**. Slices **F0–F5**. Ship **after B8** (done above). **Not started.** |
 
 ---
 
@@ -299,6 +300,7 @@ Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when do
 | `docs/Chat_Shuttle_Design.md` | Cross-desk chat shuttle (**locked** 2026-07-20); H0–H7 **shipped 2026-07-21** — see `DECISIONS.md` |
 | `docs/Transfer_Log_And_Settings_IA_Design.md` | Settings IA + desk **send** transfer log (**locked** 2026-07-21); S0, T0–T3 — not started |
 | `docs/Lorebook_Browse_Density_Design.md` | Lorebook Cards\|List toggle (**locked** 2026-07-21); L0–L3 — P2 B8, not started |
+| `docs/Folders_Org_Design.md` | Cosmetic folders lore + chats (**locked** 2026-07-21); F0–F5 — P2 B9 after B8, not started |
 | `docs/UI_Visual_Direction.md` | Linear A + Raycast chrome (**locked/shipped** 2026-07-21) |
 | `docs/Locations_And_Maps_Design.md` | Location playbooks, place sheet, Story Map, image presets (locked 2026-07-19) |
 | `docs/Agent_Framework_And_Project_Memory_Design.md` | Agent A/B design (A/B shipped; C backlog) |

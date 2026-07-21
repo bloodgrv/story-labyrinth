@@ -1,6 +1,7 @@
 import { attemptPromise } from "@jfdi/attempt";
-import { Eye, EyeOff, Trash2 } from "lucide-react";
+import { LayoutGrid, List as ListIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { SearchFilter } from "@/components/ui/SearchFilter";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -11,18 +12,16 @@ import {
     AlertDialogHeader,
     AlertDialogTitle
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { SearchFilter } from "@/components/ui/SearchFilter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { lorebookApi } from "@/services/api/client";
+import { useLorebookBrowseView } from "@/lib/useLorebookBrowseView";
 import type { LorebookEntry } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { useDeleteLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
-import { LevelBadge } from "./LevelBadge";
+import { LorebookEntryCard } from "./LorebookEntryCard";
+import { LorebookEntryRow } from "./LorebookEntryRow";
 
 interface LorebookEntryListProps {
     entries: LorebookEntry[];
@@ -51,6 +50,7 @@ export function LorebookEntryList({
     const [sortBy, setSortBy] = useState<SortOption>("name");
     const [deletingEntry, setDeletingEntry] = useState<LorebookEntry | null>(null);
     const [showDisabled, setShowDisabled] = useState(false);
+    const [view, setView] = useLorebookBrowseView(allEntries.length);
 
     const visibleEntries = useMemo(
         () => allEntries.filter(entry => showDisabled || !entry.isDisabled),
@@ -104,7 +104,11 @@ export function LorebookEntryList({
                             {searchInput}
                             <div className="flex gap-2 items-center">
                                 <div className="flex items-center space-x-2">
-                                    <Switch id="show-disabled" checked={showDisabled} onCheckedChange={setShowDisabled} />
+                                    <Switch
+                                        id="show-disabled"
+                                        checked={showDisabled}
+                                        onCheckedChange={setShowDisabled}
+                                    />
                                     <Label htmlFor="show-disabled" className="font-medium">
                                         Show Disabled
                                     </Label>
@@ -120,6 +124,26 @@ export function LorebookEntryList({
                                         <SelectItem value="created">Created Date</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <div className="flex items-center rounded-md border border-border p-0.5">
+                                    <Button
+                                        variant={view === "cards" ? "secondary" : "ghost"}
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => setView("cards")}
+                                        title="Card view"
+                                    >
+                                        <LayoutGrid className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant={view === "list" ? "secondary" : "ghost"}
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => setView("list")}
+                                        title="List view"
+                                    >
+                                        <ListIcon className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
@@ -131,91 +155,41 @@ export function LorebookEntryList({
                             </div>
                         )}
 
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {sortedEntries.map(entry => {
-                                const isEntryEditable = editableFilter ? editableFilter(entry) : editable;
-                                return (
-                                    <Card
-                                        key={entry.id}
-                                        onClick={() => onOpenEntry(entry)}
-                                        className={`cursor-pointer border-2 border-border shadow-sm transition-colors hover:border-primary/50 ${entry.isDisabled ? "opacity-60" : ""} ${!isEntryEditable ? "opacity-75" : ""}`}
-                                    >
-                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                {entry.imageFilename && (
-                                                    <img
-                                                        src={lorebookApi.imageUrl(entry.id)}
-                                                        alt=""
-                                                        className="h-8 w-8 shrink-0 rounded-full object-cover border"
-                                                    />
-                                                )}
-                                                {showLevel && <LevelBadge level={entry.level} />}
-                                                <CardTitle className="text-lg font-semibold truncate">{entry.name}</CardTitle>
-                                            </div>
-                                            {isEntryEditable && (
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={e => {
-                                                            e.stopPropagation();
-                                                            toggleDisabled(entry);
-                                                        }}
-                                                        title={entry.isDisabled ? "Enable entry" : "Disable entry"}
-                                                    >
-                                                        {entry.isDisabled ? (
-                                                            <Eye className="h-4 w-4" />
-                                                        ) : (
-                                                            <EyeOff className="h-4 w-4" />
-                                                        )}
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={e => {
-                                                            e.stopPropagation();
-                                                            setDeletingEntry(entry);
-                                                        }}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="flex flex-wrap gap-2 mb-2">
-                                                <Badge variant="secondary">{entry.category}</Badge>
-                                                {entry.metadata?.importance && (
-                                                    <Badge variant="outline">{entry.metadata.importance}</Badge>
-                                                )}
-                                                {entry.isDisabled && (
-                                                    <Badge
-                                                        variant="outline"
-                                                        className="bg-destructive/10 text-destructive"
-                                                    >
-                                                        Disabled
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-wrap gap-1 mb-2">
-                                                {entry.tags?.map(tag => (
-                                                    <Badge
-                                                        key={tag}
-                                                        variant="secondary"
-                                                        className="bg-primary/10 text-xs px-2 py-0.5"
-                                                    >
-                                                        {tag}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                            <p className="text-sm text-muted-foreground line-clamp-3">
-                                                {entry.description}
-                                            </p>
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
-                        </div>
+                        {view === "list" ? (
+                            <div className="flex flex-col gap-1.5">
+                                {sortedEntries.map(entry => {
+                                    const isEntryEditable = editableFilter ? editableFilter(entry) : editable;
+                                    return (
+                                        <LorebookEntryRow
+                                            key={entry.id}
+                                            entry={entry}
+                                            showLevel={showLevel}
+                                            isEditable={isEntryEditable}
+                                            onOpen={() => onOpenEntry(entry)}
+                                            onToggleDisabled={() => toggleDisabled(entry)}
+                                            onDelete={() => setDeletingEntry(entry)}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                {sortedEntries.map(entry => {
+                                    const isEntryEditable = editableFilter ? editableFilter(entry) : editable;
+                                    return (
+                                        <LorebookEntryCard
+                                            key={entry.id}
+                                            entry={entry}
+                                            showLevel={showLevel}
+                                            isEditable={isEntryEditable}
+                                            onOpen={() => onOpenEntry(entry)}
+                                            onToggleDisabled={() => toggleDisabled(entry)}
+                                            onDelete={() => setDeletingEntry(entry)}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        )}
 
                         <AlertDialog open={!!deletingEntry} onOpenChange={() => setDeletingEntry(null)}>
                             <AlertDialogContent>
