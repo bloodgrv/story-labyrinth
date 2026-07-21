@@ -1,7 +1,7 @@
-import { Copy, Edit, Loader2, StickyNote } from "lucide-react";
+import { Copy, Edit, Loader2, Send, StickyNote, X } from "lucide-react";
 import type { ReactNode } from "react";
 import type React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,6 +37,12 @@ interface ChatMessageListProps {
     // onSaveAsNote which needs parent state) — just copies the message's raw markdown to the
     // clipboard. Assistant messages only (the useful case for a research answer + citations).
     enableCopy?: boolean;
+    // Chat Shuttle H6 (docs/Chat_Shuttle_Design.md) — "chat bubble selection" span-level highlight
+    // → Note, complementing onSaveAsNote's whole-message capture (N5). Both gated the same way
+    // onSaveAsNote already is (hidden for Editor chats / storyId-less global chats) — see
+    // ChatInterface.tsx.
+    onSaveSelectionAsNote?: (text: string) => void;
+    onSendSelectionToNotesChat?: (text: string) => void;
 }
 
 export function ChatMessageList({
@@ -52,9 +58,26 @@ export function ChatMessageList({
     editingTextareaRef,
     renderProposalsForMessage,
     onSaveAsNote,
-    enableCopy
+    enableCopy,
+    onSaveSelectionAsNote,
+    onSendSelectionToNotesChat
 }: ChatMessageListProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    // Chat Shuttle H6 — captures a plain-text window.getSelection() span made within a message
+    // bubble (no Lexical node-key capture needed here, unlike the chapter editor's rework
+    // selection — this only ever READS the selection out to create a note, never writes back into
+    // the rendered markdown). Cleared on any click elsewhere or once an action is taken.
+    const [selectedText, setSelectedText] = useState<string | null>(null);
+    const handleMouseUp = () => {
+        const selection = window.getSelection();
+        const text = selection?.toString().trim() ?? "";
+        if (!text || !messagesContainerRef.current?.contains(selection?.anchorNode ?? null)) {
+            setSelectedText(null);
+            return;
+        }
+        setSelectedText(text);
+    };
 
     useEffect(
         () => {
@@ -74,9 +97,11 @@ export function ChatMessageList({
         }
     }, [/* effect dep */ editingMessageId, editingTextareaRef]);
 
+    const showSelectionBar = selectedText && (onSaveSelectionAsNote || onSendSelectionToNotesChat);
+
     return (
         <ScrollArea className="flex-1 px-4">
-            <div className="space-y-4 py-4">
+            <div ref={messagesContainerRef} className="space-y-4 py-4" onMouseUp={handleMouseUp}>
                 {messages.map(message => (
                     <div
                         key={message.id}
@@ -168,6 +193,42 @@ export function ChatMessageList({
                 ))}
                 <div ref={messagesEndRef} />
             </div>
+            {showSelectionBar && (
+                <div className="sticky bottom-2 z-10 mx-4 flex items-center justify-between gap-2 rounded-lg border border-border bg-popover p-2 shadow-md">
+                    <p className="truncate text-xs text-muted-foreground">"{selectedText}"</p>
+                    <div className="flex shrink-0 items-center gap-1">
+                        {onSaveSelectionAsNote && (
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Save selection as note"
+                                onClick={() => {
+                                    onSaveSelectionAsNote(selectedText);
+                                    setSelectedText(null);
+                                }}
+                            >
+                                <StickyNote className="h-4 w-4" />
+                            </Button>
+                        )}
+                        {onSendSelectionToNotesChat && (
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Send selection to Notes chat"
+                                onClick={() => {
+                                    onSendSelectionToNotesChat(selectedText);
+                                    setSelectedText(null);
+                                }}
+                            >
+                                <Send className="h-4 w-4" />
+                            </Button>
+                        )}
+                        <Button size="sm" variant="ghost" title="Dismiss" onClick={() => setSelectedText(null)}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
         </ScrollArea>
     );
 }

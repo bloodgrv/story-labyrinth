@@ -1,0 +1,1 @@
+ALTER TABLE `aiChats` ADD `autoShuttle` integer DEFAULT false NOT NULL;

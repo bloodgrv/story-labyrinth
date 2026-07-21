@@ -210,7 +210,15 @@ export const aiChats = sqliteTable(
         // §6: "Web search + page fetch | ON (core)"), so this defaults true, unlike every other
         // opt-in toggle on this table — it's an off-switch, not an opt-in. Ignored for every other
         // chatType (see chatContextService.ts's getChatContext).
-        webSearchEnabled: integer("webSearchEnabled", { mode: "boolean" }).notNull().default(true)
+        webSearchEnabled: integer("webSearchEnabled", { mode: "boolean" }).notNull().default(true),
+        // Chat Shuttle H7 (docs/Chat_Shuttle_Design.md) — Editor/Outline/WB-only "always-shuttle"
+        // pref for high-confidence external-fact lookups. Default false, mirrors autoAcceptCodex's
+        // posture exactly. Even when on, this only skips the tray's manual "Open" click (the
+        // ```shuttle-proposal row is created already "opened" instead of "pending" and the
+        // question+crumb is pre-seeded into Research) — it never auto-sends/auto-generates a
+        // Research answer and never force-switches the user's current tool, per the design doc's
+        // decision #1 ("No silent full auto-shuttle of answers in v1").
+        autoShuttle: integer("autoShuttle", { mode: "boolean" }).notNull().default(false)
     },
     table => ({
         storyIdIdx: index("chat_story_id_idx").on(table.storyId),

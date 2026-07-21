@@ -190,6 +190,7 @@ export const chatsApi = {
             autoAcceptCodex?: boolean;
             autoAcceptOutline?: boolean;
             webSearchEnabled?: boolean;
+            autoShuttle?: boolean;
         }
     ) => fetchJSON<AIChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     appendMessage: (id: string, role: "user" | "assistant", content: string) =>

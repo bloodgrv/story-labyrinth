@@ -151,6 +151,26 @@ const HANDOFF_PACKET_INSTRUCTIONS =
     'saving as-is), research (a question worth looking into). "seedCategory" must be one of: character, ' +
     "location, item, event, note, synopsis, starting scenario, timeline.";
 
+// Chat Shuttle (docs/Chat_Shuttle_Design.md, H1/H4) — Editor/Outline/WB's only write path to
+// Research (v1 outbound matrix, locked decision #4). Persisted immediately client-side as a
+// durable brainstormChecklist row (kind: "shuttle"), same "propose by default, user confirms via
+// tray" posture as handoff-packet — never a silent auto-send (decision #1). The redirect line the
+// model writes around the fence IS decision #2's "brief redirect + stub" — deliberately no kit
+// list / full factual answer in the host chat; that's Research's job once the user opens it.
+const SHUTTLE_PROPOSAL_INSTRUCTIONS =
+    "If the user's question is really an external/real-world-fact lookup (real brands, historical facts, " +
+    "tradecraft, \"what would people really use for X\") rather than craft, continuity, Codex state, or scene " +
+    "blocking, don't answer it in full here — propose shuttling it to the Research desk instead. Write only a " +
+    "brief one-line redirect (no kit list, no full factual answer) alongside the fenced block below; the user " +
+    "reviews and opens the shuttle themselves.\n\n" +
+    "To propose a shuttle, include a fenced block in this exact form:\n\n" +
+    "```shuttle-proposal\n" +
+    '{"destination": "research", "question": "the user\'s actual question", "crumb": "1-2 sentence scene/story context, optional"}\n' +
+    "```\n\n" +
+    "Keep \"crumb\" short — a sentence or two of scene context, never the full chapter or outline. Stay on this " +
+    "chat for anything about character motivation, prose wording, manuscript continuity, Codex state, or scene " +
+    "blocking; propose a shuttle only for a genuine external-fact digression. Propose at most one shuttle per reply.";
+
 const OUTLINE_FRAMING =
     "You are a structure partner for this story's outline — chapter/scene sequencing and narrative arc. " +
     "Stay consistent with the full outline tree, the story synopsis, and the established Codex/lorebook state " +
@@ -162,6 +182,8 @@ const OUTLINE_FRAMING =
     NOTE_PROPOSAL_INSTRUCTIONS +
     "\n\n" +
     LORE_SUGGESTION_INSTRUCTIONS +
+    "\n\n" +
+    SHUTTLE_PROPOSAL_INSTRUCTIONS +
     "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user sees them, " +
     "so don't reference the fenced blocks themselves in your prose; just talk about the change naturally.";
 
@@ -172,6 +194,8 @@ const WORLDBUILDING_FRAMING =
     CODEX_PROPOSAL_INSTRUCTIONS +
     "\n\n" +
     NOTE_PROPOSAL_INSTRUCTIONS +
+    "\n\n" +
+    SHUTTLE_PROPOSAL_INSTRUCTIONS +
     "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user sees them, " +
     "so don't reference '```codex-proposal', '```note-proposal', or 'the block' in your prose; just talk about the proposal naturally.";
 
@@ -333,6 +357,8 @@ const PROSE_PROPOSAL_INSTRUCTIONS =
     "You may also propose Codex changes in the same reply, using the convention below, if the " +
     "conversation surfaces a concrete fact worth recording.\n\n" +
     CODEX_PROPOSAL_INSTRUCTIONS +
+    "\n\n" +
+    SHUTTLE_PROPOSAL_INSTRUCTIONS +
     "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user " +
     "sees them, so don't reference the blocks themselves in your prose.";
 

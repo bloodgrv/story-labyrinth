@@ -31,7 +31,15 @@ export interface BrainstormSlot {
 // and NotesChecklistTray.tsx. The table/service/route are chatType-agnostic (confirmed before
 // adding this — no chatType check anywhere in the checklist write path), so no schema change was
 // needed to add a third kind.
-export type BrainstormChecklistKind = "overview_proposal" | "handoff" | "note_split";
+//
+// "shuttle"/"shuttle_return" (Chat Shuttle H0, docs/Chat_Shuttle_Design.md) reuse the same table
+// again for the same reason — a fourth/fifth kind, still zero schema change. `chatId` on a
+// "shuttle" row is the ORIGIN host chat (Editor/Outline/WB) that proposed it, matching every other
+// kind's convention of "chatId = the chat whose tray this appears in." A "shuttle_return" row is a
+// separate, later-created row (not a status transition of the original "shuttle" row) with the
+// SAME origin chatId — see ShuttleTray.tsx's two sections and the design doc's tray-shape table
+// ("Return packet arrives -> No (new Active item)").
+export type BrainstormChecklistKind = "overview_proposal" | "handoff" | "note_split" | "shuttle" | "shuttle_return";
 export type BrainstormChecklistStatus = "pending" | "opened" | "done" | "dismissed";
 
 // ```overview-proposal fence payload (chatContextService.ts's OVERVIEW_PROPOSAL_INSTRUCTIONS) —
@@ -62,7 +70,25 @@ export interface NoteSplitProposalPayload {
     notes: { title: string; content: string; type: "idea" | "research" | "todo" | "other" }[];
 }
 
-export type BrainstormChecklistPayload = OverviewProposalPayload | HandoffPacket | NoteSplitProposalPayload;
+// ```shuttle-proposal fence payload (SHUTTLE_PROPOSAL_INSTRUCTIONS) — Editor/Outline/WB's only
+// write path for the cross-desk chat shuttle (v1 outbound-to-Research only, per the design doc's
+// locked decision #4). "crumb" is intentionally short (a sentence or two of scene/story context,
+// never a full chapter/outline dump) — see decision #6.
+export interface ShuttlePayload {
+    destination: "research";
+    question: string;
+    crumb?: string;
+}
+
+// A "Send brief to origin" packet from Research back to the origin host's own tray (decision #3) —
+// optional, never auto-posted into the host transcript. `links` are markdown-link citations
+// extracted from Research's own reply.
+export interface ShuttleReturnPayload {
+    summary: string;
+    links: { title: string; url: string }[];
+}
+
+export type BrainstormChecklistPayload = OverviewProposalPayload | HandoffPacket | NoteSplitProposalPayload | ShuttlePayload | ShuttleReturnPayload;
 
 export interface BrainstormChecklistItem {
     id: string;

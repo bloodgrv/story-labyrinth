@@ -9,6 +9,7 @@ import type { AIChat } from "@/types/story";
 import { ChatInterface } from "./ChatInterface";
 import { ChatList } from "./ChatList";
 import { CodexProposalTray } from "./CodexProposalTray";
+import { ShuttleTray } from "./ShuttleTray";
 import { useChatsByStoryQuery, useCreateChatMutation } from "../hooks/useChatQuery";
 
 const ChatErrorFallback = (error: Error, resetError: () => void) => (
@@ -54,6 +55,10 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
     // if the user manually switches chats via ChatList right after a rework resolves (or any
     // other reason selectedChat changes), a stale rework never gets applied to the wrong chat.
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
+    // Chat Shuttle's "Answer here" action (H3, docs/Chat_Shuttle_Design.md) seeds this chat's own
+    // composer — same pattern OutlineChatRail/WorldBuildingChatPanel already use for Guided Setup/
+    // pendingChatComposerSeed, just not previously needed in this rail.
+    const [composerSeedText, setComposerSeedText] = useState<string | null>(null);
     const createMutation = useCreateChatMutation();
     // Same query ChatList already runs internally (chatKeys.byStory(storyId, "editor")) — React
     // Query dedupes the request, this just gives this component a copy of the list too, needed
@@ -132,6 +137,7 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
                             onChatUpdate={setSelectedChat}
                             enableProseProposals={enableProseProposals}
                             initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
+                            initialComposerText={composerSeedText}
                         />
                     </ErrorBoundary>
                 ) : (
@@ -155,6 +161,7 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
                     side="right"
                 />
                 {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
+                {selectedChat && <ShuttleTray chatId={selectedChat.id} onAnswerHere={setComposerSeedText} />}
             </div>
         </div>
     );

@@ -7,6 +7,7 @@ import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
 import { CodexProposalTray } from "@/features/chat/components/CodexProposalTray";
 import { GuidedSetupControl } from "@/features/chat/components/GuidedSetupControl";
+import { ShuttleTray } from "@/features/chat/components/ShuttleTray";
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import type { ParsedLoreSuggestion } from "@/features/chat/services/parseLoreSuggestions";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
@@ -200,6 +201,7 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
                     side="right"
                 />
                 {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
+                {selectedChat && <ShuttleTray chatId={selectedChat.id} onAnswerHere={setComposerSeedText} />}
                 <OutlineProposalTray loreSuggestions={loreSuggestions} />
             </div>
         </div>

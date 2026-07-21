@@ -41,6 +41,14 @@ interface StoryContextType {
     // means "switch to that tool and prefill its chat composer with this text."
     pendingChatComposerSeed: { tool: WorkspaceTool; text: string } | null;
     setPendingChatComposerSeed: (seed: { tool: WorkspaceTool; text: string } | null) => void;
+    // Chat Shuttle's own Open handoff (docs/Chat_Shuttle_Design.md, H2) — deliberately a separate
+    // one-shot field from pendingChatComposerSeed rather than overloading it: ResearchTool needs
+    // to know the ORIGIN chat id (to route a later "Send brief to origin" return packet, H5) and
+    // force Story mode, neither of which the generic composer-seed field carries or implies.
+    // Brainstorm's existing "Handoff -> Research" action keeps using pendingChatComposerSeed
+    // unchanged (decision #4: "Brainstorm keeps existing handoff model").
+    pendingShuttleSeed: { originChatId: string; shuttleItemId: string; text: string } | null;
+    setPendingShuttleSeed: (seed: { originChatId: string; shuttleItemId: string; text: string } | null) => void;
     // Bumped whenever a chapter's content changes from OUTSIDE the live editor's own autosave
     // loop (currently: History drawer restore, P0.2b) — LoadChapterContentPlugin's own "only
     // load once per chapterId" gate has no other way to learn the DB content changed out from
@@ -73,6 +81,7 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     const [pendingLorebookEntryId, setPendingLorebookEntryId] = useState<string | null>(null);
     const [pendingLorebookSeed, setPendingLorebookSeed] = useState<StoryContextType["pendingLorebookSeed"]>(null);
     const [pendingChatComposerSeed, setPendingChatComposerSeed] = useState<StoryContextType["pendingChatComposerSeed"]>(null);
+    const [pendingShuttleSeed, setPendingShuttleSeed] = useState<StoryContextType["pendingShuttleSeed"]>(null);
     const [chapterContentRefreshToken, setChapterContentRefreshToken] = useState(0);
     const refreshChapterContent = () => setChapterContentRefreshToken(token => token + 1);
 
@@ -144,6 +153,8 @@ export function StoryProvider({ children }: { children: ReactNode }) {
                 setPendingLorebookSeed,
                 pendingChatComposerSeed,
                 setPendingChatComposerSeed,
+                pendingShuttleSeed,
+                setPendingShuttleSeed,
                 chapterContentRefreshToken,
                 refreshChapterContent
             }}

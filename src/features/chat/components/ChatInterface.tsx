@@ -132,7 +132,7 @@ export function ChatInterface({
 
     const { entries: lorebookEntries } = useLorebookContext();
     const { data: chapters = [] } = useChaptersByStoryQuery(storyId ?? "");
-    const { currentChapterId } = useStoryContext();
+    const { currentChapterId, setPendingChatComposerSeed, setCurrentTool, setPendingShuttleSeed } = useStoryContext();
 
     // Selection Rework Bridge (docs/Chat_Panel_Integrations_Design.md §2.1/§3) — EditorChatRail
     // hands down a fresh `initialRework` object each time a NEW rework request resolves to this
@@ -204,6 +204,10 @@ export function ChatInterface({
     // P0.4 S1 — Research-only off-switch for live web search, defaults true server-side (see
     // schema.ts's webSearchEnabled comment). Same local-state-persisted-after-PATCH pattern.
     const [webSearchEnabled, setWebSearchEnabled] = useState(selectedChat.webSearchEnabled);
+    // Chat Shuttle H7 — Editor/Outline/WB-only "always-shuttle" pref, same local-state-persisted-
+    // after-PATCH pattern as autoAcceptCodex above. Default false (schema.ts).
+    const [autoShuttle, setAutoShuttle] = useState(selectedChat.autoShuttle);
+    const usesShuttle = isEditorChat || isWorldBuildingChat || isOutlineChat;
 
     const toggleIncludeNotes = (value: boolean) =>
         chatsApi.update(selectedChat.id, { includeNotes: value }).then(() => setIncludeNotes(value));
@@ -223,6 +227,8 @@ export function ChatInterface({
         chatsApi.update(selectedChat.id, { autoAcceptOutline: value }).then(() => setAutoAcceptOutline(value));
     const toggleWebSearchEnabled = (value: boolean) =>
         chatsApi.update(selectedChat.id, { webSearchEnabled: value }).then(() => setWebSearchEnabled(value));
+    const toggleAutoShuttle = (value: boolean) =>
+        chatsApi.update(selectedChat.id, { autoShuttle: value }).then(() => setAutoShuttle(value));
 
     // Grounds the AI in the chat's context (chat-type framing, project synopsis, the chat's
     // anchor entry/chapter + the entry's one-hop relationships, other relevant Codex entries, and
@@ -623,6 +629,27 @@ export function ChatInterface({
             brainstormApi
                 .createChecklistItem({ chatId: selectedChat.id, storyId, kind: "note_split", payload: proposal, sourceMessageId: messageId })
                 .then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
+        },
+        // Chat Shuttle (Editor/Outline/WB only, H1/H4) — same "persist immediately as a durable
+        // checklist row" posture as onOverviewProposal/onHandoffPackets above; ShuttleTray.tsx
+        // (rendered by each host's own rail, alongside CodexProposalTray) handles Open/Answer
+        // here/Mark done. H7's autoShuttle pref only skips the tray's manual "Open" click (item
+        // lands "opened" + Research gets pre-seeded) — never auto-sends/generates a Research
+        // answer and never force-switches the user's current tool (decision #1).
+        onShuttleProposal: (messageId, proposal) => {
+            if (!storyId) return;
+            brainstormApi
+                .createChecklistItem({ chatId: selectedChat.id, storyId, kind: "shuttle", payload: proposal, sourceMessageId: messageId })
+                .then(item => {
+                    queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] });
+                    if (!autoShuttle) return;
+                    const text = proposal.crumb ? `${proposal.question}\n\n(Scene context: ${proposal.crumb})` : proposal.question;
+                    setPendingShuttleSeed({ originChatId: selectedChat.id, shuttleItemId: item.id, text });
+                    brainstormApi
+                        .updateChecklistStatus(item.id, "opened")
+                        .then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
+                    toast.info("Auto-shuttled to Research — question is ready there whenever you switch over.");
+                });
         }
     });
 
@@ -713,6 +740,22 @@ export function ChatInterface({
         if (!noteSourceMessage || !storyId) return;
         createNoteMutation.mutate({ storyId, title, content: noteSourceMessage.content, type });
         setNoteSourceMessage(null);
+    };
+
+    // Chat Shuttle H6 — the "chat bubble selection" half of highlight → Note (ChatMessageList.tsx's
+    // window.getSelection()-based bar), a span-level sibling to N5's whole-message save above.
+    // Same NoteFormDialog reuse; "Send to Notes chat" reuses the generic pendingChatComposerSeed
+    // handoff (same mechanism Brainstorm's tray already uses for its own Notes destination).
+    const [selectionNoteText, setSelectionNoteText] = useState<string | null>(null);
+    const handleSaveSelectionAsNote = (text: string) => setSelectionNoteText(text);
+    const handleSendSelectionToNotesChat = (text: string) => {
+        setPendingChatComposerSeed({ tool: "notes", text });
+        setCurrentTool("notes");
+    };
+    const handleSubmitSelectionNote = (title: string, type: "idea" | "research" | "todo" | "other") => {
+        if (!selectionNoteText || !storyId) return;
+        createNoteMutation.mutate({ storyId, title, content: selectionNoteText, type });
+        setSelectionNoteText(null);
     };
 
     const dismissProseProposal = (messageId: string) =>
@@ -903,6 +946,18 @@ export function ChatInterface({
                                 </Label>
                             </div>
                         )}
+                        {usesShuttle && (
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id={`${selectedChat.id}-auto-shuttle`}
+                                    checked={autoShuttle}
+                                    onCheckedChange={toggleAutoShuttle}
+                                />
+                                <Label htmlFor={`${selectedChat.id}-auto-shuttle`} className="text-sm font-normal">
+                                    Always-shuttle high-confidence lookups
+                                </Label>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -945,6 +1000,10 @@ export function ChatInterface({
                 // P0.4 S5 — Research-only copy-friendly blocks, self-contained in ChatMessageList
                 // (no callback needed, unlike onSaveAsNote which needs parent state).
                 enableCopy={isResearchChat}
+                // Chat Shuttle H6 — same gate as onSaveAsNote above (Editor stays canon-only;
+                // global chats with no storyId have nowhere to save a note against).
+                onSaveSelectionAsNote={!isEditorChat && storyId ? handleSaveSelectionAsNote : undefined}
+                onSendSelectionToNotesChat={!isEditorChat && storyId ? handleSendSelectionToNotesChat : undefined}
                 renderProposalsForMessage={messageId => {
                     // Editor/World-Building/Outline chats show Codex proposals in the
                     // CodexProposalTray under the chat list instead (docs/
@@ -1016,6 +1075,17 @@ export function ChatInterface({
                 submitLabel="Save note"
                 initialTitle={noteSourceMessage?.content.slice(0, 60) ?? ""}
                 onSubmit={handleSaveMessageAsNote}
+            />
+
+            <NoteFormDialog
+                open={selectionNoteText !== null}
+                onOpenChange={open => {
+                    if (!open) setSelectionNoteText(null);
+                }}
+                title="Save selection as note"
+                submitLabel="Save note"
+                initialTitle={selectionNoteText?.slice(0, 60) ?? ""}
+                onSubmit={handleSubmitSelectionNote}
             />
 
             <MessageInputArea

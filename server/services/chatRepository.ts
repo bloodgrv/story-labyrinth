@@ -51,6 +51,7 @@ export type UpdateChatMetaFields = Partial<{
     autoAcceptCodex: boolean;
     autoAcceptOutline: boolean;
     webSearchEnabled: boolean;
+    autoShuttle: boolean;
 }>;
 
 // ── Queries ────────────────────────────────────────────────────────────────────
@@ -146,6 +147,7 @@ export const updateChatMeta = async (
     if (fields.autoAcceptCodex !== undefined) updates.autoAcceptCodex = fields.autoAcceptCodex;
     if (fields.autoAcceptOutline !== undefined) updates.autoAcceptOutline = fields.autoAcceptOutline;
     if (fields.webSearchEnabled !== undefined) updates.webSearchEnabled = fields.webSearchEnabled;
+    if (fields.autoShuttle !== undefined) updates.autoShuttle = fields.autoShuttle;
 
     const [row] = await db
         .update(schema.aiChats)

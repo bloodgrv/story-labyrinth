@@ -10,6 +10,7 @@ import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
 import { CodexProposalTray } from "@/features/chat/components/CodexProposalTray";
 import { GuidedSetupControl } from "@/features/chat/components/GuidedSetupControl";
+import { ShuttleTray } from "@/features/chat/components/ShuttleTray";
 import { useChatsByStoryQuery, useChatTemplatesQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
@@ -214,6 +215,7 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
                     edit-before-approve too, not just Editor's. See ChatInterface.tsx's
                     usesCodexTray. */}
                 {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
+                {selectedChat && <ShuttleTray chatId={selectedChat.id} onAnswerHere={setComposerSeedText} />}
             </div>
         </div>
     );

@@ -1,15 +1,17 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Loader2, RefreshCcw } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCcw, Send } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
+import { extractMarkdownLinks } from "@/features/chat/services/extractMarkdownLinks";
 import { LorebookProvider } from "@/features/lorebook/context/LorebookContext";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
-import { chatsApi } from "@/services/api/client";
+import { brainstormApi, chatsApi } from "@/services/api/client";
 import type { AIChat } from "@/types/story";
 
 const ChatErrorFallback = (error: Error, resetError: () => void) => (
@@ -47,7 +49,8 @@ type ResearchMode = "story" | "global";
 // chatType="research" with a real storyId.
 export const ResearchTool = () => {
     const queryClient = useQueryClient();
-    const { currentStoryId, pendingChatComposerSeed, setPendingChatComposerSeed } = useStoryContext();
+    const { currentStoryId, pendingChatComposerSeed, setPendingChatComposerSeed, pendingShuttleSeed, setPendingShuttleSeed } =
+        useStoryContext();
     const [mode, setMode] = useState<ResearchMode>(currentStoryId ? "story" : "global");
 
     // Keep mode valid if the active story changes/clears while Research is open — Story mode with
@@ -55,6 +58,12 @@ export const ResearchTool = () => {
     useEffect(() => {
         if (!currentStoryId && mode === "story") setMode("global");
     }, [currentStoryId, mode]);
+
+    // Chat Shuttle's Open handoff always targets Story mode (docs/Chat_Shuttle_Design.md's "story
+    // mode default") regardless of whichever mode Research happened to be showing already.
+    useEffect(() => {
+        if (pendingShuttleSeed && currentStoryId) setMode("story");
+    }, [pendingShuttleSeed, currentStoryId]);
 
     const [selectedStoryChat, setSelectedStoryChat] = useState<AIChat | null>(null);
     const createMutation = useCreateChatMutation();
@@ -96,6 +105,43 @@ export const ResearchTool = () => {
         setPendingChatComposerSeed(null);
     }, [pendingChatComposerSeed, chat, setPendingChatComposerSeed]);
 
+    // Chat Shuttle's Open handoff (H2, docs/Chat_Shuttle_Design.md) — same one-shot seed pattern
+    // as above, plus captures which origin chat/shuttle item a later "Send brief to origin" (H5)
+    // should post back to. Deliberately kept in local state only (lost on remount/reload), same
+    // volatile posture pendingChatComposerSeed/pendingLorebookSeed already have — the shuttle item
+    // itself stays Openable from the origin tray regardless, so nothing is lost, just this one
+    // convenience shortcut.
+    const [activeShuttleContext, setActiveShuttleContext] = useState<{ originChatId: string; shuttleItemId: string } | null>(null);
+    useEffect(() => {
+        if (!pendingShuttleSeed || mode !== "story" || !chat) return;
+        setComposerSeedText(pendingShuttleSeed.text);
+        setActiveShuttleContext({ originChatId: pendingShuttleSeed.originChatId, shuttleItemId: pendingShuttleSeed.shuttleItemId });
+        setPendingShuttleSeed(null);
+    }, [pendingShuttleSeed, mode, chat, setPendingShuttleSeed]);
+
+    // H5 — "Send brief to origin": takes the latest assistant reply as-is (summary, truncated) plus
+    // whatever markdown-link citations it contains, and posts it as a NEW brainstormChecklist row
+    // (kind: "shuttle_return") on the ORIGIN chat's own tray — never auto-injected into that chat's
+    // transcript (decision #3). Reusable any time after the first reply, not a one-shot action.
+    const handleSendBriefBack = () => {
+        if (!activeShuttleContext || !currentStoryId || !chat) return;
+        const lastAssistant = [...chat.messages].reverse().find(m => m.role === "assistant");
+        if (!lastAssistant) {
+            toast.error("No Research reply yet to send back.");
+            return;
+        }
+        brainstormApi
+            .createChecklistItem({
+                chatId: activeShuttleContext.originChatId,
+                storyId: currentStoryId,
+                kind: "shuttle_return",
+                payload: { summary: lastAssistant.content.slice(0, 1200), links: extractMarkdownLinks(lastAssistant.content) },
+                sourceMessageId: lastAssistant.id
+            })
+            .then(() => toast.success("Sent brief back to the origin chat's tray"))
+            .catch(() => toast.error("Failed to send brief back"));
+    };
+
     const handleChatUpdate = (updated: AIChat) => {
         if (mode === "story") setSelectedStoryChat(updated);
         else queryClient.setQueryData(["chats", "global", "research"], updated);
@@ -119,6 +165,15 @@ export const ResearchTool = () => {
                     </TabsList>
                 </Tabs>
             </div>
+            {activeShuttleContext && chat && (
+                <div className="mx-4 mt-2 flex items-center justify-between gap-2 rounded-lg border border-border p-2">
+                    <p className="text-xs text-muted-foreground">Shuttled in from another chat.</p>
+                    <Button size="sm" variant="outline" onClick={handleSendBriefBack} className="flex items-center gap-1">
+                        <Send className="h-3 w-3" />
+                        Send brief to origin
+                    </Button>
+                </div>
+            )}
             {!chat ? (
                 <div className="h-full flex items-center justify-center">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

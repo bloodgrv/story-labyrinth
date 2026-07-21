@@ -149,6 +149,7 @@ router.get(
 //   autoAcceptCodex: boolean       — Editor/WB/Outline auto-accept Codex toggle (P0.4 R6)
 //   autoAcceptOutline: boolean     — Outline-only auto-accept create/edit/reorder toggle, never delete (P0.4 R6)
 //   webSearchEnabled: boolean      — Research-only, defaults true, off-switch for live web search (P0.4 S1)
+//   autoShuttle: boolean           — Editor/Outline/WB-only always-shuttle pref (Chat Shuttle H7)
 router.patch(
     "/:chatId",
     asyncHandler(async (req, res) => {
@@ -175,7 +176,8 @@ router.patch(
             autoInsertProse,
             autoAcceptCodex,
             autoAcceptOutline,
-            webSearchEnabled
+            webSearchEnabled,
+            autoShuttle
         } = req.body as {
             messages?: unknown[];
             title?: string;
@@ -194,6 +196,7 @@ router.patch(
             autoAcceptCodex?: boolean;
             autoAcceptOutline?: boolean;
             webSearchEnabled?: boolean;
+            autoShuttle?: boolean;
         };
 
         let result = chat;
@@ -225,6 +228,7 @@ router.patch(
         if (autoAcceptCodex !== undefined) metaFields.autoAcceptCodex = autoAcceptCodex;
         if (autoAcceptOutline !== undefined) metaFields.autoAcceptOutline = autoAcceptOutline;
         if (webSearchEnabled !== undefined) metaFields.webSearchEnabled = webSearchEnabled;
+        if (autoShuttle !== undefined) metaFields.autoShuttle = autoShuttle;
 
         if (Object.keys(metaFields).length > 0) {
             result = await updateMeta(
@@ -246,6 +250,7 @@ router.patch(
                     autoAcceptCodex?: boolean;
                     autoAcceptOutline?: boolean;
                     webSearchEnabled?: boolean;
+                    autoShuttle?: boolean;
                 }
             );
         }

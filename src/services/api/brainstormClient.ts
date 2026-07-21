@@ -10,7 +10,7 @@ export const brainstormApi = {
     createChecklistItem: (data: {
         chatId: string;
         storyId: string;
-        kind: "overview_proposal" | "handoff" | "note_split";
+        kind: "overview_proposal" | "handoff" | "note_split" | "shuttle" | "shuttle_return";
         payload: BrainstormChecklistPayload;
         sourceMessageId?: string | null;
     }) => fetchJSON<BrainstormChecklistItem>("/brainstorm/checklist", { method: "POST", body: JSON.stringify(data) }),

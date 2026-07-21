@@ -26,6 +26,7 @@ import { BeatMarkPopover } from "./BeatMarkPopover";
 import { FormatButtons } from "./FormatButtons";
 import { GenerateButtons } from "./GenerateButtons";
 import { HumanizeButton } from "./HumanizeButton";
+import { SaveSelectionAsNoteButton } from "./SaveSelectionAsNoteButton";
 import "./index.css";
 import { useFloatingTextFormatToolbar } from "./useFloatingTextFormatToolbar";
 import { useSelectionPromptConfig } from "./useSelectionPromptConfig";
@@ -226,6 +227,8 @@ const TextFormatFloatingToolbar = ({
                             onPreview={handlePreviewPrompt}
                             onGenerate={handleGenerateWithPrompt}
                         />
+                        <Separator orientation="vertical" className="mx-1 h-6" />
+                        <SaveSelectionAsNoteButton editor={editor} />
                         <Separator orientation="vertical" className="mx-1 h-6" />
                         <BeatMarkPopover isMarking={isMarking} characters={characters} onApply={handleMarkBeat} />
                         {humanizerSettings?.enabled && (

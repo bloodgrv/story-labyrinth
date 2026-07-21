@@ -121,6 +121,9 @@ export interface AIChat extends BaseEntity {
     // Research-only (P0.4 S1) — live web search + page fetch off-switch. Defaults true
     // server-side, unlike every other opt-in toggle above (search is the desk's core job).
     webSearchEnabled?: boolean;
+    // Chat Shuttle H7 (docs/Chat_Shuttle_Design.md) — Editor/Outline/WB-only "always-shuttle" pref.
+    // Defaults false server-side, same posture as autoAcceptCodex.
+    autoShuttle?: boolean;
 }
 
 export interface ChatMessage {

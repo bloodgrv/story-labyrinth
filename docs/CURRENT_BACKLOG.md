@@ -1,6 +1,6 @@
 # Story Nexus Fork — Current Backlog
 
-**Last updated:** 2026-07-21 (P0.4 K0-K5 Notes desk shipped — all of P0.4 now done)  
+**Last updated:** 2026-07-21 (Chat Shuttle H0-H7 shipped — all of P0.4 was already done, plus this P3 item)  
 **Purpose:** Single source of truth for **what’s left**, after implementation order got scrambled relative to the original Phase 0 list.  
 **Canonical live status also mirrored in:** `CLAUDE.md` (architecture + high-level “done” notes) and `DECISIONS.md` (load-bearing how/why).  
 **This file wins** when those conflict on *priority of remaining work*.
@@ -241,7 +241,7 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | **Lexical editor (deepen)** | **To discuss** (talk list **T2**). Polish/extend existing Lexical stack — not a rip-and-replace. Scope TBD in grill. |
 | **Amazon / KDP text standards** | **To discuss** (talk list **T3**). Manuscript + export alignment with Kindle/KDP expectations. Scope TBD. |
 | **Context / token meter (local)** | **To discuss** (talk list **T4**). **Token / context used vs left meter** aimed at **local models** (e.g. LM Studio). Not packet-transparency UI. Scope TBD. |
-| **Chat shuttle (“agent chat shuffle”)** | **Design locked 2026-07-20.** Doc: `docs/Chat_Shuttle_Design.md`. Propose Research shuttle from Editor/Outline/WB; host redirect+stub only; light crumb; reuse last Research chat; answer-here = short host reply + tray still Openable; return packet to origin; highlight→Note (prose+chat). Slices **H0–H7**. Prerequisite S0–S2 now **done** (2026-07-21) — unblocked. Not started (code). |
+| **Chat shuttle (“agent chat shuffle”)** | ✅ **Done (2026-07-21).** Doc: `docs/Chat_Shuttle_Design.md`. All slices **H0–H7** shipped same day S0-S2 unblocked it. See `DECISIONS.md`'s "Chat Shuttle — H0-H7 — Load-Bearing Decisions" for the full trail. |
 | **Import to Outline** | **Design locked 2026-07-20.** Doc: `docs/Outline_Import_Design.md`. Hybrid parse+LLM; chat drop + panel; Append/Replace-all (wipe all outline rows+links); formats PDF/DOCX/MD/TXT; panel draft + chat card; server batch SoT; `outline_import` feature key; Accept → spine (`ai_suggested`+`confirmed`); rich → Import checklist (B4 morals, schema aimed at app-wide work tray); no auto `chapterId`/cast writes; `includeInAi` arm default off; collapse 2-level. Slices **OI0–OI8**. **Not started** (code). P3 until promoted. |
 | **Brainstorm / new-story import** | **Parked note 2026-07-20** (not designed). Sibling of Outline import, **not the same feature.** File as **head start** on creating a story — tray-heavy development via Brainstorm (and handoffs), little/no bulk spine commit. See parked section in `docs/Outline_Import_Design.md`. Do not fold into Import-to-Outline slices. |
 | **Name generator** | **Gaps closed 2026-07-19 (v0.3).** Design: `docs/Name_Generator_Design.md` (+ Hermes plans mirror). **Not started.** Slices NG0–NG7: schema → API → seed core → panel → syntax → import → optional tool. P3 until explicitly promoted. |
@@ -273,10 +273,10 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 ```text
 Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
 P0.1–P0.4 are all done (R/B/S/K tracks, R0–R8/B0–B5/S0–S5/K0–K5).
-Design-locked follow-ons: docs/Chat_Shuttle_Design.md (H0–H7) — its S0–S2 prerequisite is
-satisfied, unblocked; docs/Outline_Import_Design.md (OI0–OI8) — P3 until promoted.
-Recommended: Chat Shuttle (H0–H7) next, or P1 polish (Agent Framework Phase C, Graph G1.5+),
-or promote Outline Import/Name Generator/Locations & Maps from P3.
+Chat Shuttle (H0–H7, docs/Chat_Shuttle_Design.md) is also done (2026-07-21).
+Remaining design-locked follow-on: docs/Outline_Import_Design.md (OI0–OI8) — P3 until promoted.
+Recommended: P1 polish (Agent Framework Phase C, Graph G1.5+), or promote Outline Import/
+Name Generator/Locations & Maps from P3.
 Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 
@@ -294,7 +294,7 @@ Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when do
 | `docs/Chat_Panel_Integrations_Design.md` | WB/Editor locks, selection rework, generalized panel↔chat pattern |
 | `docs/Name_Generator_Design.md` | Name generator v0.3 (gaps closed 2026-07-19); NG0–NG7 |
 | `docs/Outline_Import_Design.md` | Import to Outline (**locked** 2026-07-20); OI0–OI8; parked Brainstorm/story-import note |
-| `docs/Chat_Shuttle_Design.md` | Cross-desk chat shuttle (**locked** 2026-07-20); H0–H7; S0–S2 prerequisite done 2026-07-21, unblocked |
+| `docs/Chat_Shuttle_Design.md` | Cross-desk chat shuttle (**locked** 2026-07-20); H0–H7 **shipped 2026-07-21** — see `DECISIONS.md` |
 | `docs/Locations_And_Maps_Design.md` | Location playbooks, place sheet, Story Map, image presets (locked 2026-07-19) |
 | `docs/Agent_Framework_And_Project_Memory_Design.md` | Agent A/B design (A/B shipped; C backlog) |
 | `docs/Thin_Story_Graph_And_Lorebook_Visualization.md` | Graph design (G1 shipped; G1.5+ backlog) |
