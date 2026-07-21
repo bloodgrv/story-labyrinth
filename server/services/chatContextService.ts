@@ -20,6 +20,7 @@ import { getChatCodexProposals } from "./chatCodexService.js";
 import { getChatById } from "./chatRepository.js";
 import { search } from "./ragIndexService.js";
 import { DEFAULT_SEARCH_ENTITY_TYPES, type RagEntityType, type SearchResult } from "./ragRepository.js";
+import { fetchPage, searchWeb, type FetchedPage } from "./webSearchService.js";
 
 const RELEVANT_ENTRIES_LIMIT = 8;
 const SEARCH_POOL_SIZE = RELEVANT_ENTRIES_LIMIT * 2;
@@ -174,6 +175,27 @@ const WORLDBUILDING_FRAMING =
     "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user sees them, " +
     "so don't reference '```codex-proposal', '```note-proposal', or 'the block' in your prose; just talk about the proposal naturally.";
 
+// P0.4 S1 — Research chats used to silently fall through to WORLDBUILDING_FRAMING (wrong role,
+// plus CODEX_PROPOSAL_INSTRUCTIONS — letting the model propose Codex entries from Research,
+// which directly violates docs/Chat_Panel_Integrations_Design.md §6's "Writes: Lorebook/Codex/
+// outline/prose → None"). This is Research's own dedicated framing: no Codex/outline/prose
+// writes, deliberately keeps NOTE_PROPOSAL_INSTRUCTIONS (the design's one allowed write, "on
+// request" only — see the extra qualifier sentence below) and adds citation requirements for the
+// WEB SEARCH RESULTS / FETCHED PAGE context blocks getChatContext injects (see resolveWebSearch).
+const RESEARCH_FRAMING =
+    "You are a web research desk for a long-form fiction project — look things up, synthesize, and discuss. " +
+    "You are NOT an intake hub, structure desk, lore factory, or manuscript writer, and you never propose " +
+    "Codex/outline/prose changes here.\n\n" +
+    "When WEB SEARCH RESULTS or FETCHED PAGE context is provided below, ground your answer in it and cite " +
+    "sources as markdown links (e.g. [source title](url)) inline or in a trailing \"Sources:\" list — never " +
+    "state a web-sourced fact without a citation. If no search context is provided, answer from your own " +
+    "knowledge and say so.\n\n" +
+    "Only propose saving something as a Research Note when the user actually asks you to save it — don't " +
+    "propose one proactively after every answer.\n\n" +
+    NOTE_PROPOSAL_INSTRUCTIONS +
+    "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user " +
+    "sees them, so don't reference the fenced blocks themselves in your prose.";
+
 // P0.4 B0-B4 — Brainstorm is a project intake/orientation hub, not any of the specialized desks
 // it hands work off to. Explicitly NOT a manuscript writer, structure desk, or Codex/lore
 // factory — those stay Editor/Outline/World-Building's jobs (docs/Chat_Panel_Integrations_Design.md
@@ -294,6 +316,7 @@ const buildSystemPrompt = (
 ): string => {
     if (chatType === "editor") return PROSE_PROPOSAL_INSTRUCTIONS;
     if (chatType === "outline") return OUTLINE_FRAMING + resolveStyleHint(OUTLINE_STYLE_HINTS, style);
+    if (chatType === "research") return RESEARCH_FRAMING;
     if (chatType === "brainstorm") {
         return (
             BRAINSTORM_FRAMING +
@@ -582,6 +605,30 @@ const resolveHandoffStatus = async (chatId: string) => {
     return { activeCount: active, doneCount: done };
 };
 
+// P0.4 S1 — Research's live web search, query-driven rather than toggle-gated like Notes/Memory
+// above (a static per-chat toggle can't know what THIS turn is asking about). Only ever invoked
+// with an explicit per-turn query, never the chat.title fallback getChatContext's RAG search uses
+// — see getChatContext's explicitQuery. Any http(s) URL found in the query text is fetched too
+// (capped at MAX_FETCHED_PAGES), covering S1's "page fetch" half. Both searchWeb/fetchPage
+// already fail soft (return [] / null) on network/parse errors — never throws into the chat-send
+// path.
+const URL_REGEX = /https?:\/\/[^\s)]+/g;
+const MAX_FETCHED_PAGES = 2;
+
+const resolveWebSearch = async (
+    query: string
+): Promise<{ results: Awaited<ReturnType<typeof searchWeb>>; pages: (FetchedPage & { url: string })[] }> => {
+    const urls = [...new Set(query.match(URL_REGEX) ?? [])].slice(0, MAX_FETCHED_PAGES);
+    const [results, pageResults] = await Promise.all([
+        searchWeb(query),
+        Promise.all(urls.map(async url => ({ url, page: await fetchPage(url) })))
+    ]);
+    const pages = pageResults
+        .filter((r): r is { url: string; page: FetchedPage } => r.page !== null)
+        .map(r => ({ url: r.url, title: r.page.title, text: r.page.text }));
+    return { results, pages };
+};
+
 /**
  * Assemble everything a chat needs to generate a well-grounded response or proposal:
  *   - systemPrompt: chat-type framing (+ template hint for World-Building)
@@ -610,6 +657,9 @@ const resolveHandoffStatus = async (chatId: string) => {
  *     includeChapterSummaries toggle is on (P0.4 B0-B4) — reuses writtenChapters' own resolver.
  *   - priorSetupSlots / handoffStatus: Brainstorm's always-on setup-slot checklist + this chat's
  *     own checklist activity counts (P0.4 B2/B4). Empty/zero for every other chatType.
+ *   - webSearchResults / fetchedPages: Research's live web search (P0.4 S1), only populated for
+ *     chatType="research" with webSearchEnabled on AND an explicit `query` passed in (never the
+ *     chat.title fallback) — see resolveWebSearch/explicitQuery below.
  *
  * Degrades gracefully rather than failing: if the story has no indexed content, no embedding
  * endpoint is configured, or an anchor entry/chapter no longer exists, the relevant-* fields are
@@ -622,6 +672,10 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     if (!chat) throw new Error(`Chat not found: ${chatId}`);
 
     const effectiveQuery = query?.trim() || chat.title;
+    // P0.4 S1 — Research's web search must only fire on a real per-turn query, never the
+    // chat.title fallback effectiveQuery uses for RAG search (that would fire a live scrape on
+    // every mount/toggle-change context fetch with a nonsense query). See resolveWebSearch below.
+    const explicitQuery = query?.trim() || null;
     const chatType = (chat.chatType ?? "general") as ChatType;
     const includeChapters = chatType === "editor";
     const includeOutlineTree = chatType === "outline";
@@ -629,8 +683,10 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
     const includeOutline = chat.includeOutline === true;
     const includeMemory = chat.includeMemory === true;
     const isBrainstorm = chatType === "brainstorm";
+    const isResearch = chatType === "research";
     const includeChapterSummaries = chat.includeChapterSummaries === true;
     const includeLorebook = chat.includeLorebook === true;
+    const webSearchEnabled = isResearch && chat.webSearchEnabled !== false;
     // P0.4 B5 — each host's own guided-start style column (mirrors chat.brainstormStyle's
     // posture: a plain column read, ignored for every other chatType). Character psych module is
     // only ever offered when this chat is also anchored to an entry — an unanchored WB chat has
@@ -644,30 +700,40 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
 
     // Only build a non-default entityTypes array when a bridge toggle is actually on — search()/
     // hybridSearch's own DEFAULT_SEARCH_ENTITY_TYPES stays the single source of truth for
-    // "omitted" otherwise (design doc §4.5). Brainstorm is the one exception where a default-ON
-    // entity type (lorebook_entry) needs to become opt-in too — every other chat type's lorebook
-    // search stays always-on, unchanged (P0.4 B0-B4, design doc §5's "Lorebook | Opt-in").
-    const entityTypes: RagEntityType[] = isBrainstorm
-        ? DEFAULT_SEARCH_ENTITY_TYPES.filter(t => t !== "lorebook_entry")
-        : [...DEFAULT_SEARCH_ENTITY_TYPES];
-    if (isBrainstorm && includeLorebook) entityTypes.push("lorebook_entry");
+    // "omitted" otherwise (design doc §4.5). Brainstorm and Research both need lorebook_entry to
+    // become opt-in (P0.4 B0-B4 / S4) — every other chat type's lorebook search stays always-on,
+    // unchanged. Research additionally gets NO default entities at all (not even "chapter",
+    // unlike every other non-Brainstorm chat type) — design doc §6: "Outline/chapters OFF, Full
+    // manuscript RAG OFF" — it's a research-notes desk, not grounded in the manuscript.
+    let entityTypes: RagEntityType[];
+    if (isBrainstorm) {
+        entityTypes = DEFAULT_SEARCH_ENTITY_TYPES.filter(t => t !== "lorebook_entry");
+        if (includeLorebook) entityTypes.push("lorebook_entry");
+    } else if (isResearch) {
+        entityTypes = includeLorebook ? ["lorebook_entry"] : [];
+    } else {
+        entityTypes = [...DEFAULT_SEARCH_ENTITY_TYPES];
+    }
     if (includeNotes) entityTypes.push("note");
     if (includeOutline) entityTypes.push("outline_item");
     if (includeMemory) entityTypes.push("agent_memory");
 
     // Global chats (e.g. Research) have no storyId, so there's no per-story index/story row to
     // search/fetch, and never carry an anchorEntryId/anchorChapterId (only
-    // createWorldBuildingChat/createGenericChat accept those respectively).
-    const [pendingProposals, searchResults, storyRows, anchorEntries, anchorChapterPassages] = await Promise.all([
+    // createWorldBuildingChat/createGenericChat accept those respectively). entityTypes.length > 0
+    // guards a real SQL bug in hybridSearch (ragRepository.ts): an empty entityTypes array builds
+    // an invalid `entityType IN ()` clause — Research with every toggle off produces exactly that.
+    const [pendingProposals, searchResults, storyRows, anchorEntries, anchorChapterPassages, webSearch] = await Promise.all([
         getChatCodexProposals(chatId, "pending"),
-        chat.storyId
+        chat.storyId && entityTypes.length > 0
             ? search({ storyId: chat.storyId, query: effectiveQuery, limit: SEARCH_POOL_SIZE, entityTypes })
             : Promise.resolve([]),
         chat.storyId
             ? db.select({ synopsis: schema.stories.synopsis }).from(schema.stories).where(eq(schema.stories.id, chat.storyId))
             : Promise.resolve([]),
         resolveAnchorAndRelated(chat.anchorEntryId),
-        resolveAnchorChapter(chat.anchorChapterId)
+        resolveAnchorChapter(chat.anchorChapterId),
+        webSearchEnabled && explicitQuery ? resolveWebSearch(explicitQuery) : Promise.resolve({ results: [], pages: [] })
     ]);
 
     const anchorIds = new Set(anchorEntries.map(e => e.entryId));
@@ -709,6 +775,8 @@ export const getChatContext = async (chatId: string, query?: string): Promise<Ch
         writtenChapters,
         chapterSummaries,
         priorSetupSlots,
-        handoffStatus
+        handoffStatus,
+        webSearchResults: webSearch.results,
+        fetchedPages: webSearch.pages
     };
 };

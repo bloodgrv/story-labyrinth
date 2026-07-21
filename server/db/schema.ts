@@ -205,7 +205,12 @@ export const aiChats = sqliteTable(
         // default false, per-chat, mirror includePsychModule's pattern exactly.
         autoInsertProse: integer("autoInsertProse", { mode: "boolean" }).notNull().default(false), // Editor chats only
         autoAcceptCodex: integer("autoAcceptCodex", { mode: "boolean" }).notNull().default(false), // Editor/WB/Outline
-        autoAcceptOutline: integer("autoAcceptOutline", { mode: "boolean" }).notNull().default(false) // Outline create/edit/reorder only, never delete
+        autoAcceptOutline: integer("autoAcceptOutline", { mode: "boolean" }).notNull().default(false), // Outline create/edit/reorder only, never delete
+        // P0.4 S1 — Research-only. Live web search + page fetch is the desk's core job (design doc
+        // §6: "Web search + page fetch | ON (core)"), so this defaults true, unlike every other
+        // opt-in toggle on this table — it's an off-switch, not an opt-in. Ignored for every other
+        // chatType (see chatContextService.ts's getChatContext).
+        webSearchEnabled: integer("webSearchEnabled", { mode: "boolean" }).notNull().default(true)
     },
     table => ({
         storyIdIdx: index("chat_story_id_idx").on(table.storyId),

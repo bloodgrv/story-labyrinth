@@ -111,8 +111,12 @@ export function ChatInterface({
     // overview-proposal/handoff-packet (P0.4 B0-B4).
     const isBrainstormChat = promptType === "brainstorm";
     const isWorldBuildingChat = promptType === "worldbuilding";
-    const showContextSelector = !isEditorChat && !isOutlineChat && !isBrainstormChat;
-    const forceStructuredContextOff = isEditorChat || isOutlineChat || isBrainstormChat;
+    // Research agrees with Outline/Brainstorm on "no manual context selector" (its own opt-in
+    // toggles below replace it) but never uses the Codex tray — it has no Codex/outline/prose
+    // write path at all, only note-proposal (P0.4 S0-S5, docs/Chat_Panel_Integrations_Design.md §6).
+    const isResearchChat = promptType === "research";
+    const showContextSelector = !isEditorChat && !isOutlineChat && !isBrainstormChat && !isResearchChat;
+    const forceStructuredContextOff = isEditorChat || isOutlineChat || isBrainstormChat || isResearchChat;
     const usesCodexTray = isEditorChat || promptType === "worldbuilding" || isOutlineChat;
 
     const { entries: lorebookEntries } = useLorebookContext();
@@ -186,6 +190,9 @@ export function ChatInterface({
     const [autoInsertProse, setAutoInsertProse] = useState(selectedChat.autoInsertProse);
     const [autoAcceptCodex, setAutoAcceptCodex] = useState(selectedChat.autoAcceptCodex);
     const [autoAcceptOutline, setAutoAcceptOutline] = useState(selectedChat.autoAcceptOutline);
+    // P0.4 S1 — Research-only off-switch for live web search, defaults true server-side (see
+    // schema.ts's webSearchEnabled comment). Same local-state-persisted-after-PATCH pattern.
+    const [webSearchEnabled, setWebSearchEnabled] = useState(selectedChat.webSearchEnabled);
 
     const toggleIncludeNotes = (value: boolean) =>
         chatsApi.update(selectedChat.id, { includeNotes: value }).then(() => setIncludeNotes(value));
@@ -203,6 +210,8 @@ export function ChatInterface({
         chatsApi.update(selectedChat.id, { autoAcceptCodex: value }).then(() => setAutoAcceptCodex(value));
     const toggleAutoAcceptOutline = (value: boolean) =>
         chatsApi.update(selectedChat.id, { autoAcceptOutline: value }).then(() => setAutoAcceptOutline(value));
+    const toggleWebSearchEnabled = (value: boolean) =>
+        chatsApi.update(selectedChat.id, { webSearchEnabled: value }).then(() => setWebSearchEnabled(value));
 
     // Grounds the AI in the chat's context (chat-type framing, project synopsis, the chat's
     // anchor entry/chapter + the entry's one-hop relationships, other relevant Codex entries, and
@@ -394,12 +403,12 @@ export function ChatInterface({
     }, [activeRework]);
 
     const createPromptConfig = useCallback(
-        (prompt: Prompt): PromptParserConfig => ({
+        (prompt: Prompt, extraContext?: string): PromptParserConfig => ({
             promptId: prompt.id,
             storyId: storyId ?? "",
             scenebeat: input.trim(),
             additionalContext: {
-                codexContext: [codexContext, reworkContext].filter(Boolean).join("\n\n"),
+                codexContext: [codexContext, reworkContext, extraContext].filter(Boolean).join("\n\n"),
                 chatHistory: selectedChat.messages.map(msg => ({ role: msg.role, content: msg.content })),
                 includeFullContext: forceStructuredContextOff ? false : includeFullContext,
                 selectedSummaries: forceStructuredContextOff || includeFullContext ? [] : selectedSummaries,
@@ -700,8 +709,20 @@ export function ChatInterface({
 
     const getFilteredEntries = () => getFilteredLorebookEntries(lorebookEntries, false);
 
+    // P0.4 S1 — Research's live web search must reflect THIS message's text, not whatever the
+    // mount-time codexContext effect last fetched (that effect never passes a query, see below).
+    // Fetched fresh here and threaded straight into generate() as extraContext rather than via
+    // React state, since a setState right before calling generate() wouldn't be visible in
+    // createPromptConfig's closure until the next render — see useChatMessageGeneration.ts.
     const handleSubmit = async () => {
-        await generate(input);
+        let extraContext: string | undefined;
+        if (isResearchChat && input.trim()) {
+            const ctx = await chatsApi.getContext(selectedChat.id, input);
+            const searchText = ctx.webSearchResults.map(r => `- [${r.title}](${r.url}): ${r.snippet}`).join("\n");
+            const pagesText = ctx.fetchedPages.map(p => `[FETCHED PAGE: ${p.title}](${p.url})\n${p.text}`).join("\n\n");
+            extraContext = [searchText && `[WEB SEARCH RESULTS]\n${searchText}`, pagesText].filter(Boolean).join("\n\n") || undefined;
+        }
+        await generate(input, extraContext);
         setInput("");
     };
 
@@ -736,7 +757,7 @@ export function ChatInterface({
                                 Include Notes (working material, not canon)
                             </Label>
                         </div>
-                        {!isOutlineChat && (
+                        {!isOutlineChat && !isResearchChat && (
                             <div className="flex items-center gap-2">
                                 <Switch id={`${selectedChat.id}-include-outline`} checked={includeOutline} onCheckedChange={toggleIncludeOutline} />
                                 <Label htmlFor={`${selectedChat.id}-include-outline`} className="text-sm font-normal">
@@ -744,35 +765,51 @@ export function ChatInterface({
                                 </Label>
                             </div>
                         )}
-                        <div className="flex items-center gap-2">
-                            <Switch id={`${selectedChat.id}-include-memory`} checked={includeMemory} onCheckedChange={toggleIncludeMemory} />
-                            <Label htmlFor={`${selectedChat.id}-include-memory`} className="text-sm font-normal">
-                                Include Project Memory (approved facts)
-                            </Label>
-                        </div>
+                        {!isResearchChat && (
+                            <div className="flex items-center gap-2">
+                                <Switch id={`${selectedChat.id}-include-memory`} checked={includeMemory} onCheckedChange={toggleIncludeMemory} />
+                                <Label htmlFor={`${selectedChat.id}-include-memory`} className="text-sm font-normal">
+                                    Include Project Memory (approved facts)
+                                </Label>
+                            </div>
+                        )}
+                        {/* Lorebook is Brainstorm/Research-only opt-in — every other chat type's lorebook
+                            search stays always-on (see chatContextService.ts's entityTypes computation). */}
+                        {(isBrainstormChat || isResearchChat) && (
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id={`${selectedChat.id}-include-lorebook`}
+                                    checked={includeLorebook}
+                                    onCheckedChange={toggleIncludeLorebook}
+                                />
+                                <Label htmlFor={`${selectedChat.id}-include-lorebook`} className="text-sm font-normal">
+                                    Include Lorebook
+                                </Label>
+                            </div>
+                        )}
+                        {isResearchChat && (
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id={`${selectedChat.id}-web-search`}
+                                    checked={webSearchEnabled}
+                                    onCheckedChange={toggleWebSearchEnabled}
+                                />
+                                <Label htmlFor={`${selectedChat.id}-web-search`} className="text-sm font-normal">
+                                    Web search
+                                </Label>
+                            </div>
+                        )}
                         {isBrainstormChat && (
-                            <>
-                                <div className="flex items-center gap-2">
-                                    <Switch
-                                        id={`${selectedChat.id}-include-lorebook`}
-                                        checked={includeLorebook}
-                                        onCheckedChange={toggleIncludeLorebook}
-                                    />
-                                    <Label htmlFor={`${selectedChat.id}-include-lorebook`} className="text-sm font-normal">
-                                        Include Lorebook
-                                    </Label>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Switch
-                                        id={`${selectedChat.id}-include-chapter-summaries`}
-                                        checked={includeChapterSummaries}
-                                        onCheckedChange={toggleIncludeChapterSummaries}
-                                    />
-                                    <Label htmlFor={`${selectedChat.id}-include-chapter-summaries`} className="text-sm font-normal">
-                                        Include Chapter Summaries
-                                    </Label>
-                                </div>
-                            </>
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id={`${selectedChat.id}-include-chapter-summaries`}
+                                    checked={includeChapterSummaries}
+                                    onCheckedChange={toggleIncludeChapterSummaries}
+                                />
+                                <Label htmlFor={`${selectedChat.id}-include-chapter-summaries`} className="text-sm font-normal">
+                                    Include Chapter Summaries
+                                </Label>
+                            </div>
                         )}
                     </div>
                 )}
@@ -848,8 +885,13 @@ export function ChatInterface({
                 onEditContentChange={() => {}}
                 editingTextareaRef={{ current: null }}
                 // N5 — hidden entirely for Editor chats (stay canon-only) and for global chats
-                // with no storyId (Research has none to save a note against).
+                // with no storyId (Research Global mode has none to save a note against; Story
+                // mode gets a real storyId from ResearchTool.tsx, so this starts working there
+                // with no extra gating needed, P0.4 S3).
                 onSaveAsNote={!isEditorChat && storyId ? message => setNoteSourceMessage(message) : undefined}
+                // P0.4 S5 — Research-only copy-friendly blocks, self-contained in ChatMessageList
+                // (no callback needed, unlike onSaveAsNote which needs parent state).
+                enableCopy={isResearchChat}
                 renderProposalsForMessage={messageId => {
                     // Editor/World-Building/Outline chats show Codex proposals in the
                     // CodexProposalTray under the chat list instead (docs/

@@ -189,6 +189,7 @@ export const chatsApi = {
             autoInsertProse?: boolean;
             autoAcceptCodex?: boolean;
             autoAcceptOutline?: boolean;
+            webSearchEnabled?: boolean;
         }
     ) => fetchJSON<AIChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     appendMessage: (id: string, role: "user" | "assistant", content: string) =>

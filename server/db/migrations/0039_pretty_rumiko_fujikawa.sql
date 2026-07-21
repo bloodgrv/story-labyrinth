@@ -1,0 +1,1 @@
+ALTER TABLE `aiChats` ADD `webSearchEnabled` integer DEFAULT true NOT NULL;

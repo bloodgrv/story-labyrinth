@@ -274,6 +274,13 @@
       "when": 1784585774587,
       "tag": "0038_motionless_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "6",
+      "when": 1784622240702,
+      "tag": "0039_pretty_rumiko_fujikawa",
+      "breakpoints": true
     }
   ]
 }

@@ -194,4 +194,10 @@ export interface ChatContext {
     // except for chatType="brainstorm", lets the model see whether prior proposals/handoffs are
     // still sitting unresolved before proposing more.
     handoffStatus: { activeCount: number; doneCount: number };
+    // Research chat's live web search (P0.4 S1) — empty except for chatType="research" with
+    // webSearchEnabled on AND an explicit per-turn `query` passed to getChatContext (never fires
+    // on the mount-time no-query fetch, only the per-send one — see ChatInterface.tsx's
+    // handleSubmit). fetchedPages covers any http(s) URL found in that same query text.
+    webSearchResults: { title: string; url: string; snippet: string }[];
+    fetchedPages: { url: string; title: string; text: string }[];
 }

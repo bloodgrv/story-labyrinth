@@ -1,6 +1,6 @@
 # Story Nexus Fork — Current Backlog
 
-**Last updated:** 2026-07-20 (P0.4 B5 done: WB + Outline guided-start, Character psych module)  
+**Last updated:** 2026-07-21 (P0.4 S0-S5 Research web desk shipped)  
 **Purpose:** Single source of truth for **what’s left**, after implementation order got scrambled relative to the original Phase 0 list.  
 **Canonical live status also mirrored in:** `CLAUDE.md` (architecture + high-level “done” notes) and `DECISIONS.md` (load-bearing how/why).  
 **This file wins** when those conflict on *priority of remaining work*.
@@ -148,7 +148,7 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 ### P0.4 — Chat ↔ panel integrations (selection rework + host chats)
 
-**Status:** R0-R3 — ✅ Done (2026-07-20). R4/R5/R7/R8 — ✅ Done (2026-07-20, same day). B0-B4 (Brainstorm Hub) — ✅ Done (2026-07-20, same day). B5 (WB + Outline guided-start, Character psych module) — ✅ Done (2026-07-20, same day). R6 (auto-insert/auto-accept toggles) — ✅ Done (2026-07-20, same day). Design locked for WB + Editor + Outline + Brainstorm + Research + Notes desk + generalized pattern (2026-07-18); the S/K tracks **not implemented**  
+**Status:** R0-R3 — ✅ Done (2026-07-20). R4/R5/R7/R8 — ✅ Done (2026-07-20, same day). B0-B4 (Brainstorm Hub) — ✅ Done (2026-07-20, same day). B5 (WB + Outline guided-start, Character psych module) — ✅ Done (2026-07-20, same day). R6 (auto-insert/auto-accept toggles) — ✅ Done (2026-07-20, same day). S0-S5 (Research web desk) — ✅ Done (2026-07-21). Design locked for WB + Editor + Outline + Brainstorm + Research + Notes desk + generalized pattern (2026-07-18); the K track **not implemented**  
 **Canonical design:** `docs/Chat_Panel_Integrations_Design.md`
 
 **Doctrine:** Panel owns artifact; **chat governs** content; selection/focus owns span; Accept applies; no amnesiac one-shot as primary path.
@@ -163,6 +163,8 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 **R6 shipped 2026-07-20, still the same day** — see `DECISIONS.md` "P0.4 R6 — Auto-insert/Auto-accept Toggles" for the full load-bearing trail. Three new `aiChats` columns (`autoInsertProse`, `autoAcceptCodex`, `autoAcceptOutline`, migration `0038_motionless_human_torch.sql`), all default false per doctrine ("no silent canon unless an explicit toggle is ON"). `autoInsertProse` (Editor only) and `autoAcceptOutline` (Outline only, create/edit/reorder — **delete deliberately excluded**, matches the design doc's asymmetric table) live in `ChatInterface.tsx`; `autoAcceptCodex` (Editor/WB/Outline, gated on the existing `usesCodexTray` computation) chains a `useApproveProposalMutation` call right after `useChatMessageGeneration.ts`'s existing `createProposalMutation` succeeds — same call `ProposalTrayCard`'s manual Approve button already makes. Prose auto-insert reuses a new `applyProseProposal` helper extracted from the pre-existing `handleAcceptProse`, so manual Accept and auto-insert never drift; falls back to the normal review card (never silently drops content) if no matching chapter editor is open. Found and fixed one real pre-existing type gap along the way: `chatsApi.proposeNewEntry` (`src/services/api/client.ts`) called `fetchJSON` with no type argument even though the server always returns `{ entry, snapshot, pendingChange }` — typed it to match `proposeModifyEntry`'s existing shape so the new auto-accept chain's `result.pendingChange.id` access is type-safe. `npm run build` (tsc client+server+vite) clean. Live-verified in the Browser pane: each chat type renders exactly its own toggle subset (Editor: auto-insert prose + auto-accept Codex; WB: auto-accept Codex alongside the pre-existing untouched Guided Setup psych-module toggle; Outline: auto-accept Codex + auto-accept outline), a toggle flip PATCHes and survives a full reload, and — since this dev sandbox still has no reachable AI provider (same limitation every P0.4 session has hit) — the actual auto-accept chain was exercised directly via the REST API (create a pending Codex proposal → immediately approve it, mirroring the new `onSuccess` callback exactly) and confirmed the entry updates and the pending row lands `"approved"`. All test artifacts (a scratch chat, a scratch Codex proposal/snapshot) were cleaned up from the demo story afterward.
 
+**S0-S5 shipped 2026-07-21** — see `DECISIONS.md` "P0.4 S0-S5 — Research Chat Web Desk" for the full load-bearing trail. Research was previously always-Global with no research-specific system prompt at all — it silently fell through `chatContextService.ts`'s `buildSystemPrompt` to the World-Building default, meaning it was told `WORLDBUILDING_FRAMING` **and** `CODEX_PROPOSAL_INSTRUCTIONS` (letting the model propose Codex entries from Research, a real pre-existing violation of the design's "Writes: Lorebook/Codex/outline/prose → None"), fixed here as part of S1 with a dedicated `RESEARCH_FRAMING` branch. Search provider: DuckDuckGo HTML scraping (`html.duckduckgo.com/html/`, the same site the Python `ddgs` package targets) — user's explicit choice over a keyed provider (Tavily/Brave/SerpAPI), no new Settings UI or `aiSettings` column needed. New `server/services/webSearchService.ts` (new `cheerio` dependency, pure-JS HTML parsing) exposes `searchWeb`/`fetchPage`, both fail-soft (return `[]`/`null`, never throw) since they run inline in the chat-send path. `ResearchTool.tsx` gained a Story/Global mode toggle (Story mode reuses `OutlineChatRail.tsx`'s exact most-recent-or-create pattern, no new server route). New `aiChats.webSearchEnabled` column (default **true**, unlike every other opt-in toggle — search is the desk's core job per the design doc). Web search is query-driven, not toggle-gated like Notes/Memory: `getChatContext`'s existing `query` param (previously only used for RAG relevance) now also triggers `resolveWebSearch` when explicitly passed (a new `explicitQuery`, deliberately separate from the RAG path's `chat.title`-fallback `effectiveQuery`, so mount-time context fetches never fire a live scrape) — threaded client-side via a new `extraContext` param on `generate()`/`createPromptConfig` rather than React state, avoiding a stale-closure race. Citations render via existing markdown link rendering (`MarkdownRenderer.tsx` gained a `target="_blank"` override, applies app-wide). Found and fixed a second real bug while restructuring `entityTypes`: `hybridSearch()` builds a SQL `entityType IN (...)` clause that becomes invalid (`IN ()`) with an empty array — Research with every toggle off produces exactly that; guarded in `getChatContext` rather than `hybridSearch` itself. `npm run build` clean. Live-verified in the Browser pane, including real external network calls this sandbox *can* reach (unlike the AI-provider gap every other P0.4 session hits): a live DDG search for "MI6 history" returned 5 real, correctly-unwrapped results; a query containing a Wikipedia URL correctly fetched and truncated that page; the empty-toggle SQL guard confirmed with no error; Story vs Global mode both verified to render the correct toggle subset and independent chat identities; `GET .../context` confirmed `RESEARCH_FRAMING` present and `codex-proposal` absent; "Save as note" confirmed appearing in Story mode and absent in Global mode; citation links confirmed `target="_blank"`; Copy button confirmed present and firing with no console errors. All test chats/messages cleaned up from the demo story afterward.
+
 | Slice | Description |
 |-------|-------------|
 | R0 | ✅ Shared FocusTarget / FocusPacket / ReworkCard shell (`src/types/rework.ts`, `src/features/rework/`) |
@@ -176,7 +178,7 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | R8 | ✅ Outline row "Rework in chat" (whole title+summary, not sub-span) + tray **Open in WB** from lore-suggestion cards, via the same same-tab `StoryContext.pendingLorebookSeed` pattern the Relationships graph's "Open entry" already used |
 | B0–B4 | ✅ **Brainstorm hub:** migrated to shared `aiChats`/`chatContextService`/`ChatInterface` stack (`chatType: "brainstorm"`); CTA+blurb+Guided setup+style dropdown (`GuidedSetupControl.tsx`); depth is prompt-driven (`STYLE_HINTS`), not a state machine, per fixed 5-slot known/unknown checklist (`brainstormSlots`); depth-adaptive `overview-proposal` (synopsis/note/opt-in memory) + `handoff-packet` (Outline/WB/Notes/Research, multi-per-reply) fences; durable tray checklist (`brainstormChecklist` table, `BrainstormChecklistTray.tsx`) — Open/Send/Accept perform the real write but only **Mark done** clears Active. WB handoff reuses `pendingLorebookSeed`; Outline/Research reuse new `StoryContext.pendingChatComposerSeed` + `ChatInterface`'s new `initialComposerText` prop; Notes handoff creates directly. Found/fixed a real pre-existing `POST /api/notes` bug (missing `updatedAt`) along the way. See `DECISIONS.md` "P0.4 B0-B4" |
 | B5 | ✅ WB + Outline guided-start (shared `GuidedSetupControl.tsx`, per-host style hints, `wbStyle`/`outlineStyle` columns); Character template **psych module** (MBTI/Enneagram/blurb via new `psych-proposal` fence → `metadata.psychProfile`, Grill-me nudges the toggle on; deliberately outside `codexPendingChanges` — writing aid only, never Codex state). Location playbooks (per `Locations_And_Maps_Design.md`) **not included this pass** — still P3/unstarted, see that doc's own row below. See `DECISIONS.md` "P0.4 B5" |
-| S0–S5 | **Research:** Story/Global mode; web search+fetch; citations; save-as-note on request; opt-in lore/notes context; copy-friendly blocks |
+| S0–S5 | ✅ **Research:** Story/Global mode toggle (`ResearchTool.tsx`, no chat list — two single-chat identities); live web search+fetch via DuckDuckGo scraping, no API key (`webSearchService.ts`, query-driven via a new `explicitQuery`/`extraContext` path, not toggle-gated); citations via existing markdown link rendering (+ new `target="_blank"` override); save-as-note starts working automatically once Story mode gives it a real `storyId`; opt-in Lorebook toggle (reuses Brainstorm's `includeLorebook` column) + Notes; new `enableCopy` Copy button. Fixed a real pre-existing bug: Research previously leaked `CODEX_PROPOSAL_INSTRUCTIONS` via a `WORLDBUILDING_FRAMING` fallthrough — now a dedicated `RESEARCH_FRAMING`. See `DECISIONS.md` "P0.4 S0-S5" |
 | K0–K5 | **Notes desk:** badges/filters/pin; optional `notes` chat; rework/split; promote tray (Mark done); import dump→Notes; N-gates for other chats |
 
 **Also locked (see design doc):** full §1–§7 (WB, Editor, rework, Outline, Brainstorm, Research, Notes desk).
@@ -232,7 +234,14 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 | Item | Notes |
 |------|--------|
-| **Import to Outline** | **User note 2026-07-18:** add import into Outline (parallel to multi-format lorebook import). Accept outline/structure docs → chapter/scene `outlineItems` (manual confirm before bulk create). Scope formats + merge-vs-replace when picked up. Not started. |
+| **Planning talk list (queued topics)** | **Living list:** `docs/SN_Planning_Talk_List.md`. T1 UI moodboard, T2 Lexical editor, T3 Amazon/KDP text standards, **T4 local token/context used–left meter** — discuss only until promoted. |
+| **UI visual direction** | **Locked 2026-07-21** (talk list **T1**). Chrome: **Linear A + Raycast accents**. Doc: `docs/UI_Visual_Direction.md`. Canonical mocks: Eclipse + Light Linear+Raycast PNGs in `docs/design-mocks/`. Token/chrome pass only; no shell rewrite. **Not started (code)** — V0–V2 in direction doc. |
+| **Lexical editor (deepen)** | **To discuss** (talk list **T2**). Polish/extend existing Lexical stack — not a rip-and-replace. Scope TBD in grill. |
+| **Amazon / KDP text standards** | **To discuss** (talk list **T3**). Manuscript + export alignment with Kindle/KDP expectations. Scope TBD. |
+| **Context / token meter (local)** | **To discuss** (talk list **T4**). **Token / context used vs left meter** aimed at **local models** (e.g. LM Studio). Not packet-transparency UI. Scope TBD. |
+| **Chat shuttle (“agent chat shuffle”)** | **Design locked 2026-07-20.** Doc: `docs/Chat_Shuttle_Design.md`. Propose Research shuttle from Editor/Outline/WB; host redirect+stub only; light crumb; reuse last Research chat; answer-here = short host reply + tray still Openable; return packet to origin; highlight→Note (prose+chat). Slices **H0–H7**. Prerequisite S0–S2 now **done** (2026-07-21) — unblocked. Not started (code). |
+| **Import to Outline** | **Design locked 2026-07-20.** Doc: `docs/Outline_Import_Design.md`. Hybrid parse+LLM; chat drop + panel; Append/Replace-all (wipe all outline rows+links); formats PDF/DOCX/MD/TXT; panel draft + chat card; server batch SoT; `outline_import` feature key; Accept → spine (`ai_suggested`+`confirmed`); rich → Import checklist (B4 morals, schema aimed at app-wide work tray); no auto `chapterId`/cast writes; `includeInAi` arm default off; collapse 2-level. Slices **OI0–OI8**. **Not started** (code). P3 until promoted. |
+| **Brainstorm / new-story import** | **Parked note 2026-07-20** (not designed). Sibling of Outline import, **not the same feature.** File as **head start** on creating a story — tray-heavy development via Brainstorm (and handoffs), little/no bulk spine commit. See parked section in `docs/Outline_Import_Design.md`. Do not fold into Import-to-Outline slices. |
 | **Name generator** | **Gaps closed 2026-07-19 (v0.3).** Design: `docs/Name_Generator_Design.md` (+ Hermes plans mirror). **Not started.** Slices NG0–NG7: schema → API → seed core → panel → syntax → import → optional tool. P3 until explicitly promoted. |
 | **Locations & maps** | **Locked 2026-07-19.** Design: `docs/Locations_And_Maps_Design.md`. Location grill in playbook v1; map SoT = graph then layout text (images illustration only); mood + map image presets; entry layout + Story Map tool; light place sheet now, full place-Codex later. Slices L0–L5. P3 / promote with playbooks. |
 | Spellcheck / LanguageTool depth | Settings/types exist; full design may exceed current UX |
@@ -261,17 +270,11 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 ```text
 Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
-P0.1, P0.2, P0.2b, and all of P0.3 (Notes/Outline "Core Bridge" N0-N4/O1-O4, C1 project memory
-chat toggle, N5/N6 save-as-note + note-proposal, C2-C5 scanner-memory integration/distill button/
-scheduled scans/Codex auto-compile) are all done, along with P0.4's R0-R3 (Editor selection
-rework + Codex proposal tray), R4/R5/R7/R8 (Lorebook rework → WB, dedicated Outline chat +
-its own chatType split, outline row rework, WB handoff), B0-B4 (Brainstorm Hub migrated to
-the shared chat stack, Guided Setup + depth-adaptive propose + durable handoff/checklist tray),
-and B5 (WB + Outline guided-start with the same shell, Character psych module).
-Remaining work: P0.4's R6 (auto-insert/auto-accept toggle UI, genuinely deferred) and the S/K
-tracks (Research web search, Notes desk polish) — any order, pick the highest-value one first
-unless the user redirects. P1 (Agent Framework Phase C, Relationship Graph G1.5+) and P2 bugs
-(see that section) are also open.
+P0.1–P0.3 and all of P0.4's R/B/S tracks (R0–R8, B0–B5, S0–S5) are done.
+Remaining P0.4: K0–K5 Notes desk.
+Design-locked follow-ons: docs/Chat_Shuttle_Design.md (H0–H7) — S0–S2 prerequisite is now
+satisfied, unblocked; docs/Outline_Import_Design.md (OI0–OI8) — P3 until promoted.
+Recommended: Chat Shuttle (H0–H7, now unblocked) or K0–K5 Notes desk next, or promote OI/Name gen/Maps.
 Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 
@@ -285,8 +288,11 @@ Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when do
 | `DECISIONS.md` | Why/how of each shipped change |
 | `docs/CURRENT_BACKLOG.md` | **This file** — remaining work + priority |
 | `docs/Notes_Outline_Chat_Bridges_Design.md` | Notes/Outline ↔ chat double-gate + export packaging (locked 2026-07-18) |
+| `docs/SN_Planning_Talk_List.md` | Queued grill topics (UI, Lexical, Amazon/KDP, context display, …) |
 | `docs/Chat_Panel_Integrations_Design.md` | WB/Editor locks, selection rework, generalized panel↔chat pattern |
 | `docs/Name_Generator_Design.md` | Name generator v0.3 (gaps closed 2026-07-19); NG0–NG7 |
+| `docs/Outline_Import_Design.md` | Import to Outline (**locked** 2026-07-20); OI0–OI8; parked Brainstorm/story-import note |
+| `docs/Chat_Shuttle_Design.md` | Cross-desk chat shuttle (**locked** 2026-07-20); H0–H7; S0–S2 prerequisite done 2026-07-21, unblocked |
 | `docs/Locations_And_Maps_Design.md` | Location playbooks, place sheet, Story Map, image presets (locked 2026-07-19) |
 | `docs/Agent_Framework_And_Project_Memory_Design.md` | Agent A/B design (A/B shipped; C backlog) |
 | `docs/Thin_Story_Graph_And_Lorebook_Visualization.md` | Graph design (G1 shipped; G1.5+ backlog) |

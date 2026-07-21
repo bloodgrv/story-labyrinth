@@ -148,6 +148,7 @@ router.get(
 //   autoInsertProse: boolean       — Editor-only auto-insert toggle (P0.4 R6)
 //   autoAcceptCodex: boolean       — Editor/WB/Outline auto-accept Codex toggle (P0.4 R6)
 //   autoAcceptOutline: boolean     — Outline-only auto-accept create/edit/reorder toggle, never delete (P0.4 R6)
+//   webSearchEnabled: boolean      — Research-only, defaults true, off-switch for live web search (P0.4 S1)
 router.patch(
     "/:chatId",
     asyncHandler(async (req, res) => {
@@ -173,7 +174,8 @@ router.patch(
             includePsychModule,
             autoInsertProse,
             autoAcceptCodex,
-            autoAcceptOutline
+            autoAcceptOutline,
+            webSearchEnabled
         } = req.body as {
             messages?: unknown[];
             title?: string;
@@ -191,6 +193,7 @@ router.patch(
             autoInsertProse?: boolean;
             autoAcceptCodex?: boolean;
             autoAcceptOutline?: boolean;
+            webSearchEnabled?: boolean;
         };
 
         let result = chat;
@@ -221,6 +224,7 @@ router.patch(
         if (autoInsertProse !== undefined) metaFields.autoInsertProse = autoInsertProse;
         if (autoAcceptCodex !== undefined) metaFields.autoAcceptCodex = autoAcceptCodex;
         if (autoAcceptOutline !== undefined) metaFields.autoAcceptOutline = autoAcceptOutline;
+        if (webSearchEnabled !== undefined) metaFields.webSearchEnabled = webSearchEnabled;
 
         if (Object.keys(metaFields).length > 0) {
             result = await updateMeta(
@@ -241,6 +245,7 @@ router.patch(
                     autoInsertProse?: boolean;
                     autoAcceptCodex?: boolean;
                     autoAcceptOutline?: boolean;
+                    webSearchEnabled?: boolean;
                 }
             );
         }

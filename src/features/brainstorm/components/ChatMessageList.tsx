@@ -1,7 +1,8 @@
-import { Edit, Loader2, StickyNote } from "lucide-react";
+import { Copy, Edit, Loader2, StickyNote } from "lucide-react";
 import type { ReactNode } from "react";
 import type React from "react";
 import { useEffect, useRef } from "react";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +33,10 @@ interface ChatMessageListProps {
     // (stay canon-only) or global chats with no storyId (Research). Available on both
     // user and assistant messages since either might be worth capturing as working material.
     onSaveAsNote?: (message: ChatMessage) => void;
+    // P0.4 S5 — Research's "copy-friendly blocks." Self-contained (no callback threaded up, unlike
+    // onSaveAsNote which needs parent state) — just copies the message's raw markdown to the
+    // clipboard. Assistant messages only (the useful case for a research answer + citations).
+    enableCopy?: boolean;
 }
 
 export function ChatMessageList({
@@ -46,7 +51,8 @@ export function ChatMessageList({
     onEditContentChange,
     editingTextareaRef,
     renderProposalsForMessage,
-    onSaveAsNote
+    onSaveAsNote,
+    enableCopy
 }: ChatMessageListProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -129,6 +135,19 @@ export function ChatMessageList({
                                             {onSaveAsNote && (
                                                 <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
                                                     <StickyNote className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                            {enableCopy && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    title="Copy"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(message.content);
+                                                        toast.success("Copied to clipboard");
+                                                    }}
+                                                >
+                                                    <Copy className="h-4 w-4" />
                                                 </Button>
                                             )}
                                         </div>

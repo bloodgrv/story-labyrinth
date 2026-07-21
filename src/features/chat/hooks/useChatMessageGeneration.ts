@@ -26,7 +26,11 @@ interface UseChatMessageGenerationParams {
     selectedPrompt: Prompt | null;
     selectedModel: AllowedModel | null;
     onChatUpdate: (chat: AIChat) => void;
-    createPromptConfig: (prompt: Prompt) => PromptParserConfig;
+    // P0.4 S1 — extraContext (2nd param) lets a caller merge one-off, per-turn text into the
+    // prompt's codexContext without routing it through React state first (Research's live web-
+    // search results/fetched-page text must reflect THIS message, not a stale render — see
+    // ChatInterface.tsx's handleSubmit). Every other caller simply ignores the param.
+    createPromptConfig: (prompt: Prompt, extraContext?: string) => PromptParserConfig;
     // Called with the newly-created assistant message's id and proposed text when a reply
     // contains a ```prose-proposal block (Editor chats only — see chatContextService.ts).
     // Not persisted server-side, so the caller owns tracking it (see ChatInterface.tsx).
@@ -62,7 +66,7 @@ interface UseChatMessageGenerationParams {
 }
 
 interface UseChatMessageGenerationReturn {
-    generate: (input: string) => Promise<void>;
+    generate: (input: string, extraContext?: string) => Promise<void>;
     isGenerating: boolean;
     abort: () => void;
     streamingContent: string;
@@ -100,7 +104,7 @@ export const useChatMessageGeneration = ({
     }, [abortStream]);
 
     const generate = useCallback(
-        async (input: string) => {
+        async (input: string, extraContext?: string) => {
             if (!input.trim() || !selectedPrompt || !selectedModel || isStreaming || !selectedChat.id) return;
 
             setIsSending(true);
@@ -108,7 +112,7 @@ export const useChatMessageGeneration = ({
                 const afterUserMessage = await chatsApi.appendMessage(selectedChat.id, "user", input.trim());
                 onChatUpdate(afterUserMessage);
 
-                const config = createPromptConfig(selectedPrompt);
+                const config = createPromptConfig(selectedPrompt, extraContext);
                 const response = await generateWithPrompt(config, selectedModel);
 
                 if (response.status === 204) {

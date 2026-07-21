@@ -118,6 +118,9 @@ export interface AIChat extends BaseEntity {
     autoInsertProse?: boolean;
     autoAcceptCodex?: boolean;
     autoAcceptOutline?: boolean;
+    // Research-only (P0.4 S1) — live web search + page fetch off-switch. Defaults true
+    // server-side, unlike every other opt-in toggle above (search is the desk's core job).
+    webSearchEnabled?: boolean;
 }
 
 export interface ChatMessage {

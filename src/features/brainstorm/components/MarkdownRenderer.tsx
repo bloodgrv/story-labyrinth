@@ -73,6 +73,16 @@ export default function MarkdownRenderer({ content, className, onDelete, onEdit,
                     rehypePlugins={[rehypeRaw, rehypeSanitize]}
                     components={{
                         p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                        // P0.4 S2 — Research citations render as real markdown links (see
+                        // chatContextService.ts's RESEARCH_FRAMING); without this override they'd
+                        // navigate the whole SPA tab away instead of opening in a new one. Applies
+                        // to every markdown-rendered message/note app-wide, not just Research —
+                        // strictly better UX, no other behavior change.
+                        a: ({ href, children }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer">
+                                {children}
+                            </a>
+                        ),
                         code: ({ inline, className, children, ...props }: CodeComponentProps) => {
                             const match = /language-(\w+)/.exec(className || "");
                             return !inline ? (
