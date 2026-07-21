@@ -1,4 +1,23 @@
-import { Check, Leaf, Mountain, Monitor, Moon, MoonStar, Palmtree, ScrollText, Sparkles, Sun } from "lucide-react";
+import {
+    BookOpen,
+    Check,
+    Cloud,
+    CloudFog,
+    Flame,
+    Layers,
+    Leaf,
+    Monitor,
+    Moon,
+    MoonStar,
+    Mountain,
+    Palmtree,
+    ScrollText,
+    Sparkles,
+    Sun,
+    Terminal,
+    Trees,
+    Waves
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -15,20 +34,29 @@ interface ThemeToggleProps {
 
 const THEME_ICONS: Record<Theme, typeof Sun> = {
     light: Sun,
-    dark: Moon,
+    mist: CloudFog,
+    bone: Cloud,
     sepia: ScrollText,
+    "mid-stone": Layers,
+    "mid-slate": Mountain,
+    "mid-sage": Trees,
+    graphite: Mountain,
+    dark: Moon,
+    sand: Palmtree,
+    "dark-parchment": BookOpen,
     midnight: Sparkles,
     "midnight-graphite": MoonStar,
+    abyss: Waves,
+    ember: Flame,
     forest: Leaf,
-    sand: Palmtree,
-    graphite: Mountain,
+    matrix: Terminal,
     system: Monitor
 };
 
 export function ThemeToggle({ isExpanded = false }: ThemeToggleProps) {
     const { theme, setTheme } = useTheme();
     const { label } = THEME_OPTIONS.find(option => option.id === theme) ?? THEME_OPTIONS[0];
-    const Icon = THEME_ICONS[theme];
+    const Icon = THEME_ICONS[theme] ?? Monitor;
 
     return (
         <DropdownMenu>
@@ -49,9 +77,9 @@ export function ThemeToggle({ isExpanded = false }: ThemeToggleProps) {
                     <span className="sr-only">Change theme (current: {label})</span>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align={isExpanded ? "start" : "center"}>
+            <DropdownMenuContent align={isExpanded ? "start" : "center"} className="max-h-[70vh] overflow-y-auto">
                 {THEME_OPTIONS.map(option => {
-                    const OptionIcon = THEME_ICONS[option.id];
+                    const OptionIcon = THEME_ICONS[option.id] ?? Monitor;
                     return (
                         <DropdownMenuItem key={option.id} onClick={() => setTheme(option.id)} className="gap-2">
                             <OptionIcon className="h-4 w-4" />

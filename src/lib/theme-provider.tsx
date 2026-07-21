@@ -9,23 +9,41 @@ export type Theme =
     | "midnight-graphite"
     | "forest"
     | "sand"
-    | "graphite";
+    | "graphite"
+    | "mist"
+    | "bone"
+    | "dark-parchment"
+    | "abyss"
+    | "matrix"
+    | "ember"
+    | "mid-stone"
+    | "mid-slate"
+    | "mid-sage";
 
 // Theme ids double as the class name applied to <html> (except "system", which resolves to
 // light/dark). Keep in sync with the palettes defined in index.css.
 export const THEME_OPTIONS: { id: Theme; label: string }[] = [
     { id: "light", label: "Light" },
-    { id: "dark", label: "Dark" },
+    { id: "mist", label: "Mist" },
+    { id: "bone", label: "Bone" },
     { id: "sepia", label: "Sepia" },
+    { id: "mid-stone", label: "Mid Stone" },
+    { id: "mid-slate", label: "Mid Slate" },
+    { id: "mid-sage", label: "Mid Sage" },
+    { id: "graphite", label: "Graphite" },
+    { id: "dark", label: "Dark" },
+    { id: "sand", label: "Black & Sand" },
+    { id: "dark-parchment", label: "Dark Parchment" },
     { id: "midnight", label: "Midnight" },
     { id: "midnight-graphite", label: "Eclipse" },
+    { id: "abyss", label: "Abyss" },
+    { id: "ember", label: "Ember" },
     { id: "forest", label: "Forest" },
-    { id: "sand", label: "Black & Sand" },
-    { id: "graphite", label: "Graphite" },
+    { id: "matrix", label: "Matrix" },
     { id: "system", label: "System" }
 ];
 
-const THEME_CLASSES = ["light", "dark", "sepia", "midnight", "midnight-graphite", "forest", "sand", "graphite"];
+const THEME_CLASSES = THEME_OPTIONS.map(o => o.id).filter(id => id !== "system");
 
 type ThemeProviderProps = {
     children: React.ReactNode;
