@@ -78,7 +78,7 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
                             </TooltipTrigger>
                             <TooltipContent>
                                 <p>Command Palette</p>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-xs text-primary-foreground/70">
                                     {navigator.platform.toUpperCase().includes("MAC") ? "⌘K" : "Ctrl+K"}
                                 </p>
                             </TooltipContent>
