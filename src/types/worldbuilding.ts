@@ -155,7 +155,9 @@ export interface ChatContextMemoryExcerpt {
     title: string;
     category: string;
     excerpt: string;
-    role: "search";
+    // "pinned" rows are always included (P1.1 pin semantics) regardless of hybridSearch ranking;
+    // "search" rows only surfaced because they ranked into this turn's search pool.
+    role: "search" | "pinned";
 }
 
 // Assembled context for generating a chat response or proposal: the effective system

@@ -273,7 +273,12 @@ export function ChatInterface({
             // Project Memory (C1) — only non-empty when includeMemory is on. Framed as approved
             // project fact, not "non-canon" like notes/outline, since every surfaced memory is
             // already a user-approved active row (see chatContextService.ts's resolveMemories).
-            const memoriesText = context.relevantMemories.map(m => `- ${m.title} (${m.category}): ${m.excerpt}`).join("\n");
+            // "pinned" rows are called out explicitly (P1.1 pin semantics) so the model understands
+            // they're standing facts the writer flagged as always-relevant, not just topically
+            // ranked for this turn.
+            const memoriesText = context.relevantMemories
+                .map(m => `- ${m.title} (${m.category}${m.role === "pinned" ? ", pinned" : ""}): ${m.excerpt}`)
+                .join("\n");
 
             // Outline chat's own always-on structured reads (P0.4 R5) — only ever non-empty for
             // chatType="outline" (chatContextService.ts only populates these two for that type).

@@ -191,10 +191,10 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 ### P1.1 — Agent Framework Phase C (à la carte)
 
-- Richer Project Memory UX (session pin semantics, prioritization, superseded history tab)
-- Cross-project `writer_pref` browser
-- Soft concurrency for non-overlapping jobs (only if serial becomes painful)
-- Migrate fully off `ragScans` dual-write (only when UI/API consumers are ready)
+- ✅ **Richer Project Memory UX — done (2026-07-21).** Superseded tab (read-only: Delete only, no Pin/Edit) added to `ProjectMemoryPanel.tsx`. Pin semantics is now a real behavior change, not decoration: `chatContextService.ts`'s `resolveMemories` always includes a story's active pinned memories in chat context (unbounded by `RELEVANT_ENTRIES_LIMIT`), tagged `role: "pinned"` and called out in the assembled prompt text; pinned rows also sort first in the list UI. See `DECISIONS.md`'s "Agent Framework Phase C — Superseded Tab, Pin Semantics, Writer-Pref Browser (P1.1)" entry.
+- ✅ **Cross-project `writer_pref` browser — done (2026-07-21).** Global (`storyId: null`) memories previously had no creation path anywhere in the UI. New shared `NewMemoryNoteDialog.tsx` (extracted from `ProjectMemoryPanel.tsx`, `storyId: string | null`) + a new `global` list filter (`agentMemoriesRepository.ts`/route/client) + a new `WriterPrefsCard.tsx` on the Settings page (alongside `RecentJobsCard`), defaulting new notes to category `writer_pref`. Same DECISIONS.md entry.
+- Soft concurrency for non-overlapping jobs (only if serial becomes painful) — **not done, no signal it's needed yet**
+- Migrate fully off `ragScans` dual-write (only when UI/API consumers are ready) — **not done, consumers not yet migrated**
 
 ### P1.2 — Relationship Graph G1.5+
 
@@ -238,10 +238,10 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 
 | Item | Notes |
 |------|--------|
-| **Planning talk list (queued topics)** | **Living list:** `docs/SN_Planning_Talk_List.md`. T2 Lexical, T3 Amazon/KDP (discuss). **T4 token meter design-locked** P3. T1 chrome locked/shipped. Transfer log + Settings IA design-locked P3. |
+| **Planning talk list (queued topics)** | **Living list:** `docs/SN_Planning_Talk_List.md`. **T2** Lexical plugin-add **partial lock** (`Lexical_Editor_Design.md`); other T2 axes open. T3 Amazon/KDP (discuss). **T4** token meter design-locked P3. T1 chrome locked/shipped. Transfer log + Settings IA design-locked P3. |
 | **UI visual direction** | **Locked 2026-07-21, chrome pass complete 2026-07-21** (talk list **T1**). Chrome: **Linear A + Raycast accents**. Doc: `docs/UI_Visual_Direction.md`. Canonical mocks: Eclipse + Light Linear+Raycast PNGs in `docs/design-mocks/`. Token/chrome pass only; no shell rewrite. **V0/V1/V2 all done 2026-07-21** — V0: per-theme `--raycast-a`/`--raycast-b`/`--accent-glow`/`--accent-glow-strength` + tightened `--radius`. V1: topbar gradient hairline, sidebar active-rail bar+glow, cmd-palette hover glow, opt-in `Button variant="gradient"` (demoed on Notes' empty-state CTA). V2: chat user-bubble ring+glow, Research Story/Global pill gradient underline — deliberately stops before manuscript prose. Live-verified across Dark/Mist/Abyss, no console errors. Open follow-ups (default theme choice, exact glow dial, Light's button hue) don't block calling this done. |
 | **Transfer log + Settings IA** | **Design locked 2026-07-21.** Doc: `docs/Transfer_Log_And_Settings_IA_Design.md`. Settings sub-nav (Appearance / Providers & keys / Local / Feature routing / Writing tools / **Logs** / Data). **Logs → Transfers**: story-scoped send journal (desk→desk seeds only; proposed+opened; 30d UI / 90d hard delete); `deskTransfers` table; origin jump + re-seed; all seed writers v1. Slices **S0** then **T0–T3**. **Not started** (code). P3 until promoted. |
-| **Lexical editor (deepen)** | **To discuss** (talk list **T2**). Polish/extend existing Lexical stack — not a rip-and-replace. Scope TBD in grill. |
+| **Lexical editor (deepen)** | **Partial lock 2026-07-21** (talk list **T2**). Doc: `docs/Lexical_Editor_Design.md`. **Plugin-add axis:** ADD `ListPlugin`+`CheckListPlugin`; tables **C** (nodes only, no TablePlugin/insert); skip CharacterLimit/collab product/TOC/AutoEmbed/ClearEditor-as-feature; defer CodeHighlight/TreeView/playground toys. Implement pairing: Lexical **0.39→0.48** all pkgs same version (React 19 OK). Slices **LE0–LE3**. Other T2 axes (list done-bar, toolbar/mobile/selection) still open. **Not started** (code). P3 until promoted. |
 | **Amazon / KDP text standards** | **To discuss** (talk list **T3**). Manuscript + export alignment with Kindle/KDP expectations. Scope TBD. |
 | **Context / token meter (local)** | **Design locked 2026-07-21.** Doc: `docs/Context_Token_Meter_Design.md`. Talk list **T4**. Pre-send hybrid estimate of full assembled prompt + post-turn usage; chip+expand slices; local always / others when usage; n_ctx fetch+override; optional soft-warn; message badges. Slices **M0–M5**. **Not started.** P3 until promoted. |
 | **Chat shuttle (“agent chat shuffle”)** | ✅ **Done (2026-07-21).** Doc: `docs/Chat_Shuttle_Design.md`. All slices **H0–H7** shipped same day S0-S2 unblocked it. See `DECISIONS.md`'s "Chat Shuttle — H0-H7 — Load-Bearing Decisions" for the full trail. |
@@ -249,6 +249,7 @@ Also: extend **`reconcile_index`** valid keys for armed notes/outline only — n
 | **Brainstorm / new-story import** | **Parked note 2026-07-20** (not designed). Sibling of Outline import, **not the same feature.** File as **head start** on creating a story — tray-heavy development via Brainstorm (and handoffs), little/no bulk spine commit. See parked section in `docs/Outline_Import_Design.md`. Do not fold into Import-to-Outline slices. |
 | **Name generator** | **Gaps closed 2026-07-19 (v0.3).** Design: `docs/Name_Generator_Design.md` (+ Hermes plans mirror). **Not started.** Slices NG0–NG7: schema → API → seed core → panel → syntax → import → optional tool. P3 until explicitly promoted. |
 | **Locations & maps** | **Locked 2026-07-19.** Design: `docs/Locations_And_Maps_Design.md`. Location grill in playbook v1; map SoT = graph then layout text (images illustration only); mood + map image presets; entry layout + Story Map tool; light place sheet now, full place-Codex later. Slices L0–L5. P3 / promote with playbooks. |
+| **Dep majors (pack 3) — todo later** | **Parked 2026-07-21.** Not LE0 / not hygiene pack 2. **One family per PR.** Suggested order: **3a** `better-sqlite3` 12.5→**12.x** first (native smoke; defer 13 until 12 green) → **3b** `jspdf` 3→**4** (PDF export smoke) → **3c** `lucide-react` 0.561→**1.x** (icon renames) → **3d** `react-router` 7→**8** *or* **3e** `react-resizable-panels` 2→**4** (shell) → **3f** Vite **8** + `@vitejs/plugin-react` 6 → **3g** Tailwind **4** (dedicated theme project) → **3h** TypeScript **7** last/never-unless-forced → **3i** knip 6 / concurrently 10 / `@types/node` 26 / `@sindresorhus/is` 8 anytime. **Do not** couple with Lexical LE0–LE3 or feature builds. |
 | Spellcheck / LanguageTool depth | Settings/types exist; full design may exceed current UX |
 | Gemini provider polish | `docs/gemini-provider-plan.md` |
 | Mobile responsive overhaul | `docs/mobile-responsive-refactor-plan.md`, issue-58 plan |
@@ -302,6 +303,7 @@ Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when do
 | `docs/Lorebook_Browse_Density_Design.md` | Lorebook Cards\|List toggle (**locked** 2026-07-21); L0–L3 — P2 B8, not started |
 | `docs/Folders_Org_Design.md` | Cosmetic folders lore + chats (**locked/shipped** 2026-07-21); F0–F5 done — P2 B9 |
 | `docs/Context_Token_Meter_Design.md` | T4 context/token meter (**locked** 2026-07-21); M0–M5 — P3, not started |
+| `docs/Lexical_Editor_Design.md` | T2 Lexical deepen (**partial lock** 2026-07-21 plugin-add); LE0–LE3 — P3, not started |
 | `docs/UI_Visual_Direction.md` | Linear A + Raycast chrome (**locked/shipped** 2026-07-21) |
 | `docs/Locations_And_Maps_Design.md` | Location playbooks, place sheet, Story Map, image presets (locked 2026-07-19) |
 | `docs/Agent_Framework_And_Project_Memory_Design.md` | Agent A/B design (A/B shipped; C backlog) |

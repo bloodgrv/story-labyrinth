@@ -141,11 +141,14 @@ export const getActiveByMemoryKey = async (storyId: string | null, memoryKey: st
     return row ? rowToMemory(row) : null;
 };
 
-export type ListMemoriesParams = { storyId?: string; status?: AgentMemoryStatus };
+// `global: true` lists only storyId IS NULL rows (cross-project writer_pref browser, P1.1) —
+// mutually exclusive with `storyId` in practice (the route only ever sends one or the other).
+export type ListMemoriesParams = { storyId?: string; status?: AgentMemoryStatus; global?: boolean };
 
 export const listMemories = async (params: ListMemoriesParams): Promise<AgentMemory[]> => {
     const conditions = [];
-    if (params.storyId) conditions.push(eq(schema.agentMemories.storyId, params.storyId));
+    if (params.global) conditions.push(isNull(schema.agentMemories.storyId));
+    else if (params.storyId) conditions.push(eq(schema.agentMemories.storyId, params.storyId));
     if (params.status) conditions.push(eq(schema.agentMemories.status, params.status));
 
     const rows = await db

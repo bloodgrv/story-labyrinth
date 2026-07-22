@@ -2,10 +2,11 @@ import type { AgentMemory, AgentMemoryCategory, AgentMemoryStatus } from "@/type
 import { fetchJSON } from "./apiFactory";
 
 export const agentMemoriesApi = {
-    list: (params?: { storyId?: string; status?: AgentMemoryStatus }) => {
+    list: (params?: { storyId?: string; status?: AgentMemoryStatus; global?: boolean }) => {
         const q = new URLSearchParams();
         if (params?.storyId) q.set("storyId", params.storyId);
         if (params?.status) q.set("status", params.status);
+        if (params?.global) q.set("global", "true");
         const qs = q.toString();
         return fetchJSON<{ memories: AgentMemory[] }>(`/agent/memories${qs ? `?${qs}` : ""}`);
     },

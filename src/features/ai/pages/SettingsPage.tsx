@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Label } from "@/components/ui/label";
+import { WriterPrefsCard } from "@/features/agent-memory/components/WriterPrefsCard";
 import { FeatureEndpointsCard } from "@/features/ai/components/FeatureEndpointsCard";
 import { GrokOAuthCard } from "@/features/ai/components/GrokOAuthCard";
 import { LocalModelsCard } from "@/features/ai/components/LocalModelsCard";
@@ -169,6 +170,8 @@ export default function SettingsPage() {
                     <GrammarSettingsCard />
 
                     <RecentJobsCard />
+
+                    <WriterPrefsCard />
 
                     {/* Delete Demo Data Section */}
                     <Card>

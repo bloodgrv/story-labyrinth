@@ -685,28 +685,63 @@ const resolveWrittenChapterSummaries = async (storyId: string): Promise<ChatCont
     return rows;
 };
 
-// Active Project Memory entries are only ever surfaced via RAG search (no anchor concept), gated
-// entirely on this chat's includeMemory toggle (see getChatContext) — every `status: "active"`
-// memory is already index-eligible on its own (agentMemoriesService.ts's approve step is the
-// gate), unlike notes/outline which need their own per-item includeInAi flag too.
-const resolveMemories = async (results: SearchResult[]): Promise<ChatContextMemoryExcerpt[]> => {
+// Active Project Memory entries surfaced two ways, gated entirely on this chat's includeMemory
+// toggle (see getChatContext) — every `status: "active"` memory is already index-eligible on its
+// own (agentMemoriesService.ts's approve step is the gate), unlike notes/outline which need their
+// own per-item includeInAi flag too:
+//   - "search": ranked into this turn's hybridSearch pool, same as before
+//   - "pinned": P1.1 pin semantics — a pinned active memory is a standing fact the writer wants
+//     the model to never lose track of, so it's always included rather than left to compete on
+//     ranking (which can drop it if the pool fills with more topically-relevant-but-less-important
+//     chunks). Deduped against search hits so a pinned+ranked memory doesn't appear twice.
+const resolveMemories = async (results: SearchResult[], storyId: string | null): Promise<ChatContextMemoryExcerpt[]> => {
     const memoryResults = results.filter(r => r.entityType === "agent_memory").slice(0, RELEVANT_ENTRIES_LIMIT);
-    if (memoryResults.length === 0) return [];
-
     const memoryIds = [...new Set(memoryResults.map(r => r.entityId))];
-    const rows = await db
-        .select({ id: schema.agentMemories.id, title: schema.agentMemories.title, category: schema.agentMemories.category })
-        .from(schema.agentMemories)
-        .where(inArray(schema.agentMemories.id, memoryIds));
-    const meta = new Map(rows.map(r => [r.id, r]));
 
-    return memoryResults.map(r => ({
+    type MemoryMetaRow = { id: string; title: string; category: string };
+    type PinnedMemoryRow = { id: string; title: string; category: string; body: string };
+
+    const [metaRows, pinnedRows] = await Promise.all([
+        memoryIds.length
+            ? db
+                  .select({ id: schema.agentMemories.id, title: schema.agentMemories.title, category: schema.agentMemories.category })
+                  .from(schema.agentMemories)
+                  .where(inArray(schema.agentMemories.id, memoryIds))
+            : Promise.resolve([] as MemoryMetaRow[]),
+        storyId
+            ? db
+                  .select({
+                      id: schema.agentMemories.id,
+                      title: schema.agentMemories.title,
+                      category: schema.agentMemories.category,
+                      body: schema.agentMemories.body
+                  })
+                  .from(schema.agentMemories)
+                  .where(
+                      and(
+                          eq(schema.agentMemories.storyId, storyId),
+                          eq(schema.agentMemories.status, "active"),
+                          eq(schema.agentMemories.pinned, true)
+                      )
+                  )
+            : Promise.resolve([] as PinnedMemoryRow[])
+    ]);
+    const meta = new Map(metaRows.map(r => [r.id, r]));
+
+    const searchExcerpts: ChatContextMemoryExcerpt[] = memoryResults.map(r => ({
         id: r.entityId,
         title: meta.get(r.entityId)?.title ?? r.entityId,
         category: meta.get(r.entityId)?.category ?? "unknown",
         excerpt: r.content,
         role: "search" as const
     }));
+
+    const searchIds = new Set(searchExcerpts.map(e => e.id));
+    const pinnedExcerpts: ChatContextMemoryExcerpt[] = pinnedRows
+        .filter(r => !searchIds.has(r.id))
+        .map(r => ({ id: r.id, title: r.title, category: r.category, excerpt: r.body, role: "pinned" as const }));
+
+    return [...pinnedExcerpts, ...searchExcerpts];
 };
 
 // Lets the model see whether prior proposals/handoffs from this same Brainstorm chat are still
@@ -878,7 +913,7 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
         includeNotes && !isNotes ? resolveNotes(searchResults) : Promise.resolve([]),
         includeOutline ? resolveOutlineItems(searchResults) : Promise.resolve([]),
-        includeMemory ? resolveMemories(searchResults) : Promise.resolve([]),
+        includeMemory ? resolveMemories(searchResults, chat.storyId) : Promise.resolve([]),
         includeOutlineTree && chat.storyId ? resolveFullOutlineTree(chat.storyId) : Promise.resolve([]),
         includeOutlineTree && chat.storyId ? resolveWrittenChapterSummaries(chat.storyId) : Promise.resolve([]),
         includeChapterSummaries && chat.storyId ? resolveWrittenChapterSummaries(chat.storyId) : Promise.resolve([]),

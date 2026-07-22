@@ -98,16 +98,18 @@ function MemoryCard({ memory }: MemoryCardProps) {
                     )}
                 </div>
                 <div className="flex gap-1 shrink-0">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => pinMutation.mutate({ id: memory.id, pinned: !memory.pinned })}
-                        disabled={pinMutation.isPending}
-                        title={memory.pinned ? "Unpin" : "Pin"}
-                    >
-                        {memory.pinned ? <Pin className="h-4 w-4 fill-current" /> : <PinOff className="h-4 w-4" />}
-                    </Button>
-                    {memory.status !== "rejected" && !isEditing && (
+                    {memory.status === "active" && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => pinMutation.mutate({ id: memory.id, pinned: !memory.pinned })}
+                            disabled={pinMutation.isPending}
+                            title={memory.pinned ? "Unpin" : "Pin — always included in chat context when Project Memory is on"}
+                        >
+                            {memory.pinned ? <Pin className="h-4 w-4 fill-current" /> : <PinOff className="h-4 w-4" />}
+                        </Button>
+                    )}
+                    {(memory.status === "pending" || memory.status === "active") && !isEditing && (
                         <Button variant="ghost" size="icon" onClick={startEdit} disabled={anyPending} title="Edit">
                             <Pencil className="h-4 w-4" />
                         </Button>
@@ -186,6 +188,10 @@ function MemoryCard({ memory }: MemoryCardProps) {
     );
 }
 
+// Stable sort, pinned first — the query already orders by createdAt desc, so this only reorders
+// across the pinned/unpinned boundary, never within either group (prioritization UX, P1.1).
+const byPinnedFirst = (a: AgentMemory, b: AgentMemory): number => Number(b.pinned) - Number(a.pinned);
+
 export function ProjectMemoryList({ memories }: ProjectMemoryListProps) {
     return (
         <SearchFilter items={memories} predicate={memoryMatchesSearch} placeholder="Search memories...">
@@ -200,7 +206,7 @@ export function ProjectMemoryList({ memories }: ProjectMemoryListProps) {
                     )}
 
                     <div className="space-y-3">
-                        {filteredItems.map(memory => (
+                        {[...filteredItems].sort(byPinnedFirst).map(memory => (
                             <MemoryCard key={memory.id} memory={memory} />
                         ))}
                     </div>

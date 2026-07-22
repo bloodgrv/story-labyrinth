@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { agentMemoriesApi } from "@/services/api/client";
 import type { AgentMemoryCategory, AgentMemoryStatus } from "@/types/agentMemory";
 
-type ProjectMemoryListParams = { storyId?: string; status?: AgentMemoryStatus };
+type ProjectMemoryListParams = { storyId?: string; status?: AgentMemoryStatus; global?: boolean };
 
 export const projectMemoryKeys = {
     all: ["agentMemories"] as const,

@@ -16,16 +16,17 @@ const router = express.Router();
 
 const STATUSES: AgentMemoryStatus[] = ["pending", "active", "rejected", "superseded"];
 
-// GET /api/agent/memories?storyId=&status= — list, most recent first.
+// GET /api/agent/memories?storyId=&status=&global= — list, most recent first.
+// global=true lists only cross-project (storyId IS NULL) rows — the writer_pref browser (P1.1).
 router.get("/", async (req, res) => {
-    const { storyId, status } = req.query as { storyId?: string; status?: string };
+    const { storyId, status, global } = req.query as { storyId?: string; status?: string; global?: string };
     if (status && !STATUSES.includes(status as AgentMemoryStatus)) {
         res.status(400).json({ error: `status must be one of: ${STATUSES.join(", ")}` });
         return;
     }
 
     const [error, memories] = await attemptPromise(() =>
-        listMemories({ storyId, status: status as AgentMemoryStatus | undefined })
+        listMemories({ storyId, status: status as AgentMemoryStatus | undefined, global: global === "true" })
     );
     if (error) {
         res.status(500).json({ error: "Failed to load memories", details: error.message });
