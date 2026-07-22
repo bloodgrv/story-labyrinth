@@ -24,6 +24,7 @@ import {
     CodexContextResolver,
     LorebookFormatter,
     MatchedEntriesChapterResolver,
+    NameResolver,
     PoVResolver,
     PreviousWordsResolver,
     SceneBeatResolver,
@@ -88,6 +89,10 @@ export class PromptParser {
         registry.register("user_input", new UserInputResolver());
         registry.register("codex_context", new CodexContextResolver());
         registry.register("brainstorm_context", new BrainstormContextResolver(this.formatter, entries));
+
+        // Name Generator (NG3, docs/Name_Generator_Design.md v0.4) — `{{name kind=... gender=...
+        // region=... era=... count=...}}`, all params optional.
+        registry.register("name", new NameResolver());
 
         return registry;
     }

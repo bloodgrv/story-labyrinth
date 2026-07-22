@@ -1003,3 +1003,141 @@ export const deskTransfers = sqliteTable(
         createdAtIdx: index("desktransfer_created_at_idx").on(table.createdAt)
     })
 );
+
+// Name Pools table — NG0 (docs/Name_Generator_Design.md v0.4). Deliberately NOT lorebookEntries
+// rows (v0.4 correction #1): a 100-300 name pool would get RAG-indexed as prose, show up as a
+// Relationship Graph node, and render in Natural View, none of which make sense for it. level/
+// scopeId mirrors lorebookEntries' own global/series/story scoping convention. gender is null for
+// surname pools (surnames aren't gendered per the design's locked decisions); region/eraStart/
+// eraEnd are the locked "region + era bucket" axes (v1 core: US/UK, ~1980-present). source
+// distinguishes the app-shipped starter pools (NG4) from user imports (NG5) and future pack-
+// script output (NG7) — isBakedIn additionally flags the starter set so it can be protected from
+// deletion later without relying on source alone.
+export const namePools = sqliteTable(
+    "namePools",
+    {
+        id: text("id").primaryKey(),
+        level: text("level").notNull().default("global"), // 'global' | 'series' | 'story'
+        scopeId: text("scopeId"), // series.id or stories.id when level != 'global'; no real FK, same reasoning as lorebookEntries.scopeId
+        name: text("name").notNull(), // display name, e.g. "US Female (1990s-present)"
+        kind: text("kind").notNull(), // 'first_name' | 'surname'
+        gender: text("gender"), // 'male' | 'female' | 'unisex' | null (surname pools)
+        region: text("region").notNull(),
+        eraStart: integer("eraStart"), // year, null = open start
+        eraEnd: integer("eraEnd"), // year, null = open/present end
+        source: text("source").notNull().default("core"), // 'core' | 'import' | 'generated'
+        isBakedIn: integer("isBakedIn", { mode: "boolean" }).notNull().default(false),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        levelScopeIdx: index("namepool_level_scope_idx").on(table.level, table.scopeId),
+        kindIdx: index("namepool_kind_idx").on(table.kind),
+        // Supports the generate-time filter query: kind + gender + region (+ era, checked in app code).
+        kindGenderRegionIdx: index("namepool_kind_gender_region_idx").on(table.kind, table.gender, table.region)
+    })
+);
+
+// Name Pool Names table — NG0. Individual names within a pool, broken out into their own table
+// (rather than a JSON array on namePools) so search/filter and per-tier random-pick queries can
+// run in SQL, and so NG7's favorites/recent polish has a stable per-name id to reference. tier is
+// a label, not a raw rank, so packs stay tier-configurable (locked decision #10: default top
+// 100/300/capped rare) without a schema change per pack.
+export const namePoolNames = sqliteTable(
+    "namePoolNames",
+    {
+        id: text("id").primaryKey(),
+        poolId: text("poolId")
+            .notNull()
+            .references(() => namePools.id, { onDelete: "cascade" }),
+        name: text("name").notNull(),
+        tier: text("tier").notNull(), // 'common' | 'uncommon' | 'rare'
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        poolIdIdx: index("namepoolname_pool_id_idx").on(table.poolId),
+        poolTierIdx: index("namepoolname_pool_tier_idx").on(table.poolId, table.tier),
+        poolNameUniqueIdx: uniqueIndex("namepoolname_pool_name_unique_idx").on(table.poolId, table.name)
+    })
+);
+
+// Used Names table — NG0. Collision-avoidance ledger for generated/assigned names (locked
+// decision #9: used-name list + light lorebook name check, no deep manuscript scan in v1). Scoped
+// to storyId only — decision #3's "story + auto-include series" is a query-time join across every
+// story in the same series (via stories.seriesId), not a denormalized seriesId column here, so a
+// story moving between series never leaves stale rows. poolNameId is the optional trace back to
+// the source pool entry (design's "pool trace" for Codex create) — nullable/set-null since a used
+// name must survive its source pool or pool entry being deleted.
+export const usedNames = sqliteTable(
+    "usedNames",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        name: text("name").notNull(),
+        nameType: text("nameType").notNull(), // 'first' | 'surname' | 'full'
+        source: text("source").notNull(), // 'generated' | 'manual' | 'codex'
+        poolNameId: text("poolNameId").references(() => namePoolNames.id, { onDelete: "set null" }),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdIdx: index("usedname_story_id_idx").on(table.storyId),
+        // Supports the collision-check query: is this name already used (of this type) in this story.
+        storyNameTypeIdx: index("usedname_story_name_type_idx").on(table.storyId, table.nameType),
+        storyNameTypeUniqueIdx: uniqueIndex("usedname_story_name_type_unique_idx").on(
+            table.storyId,
+            table.name,
+            table.nameType
+        )
+    })
+);
+
+// Name Favorites table — NG7 (locked decision #8's "favorites" half of "Search + filters +
+// favorites/recent + per-story defaults"). Deliberately separate from usedNames: a favorite is
+// "I like this one, keep it visible" and doesn't participate in collision avoidance the way a
+// used name does — a name can be favorited without ever being marked used, or vice versa. Same
+// shape/idempotency posture as usedNames (unique per storyId+name+nameType, poolId is an
+// optional nullable trace-back, not a real referential requirement).
+export const nameFavorites = sqliteTable(
+    "nameFavorites",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        name: text("name").notNull(),
+        nameType: text("nameType").notNull(), // 'first' | 'surname' | 'full'
+        poolId: text("poolId").references(() => namePools.id, { onDelete: "set null" }),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdIdx: index("namefavorite_story_id_idx").on(table.storyId),
+        storyNameTypeUniqueIdx: uniqueIndex("namefavorite_story_name_type_unique_idx").on(table.storyId, table.name, table.nameType)
+    })
+);
+
+// Story Name Defaults table — NG0. One row per story holding the generator's sticky per-story
+// defaults (locked decision #8: "per-story defaults" as part of the many-pools UX). favoritePoolIds
+// is a plain JSON id array, not a join table — this is a lightweight ordering/pin list for the
+// panel, not a relationship needing referential integrity (mirrors codexPendingChanges' own
+// single-JSON-blob convention). NG7 wires era/region/gender (below) into the panel as sticky
+// filters; favoritePoolIds stays unused for now — a future pinned-pools quick-select, not part of
+// NG7's scope.
+export const storyNameDefaults = sqliteTable(
+    "storyNameDefaults",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        era: text("era"), // era bucket key, e.g. "1980-1999"
+        region: text("region"),
+        gender: text("gender"),
+        favoritePoolIds: text("favoritePoolIds", { mode: "json" }), // JSON: string[]
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdUniqueIdx: uniqueIndex("storynamedefaults_story_id_unique_idx").on(table.storyId)
+    })
+);

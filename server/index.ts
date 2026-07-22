@@ -3,6 +3,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runMigrations } from "./db/migrate.js";
+import { seedCoreNamePools } from "./db/seedNamePools.js";
 import { migrateSceneBeatPromptType, patchStaleSystemPrompts, seedSystemPrompts } from "./db/seedSystemPrompts.js";
 import { blockViewerMutations, requireAuth, requireOwner } from "./middleware/auth.js";
 import { start as startJobRunner, stop as stopJobRunner } from "./services/jobRunner.js";
@@ -21,6 +22,7 @@ import foldersRouter from "./routes/folders.js";
 import grammarRouter from "./routes/grammar.js";
 import humanizerRouter from "./routes/humanizer.js";
 import lorebookRouter from "./routes/lorebook.js";
+import nameGeneratorRouter from "./routes/nameGenerator.js";
 import notesRouter from "./routes/notes.js";
 import outlineRouter from "./routes/outline.js";
 import outlineCharactersRouter from "./routes/outlineCharacters.js";
@@ -50,6 +52,9 @@ const initializeDatabase = async () => {
     await patchStaleSystemPrompts();
     // Scene Beat Removal (SB7) — recategorizes existing promptType: "scene_beat" rows to "other".
     await migrateSceneBeatPromptType();
+    // NG4 (docs/Name_Generator_Design.md v0.4) — baked-in core name pools, same insert-only,
+    // idempotent-on-every-boot shape as seedSystemPrompts above.
+    await seedCoreNamePools();
     await startJobRunner();
 };
 
@@ -87,6 +92,9 @@ app.use("/api/chapters", chaptersRouter);
 app.use("/api/chats", chatsRouter);
 app.use("/api/codex", codexRouter);
 app.use("/api/lorebook", lorebookRouter);
+// Editor-level auth (requireAuth + blockViewerMutations, already applied globally above) — same
+// posture as /api/codex and /api/lorebook. No LLM access, so no per-feature endpoint routing here.
+app.use("/api/name-generator", nameGeneratorRouter);
 app.use("/api/prompts", promptsRouter);
 app.use("/api/ai", requireOwner, aiRouter);
 app.use("/api/brainstorm", brainstormRouter);

@@ -171,6 +171,23 @@ const SHUTTLE_PROPOSAL_INSTRUCTIONS =
     "chat for anything about character motivation, prose wording, manuscript continuity, Codex state, or scene " +
     "blocking; propose a shuttle only for a genuine external-fact digression. Propose at most one shuttle per reply.";
 
+// NG6 (docs/Name_Generator_Design.md v0.4) — the design's "optional tool `generate_names`",
+// implemented as a fence like every other proposal here rather than real LLM tool-calling (v0.4
+// correction #3: this app has none). When the user wants name ideas rather than the model just
+// inventing some inline, propose generation params and let the client run the real (deterministic,
+// non-LLM) generate call — same pools/collision-avoidance the panel uses (NG1/NG2). Never writes
+// anything on its own; the user picks a result via the same Use/Create-Codex actions the panel has.
+const NAME_PROPOSAL_INSTRUCTIONS =
+    "If the user wants name ideas for a character (or you need to suggest one), don't just invent names inline " +
+    "— propose a name generation instead, so the suggestions come from the story's actual grounded name pools.\n\n" +
+    "To propose generating names, include a fenced block in this exact form:\n\n" +
+    "```name-proposal\n" +
+    '{"kind": "first_name", "gender": "female", "region": "US", "era": "1980-1999", "count": 5}\n' +
+    "```\n\n" +
+    '"kind" is required and must be "first_name" or "surname". "gender" ("male"/"female"/"unisex"), "region", ' +
+    '"era" (a "YYYY-YYYY" range), and "count" are all optional — omit any you don\'t have a clear reason to set. ' +
+    "Propose at most one name-proposal per reply.";
+
 const OUTLINE_FRAMING =
     "You are a structure partner for this story's outline — chapter/scene sequencing and narrative arc. " +
     "Stay consistent with the full outline tree, the story synopsis, and the established Codex/lorebook state " +
@@ -184,6 +201,8 @@ const OUTLINE_FRAMING =
     LORE_SUGGESTION_INSTRUCTIONS +
     "\n\n" +
     SHUTTLE_PROPOSAL_INSTRUCTIONS +
+    "\n\n" +
+    NAME_PROPOSAL_INSTRUCTIONS +
     "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user sees them, " +
     "so don't reference the fenced blocks themselves in your prose; just talk about the change naturally.";
 
@@ -196,6 +215,8 @@ const WORLDBUILDING_FRAMING =
     NOTE_PROPOSAL_INSTRUCTIONS +
     "\n\n" +
     SHUTTLE_PROPOSAL_INSTRUCTIONS +
+    "\n\n" +
+    NAME_PROPOSAL_INSTRUCTIONS +
     "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user sees them, " +
     "so don't reference '```codex-proposal', '```note-proposal', or 'the block' in your prose; just talk about the proposal naturally.";
 
@@ -359,6 +380,8 @@ const PROSE_PROPOSAL_INSTRUCTIONS =
     CODEX_PROPOSAL_INSTRUCTIONS +
     "\n\n" +
     SHUTTLE_PROPOSAL_INSTRUCTIONS +
+    "\n\n" +
+    NAME_PROPOSAL_INSTRUCTIONS +
     "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user " +
     "sees them, so don't reference the blocks themselves in your prose.";
 

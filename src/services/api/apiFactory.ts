@@ -52,9 +52,13 @@ export const fetchBlob = async (url: string, options?: RequestInit): Promise<Blo
 // only document import passes one, since that's the one upload whose server-side work includes
 // a third-party LLM call that can genuinely hang (e.g. a stuck OAuth token refresh) with no
 // error ever surfacing, unlike the other callers here which are just local file processing.
-export const uploadFile = async <T>(url: string, file: File, timeoutMs?: number): Promise<T> => {
+// `fields` is opt-in too (undefined = file-only, every pre-existing caller's behavior) — Name
+// Generator's CSV import (NG5) is the first caller that needs extra multipart fields alongside
+// the file (pool metadata the CSV itself doesn't carry).
+export const uploadFile = async <T>(url: string, file: File, timeoutMs?: number, fields?: Record<string, string>): Promise<T> => {
     const formData = new FormData();
     formData.append("file", file);
+    if (fields) for (const [key, value] of Object.entries(fields)) formData.append(key, value);
     const controller = timeoutMs ? new AbortController() : undefined;
     const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
 

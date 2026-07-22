@@ -39,6 +39,7 @@ import type { ChapterSelectionTarget } from "@/types/rework";
 import type { AIChat, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import type { ChatContext } from "@/types/worldbuilding";
 import { ChatSystemPromptControl } from "./ChatSystemPromptControl";
+import { NameProposalCard } from "./NameProposalCard";
 import { NoteProposalCard } from "./NoteProposalCard";
 import { OutlineProposalCard } from "./OutlineProposalCard";
 import { ProposalCard } from "./ProposalCard";
@@ -49,6 +50,7 @@ import { useChatSystemPrompt } from "../hooks/useChatSystemPrompt";
 import { groupProposalsByMessage, useChatProposalsQuery } from "../hooks/useCodexProposalsQuery";
 import { insertProposedProse } from "../services/insertProposedProse";
 import type { ParsedLoreSuggestion } from "../services/parseLoreSuggestions";
+import type { ParsedNameProposal } from "../services/parseNameProposal";
 import type { ParsedNoteProposal } from "../services/parseNoteProposals";
 import type {
     ParsedOutlineDeleteProposal,
@@ -547,6 +549,10 @@ export function ChatInterface({
     const [psychProposals, setPsychProposals] = useState<Record<string, ParsedPsychProposal>>({});
     const updateLorebookMutation = useUpdateLorebookMutation();
 
+    // NG6 — same ephemeral-state posture as psychProposals above. No accept/reject dismissal to
+    // track: NameProposalCard itself runs the real generate call and owns its own results state.
+    const [nameProposals, setNameProposals] = useState<Record<string, ParsedNameProposal>>({});
+
     // Outline chats only (P0.4 R5) — "create" proposals are persisted immediately (same mechanism
     // the retired bulk-Generate button used, see handleOutlineProposals below); edit/reorder/
     // delete stay ephemeral like prose/note proposals, keyed by messageId since a single reply can
@@ -724,6 +730,7 @@ export function ChatInterface({
             ).then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
         },
         onPsychProposal: (messageId, proposal) => setPsychProposals(prev => ({ ...prev, [messageId]: proposal })),
+        onNameProposal: (messageId, proposal) => setNameProposals(prev => ({ ...prev, [messageId]: proposal })),
         // Notes chats only (P0.4 K2/K4) — same "persist immediately as a durable checklist row"
         // posture as onOverviewProposal/onHandoffPackets above; NotesChecklistTray.tsx handles the
         // "Accept all" write.
@@ -1191,7 +1198,15 @@ export function ChatInterface({
                     const noteProposal = noteProposals[messageId];
                     const outlineProposalsForMessage = outlineProposals[messageId];
                     const psychProposal = psychProposals[messageId];
-                    if (!proposals?.length && !proseProposal && !noteProposal && !outlineProposalsForMessage?.length && !psychProposal)
+                    const nameProposal = storyId ? nameProposals[messageId] : undefined;
+                    if (
+                        !proposals?.length &&
+                        !proseProposal &&
+                        !noteProposal &&
+                        !outlineProposalsForMessage?.length &&
+                        !psychProposal &&
+                        !nameProposal
+                    )
                         return null;
                     return (
                         <>
@@ -1238,6 +1253,7 @@ export function ChatInterface({
                                     onReject={() => dismissPsychProposal(messageId)}
                                 />
                             )}
+                            {nameProposal && storyId && <NameProposalCard proposal={nameProposal} storyId={storyId} />}
                         </>
                     );
                 }}

@@ -4,6 +4,7 @@ import { BrainstormTool } from "./tools/BrainstormTool";
 import { ChaptersTool } from "./tools/ChaptersTool";
 import { EditorTool } from "./tools/EditorTool";
 import { LorebookTool } from "./tools/LorebookTool";
+import { NameGeneratorTool } from "./tools/NameGeneratorTool";
 import { NotesTool } from "./tools/NotesTool";
 import { OutlineTool } from "./tools/OutlineTool";
 import { ProjectMemoryTool } from "./tools/ProjectMemoryTool";
@@ -36,6 +37,8 @@ export const MainContent = () => {
                 return <BrainstormTool />;
             case "notes":
                 return <NotesTool />;
+            case "name-generator":
+                return <NameGeneratorTool />;
             case "users":
                 return <UsersTool />;
             case "research":

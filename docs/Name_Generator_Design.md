@@ -1,10 +1,22 @@
 # Story Nexus – Name Generator Design Document
 
-**Version:** 0.3  
-**Date:** 2026-07-19  
-**Status:** Gaps closed — ready for implementation  
+**Version:** 0.4  
+**Date:** 2026-07-22  
+**Status:** Pre-implementation review corrections — see "v0.4 corrections" below before starting NG0  
 **Hermes mirror:** `C:\Users\Reuben\.hermes\plans\Name_Generator_Design.md`  
 **Backlog:** `docs/CURRENT_BACKLOG.md` P3 / NG slices  
+
+---
+
+## v0.4 corrections (2026-07-22 codebase check)
+
+Checked against the actual `lorebookEntries` schema, `PromptParser`, and chat tool-calling before starting NG0. Two of v0.3's decisions don't fit how the app actually works:
+
+1. **Pools are dedicated tables, not lorebook entry types.** `LorebookEntry.category` is a closed TS union (`src/types/story.ts`), and every lorebook entry — regardless of category — is unconditionally RAG-indexed as prose (`ragIndexService.ts`, no category exclusion), eligible as a Relationship Graph node, and rendered in "Natural View" as an editable character profile. A 100–300-name pool doesn't want any of that: it would pollute hybrid search/scanner results and show up as a nonsensical graph node. Pools, tiers, used-names, and story defaults live in their own new tables (`namePools`, `usedNames`, `storyNameDefaults`, etc.) — nothing about them touches `lorebookEntries` or its category enum. "Extensible via Lorebook entry types" (Core Principles) is superseded by this.
+2. **Prompt syntax must follow the existing space-delimited grammar, not `key: value, key: value`.** `PromptParser.parseRegularVariables` splits on spaces (`variable.trim().split(" ")`) the way `{{character characterName}}` works — no colons, no commas. The originally-specified `{{name: pool-id, …}}` would parse a literal `varName = "name:"`, fail the registry lookup, and silently no-op (the parser's existing "unknown variable" warn-and-skip path). Corrected syntax below.
+3. **NG6's "optional tool" means a fence, not real LLM tool-calling.** The app has no OpenAI-style function/tool-calling anywhere (`tools:`/`tool_calls` don't appear in `server/services`); every existing "tool" (codex-proposal, shuttle-proposal, note-proposal, etc.) is a markdown-fence convention parsed from plain chat text. `generate_names` follows that same pattern — a `name-proposal`-style fence a weak/non-tool-calling model can still emit as plain text — not a real function-calling integration.
+
+---
 
 ---
 
@@ -18,7 +30,7 @@ Provide writers with a fast, context-aware name generator that produces grounded
 - **Product feature first** (UI + backend) — not dependent on tool-calling models
 - Multiple invocation: panel, prompt syntax, optional tool
 - Tiered rarity; separate first-name and surname pools
-- Extensible via Lorebook entry types + import packs
+- Extensible via dedicated pool tables (**not** Lorebook entry types — see v0.4 correction #1) + import packs
 - Local-first and offline capable for generation from installed pools
 
 ---
@@ -56,7 +68,7 @@ Full list: US, UK, Irish, Italian-American, German, French, Hispanic, African-Am
 
 ## Data
 
-- Lorebook types: `name-pool`, `surname-pool` with tier arrays + metadata  
+- **Dedicated tables** (not `lorebookEntries` — see v0.4 correction #1): `namePools`/`surnamePools` (or a shared `namePools` with a `kind` column) holding tier arrays + metadata; pools are never RAG-indexed, never Relationship Graph nodes, never rendered in Natural View  
 - Used names: story ∪ series  
 - Story defaults: era/region/gender/favorites  
 - Import: JSON native, CSV converter; global or story scope  
@@ -64,8 +76,8 @@ Full list: US, UK, Irish, Italian-American, German, French, Hispanic, African-Am
 ## Invocation
 
 1. **UI panel** → backend API (no LLM required)  
-2. **`{{name: pool-id, …}}`** prompt syntax  
-3. **Optional** tool `generate_names`  
+2. **`{{name pool-id era=1990s gender=f}}`** prompt syntax — space-delimited, `key=value` params, no colons/commas (matches `PromptParser.parseRegularVariables`'s existing grammar; see v0.4 correction #2). Registered in `VariableResolverRegistry` like `character`/`all_characters`, not the separate hardcoded parenthesis-call path (`{{previous_words(500)}}`) that only handles two hardcoded functions today.  
+3. **Optional** `generate_names` — a `name-proposal`-style markdown fence emitted in plain chat text, following the same convention as `codex-proposal`/`shuttle-proposal`/etc. (not real LLM tool/function-calling — see v0.4 correction #3)  
 
 Light filters: `max_length`, `starts_with`.
 
@@ -73,18 +85,19 @@ Light filters: `max_length`, `starts_with`.
 
 - Panel → manual Create Codex (`needs_fleshing_out`, pool trace)  
 - Chats → existing WB/Editor/Outline proposal and tray rules  
+- Pools themselves never become Codex entries or lorebook entries — only a *generated name*, once picked, can seed a new Codex character entry (manual, via the existing Quick-add "Needs fleshing out" path)  
 
 ## Implementation slices
 
 | ID | Slice |
 |----|--------|
-| NG0 | Schema: pools, used-names, story defaults |
+| NG0 | Schema: dedicated `namePools`/`usedNames`/story-defaults tables (not `lorebookEntries`) |
 | NG1 | Generate API |
 | NG2 | UI panel + actions |
-| NG3 | PromptParser syntax |
+| NG3 | PromptParser syntax — register `name` in `VariableResolverRegistry`, space-delimited `key=value` grammar |
 | NG4 | Seed core pools |
 | NG5 | JSON + CSV import |
-| NG6 | Optional tool |
+| NG6 | Optional tool — `name-proposal` fence convention, not real tool-calling |
 | NG7 | Favorites polish + pack script |
 
 **Order:** NG0 → NG1 → NG4 → NG2 → NG3 → NG5 → NG6 → NG7
@@ -99,4 +112,4 @@ Light filters: `max_length`, `starts_with`.
 
 ---
 
-*Synced from Hermes plans v0.3 gap-close.*
+*Synced from Hermes plans v0.3 gap-close. v0.4 (2026-07-22): pre-implementation codebase check, three corrections — see top of doc.*

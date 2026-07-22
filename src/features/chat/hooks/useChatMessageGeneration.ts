@@ -13,6 +13,8 @@ import { parseLoreSuggestions } from "../services/parseLoreSuggestions";
 import { parseNoteSplitProposal } from "../services/parseNoteSplitProposal";
 import type { ParsedNoteProposal } from "../services/parseNoteProposals";
 import { parseNoteProposals } from "../services/parseNoteProposals";
+import type { ParsedNameProposal } from "../services/parseNameProposal";
+import { parseNameProposal } from "../services/parseNameProposal";
 import type { ParsedOutlineProposal } from "../services/parseOutlineProposals";
 import { parseOutlineProposals } from "../services/parseOutlineProposals";
 import { parseOverviewProposals } from "../services/parseOverviewProposals";
@@ -69,6 +71,11 @@ interface UseChatMessageGenerationParams {
     // "persist immediately as a durable brainstormChecklist row" posture as onOverviewProposal/
     // onHandoffPackets above.
     onShuttleProposal?: (messageId: string, proposal: ShuttlePayload) => void;
+    // Called when a reply contains a ```name-proposal block (NG6, Editor/WB/Outline/Brainstorm
+    // chats — see chatContextService.ts's NAME_PROPOSAL_INSTRUCTIONS). Not persisted server-side —
+    // NameProposalCard runs the real generate call itself on mount and renders results directly,
+    // there's no separate "pending" state to track here.
+    onNameProposal?: (messageId: string, proposal: ParsedNameProposal) => void;
     // P0.4 R6 — when true, every ```codex-proposal parsed from a reply is approved immediately
     // after its pending row is created (same call ProposalTrayCard's Approve button makes), instead
     // of waiting for a manual tray click. Editor/WB/Outline chats only (see ChatInterface.tsx's
@@ -106,6 +113,7 @@ export const useChatMessageGeneration = ({
     onPsychProposal,
     onNoteSplitProposal,
     onShuttleProposal,
+    onNameProposal,
     autoAcceptCodex,
     onUsage
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
@@ -150,7 +158,8 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterHandoffStrip, packets: handoffPackets } = parseHandoffPackets(afterOverviewStrip);
                 const { cleanedContent: afterSplitStrip, proposal: noteSplitProposal } = parseNoteSplitProposal(afterHandoffStrip);
                 const { cleanedContent: afterPsychStrip, psychProposal } = parsePsychProposal(afterSplitStrip);
-                const { cleanedContent, proposal: shuttleProposal } = parseShuttleProposal(afterPsychStrip);
+                const { cleanedContent: afterShuttleStrip, proposal: shuttleProposal } = parseShuttleProposal(afterPsychStrip);
+                const { cleanedContent, proposal: nameProposal } = parseNameProposal(afterShuttleStrip);
 
                 const afterAssistantMessage = await chatsApi.appendMessage(
                     selectedChat.id,
@@ -188,6 +197,7 @@ export const useChatMessageGeneration = ({
                 if (noteSplitProposal && assistantMessage) onNoteSplitProposal?.(assistantMessage.id, noteSplitProposal);
                 if (psychProposal && assistantMessage) onPsychProposal?.(assistantMessage.id, psychProposal);
                 if (shuttleProposal && assistantMessage) onShuttleProposal?.(assistantMessage.id, shuttleProposal);
+                if (nameProposal && assistantMessage) onNameProposal?.(assistantMessage.id, nameProposal);
             });
 
             if (error) {
@@ -217,6 +227,7 @@ export const useChatMessageGeneration = ({
             onPsychProposal,
             onNoteSplitProposal,
             onShuttleProposal,
+            onNameProposal,
             autoAcceptCodex,
             onUsage
         ]

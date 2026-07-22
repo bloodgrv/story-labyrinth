@@ -14,6 +14,7 @@ import {
     ScanSearch,
     Search,
     Settings,
+    Sparkles,
     StickyNote,
     Users
 } from "lucide-react";
@@ -37,6 +38,7 @@ const tools = [
     { id: "brainstorm" as WorkspaceTool, label: "Brainstorm", icon: MessageSquare, requiresStory: true },
     { id: "research" as WorkspaceTool, label: "Research", icon: Search, requiresStory: false },
     { id: "notes" as WorkspaceTool, label: "Notes", icon: StickyNote, requiresStory: true },
+    { id: "name-generator" as WorkspaceTool, label: "Names", icon: Sparkles, requiresStory: true },
     { id: "memory" as WorkspaceTool, label: "Memory", icon: Brain, requiresStory: true },
     { id: "relationships" as WorkspaceTool, label: "Relations", icon: Network, requiresStory: true },
     { id: "scanner" as WorkspaceTool, label: "Scanner", icon: ScanSearch, requiresStory: true }

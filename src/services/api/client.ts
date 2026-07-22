@@ -1,11 +1,9 @@
-import type { FeatureEndpoint, FeatureEndpoints, FeatureKey } from "@/types/aiSettings";
 import type { AuthStatus, AuthUser } from "@/types/auth";
 import type { CodexPendingChange, CodexPendingStatus, CodexState } from "@/types/codex";
 import type {
     AIChat,
     AISettings,
     ChatMessage,
-    DatabaseExport,
     LorebookEntry,
     Note,
     Prompt,
@@ -20,6 +18,7 @@ import { fetchJSON, uploadFile } from "./apiFactory";
 // Re-exported so existing `import { ttsApi } from "@/services/api/client"` call sites don't
 // need to change — these live in their own files purely to keep this file under the max-lines
 // lint limit as the API surface has grown.
+export { adminApi, featureEndpointsApi } from "./adminClient";
 export { agentJobsApi } from "./agentJobsClient";
 export { agentMemoriesApi } from "./agentMemoriesClient";
 export { beatsApi } from "./beatsClient";
@@ -33,6 +32,7 @@ export { foldersApi } from "./foldersClient";
 export { grammarApi } from "./grammarClient";
 export { humanizerApi } from "./humanizerClient";
 export { lorebookApi } from "./lorebookClient";
+export { nameGeneratorApi } from "./nameGeneratorClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
 export { ragApi } from "./ragClient";
 export { storyGraphApi } from "./storyGraphClient";
@@ -255,29 +255,4 @@ export const chatsApi = {
             method: "PATCH",
             body: JSON.stringify(data)
         })
-};
-
-// Per-feature AI endpoint overrides
-export const featureEndpointsApi = {
-    get: () => fetchJSON<FeatureEndpoints>("/admin/feature-endpoints"),
-    setFeature: (feature: FeatureKey, endpoint: FeatureEndpoint) =>
-        fetchJSON<FeatureEndpoints>(`/admin/feature-endpoints/${feature}`, {
-            method: "PUT",
-            body: JSON.stringify(endpoint)
-        }),
-    removeFeature: (feature: FeatureKey) =>
-        fetchJSON<FeatureEndpoints>(`/admin/feature-endpoints/${feature}`, { method: "DELETE" })
-};
-
-// Admin/Migration API
-export const adminApi = {
-    exportDatabase: () => fetchJSON<DatabaseExport>("/admin/export"),
-    importDatabase: (file: File) => uploadFile<{ success: boolean }>("/admin/import", file),
-    checkDemoExists: () => fetchJSON<{ exists: boolean }>("/admin/demo/exists"),
-    importDemoData: () => fetchJSON<{ success: boolean; message: string }>("/admin/demo/import", { method: "POST" }),
-    deleteDemoData: () =>
-        fetchJSON<{ success: boolean; deleted: { series: number; stories: number; lorebookEntries: number } }>(
-            "/admin/demo",
-            { method: "DELETE" }
-        )
 };

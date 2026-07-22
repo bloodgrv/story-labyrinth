@@ -14,7 +14,8 @@ export type WorkspaceTool =
     | "research"
     | "memory"
     | "relationships"
-    | "scanner";
+    | "scanner"
+    | "name-generator";
 
 interface StoryContextType {
     currentStoryId: string | null;
