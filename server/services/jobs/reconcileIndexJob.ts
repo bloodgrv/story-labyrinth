@@ -85,7 +85,7 @@ export const runReconcileIndexJob = async (job: AgentJob): Promise<{
         const key = `lorebook_entry:${entry.id}`;
         validKeys.add(key);
         const existingChunks = chunksByKey.get(key) ?? [];
-        const currentText = buildLorebookEntryText(entry);
+        const currentText = await buildLorebookEntryText(entry);
 
         if (entityNeedsReindex(currentText, existingChunks)) {
             await indexLorebookEntry(entry.id);

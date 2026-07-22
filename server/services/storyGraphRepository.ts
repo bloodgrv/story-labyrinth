@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, or } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 
+type StoryGraphLayoutRow = typeof schema.storyGraphLayout.$inferSelect;
+
 // Plain DB access, no business logic — mirrors codexRepository.ts's role. Validation, dedup
 // enforcement, and node/edge DTO assembly live in storyGraphService.ts.
 
@@ -123,4 +125,40 @@ export const listVisibleEntriesForStory = async (storyId: string): Promise<Loreb
         conditions.push(and(eq(schema.lorebookEntries.level, "series"), eq(schema.lorebookEntries.scopeId, story.seriesId)));
 
     return db.select().from(schema.lorebookEntries).where(or(...conditions));
+};
+
+// ── Layout persistence (P1.2 G1.5+) ───────────────────────────────────────────
+
+export const getLayoutForStory = async (storyId: string): Promise<StoryGraphLayoutRow[]> =>
+    db.select().from(schema.storyGraphLayout).where(eq(schema.storyGraphLayout.storyId, storyId));
+
+// Plain select-then-insert-or-update rather than a drizzle onConflictDoUpdate — this table has no
+// established upsert precedent elsewhere in the codebase, and call volume is one row per dragged
+// node (never a bulk import), so the extra round-trip is a non-issue.
+export const upsertLayoutPosition = async (storyId: string, nodeId: string, x: number, y: number): Promise<StoryGraphLayoutRow> => {
+    const [existing] = await db
+        .select()
+        .from(schema.storyGraphLayout)
+        .where(and(eq(schema.storyGraphLayout.storyId, storyId), eq(schema.storyGraphLayout.nodeId, nodeId)));
+
+    if (existing) {
+        const [row] = await db
+            .update(schema.storyGraphLayout)
+            .set({ x, y, updatedAt: new Date() })
+            .where(eq(schema.storyGraphLayout.id, existing.id))
+            .returning();
+        return row;
+    }
+
+    const [row] = await db
+        .insert(schema.storyGraphLayout)
+        .values({ id: randomUUID(), storyId, nodeId, x, y, updatedAt: new Date() })
+        .returning();
+    return row;
+};
+
+// "Reset layout" — clears every saved position for a story so the canvas falls back to the
+// deterministic layoutEgo/layoutGrid computation again.
+export const deleteLayoutForStory = async (storyId: string): Promise<void> => {
+    await db.delete(schema.storyGraphLayout).where(eq(schema.storyGraphLayout.storyId, storyId));
 };

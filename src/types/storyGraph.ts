@@ -106,3 +106,10 @@ export interface StoryGraphPendingEdge {
     fromName: string;
     toName: string;
 }
+
+// Persisted node position for the Full-graph canvas (P1.2 G1.5+). nodeId is a lorebook entry id.
+export interface StoryGraphLayoutPosition {
+    nodeId: string;
+    x: number;
+    y: number;
+}

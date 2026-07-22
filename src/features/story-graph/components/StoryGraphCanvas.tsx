@@ -5,18 +5,29 @@ import {
     type Connection,
     MiniMap,
     type NodeMouseHandler,
+    type OnNodeDrag,
     ReactFlow,
     ReactFlowProvider,
     useEdgesState,
     useNodesState
 } from "@xyflow/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, RotateCcw, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import type { StoryGraphEdge, StoryGraphNode } from "@/types/storyGraph";
-import { useNeighborhoodQuery, usePendingEdgesQuery, useStoryGraphQuery } from "../hooks/useStoryGraphQuery";
+import {
+    useGraphLayoutQuery,
+    useNeighborhoodQuery,
+    usePendingEdgesQuery,
+    useResetLayoutMutation,
+    useSaveLayoutPositionMutation,
+    useStoryGraphQuery,
+    useSuggestGraphEdgesMutation
+} from "../hooks/useStoryGraphQuery";
 import { layoutEgo, layoutGrid } from "../lib/layout";
 import { EdgeEditDialog } from "./EdgeEditDialog";
 import { GraphMigrationBanner } from "./GraphMigrationBanner";
@@ -37,6 +48,15 @@ type ConnectDraft = { from: string; to?: string };
 
 function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
     const { setPendingLorebookEntryId, setCurrentTool } = useStoryContext();
+    const isOwner = useIsOwner();
+    const suggestEdgesMutation = useSuggestGraphEdgesMutation();
+    const layoutQuery = useGraphLayoutQuery(storyId);
+    const saveLayoutPositionMutation = useSaveLayoutPositionMutation(storyId);
+    const resetLayoutMutation = useResetLayoutMutation();
+    const savedPositions = useMemo(
+        () => new Map((layoutQuery.data?.positions ?? []).map(p => [p.nodeId, { x: p.x, y: p.y }])),
+        [layoutQuery.data]
+    );
     const fullGraphQuery = useStoryGraphQuery(storyId);
     const allNodes = useMemo(() => fullGraphQuery.data?.nodes ?? [], [fullGraphQuery.data]);
     // Alphabetical — matches LorebookEntryList.tsx's own default sort, so ego-view's default
@@ -85,18 +105,21 @@ function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
     const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState<StoryGraphFlowEdge>([]);
 
     // Recompute layout + rebuild flow nodes/edges whenever the underlying data or view params
-    // change. Positions aren't persisted (out of scope) — nodes remain draggable within a
-    // session via onNodesChange, but any refetch (a mutation, view/center/depth switch) resets
-    // to the deterministic layout.
+    // change. Ego view's BFS-ring layout is relative to whichever entry is centered (not a stable
+    // absolute position across different centers), so it's never persisted — any refetch there
+    // still resets to the deterministic layout, nodes only draggable within that session via
+    // onNodesChange. Full-graph view instead merges each node's saved position (P1.2 G1.5+) over
+    // layoutGrid's computed fallback, so only nodes that were never dragged fall back to the grid.
     useEffect(() => {
-        const positions =
+        const computedPositions =
             viewMode === "ego" && centerEntryId ? layoutEgo(displayedNodes, displayedEdges, centerEntryId) : layoutGrid(displayedNodes);
+        const positions = viewMode === "full" ? savedPositions : null;
 
         setFlowNodes(
             displayedNodes.map(n => ({
                 id: n.id,
                 type: "storyGraphNode",
-                position: positions.get(n.id) ?? { x: 0, y: 0 },
+                position: positions?.get(n.id) ?? computedPositions.get(n.id) ?? { x: 0, y: 0 },
                 data: { node: n, isCenter: n.id === centerEntryId, onOpenEntry: handleOpenEntry },
                 selected: n.id === selectedNodeId
             }))
@@ -114,7 +137,13 @@ function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
         // recreated every render but are stable in effect (StoryContext setters are stable,
         // dialog-open setState calls don't need to retrigger a layout recompute).
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [displayedNodes, displayedEdges, centerEntryId, viewMode, selectedNodeId, setFlowNodes, setFlowEdges]);
+    }, [displayedNodes, displayedEdges, centerEntryId, viewMode, selectedNodeId, savedPositions, setFlowNodes, setFlowEdges]);
+
+    const onNodeDragStop: OnNodeDrag<StoryGraphFlowNode> = (_, node) => {
+        // Only Full-graph view persists — see the layout effect's own comment above.
+        if (viewMode !== "full") return;
+        saveLayoutPositionMutation.mutate({ nodeId: node.id, x: node.position.x, y: node.position.y });
+    };
 
     const onConnect = (connection: Connection) => {
         if (!connection.source || !connection.target) return;
@@ -177,7 +206,41 @@ function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
                         </Tabs>
                     )}
                 </div>
-                {viewMode !== "pending" && <GraphSearchBox nodes={sortedNodes} onSelect={handleSearchSelect} />}
+                <div className="flex items-center gap-2">
+                    {viewMode !== "pending" && <GraphSearchBox nodes={sortedNodes} onSelect={handleSearchSelect} />}
+                    {isOwner && viewMode === "full" && savedPositions.size > 0 && (
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={resetLayoutMutation.isPending}
+                            onClick={() => resetLayoutMutation.mutate(storyId)}
+                            title="Clear saved node positions and go back to the automatic grid layout"
+                        >
+                            {resetLayoutMutation.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            ) : (
+                                <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                            )}
+                            Reset layout
+                        </Button>
+                    )}
+                    {isOwner && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={suggestEdgesMutation.isPending}
+                            onClick={() => suggestEdgesMutation.mutate(storyId)}
+                            title="Propose new relationships from this story's lorebook entry descriptions — reviewed in the Pending tab"
+                        >
+                            {suggestEdgesMutation.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            ) : (
+                                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                            )}
+                            Suggest relationships
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {viewMode !== "pending" &&
@@ -203,6 +266,7 @@ function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
                             onEdgesChange={onEdgesChange}
                             onConnect={onConnect}
                             onNodeClick={onNodeClick}
+                            onNodeDragStop={onNodeDragStop}
                             onPaneClick={() => setSelectedNodeId(null)}
                             nodeTypes={nodeTypes}
                             edgeTypes={edgeTypes}

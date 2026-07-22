@@ -5,11 +5,14 @@ import {
     approveEdge,
     createEdge,
     deleteEdge,
+    getLayout,
     getNeighborhood,
     getStoryGraph,
     listPendingEdges,
     migrateStoryRelationships,
     rejectEdge,
+    resetLayout,
+    saveLayoutPosition,
     updateEdge
 } from "../services/storyGraphService.js";
 
@@ -133,6 +136,41 @@ router.post("/graph/edges/:id/reject", async (req, res) => {
         return;
     }
     res.json(result);
+});
+
+router.get("/stories/:storyId/graph/layout", async (req, res) => {
+    const [error, result] = await attemptPromise(() => getLayout(req.params.storyId));
+    if (error) {
+        res.status(500).json({ error: "Failed to load layout", details: error.message });
+        return;
+    }
+    res.json({ positions: result });
+});
+
+// PUT (not POST) — idempotent "set this node's position", matching chapters' own PUT convention
+// for a single-resource write rather than a create.
+router.put("/stories/:storyId/graph/layout/:nodeId", async (req, res) => {
+    const { x, y } = req.body as { x?: unknown; y?: unknown };
+    if (typeof x !== "number" || typeof y !== "number") {
+        res.status(400).json({ error: "x and y must be numbers" });
+        return;
+    }
+
+    const [error, result] = await attemptPromise(() => saveLayoutPosition(req.params.storyId, req.params.nodeId, x, y));
+    if (error) {
+        res.status(500).json({ error: "Failed to save layout position", details: error.message });
+        return;
+    }
+    res.json(result);
+});
+
+router.delete("/stories/:storyId/graph/layout", async (req, res) => {
+    const [error] = await attemptPromise(() => resetLayout(req.params.storyId));
+    if (error) {
+        res.status(500).json({ error: "Failed to reset layout", details: error.message });
+        return;
+    }
+    res.json({ success: true });
 });
 
 router.post("/stories/:storyId/graph/migrate-from-metadata", async (req, res) => {

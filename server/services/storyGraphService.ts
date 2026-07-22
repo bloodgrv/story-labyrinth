@@ -1,24 +1,30 @@
+import { attemptPromise } from "@jfdi/attempt";
 import { STORY_GRAPH_EDGE_TYPES } from "../../src/types/storyGraph.js";
 import type {
     StoryGraphEdge,
     StoryGraphEdgeType,
+    StoryGraphLayoutPosition,
     StoryGraphMigrationResult,
     StoryGraphNode,
     StoryGraphResponse,
     StoryGraphStatus
 } from "../../src/types/storyGraph.js";
 import { parseJson } from "../lib/json.js";
+import { indexLorebookEntry } from "./ragIndexService.js";
 import {
     deleteEdgeRow,
     deleteEdgesForEntity as deleteEdgesForEntityRow,
+    deleteLayoutForStory,
     findActiveEdge,
     getEdge,
+    getLayoutForStory,
     insertEdge,
     type LorebookRow,
     listActiveEdgesForStory,
     listPendingEdgesForStory,
     listVisibleEntriesForStory,
-    updateEdgeRow
+    updateEdgeRow,
+    upsertLayoutPosition
 } from "./storyGraphRepository.js";
 
 // Sits over storyGraphRepository.ts the same way codexService.ts sits over codexRepository.ts:
@@ -65,6 +71,17 @@ const rowToNode = (row: LorebookRow): StoryGraphNode => ({
     importance: readMetadata(row)?.importance ?? null
 });
 
+// Fire-and-forget, same posture as server/routes/lorebook.ts's own indexLorebookEntry-on-write
+// calls. An edge touching an entry's *active* relationship set changes that entry's indexable
+// text (ragIndexService.ts's buildRelationshipText), so both endpoints need reindexing whenever
+// an edge transitions into or out of 'active' — create/delete of an active edge, an edit to an
+// already-active edge, or a pending edge's approval. Rejecting a pending edge, or creating/
+// editing a pending one, never touches indexed text (pending edges are excluded from it).
+const reindexEdgeEntries = (fromId: string, toId: string): void => {
+    void attemptPromise(() => indexLorebookEntry(fromId));
+    void attemptPromise(() => indexLorebookEntry(toId));
+};
+
 // ── Edge CRUD ──────────────────────────────────────────────────────────────────
 
 export type CreateEdgeInput = {
@@ -104,6 +121,45 @@ export const createEdge = async (input: CreateEdgeInput): Promise<StoryGraphEdge
         status,
         source: "user"
     });
+    if (status === "active") reindexEdgeEntries(input.fromId, input.toId);
+    return rowToEdge(row);
+};
+
+export type ProposeAiSuggestedEdgeInput = {
+    storyId: string;
+    fromId: string;
+    toId: string;
+    edgeType: string;
+    label?: string | null;
+    description?: string | null;
+};
+
+// Used only by graphSuggestEdgesJob.ts (P1.2 G1.5+) — same validation as createEdge but always
+// writes status: "pending", source: "ai_suggested", and — unlike createEdge's "propose for
+// review" path (asPending, source: "user") — silently skips (returns null) rather than throwing
+// when an active edge of this exact type already exists, since a job iterating many candidates
+// shouldn't abort on a single already-true relationship.
+export const proposeAiSuggestedEdge = async (input: ProposeAiSuggestedEdgeInput): Promise<StoryGraphEdge | null> => {
+    validateEdgeType(input.edgeType);
+    if (input.fromId === input.toId) return null;
+
+    const visibleEntries = await listVisibleEntriesForStory(input.storyId);
+    const visibleIds = new Set(visibleEntries.map(e => e.id));
+    if (!visibleIds.has(input.fromId) || !visibleIds.has(input.toId)) return null;
+
+    const existing = await findActiveEdge(input.storyId, input.fromId, input.toId, input.edgeType);
+    if (existing) return null;
+
+    const row = await insertEdge({
+        storyId: input.storyId,
+        fromId: input.fromId,
+        toId: input.toId,
+        edgeType: input.edgeType,
+        label: input.label ?? null,
+        description: input.description ?? null,
+        status: "pending",
+        source: "ai_suggested"
+    });
     return rowToEdge(row);
 };
 
@@ -113,11 +169,14 @@ export const updateEdge = async (id: string, input: UpdateEdgeInput): Promise<St
     if (input.edgeType !== undefined) validateEdgeType(input.edgeType);
     const row = await updateEdgeRow(id, input);
     if (!row) throw new Error(`Edge not found: ${id}`);
+    if (row.status === "active") reindexEdgeEntries(row.fromId, row.toId);
     return rowToEdge(row);
 };
 
 export const deleteEdge = async (id: string): Promise<void> => {
+    const existing = await getEdge(id);
     await deleteEdgeRow(id);
+    if (existing?.status === "active") reindexEdgeEntries(existing.fromId, existing.toId);
 };
 
 // ── Pending-edge review ────────────────────────────────────────────────────────
@@ -146,6 +205,7 @@ export const approveEdge = async (id: string): Promise<StoryGraphEdge> => {
 
     const row = await updateEdgeRow(id, { status: "active" });
     if (!row) throw new Error(`Edge not found: ${id}`);
+    reindexEdgeEntries(row.fromId, row.toId);
     return rowToEdge(row);
 };
 
@@ -301,6 +361,7 @@ export const migrateStoryRelationships = async (storyId: string): Promise<StoryG
     let migrated = 0;
     let skipped = 0;
     const skippedDetails: StoryGraphMigrationResult["skippedDetails"] = [];
+    const touchedEntryIds = new Set<string>();
 
     for (const entry of storyEntries) {
         const relationships = readMetadata(entry)?.relationships ?? [];
@@ -336,9 +397,30 @@ export const migrateStoryRelationships = async (storyId: string): Promise<StoryG
                 source: "migrated"
             });
             existingKeys.add(key);
+            touchedEntryIds.add(entry.id);
+            touchedEntryIds.add(rel.targetId);
             migrated++;
         }
     }
 
+    for (const entryId of touchedEntryIds) void attemptPromise(() => indexLorebookEntry(entryId));
+
     return { migrated, skipped, skippedDetails };
+};
+
+// ── Layout persistence (P1.2 G1.5+) ───────────────────────────────────────────
+// Only Full-graph view reads/writes this — ego view's layoutEgo is relative to whichever entry
+// is centered (rings by hop distance), not a stable absolute position across different centers,
+// so persisting it wouldn't mean anything. See layout.ts/StoryGraphCanvas.tsx.
+
+export const getLayout = async (storyId: string): Promise<StoryGraphLayoutPosition[]> =>
+    (await getLayoutForStory(storyId)).map(row => ({ nodeId: row.nodeId, x: row.x, y: row.y }));
+
+export const saveLayoutPosition = async (storyId: string, nodeId: string, x: number, y: number): Promise<StoryGraphLayoutPosition> => {
+    const row = await upsertLayoutPosition(storyId, nodeId, x, y);
+    return { nodeId: row.nodeId, x: row.x, y: row.y };
+};
+
+export const resetLayout = async (storyId: string): Promise<void> => {
+    await deleteLayoutForStory(storyId);
 };

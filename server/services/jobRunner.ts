@@ -11,6 +11,7 @@ import {
 } from "./agentJobsRepository.js";
 import { runSuggestCodexUpdatesJob } from "./jobs/codexCompileJob.js";
 import { runDistillMemoryJob } from "./jobs/distillMemoryJob.js";
+import { runGraphSuggestEdgesJob } from "./jobs/graphSuggestEdgesJob.js";
 import { runReconcileIndexJob } from "./jobs/reconcileIndexJob.js";
 import { runPruneHistoryJob } from "./jobs/pruneHistoryJob.js";
 import { runRagScanChapterJob, runRagScanStoryJob } from "./jobs/ragScanJobs.js";
@@ -39,7 +40,8 @@ const HANDLERS: Record<AgentJobType, JobHandler> = {
     rag_scan_story: runRagScanStoryJob,
     prune_history: runPruneHistoryJob,
     distill_memory: runDistillMemoryJob,
-    suggest_codex_updates: runSuggestCodexUpdatesJob
+    suggest_codex_updates: runSuggestCodexUpdatesJob,
+    graph_suggest_edges: runGraphSuggestEdgesJob
 };
 
 let claimIntervalId: NodeJS.Timeout | null = null;

@@ -1,4 +1,10 @@
-import type { StoryGraphEdge, StoryGraphMigrationResult, StoryGraphPendingEdge, StoryGraphResponse } from "@/types/storyGraph";
+import type {
+    StoryGraphEdge,
+    StoryGraphLayoutPosition,
+    StoryGraphMigrationResult,
+    StoryGraphPendingEdge,
+    StoryGraphResponse
+} from "@/types/storyGraph";
 import { fetchJSON } from "./apiFactory";
 
 export const storyGraphApi = {
@@ -16,5 +22,12 @@ export const storyGraphApi = {
     approveEdge: (id: string) => fetchJSON<StoryGraphEdge>(`/graph/edges/${id}/approve`, { method: "POST" }),
     rejectEdge: (id: string) => fetchJSON<StoryGraphEdge>(`/graph/edges/${id}/reject`, { method: "POST" }),
     migrateFromMetadata: (storyId: string) =>
-        fetchJSON<StoryGraphMigrationResult>(`/stories/${storyId}/graph/migrate-from-metadata`, { method: "POST" })
+        fetchJSON<StoryGraphMigrationResult>(`/stories/${storyId}/graph/migrate-from-metadata`, { method: "POST" }),
+    getLayout: (storyId: string) => fetchJSON<{ positions: StoryGraphLayoutPosition[] }>(`/stories/${storyId}/graph/layout`),
+    saveLayoutPosition: (storyId: string, nodeId: string, x: number, y: number) =>
+        fetchJSON<StoryGraphLayoutPosition>(`/stories/${storyId}/graph/layout/${nodeId}`, {
+            method: "PUT",
+            body: JSON.stringify({ x, y })
+        }),
+    resetLayout: (storyId: string) => fetchJSON<{ success: boolean }>(`/stories/${storyId}/graph/layout`, { method: "DELETE" })
 };

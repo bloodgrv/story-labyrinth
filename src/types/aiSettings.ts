@@ -19,7 +19,8 @@ export type FeatureKey =
     | "image_generation" // Generate a Lorebook entry's portrait from its description (grokImageService.ts)
     | "agent_memory_distill" // Distill factual project memory candidates from a RAG scan's findings (distillMemoryJob.ts)
     | "chapter_version" // AI-regenerate an alternate chapter draft (chapterVersionAiService.ts)
-    | "codex_compile"; // Suggest Codex state updates from a chapter's text (C5, codexCompileJob.ts)
+    | "codex_compile" // Suggest Codex state updates from a chapter's text (C5, codexCompileJob.ts)
+    | "graph_suggest_edges"; // Suggest Relationship Graph edges from a story's lorebook (P1.2 G1.5+, graphSuggestEdgesJob.ts)
 
 // "grok-session" is deliberately excluded — it isn't a simple OpenAI-compatible client (it proxies
 // through grok.com server-side via a bespoke SSE conversion, see grokSessionClient.ts) and is
@@ -58,7 +59,8 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
     image_generation: "Image Generation (Lorebook)",
     agent_memory_distill: "Agent Memory Distillation",
     chapter_version: "Chapter Versions (AI Draft)",
-    codex_compile: "Codex Auto-Compile (Suggest Updates)"
+    codex_compile: "Codex Auto-Compile (Suggest Updates)",
+    graph_suggest_edges: "Relationship Graph (Suggest Edges)"
 };
 
 export const FEATURE_KEYS: FeatureKey[] = [
@@ -73,5 +75,6 @@ export const FEATURE_KEYS: FeatureKey[] = [
     "image_generation",
     "agent_memory_distill",
     "chapter_version",
-    "codex_compile"
+    "codex_compile",
+    "graph_suggest_edges"
 ];

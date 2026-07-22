@@ -1,5 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import type { CodexCustomField, CodexState, CodexStateItem } from "../../src/types/codex.js";
+import { STORY_GRAPH_EDGE_TYPE_LABELS } from "../../src/types/storyGraph.js";
+import type { StoryGraphEdgeType } from "../../src/types/storyGraph.js";
 import { db, schema } from "../db/client.js";
 import { chunkText, embedTexts } from "./embeddingService.js";
 import { extractTextFromLexical } from "./entityDetector.js";
@@ -34,12 +36,52 @@ const formatCodexState = (state: CodexState | null): string => {
     return lines.join("\n");
 };
 
+// Plain-text summary of this entry's active Relationship Graph edges (P1.2 G1.5+,
+// docs/CURRENT_BACKLOG.md's "reindex lorebook text when edges change so RAG sees
+// relationships"). Both endpoints of an edge get the exact same sentence — direction is
+// preserved in the text itself (fromName - label - toName), not rephrased per perspective, so
+// this needs no reverse-semantic label mapping. Rejected/pending edges are deliberately excluded
+// — only what's actually true should be searchable fact.
+const buildRelationshipText = async (entryId: string): Promise<string> => {
+    const edges = await db
+        .select()
+        .from(schema.storyGraphEdges)
+        .where(
+            and(
+                eq(schema.storyGraphEdges.status, "active"),
+                or(eq(schema.storyGraphEdges.fromId, entryId), eq(schema.storyGraphEdges.toId, entryId))
+            )
+        );
+    if (edges.length === 0) return "";
+
+    const otherIds = new Set<string>();
+    for (const edge of edges) {
+        otherIds.add(edge.fromId);
+        otherIds.add(edge.toId);
+    }
+    const nameRows = await db
+        .select({ id: schema.lorebookEntries.id, name: schema.lorebookEntries.name })
+        .from(schema.lorebookEntries)
+        .where(inArray(schema.lorebookEntries.id, [...otherIds]));
+    const nameById = new Map(nameRows.map(r => [r.id, r.name]));
+
+    const lines = edges.map(edge => {
+        const fromName = nameById.get(edge.fromId) ?? edge.fromId;
+        const toName = nameById.get(edge.toId) ?? edge.toId;
+        const label = edge.label || STORY_GRAPH_EDGE_TYPE_LABELS[edge.edgeType as StoryGraphEdgeType] || edge.edgeType;
+        return `${fromName} — ${label} — ${toName}`;
+    });
+    return `Relationships:\n${lines.join("\n")}`;
+};
+
 // Exported for reconcileIndexJob.ts's staleness check, so it recomputes indexable text the
-// exact same way indexLorebookEntry does and can't drift from what actually gets indexed.
-export const buildLorebookEntryText = (entry: LorebookRow): string => {
+// exact same way indexLorebookEntry does and can't drift from what actually gets indexed. Async
+// since P1.2 G1.5+ added a relationship-edge lookup — see buildRelationshipText above.
+export const buildLorebookEntryText = async (entry: LorebookRow): Promise<string> => {
     // Drizzle's `mode: "json"` column already deserializes this to an object on select.
     const codexText = formatCodexState((entry.codexState as CodexState | null) ?? null);
-    return [entry.name, entry.description, codexText].filter(Boolean).join("\n\n");
+    const relationshipText = await buildRelationshipText(entry.id);
+    return [entry.name, entry.description, codexText, relationshipText].filter(Boolean).join("\n\n");
 };
 
 // Only story-level entries map to a single concrete story. Global/series-level entries can
@@ -105,7 +147,7 @@ export const indexLorebookEntry = async (entryId: string): Promise<{ indexed: bo
         return { indexed: false, chunks: 0 };
     }
 
-    return indexEntity({ storyId, entityType: "lorebook_entry", entityId: entryId, text: buildLorebookEntryText(entry) });
+    return indexEntity({ storyId, entityType: "lorebook_entry", entityId: entryId, text: await buildLorebookEntryText(entry) });
 };
 
 // (Re)index a chapter: extracts plain text from the Lexical editor content, chunks it,

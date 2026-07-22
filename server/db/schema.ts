@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // Series table
 export const series = sqliteTable(
@@ -422,6 +422,30 @@ export const storyGraphEdges = sqliteTable(
         uniqueActiveEdgeIdx: uniqueIndex("storygraphedge_unique_active_idx")
             .on(table.storyId, table.fromId, table.toId, table.edgeType)
             .where(sql`status = 'active'`)
+    })
+);
+
+// Story Graph Layout table — persisted node positions for the Relationships tool's Full-graph
+// canvas (P1.2 G1.5+, docs/CURRENT_BACKLOG.md). One row per (storyId, nodeId); nodeId is a
+// lorebook entry id with NO real FK, same loose-column convention as storyGraphEdges.fromId/toId
+// (an entry can be global/series scoped, outside this story's own rows). Ego view keeps its
+// deterministic BFS-ring layout regardless (positions there are relative to whichever entry is
+// centered, not stable across different centers) — only Full-graph view reads/writes this table.
+export const storyGraphLayout = sqliteTable(
+    "storyGraphLayout",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        nodeId: text("nodeId").notNull(),
+        x: real("x").notNull(),
+        y: real("y").notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdIdx: index("storygraphlayout_story_id_idx").on(table.storyId),
+        uniqueNodeIdx: uniqueIndex("storygraphlayout_unique_node_idx").on(table.storyId, table.nodeId)
     })
 );
 
