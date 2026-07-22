@@ -404,7 +404,8 @@ ASK (playbook + style Light|Standard|Grill-me) → CAPTURE slots → CONFIRM sli
 | Research Notes (`type: research`) | **On request** — user asks or accepts note-proposal |
 | Auto-save every answer | **No** |
 | Lorebook / Codex / outline / prose | **None** |
-| Brainstorm-style handoff packets | **None** (copy/paste to other chats is enough) |
+| Brainstorm-style handoff packets | **None as general outbox** — copy/paste was enough for v1 Research desk; **exception:** **return-to-origin** packets when Research was opened via **Chat Shuttle** (`docs/Chat_Shuttle_Design.md`) |
+| Inbound shuttle seeds | **Yes** (from Editor / Outline / WB) — see Chat Shuttle design |
 | Copy-friendly answer/link blocks | **Yes** |
 | Project memory | **None** |
 

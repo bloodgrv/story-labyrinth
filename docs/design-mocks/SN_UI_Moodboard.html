@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Story Nexus — UI Moodboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Surface: Operate (writing studio) ─── */
+    /* Palettes lifted from SN index.css (.sand / .midnight) as concrete hex approximates */
+
+    :root {
+      --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+      --r-sm: 4px;
+      --r-md: 6px;
+      --r-lg: 8px;
+      --board-bg: #0a0a0b;
+      --board-ink: #e8e8ea;
+      --board-muted: #8b8b93;
+      --board-line: rgba(255,255,255,0.08);
+    }
+
+    /* Black & Sand — from .sand HSL tokens */
+    [data-palette="sand"] {
+      --bg: hsl(30 8% 5%);
+      --fg: hsl(35 35% 78%);
+      --card: hsl(30 8% 7%);
+      --muted: hsl(30 8% 14%);
+      --muted-fg: hsl(35 15% 55%);
+      --primary: hsl(35 45% 60%);
+      --primary-fg: hsl(30 8% 5%);
+      --border: hsl(30 10% 18%);
+      --sidebar: hsl(30 8% 4%);
+      --sidebar-accent: hsl(30 8% 12%);
+      --ring: hsl(35 45% 60%);
+      --accent-glow: rgba(201, 162, 89, 0.35);
+      --raycast-a: #e8b86d;
+      --raycast-b: #c49a5c;
+    }
+
+    /* Midnight — from .midnight HSL tokens */
+    [data-palette="midnight"] {
+      --bg: hsl(240 15% 4%);
+      --fg: hsl(240 10% 92%);
+      --card: hsl(240 15% 6%);
+      --muted: hsl(240 15% 12%);
+      --muted-fg: hsl(240 8% 60%);
+      --primary: hsl(255 70% 65%);
+      --primary-fg: hsl(240 15% 4%);
+      --border: hsl(240 15% 15%);
+      --sidebar: hsl(240 15% 5%);
+      --sidebar-accent: hsl(240 15% 10%);
+      --ring: hsl(255 70% 65%);
+      --accent-glow: rgba(148, 120, 255, 0.4);
+      --raycast-a: #a78bfa;
+      --raycast-b: #7170ff;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      background: var(--board-bg);
+      color: var(--board-ink);
+      font-feature-settings: "cv01", "ss03";
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── Board chrome ─── */
+    .board-header {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--board-line);
+      background: rgba(10,10,11,0.92);
+      backdrop-filter: blur(12px);
+    }
+    .board-header h1 {
+      margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.02em;
+    }
+    .board-header p {
+      margin: 0; font-size: 12px; color: var(--board-muted); max-width: 42rem;
+      line-height: 1.45;
+    }
+    .tweaks {
+      margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    }
+    .tweaks label {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; color: var(--board-muted); font-weight: 500;
+    }
+    .tweaks select, .tweaks button {
+      font: inherit; font-size: 12px; font-weight: 500;
+      color: var(--board-ink);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--board-line);
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+    .tweaks button.active {
+      border-color: rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.1);
+    }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 16px 24px;
+      padding: 10px 20px 0;
+      font-size: 11px; color: var(--board-muted);
+    }
+    .legend strong { color: var(--board-ink); font-weight: 500; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(280px, 1fr));
+      gap: 16px;
+      padding: 16px 20px 40px;
+    }
+    @media (max-width: 1100px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .variant {
+      display: flex; flex-direction: column; gap: 8px; min-width: 0;
+    }
+    .variant-meta h2 {
+      margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -0.01em;
+    }
+    .variant-meta p {
+      margin: 2px 0 0; font-size: 11px; color: var(--board-muted); line-height: 1.4;
+    }
+
+    /* ─── Shared workspace shell ─── */
+    .shell {
+      --hairline: color-mix(in srgb, var(--fg) 8%, transparent);
+      --hairline-strong: color-mix(in srgb, var(--fg) 12%, transparent);
+      background: var(--bg);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      height: 520px;
+      display: grid;
+      grid-template-rows: 40px 1fr;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.45);
+    }
+
+    .topbar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--sidebar);
+      font-size: 12px;
+    }
+    .topbar .story { font-weight: 500; }
+    .topbar .sep { opacity: 0.35; }
+    .topbar .muted { color: var(--muted-fg); }
+    .topbar .spacer { flex: 1; }
+    .pill {
+      font-size: 10px; font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted-fg);
+    }
+    .pill.accent {
+      border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+      color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 12%, transparent);
+    }
+
+    .body {
+      display: grid;
+      grid-template-columns: 52px 1fr 220px;
+      min-height: 0;
+    }
+
+    .rail {
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; align-items: center;
+      padding: 8px 0; gap: 4px;
+    }
+    .rail-btn {
+      width: 34px; height: 34px;
+      border-radius: var(--r-md);
+      border: none; background: transparent;
+      color: var(--muted-fg);
+      font-size: 11px; font-weight: 600;
+      cursor: default;
+      display: grid; place-items: center;
+    }
+    .rail-btn.active {
+      background: var(--sidebar-accent);
+      color: var(--fg);
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1fr;
+      min-width: 0; min-height: 0;
+      background: var(--bg);
+    }
+    .editor-wrap {
+      display: flex; flex-direction: column;
+      min-height: 0; padding: 20px 28px 16px;
+    }
+    .editor-label {
+      font-size: 10px; font-weight: 500; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted-fg); margin-bottom: 10px;
+    }
+    .prose {
+      flex: 1; max-width: 38rem;
+      font-size: 14px; line-height: 1.7; font-weight: 400;
+      color: var(--fg);
+    }
+    .prose p { margin: 0 0 0.9em; }
+    .prose .dim { color: var(--muted-fg); }
+
+    .chat {
+      border-left: 1px solid var(--border);
+      background: var(--card);
+      display: flex; flex-direction: column; min-height: 0;
+    }
+    .chat-head {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px; font-weight: 500;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .chat-msgs {
+      flex: 1; padding: 10px; overflow: hidden;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .bubble {
+      font-size: 11px; line-height: 1.45;
+      padding: 8px 10px;
+      border-radius: var(--r-lg);
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--fg) 3%, transparent);
+      color: var(--fg);
+    }
+    .bubble.user {
+      align-self: flex-end;
+      max-width: 92%;
+      background: color-mix(in srgb, var(--primary) 14%, transparent);
+      border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+    }
+    .bubble.stub {
+      border-style: dashed;
+      color: var(--muted-fg);
+    }
+    .chat-compose {
+      padding: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .compose-box {
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 8px 10px;
+      font-size: 11px;
+      color: var(--muted-fg);
+      background: color-mix(in srgb, var(--fg) 2%, transparent);
+    }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 500;
+      padding: 5px 10px;
+      border-radius: var(--r-md);
+      border: none;
+      background: var(--primary);
+      color: var(--primary-fg);
+    }
+    .btn-ghost {
+      font-size: 11px; font-weight: 500;
+      padding: 5px 8px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--fg) 3%, transparent);
+      color: var(--fg);
+    }
+
+    /* ═══ VARIANT A — Linear studio ═══ */
+    /* hairline borders, dense rail, luminance steps, tight type */
+    .v-linear .shell {
+      border-color: color-mix(in srgb, var(--fg) 10%, transparent);
+    }
+    .v-linear .topbar {
+      height: 36px;
+      font-size: 11.5px;
+      font-weight: 500;
+      background: color-mix(in srgb, var(--bg) 70%, var(--sidebar));
+      border-bottom-color: color-mix(in srgb, var(--fg) 7%, transparent);
+    }
+    .v-linear .body { grid-template-columns: 44px 1fr 200px; }
+    .v-linear .rail {
+      padding: 6px 0;
+      border-right-color: color-mix(in srgb, var(--fg) 7%, transparent);
+      background: color-mix(in srgb, var(--bg) 40%, var(--sidebar));
+    }
+    .v-linear .rail-btn {
+      width: 30px; height: 30px;
+      border-radius: 6px;
+      font-size: 10px;
+    }
+    .v-linear .rail-btn.active {
+      background: color-mix(in srgb, var(--fg) 6%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fg) 8%, transparent);
+      color: var(--fg);
+    }
+    .v-linear .rail-btn.active::before {
+      content: "";
+      position: absolute;
+      /* left accent bar via box */
+    }
+    .v-linear .rail { position: relative; }
+    .v-linear .rail-btn.active {
+      position: relative;
+    }
+    .v-linear .rail-btn.active::after {
+      content: "";
+      position: absolute;
+      left: -7px; top: 7px; bottom: 7px; width: 2px;
+      border-radius: 1px;
+      background: var(--primary);
+    }
+    .v-linear .chat {
+      background: color-mix(in srgb, var(--fg) 2.5%, var(--bg));
+      border-left-color: color-mix(in srgb, var(--fg) 7%, transparent);
+    }
+    .v-linear .bubble {
+      background: color-mix(in srgb, var(--fg) 2.5%, transparent);
+      border-color: color-mix(in srgb, var(--fg) 8%, transparent);
+      border-radius: 6px;
+    }
+    .v-linear .prose { font-size: 13.5px; line-height: 1.65; }
+    .v-linear .editor-wrap { padding: 16px 22px; }
+    .v-linear .btn-primary {
+      border-radius: 6px;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 40%, transparent);
+    }
+
+    /* ═══ VARIANT B — Obsidian panes ═══ */
+    /* multi-pane, stronger pane splits, file-tree feel, slightly warmer density */
+    .v-obsidian .body {
+      grid-template-columns: 48px 140px 1fr 200px;
+    }
+    .v-obsidian .files {
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      padding: 10px 8px;
+      font-size: 11px;
+      display: flex; flex-direction: column; gap: 2px;
+      min-width: 0;
+    }
+    .v-obsidian .files .hd {
+      font-size: 9px; font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted-fg);
+      padding: 0 6px 6px;
+    }
+    .v-obsidian .file {
+      padding: 5px 6px;
+      border-radius: 4px;
+      color: var(--muted-fg);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .v-obsidian .file.on {
+      background: var(--sidebar-accent);
+      color: var(--fg);
+    }
+    .v-obsidian .editor-wrap {
+      padding: 14px 18px;
+      border-right: 1px solid var(--border);
+    }
+    .v-obsidian .prose {
+      font-size: 13.5px;
+      line-height: 1.72;
+      max-width: none;
+    }
+    .v-obsidian .chat {
+      background: var(--sidebar);
+    }
+    .v-obsidian .tabstrip {
+      display: flex; gap: 0;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in srgb, var(--bg) 50%, var(--sidebar));
+      font-size: 11px;
+    }
+    .v-obsidian .tab {
+      padding: 7px 12px;
+      color: var(--muted-fg);
+      border-right: 1px solid var(--border);
+    }
+    .v-obsidian .tab.on {
+      color: var(--fg);
+      background: var(--bg);
+      box-shadow: inset 0 -1px 0 var(--bg), inset 0 2px 0 var(--primary);
+    }
+    .v-obsidian .main {
+      display: flex; flex-direction: column; min-height: 0;
+    }
+    .v-obsidian .main > .editor-wrap { flex: 1; }
+
+    /* ═══ VARIANT C — Raycast accents ═══ */
+    /* command energy: gradient accent sparingly, glow on focus controls, kbd */
+    .v-raycast .topbar {
+      position: relative;
+    }
+    .v-raycast .topbar::after {
+      content: "";
+      position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--raycast-a), var(--raycast-b), transparent);
+      opacity: 0.55;
+    }
+    .v-raycast .rail-btn.active {
+      background: color-mix(in srgb, var(--primary) 18%, transparent);
+      color: var(--primary);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent),
+                  0 0 16px var(--accent-glow);
+    }
+    .v-raycast .cmd {
+      margin: 0 8px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+      background: color-mix(in srgb, var(--primary) 8%, var(--card));
+      box-shadow: 0 0 24px var(--accent-glow);
+      font-size: 11px;
+      color: var(--muted-fg);
+    }
+    .v-raycast .cmd kbd {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--muted);
+      color: var(--fg);
+    }
+    .v-raycast .cmd .spark {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--raycast-a), var(--raycast-b));
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+    .v-raycast .bubble.user {
+      border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+      box-shadow: 0 0 20px color-mix(in srgb, var(--primary) 12%, transparent);
+    }
+    .v-raycast .btn-primary {
+      background: linear-gradient(135deg, var(--raycast-a), var(--raycast-b));
+      color: var(--primary-fg);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    .v-raycast .pill.accent {
+      border: none;
+      background: linear-gradient(135deg,
+        color-mix(in srgb, var(--raycast-a) 25%, transparent),
+        color-mix(in srgb, var(--raycast-b) 25%, transparent));
+      color: var(--fg);
+    }
+
+    .notes {
+      padding: 0 20px 32px;
+      max-width: 900px;
+      font-size: 12px;
+      color: var(--board-muted);
+      line-height: 1.55;
+    }
+    .notes h3 {
+      margin: 0 0 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--board-ink);
+    }
+    .notes code {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.06);
+      color: #cfcfd6;
+    }
+  </style>
+</head>
+<body>
+  <header class="board-header">
+    <div>
+      <h1>Story Nexus — UI moodboard</h1>
+      <p>
+        Same workspace foundation (rail · editor · chat). Chrome posture changes only.
+        Palettes = your live <strong style="color:inherit;font-weight:500">Black &amp; Sand</strong> and
+        <strong style="color:inherit;font-weight:500">Midnight</strong> tokens.
+        Inspiration: Linear density, Obsidian panes, Raycast accent energy — not clones.
+      </p>
+    </div>
+    <div class="tweaks" id="tweaks">
+      <label>
+        Palette
+        <select id="palette">
+          <option value="sand" selected>Black &amp; Sand</option>
+          <option value="midnight">Midnight</option>
+        </select>
+      </label>
+      <button type="button" data-focus="all" class="active">All three</button>
+      <button type="button" data-focus="linear">Linear only</button>
+      <button type="button" data-focus="obsidian">Obsidian only</button>
+      <button type="button" data-focus="raycast">Raycast only</button>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span><strong>A Linear</strong> — hairlines, left active bar, tight type, quiet surfaces</span>
+    <span><strong>B Obsidian</strong> — file pane + tabs + multi-split</span>
+    <span><strong>C Raycast</strong> — gradient accent, glow, cmd strip (sparingly)</span>
+  </div>
+
+  <div class="grid" id="grid">
+    <!-- A LINEAR -->
+    <section class="variant v-linear" data-variant="linear">
+      <div class="variant-meta">
+        <h2>A · Linear studio</h2>
+        <p>Dense chrome, luminance steps, 1px structure, primary only on active rail + CTA.</p>
+      </div>
+      <div class="shell" data-palette="sand">
+        <div class="topbar">
+          <span class="story">Dominus et Servi</span>
+          <span class="sep">/</span>
+          <span class="muted">Ch. 3 · The Negotiation</span>
+          <span class="spacer"></span>
+          <span class="pill">Focus</span>
+          <span class="pill accent">Editor</span>
+        </div>
+        <div class="body">
+          <nav class="rail" aria-label="Tools">
+            <div class="rail-btn active" title="Editor">Ed</div>
+            <div class="rail-btn" title="Lorebook">Lb</div>
+            <div class="rail-btn" title="Outline">Ou</div>
+            <div class="rail-btn" title="Notes">No</div>
+            <div class="rail-btn" title="Research">Rs</div>
+          </nav>
+          <div class="main">
+            <div class="editor-wrap">
+              <div class="editor-label">Manuscript</div>
+              <div class="prose">
+                <p>Vex kept the folder closed until Marcus finished pouring. The glass clicked once on the marble — deliberate, not nervous.</p>
+                <p class="dim">“Clause twelve,” she said. “You already know which knife you brought.”</p>
+                <p>He almost smiled. Almost.</p>
+              </div>
+            </div>
+          </div>
+          <aside class="chat">
+            <div class="chat-head">
+              <span>Editor chat</span>
+              <button class="btn-ghost" type="button">Tray</button>
+            </div>
+            <div class="chat-msgs">
+              <div class="bubble user">Tighten the power beat — less tell, more hold.</div>
+              <div class="bubble">Keep her stillness. Cut the smile. Let the folder do the threat.</div>
+              <div class="bubble stub">Research shuttle? MI6 blade types → Open Research</div>
+            </div>
+            <div class="chat-compose">
+              <div class="compose-box">Write a message…</div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- B OBSIDIAN -->
+    <section class="variant v-obsidian" data-variant="obsidian">
+      <div class="variant-meta">
+        <h2>B · Obsidian panes</h2>
+        <p>Multi-split workspace: tool rail + chapter tree + editor tab + chat. Heavier structure, still your colors.</p>
+      </div>
+      <div class="shell" data-palette="sand">
+        <div class="topbar">
+          <span class="story">Dominus et Servi</span>
+          <span class="sep">/</span>
+          <span class="muted">Workspace</span>
+          <span class="spacer"></span>
+          <span class="pill accent">Linked panes</span>
+        </div>
+        <div class="body">
+          <nav class="rail" aria-label="Tools">
+            <div class="rail-btn active">Ed</div>
+            <div class="rail-btn">Lb</div>
+            <div class="rail-btn">Ou</div>
+            <div class="rail-btn">No</div>
+            <div class="rail-btn">Rs</div>
+          </nav>
+          <div class="files">
+            <div class="hd">Chapters</div>
+            <div class="file">01 · Arrival</div>
+            <div class="file">02 · The Drop</div>
+            <div class="file on">03 · Negotiation</div>
+            <div class="file">04 · Afterimage</div>
+          </div>
+          <div class="main">
+            <div class="tabstrip">
+              <div class="tab on">Ch. 3</div>
+              <div class="tab">Vex sheet</div>
+              <div class="tab">+</div>
+            </div>
+            <div class="editor-wrap">
+              <div class="prose">
+                <p>Vex kept the folder closed until Marcus finished pouring. The glass clicked once on the marble — deliberate, not nervous.</p>
+                <p class="dim">Linked pane: Codex wardrobe stays visible while you write.</p>
+              </div>
+            </div>
+          </div>
+          <aside class="chat">
+            <div class="chat-head"><span>Editor chat</span></div>
+            <div class="chat-msgs">
+              <div class="bubble user">Hold on continuity with Ch. 2 knife mention.</div>
+              <div class="bubble">Scanner found no concrete-state clash. Want a Research shuttle for tradecraft?</div>
+            </div>
+            <div class="chat-compose"><div class="compose-box">Message…</div></div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- C RAYCAST -->
+    <section class="variant v-raycast" data-variant="raycast">
+      <div class="variant-meta">
+        <h2>C · Raycast accents</h2>
+        <p>Same shell as A, but accent <em>energy</em>: gradient CTA, soft glow on active, command strip. Easy to overdo — moodboard shows the ceiling.</p>
+      </div>
+      <div class="shell" data-palette="sand">
+        <div class="topbar">
+          <span class="story">Dominus et Servi</span>
+          <span class="sep">/</span>
+          <span class="muted">Ch. 3</span>
+          <span class="spacer"></span>
+          <div class="cmd" title="Command">
+            <span class="spark"></span>
+            <span>Search or jump…</span>
+            <kbd>⌘K</kbd>
+          </div>
+          <span class="pill accent">AI</span>
+        </div>
+        <div class="body">
+          <nav class="rail" aria-label="Tools">
+            <div class="rail-btn active">Ed</div>
+            <div class="rail-btn">Lb</div>
+            <div class="rail-btn">Ou</div>
+            <div class="rail-btn">No</div>
+            <div class="rail-btn">Rs</div>
+          </nav>
+          <div class="main">
+            <div class="editor-wrap">
+              <div class="editor-label">Manuscript</div>
+              <div class="prose">
+                <p>Vex kept the folder closed until Marcus finished pouring.</p>
+                <p class="dim">Accent lives on chrome and actions — not on every paragraph.</p>
+              </div>
+              <div style="margin-top:12px">
+                <button class="btn-primary" type="button">Rework selection</button>
+                <button class="btn-ghost" type="button" style="margin-left:6px">Shuttle</button>
+              </div>
+            </div>
+          </div>
+          <aside class="chat">
+            <div class="chat-head">
+              <span>Editor chat</span>
+              <button class="btn-primary" type="button">Send</button>
+            </div>
+            <div class="chat-msgs">
+              <div class="bubble user">What knives would MI6 actually issue?</div>
+              <div class="bubble stub">That’s Research desk — shuttle offered (stub only).</div>
+            </div>
+            <div class="chat-compose"><div class="compose-box">Message…</div></div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="notes">
+    <h3>How this fits claude-design (CLI mode)</h3>
+    <p>
+      Hosted Claude Design panes don’t exist here. The workflow is:
+      <strong style="color:inherit;font-weight:500">brief → context (your tokens) → surface (Operate) → HTML artifact → pick a direction → tighten in repo tokens</strong>.
+      File lives at <code>docs/design-mocks/SN_UI_Moodboard.html</code> — open in any browser (double-click or drag into Chrome).
+    </p>
+    <h3>Foundation-safe takeaway</h3>
+    <p>
+      No new layout architecture required. Likely ship path if you like what you see:
+      keep SN grid; retune <code>--radius</code> + borders toward Linear; optional chapter pane (Obsidian) as a density mode;
+      Raycast glow only on focus/cmd/primary CTA — never full-app gradients.
+    </p>
+  </section>
+
+  <script>
+    const shells = () => document.querySelectorAll(".shell");
+    const palette = document.getElementById("palette");
+    const applyPalette = () => {
+      const p = palette.value;
+      shells().forEach(s => s.setAttribute("data-palette", p));
+      localStorage.setItem("sn-moodboard-palette", p);
+    };
+    palette.value = localStorage.getItem("sn-moodboard-palette") || "sand";
+    applyPalette();
+    palette.addEventListener("change", applyPalette);
+
+    const variants = document.querySelectorAll("[data-variant]");
+    document.querySelectorAll("[data-focus]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-focus]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const f = btn.getAttribute("data-focus");
+        variants.forEach(v => {
+          const id = v.getAttribute("data-variant");
+          v.style.display = f === "all" || f === id ? "" : "none";
+        });
+        localStorage.setItem("sn-moodboard-focus", f);
+      });
+    });
+    const savedFocus = localStorage.getItem("sn-moodboard-focus");
+    if (savedFocus) {
+      const b = document.querySelector(`[data-focus="${savedFocus}"]`);
+      if (b) b.click();
+    }
+  </script>
+</body>
+</html>

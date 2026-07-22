@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Story Nexus — Linear + Raycast · Light</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* Linear density + Raycast accent energy on SN Light (:root in src/index.css).
+       Violet Raycast accents kept for brand energy — light surfaces, soft purple glow. */
+
+    :root {
+      --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+      --r-md: 6px;
+      --r-lg: 8px;
+      --board-bg: #e8e9ed;
+      --board-ink: #14151a;
+      --board-muted: #5c5f6a;
+      --board-line: rgba(0,0,0,0.08);
+
+      /* SN Light tokens */
+      --bg: hsl(0 0% 100%);
+      --fg: hsl(224 71.4% 4.1%);
+      --card: hsl(0 0% 100%);
+      --muted: hsl(220 14.3% 90%);
+      --muted-fg: hsl(220 8.9% 30%);
+      --border: hsl(220 13% 78%);
+      --sidebar: hsl(0 0% 98%);
+      --sidebar-accent: hsl(240 4.8% 95.9%);
+
+      /* Raycast accent (not SN light's near-black primary) */
+      --primary: hsl(255 70% 58%);
+      --primary-fg: #ffffff;
+      --ring: hsl(255 70% 58%);
+      --accent-glow: rgba(113, 112, 255, 0.28);
+      --raycast-a: #8b7cf8;
+      --raycast-b: #6366f1;
+      --fg-bright: hsl(224 71.4% 4.1%);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      background: var(--board-bg);
+      color: var(--board-ink);
+      font-feature-settings: "cv01", "ss03";
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .board-header {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--board-line);
+      background: rgba(232,233,237,0.92);
+      backdrop-filter: blur(12px);
+    }
+    .board-header h1 {
+      margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.02em;
+    }
+    .board-header p {
+      margin: 2px 0 0; font-size: 12px; color: var(--board-muted); max-width: 48rem; line-height: 1.45;
+    }
+    .badge {
+      margin-left: auto;
+      font-size: 11px; font-weight: 500;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border));
+      color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 10%, white);
+    }
+
+    .wrap { padding: 20px; max-width: 1140px; margin: 0 auto; }
+    .variant-meta { margin-bottom: 10px; }
+    .variant-meta h2 {
+      margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -0.01em;
+    }
+    .variant-meta p {
+      margin: 2px 0 0; font-size: 11px; color: var(--board-muted); line-height: 1.4;
+    }
+
+    /* ─── Shell: Linear + Raycast ─── */
+    .shell {
+      background: var(--bg);
+      color: var(--fg);
+      border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+      border-radius: 12px;
+      overflow: hidden;
+      height: 560px;
+      display: grid;
+      grid-template-rows: 36px 1fr;
+      box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 24px 48px rgba(15, 23, 42, 0.08);
+    }
+
+    .topbar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 12px;
+      height: 36px;
+      font-size: 11.5px;
+      font-weight: 500;
+      border-bottom: 1px solid color-mix(in srgb, var(--fg) 7%, transparent);
+      background: color-mix(in srgb, var(--bg) 70%, var(--sidebar));
+      position: relative;
+    }
+    .topbar::after {
+      content: "";
+      position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--raycast-a), var(--raycast-b), transparent);
+      opacity: 0.65;
+    }
+    .topbar .story { font-weight: 500; color: var(--fg-bright); }
+    .topbar .sep { opacity: 0.35; }
+    .topbar .muted { color: var(--muted-fg); }
+    .topbar .spacer { flex: 1; }
+
+    .pill {
+      font-size: 10px; font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted-fg);
+      background: var(--bg);
+    }
+    .pill.accent {
+      border: none;
+      background: linear-gradient(135deg,
+        color-mix(in srgb, var(--raycast-a) 22%, white),
+        color-mix(in srgb, var(--raycast-b) 22%, white));
+      color: hsl(255 45% 32%);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent);
+    }
+
+    .cmd {
+      margin: 0 4px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border));
+      background: color-mix(in srgb, var(--primary) 7%, white);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 8%, transparent),
+                  0 0 20px var(--accent-glow);
+      font-size: 11px;
+      color: var(--muted-fg);
+    }
+    .cmd kbd {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--muted);
+      color: var(--fg);
+    }
+    .cmd .spark {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--raycast-a), var(--raycast-b));
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .body {
+      display: grid;
+      grid-template-columns: 44px 1fr 210px;
+      min-height: 0;
+    }
+
+    .rail {
+      background: color-mix(in srgb, var(--bg) 40%, var(--sidebar));
+      border-right: 1px solid color-mix(in srgb, var(--fg) 7%, transparent);
+      display: flex; flex-direction: column; align-items: center;
+      padding: 6px 0; gap: 4px;
+    }
+    .rail-btn {
+      width: 30px; height: 30px;
+      border-radius: 6px;
+      border: none; background: transparent;
+      color: var(--muted-fg);
+      font-size: 10px; font-weight: 600;
+      cursor: default;
+      display: grid; place-items: center;
+      position: relative;
+    }
+    .rail-btn.active {
+      background: color-mix(in srgb, var(--primary) 12%, white);
+      color: var(--primary);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent),
+                  0 0 14px var(--accent-glow);
+    }
+    .rail-btn.active::after {
+      content: "";
+      position: absolute;
+      left: -7px; top: 7px; bottom: 7px; width: 2px;
+      border-radius: 1px;
+      background: var(--primary);
+      box-shadow: 0 0 6px var(--accent-glow);
+    }
+
+    .main {
+      display: grid;
+      min-width: 0; min-height: 0;
+      background: var(--bg);
+    }
+    .editor-wrap {
+      display: flex; flex-direction: column;
+      min-height: 0; padding: 16px 22px;
+    }
+    .editor-label {
+      font-size: 10px; font-weight: 500; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted-fg); margin-bottom: 10px;
+    }
+    .prose {
+      flex: 1; max-width: 38rem;
+      font-size: 13.5px; line-height: 1.65; font-weight: 400;
+      color: var(--fg);
+    }
+    .prose p { margin: 0 0 0.9em; }
+    .prose .dim { color: var(--muted-fg); }
+
+    .chat {
+      border-left: 1px solid color-mix(in srgb, var(--fg) 7%, transparent);
+      background: color-mix(in srgb, var(--fg) 2.5%, var(--bg));
+      display: flex; flex-direction: column; min-height: 0;
+    }
+    .chat-head {
+      padding: 10px 12px;
+      border-bottom: 1px solid color-mix(in srgb, var(--fg) 7%, transparent);
+      font-size: 11px; font-weight: 500;
+      display: flex; justify-content: space-between; align-items: center;
+      color: var(--fg-bright);
+    }
+    .chat-msgs {
+      flex: 1; padding: 10px; overflow: hidden;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .bubble {
+      font-size: 11px; line-height: 1.45;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
+      background: color-mix(in srgb, var(--fg) 2.5%, transparent);
+      color: var(--fg);
+    }
+    .bubble.user {
+      align-self: flex-end;
+      max-width: 92%;
+      background: color-mix(in srgb, var(--primary) 10%, white);
+      border-color: color-mix(in srgb, var(--primary) 32%, transparent);
+      box-shadow: 0 0 16px color-mix(in srgb, var(--primary) 10%, transparent);
+    }
+    .bubble.stub {
+      border-style: dashed;
+      color: var(--muted-fg);
+    }
+    .chat-compose {
+      padding: 8px;
+      border-top: 1px solid color-mix(in srgb, var(--fg) 7%, transparent);
+    }
+    .compose-box {
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 8px 10px;
+      font-size: 11px;
+      color: var(--muted-fg);
+      background: var(--bg);
+    }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 500;
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: none;
+      background: linear-gradient(135deg, var(--raycast-a), var(--raycast-b));
+      color: var(--primary-fg);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 0 16px var(--accent-glow);
+    }
+    .btn-ghost {
+      font-size: 11px; font-weight: 500;
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+    }
+
+    .notes {
+      padding: 8px 20px 32px;
+      max-width: 920px;
+      margin: 0 auto;
+      font-size: 12px;
+      color: var(--board-muted);
+      line-height: 1.55;
+    }
+    .notes h3 {
+      margin: 16px 0 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--board-ink);
+    }
+    .notes code {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.05);
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <header class="board-header">
+    <div>
+      <h1>Story Nexus — Linear + Raycast · Light</h1>
+      <p>
+        Same hybrid as Eclipse shot A: Linear hairline density + Raycast accents,
+        on SN <strong style="color:inherit;font-weight:500">Light</strong> surfaces
+        (<code style="font-family:var(--mono);font-size:11px">:root</code>).
+        Violet stays on chrome/CTA only — day-readable, soft glow.
+      </p>
+    </div>
+    <span class="badge">Light · Linear + Raycast</span>
+  </header>
+
+  <div class="wrap">
+    <div class="variant-meta">
+      <h2>A · Linear + Raycast · Light (day)</h2>
+      <p>White / cool-grey chrome, left active bar, ⌘K strip, gradient CTA. Compare against Eclipse Linear+Raycast.</p>
+    </div>
+    <div class="shell" id="shot-light">
+      <div class="topbar">
+        <span class="story">Dominus et Servi</span>
+        <span class="sep">/</span>
+        <span class="muted">Ch. 3 · The Negotiation</span>
+        <span class="spacer"></span>
+        <div class="cmd" title="Command">
+          <span class="spark"></span>
+          <span>Search or jump…</span>
+          <kbd>⌘K</kbd>
+        </div>
+        <span class="pill">Focus</span>
+        <span class="pill accent">Editor</span>
+      </div>
+      <div class="body">
+        <nav class="rail" aria-label="Tools">
+          <div class="rail-btn active" title="Editor">Ed</div>
+          <div class="rail-btn" title="Lorebook">Lb</div>
+          <div class="rail-btn" title="Outline">Ou</div>
+          <div class="rail-btn" title="Notes">No</div>
+          <div class="rail-btn" title="Research">Rs</div>
+        </nav>
+        <div class="main">
+          <div class="editor-wrap">
+            <div class="editor-label">Manuscript</div>
+            <div class="prose">
+              <p>Vex kept the folder closed until Marcus finished pouring. The glass clicked once on the marble — deliberate, not nervous.</p>
+              <p class="dim">“Clause twelve,” she said. “You already know which knife you brought.”</p>
+              <p>He almost smiled. Almost.</p>
+            </div>
+            <div style="margin-top:12px">
+              <button class="btn-primary" type="button">Rework selection</button>
+              <button class="btn-ghost" type="button" style="margin-left:6px">Shuttle</button>
+            </div>
+          </div>
+        </div>
+        <aside class="chat">
+          <div class="chat-head">
+            <span>Editor chat</span>
+            <button class="btn-primary" type="button">Send</button>
+          </div>
+          <div class="chat-msgs">
+            <div class="bubble user">Tighten the power beat — less tell, more hold.</div>
+            <div class="bubble">Keep her stillness. Cut the smile. Let the folder do the threat.</div>
+            <div class="bubble stub">Research shuttle? MI6 blade types → Open Research</div>
+          </div>
+          <div class="chat-compose">
+            <div class="compose-box">Write a message…</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <section class="notes">
+    <h3>Palette note</h3>
+    <p>
+      Surfaces from SN Light. Accent primary is Raycast violet (not Light’s near-black
+      <code>--primary</code>) so day mode still carries the same energy language as Midnight/Eclipse hybrids.
+      Glow is dialed softer than dark to avoid muddy halos on white.
+    </p>
+  </section>
+</body>
+</html>

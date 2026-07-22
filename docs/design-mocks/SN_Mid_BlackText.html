@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/>
+<title>Mid brightness black-text palettes</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--font:Inter,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);background:#1a1a1c;color:#e8e8ea;padding:16px 20px 32px}
+h1{font-size:14px;margin:0 0 4px}
+p{font-size:12px;color:#8b8b93;margin:0 0 16px;max-width:40rem;line-height:1.45}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.card{border-radius:12px;overflow:hidden;border:1px solid rgba(0,0,0,.15);min-height:220px;display:flex;flex-direction:column}
+.meta{padding:8px 0;font-size:12px}
+.meta strong{display:block;font-size:12.5px;margin-bottom:2px}
+.meta span{color:#8b8b93;font-size:11px}
+.panel{flex:1;padding:16px 18px}
+.panel h2{margin:0 0 8px;font-size:13px;font-weight:600}
+.panel p{color:inherit;opacity:.85;font-size:12.5px;line-height:1.55;margin:0 0 10px}
+.btn{display:inline-block;font-size:11px;font-weight:500;padding:5px 10px;border-radius:6px;border:none}
+.sw{display:flex;gap:4px;margin-top:8px}
+.sw i{width:16px;height:16px;border-radius:3px;border:1px solid rgba(0,0,0,.2)}
+</style></head><body>
+<h1>Mid-brightness · black text</h1>
+<p>Backgrounds ~L68–72 so near-black body text stays readable. Distinct from pure white Light and from dark OLED nights. Also live as app themes: Mid Stone, Mid Slate, Mid Sage (plus existing Graphite).</p>
+<div class="grid">
+  <div>
+    <div class="meta"><strong>Mid Stone</strong><span>Warm stone · umber primary</span></div>
+    <div class="card" style="background:hsl(32 14% 72%);color:hsl(30 12% 10%)">
+      <div class="panel">
+        <h2>Manuscript</h2>
+        <p>Vex kept the folder closed until Marcus finished pouring. Black ink on warm mid stone.</p>
+        <button class="btn" style="background:hsl(28 40% 32%);color:hsl(36 30% 94%)">Rework</button>
+        <div class="sw"><i style="background:hsl(32 14% 72%)"></i><i style="background:hsl(30 12% 10%)"></i><i style="background:hsl(28 40% 32%)"></i></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="meta"><strong>Mid Slate</strong><span>Cool gray · slate primary</span></div>
+    <div class="card" style="background:hsl(220 10% 70%);color:hsl(224 20% 10%)">
+      <div class="panel">
+        <h2>Manuscript</h2>
+        <p>Vex kept the folder closed until Marcus finished pouring. Black ink on cool mid slate.</p>
+        <button class="btn" style="background:hsl(230 28% 30%);color:hsl(210 20% 96%)">Rework</button>
+        <div class="sw"><i style="background:hsl(220 10% 70%)"></i><i style="background:hsl(224 20% 10%)"></i><i style="background:hsl(230 28% 30%)"></i></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="meta"><strong>Mid Sage</strong><span>Muted green-gray · forest primary</span></div>
+    <div class="card" style="background:hsl(140 12% 71%);color:hsl(150 18% 10%)">
+      <div class="panel">
+        <h2>Manuscript</h2>
+        <p>Vex kept the folder closed until Marcus finished pouring. Black ink on mid sage paper.</p>
+        <button class="btn" style="background:hsl(150 28% 28%);color:hsl(120 20% 96%)">Rework</button>
+        <div class="sw"><i style="background:hsl(140 12% 71%)"></i><i style="background:hsl(150 18% 10%)"></i><i style="background:hsl(150 28% 28%)"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

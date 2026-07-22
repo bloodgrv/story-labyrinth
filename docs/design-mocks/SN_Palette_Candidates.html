@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Story Nexus — Linear+Raycast palette candidates</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+      --board-bg: #0c0c0e;
+      --board-ink: #e8e8ea;
+      --board-muted: #8b8b93;
+      --board-line: rgba(255,255,255,0.08);
+    }
+
+    /* ── Palette packs (Linear+Raycast chrome; candidates not in app yet) ── */
+
+    /* Day · Mist — cool paper, slate ink, indigo raycast */
+    [data-p="mist"] {
+      --bg: #f4f5f8; --fg: #1a1d26; --card: #ffffff; --muted: #e4e6ec;
+      --muted-fg: #5c6370; --border: #d0d4de; --sidebar: #eef0f4;
+      --sidebar-accent: #e2e5ec; --primary: #5b5bd6; --primary-fg: #fff;
+      --glow: rgba(91, 91, 214, 0.22); --ra: #7c7cf0; --rb: #4f46e5;
+      --fg-b: #12141a;
+    }
+    /* Day · Dark parchment — warm brown ground, ink, amber-copper accent */
+    [data-p="parchment-dark"] {
+      --bg: #2a2218; --fg: #e4d5b8; --card: #32281c; --muted: #3d3224;
+      --muted-fg: #a89478; --border: #4a3c2a; --sidebar: #241c14;
+      --sidebar-accent: #3a2e20; --primary: #d4a574; --primary-fg: #1f1810;
+      --glow: rgba(212, 165, 116, 0.28); --ra: #e0b888; --rb: #c4894a;
+      --fg-b: #f0e4cc;
+    }
+    /* Night · Abyss — cold near-black, ice blue accent */
+    [data-p="abyss"] {
+      --bg: #070a0f; --fg: #c5ced9; --card: #0c1118; --muted: #141b24;
+      --muted-fg: #6b7a8c; --border: #1a2430; --sidebar: #05080c;
+      --sidebar-accent: #121820; --primary: #5eb0ff; --primary-fg: #041018;
+      --glow: rgba(94, 176, 255, 0.28); --ra: #7ec4ff; --rb: #3b82f6;
+      --fg-b: #dce6f0;
+    }
+    /* Night · Matrix / Borg — phosphor green, void black, cyan secondary in gradient */
+    [data-p="matrix"] {
+      --bg: #030805; --fg: #9fe8a8; --card: #07110a; --muted: #0c1a10;
+      --muted-fg: #4d8a58; --border: #14331c; --sidebar: #020604;
+      --sidebar-accent: #0a160e; --primary: #33ff66; --primary-fg: #021006;
+      --glow: rgba(51, 255, 102, 0.22); --ra: #39ff14; --rb: #00e5a8;
+      --fg-b: #b8ffc0;
+    }
+    /* Night · Ember — charcoal + muted crimson (evening writing, less neon) */
+    [data-p="ember"] {
+      --bg: #121014; --fg: #e2d6d4; --card: #1a161a; --muted: #261f24;
+      --muted-fg: #9a8588; --border: #352a30; --sidebar: #0e0c10;
+      --sidebar-accent: #221c20; --primary: #e06b6b; --primary-fg: #1a0c0c;
+      --glow: rgba(224, 107, 107, 0.26); --ra: #f08080; --rb: #c44b6a;
+      --fg-b: #f0e4e2;
+    }
+    /* Day · Bone — warmer light than Mist; soft clay accent */
+    [data-p="bone"] {
+      --bg: #f7f2ea; --fg: #2a241c; --card: #fffdf8; --muted: #ebe3d6;
+      --muted-fg: #6e6456; --border: #d9cfbf; --sidebar: #f0e9dd;
+      --sidebar-accent: #e5dccb; --primary: #b07d4a; --primary-fg: #fffaf3;
+      --glow: rgba(176, 125, 74, 0.22); --ra: #c9965c; --rb: #9a6534;
+      --fg-b: #1c1812;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      background: var(--board-bg);
+      color: var(--board-ink);
+      -webkit-font-smoothing: antialiased;
+    }
+    .board-header {
+      position: sticky; top: 0; z-index: 40;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--board-line);
+      background: rgba(12,12,14,0.94);
+      backdrop-filter: blur(12px);
+    }
+    .board-header h1 { margin: 0; font-size: 14px; font-weight: 600; }
+    .board-header p {
+      margin: 4px 0 0; font-size: 12px; color: var(--board-muted);
+      max-width: 52rem; line-height: 1.45;
+    }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 12px 20px;
+      padding: 10px 20px 0; font-size: 11px; color: var(--board-muted);
+    }
+    .legend strong { color: var(--board-ink); font-weight: 500; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(280px, 1fr));
+      gap: 16px;
+      padding: 16px 20px 40px;
+    }
+    @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+
+    .variant { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .variant-meta h2 { margin: 0; font-size: 12.5px; font-weight: 600; }
+    .variant-meta p { margin: 2px 0 0; font-size: 11px; color: var(--board-muted); line-height: 1.35; }
+    .swatches { display: flex; gap: 4px; margin-top: 4px; }
+    .swatches i {
+      width: 14px; height: 14px; border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.12);
+      display: block;
+    }
+
+    /* Linear + Raycast shell (shared) */
+    .shell {
+      background: var(--bg); color: var(--fg);
+      border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
+      border-radius: 12px; overflow: hidden; height: 380px;
+      display: grid; grid-template-rows: 34px 1fr;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+    }
+    .topbar {
+      display: flex; align-items: center; gap: 8px; padding: 0 10px;
+      font-size: 11px; font-weight: 500;
+      border-bottom: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
+      background: color-mix(in srgb, var(--bg) 65%, var(--sidebar));
+      position: relative;
+    }
+    .topbar::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--ra), var(--rb), transparent);
+      opacity: 0.55;
+    }
+    .topbar .story { color: var(--fg-b); }
+    .topbar .muted { color: var(--muted-fg); }
+    .topbar .sep { opacity: 0.35; }
+    .topbar .spacer { flex: 1; }
+    .cmd {
+      display: flex; align-items: center; gap: 6px;
+      padding: 3px 8px; border-radius: 7px; font-size: 10px; color: var(--muted-fg);
+      border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+      background: color-mix(in srgb, var(--primary) 9%, var(--card));
+      box-shadow: 0 0 16px var(--glow);
+    }
+    .cmd .spark {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--ra), var(--rb));
+      box-shadow: 0 0 8px var(--glow);
+    }
+    .cmd kbd {
+      font-family: var(--mono); font-size: 9px; padding: 1px 4px;
+      border-radius: 3px; border: 1px solid var(--border);
+      background: var(--muted); color: var(--fg);
+    }
+    .pill {
+      font-size: 9px; font-weight: 500; padding: 2px 7px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--muted-fg);
+    }
+    .pill.accent {
+      border: none; color: var(--fg-b);
+      background: linear-gradient(135deg,
+        color-mix(in srgb, var(--ra) 28%, transparent),
+        color-mix(in srgb, var(--rb) 28%, transparent));
+    }
+    .body { display: grid; grid-template-columns: 40px 1fr 168px; min-height: 0; }
+    .rail {
+      background: color-mix(in srgb, var(--bg) 40%, var(--sidebar));
+      border-right: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
+      display: flex; flex-direction: column; align-items: center;
+      padding: 5px 0; gap: 3px;
+    }
+    .rail-btn {
+      width: 28px; height: 28px; border-radius: 6px; border: none;
+      background: transparent; color: var(--muted-fg);
+      font-size: 9px; font-weight: 600; display: grid; place-items: center;
+      position: relative;
+    }
+    .rail-btn.active {
+      background: color-mix(in srgb, var(--primary) 14%, transparent);
+      color: var(--primary);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 32%, transparent),
+                  0 0 12px var(--glow);
+    }
+    .rail-btn.active::after {
+      content: ""; position: absolute; left: -6px; top: 6px; bottom: 6px; width: 2px;
+      border-radius: 1px; background: var(--primary); box-shadow: 0 0 6px var(--glow);
+    }
+    .main { min-width: 0; background: var(--bg); }
+    .editor-wrap { padding: 12px 14px; display: flex; flex-direction: column; height: 100%; }
+    .editor-label {
+      font-size: 9px; font-weight: 500; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted-fg); margin-bottom: 8px;
+    }
+    .prose { font-size: 12px; line-height: 1.6; flex: 1; }
+    .prose p { margin: 0 0 0.7em; }
+    .prose .dim { color: var(--muted-fg); }
+    .actions { margin-top: 8px; }
+    .btn-primary {
+      font-size: 10px; font-weight: 500; padding: 4px 9px; border-radius: 6px; border: none;
+      background: linear-gradient(135deg, var(--ra), var(--rb));
+      color: var(--primary-fg); box-shadow: 0 0 14px var(--glow);
+    }
+    .btn-ghost {
+      font-size: 10px; font-weight: 500; padding: 4px 8px; border-radius: 6px;
+      border: 1px solid var(--border); background: transparent; color: var(--fg);
+      margin-left: 4px;
+    }
+    .chat {
+      border-left: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
+      background: color-mix(in srgb, var(--fg) 2.5%, var(--bg));
+      display: flex; flex-direction: column; min-height: 0;
+    }
+    .chat-head {
+      padding: 8px 10px; font-size: 10px; font-weight: 500; color: var(--fg-b);
+      border-bottom: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .chat-msgs { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+    .bubble {
+      font-size: 10px; line-height: 1.4; padding: 6px 8px; border-radius: 6px;
+      border: 1px solid color-mix(in srgb, var(--fg) 9%, transparent);
+      background: color-mix(in srgb, var(--fg) 2.5%, transparent);
+    }
+    .bubble.user {
+      align-self: flex-end; max-width: 94%;
+      background: color-mix(in srgb, var(--primary) 12%, transparent);
+      border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+      box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 12%, transparent);
+    }
+    .compose {
+      padding: 6px; border-top: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
+    }
+    .compose-box {
+      border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px;
+      font-size: 10px; color: var(--muted-fg);
+      background: color-mix(in srgb, var(--fg) 2%, var(--bg));
+    }
+
+    .notes {
+      padding: 0 20px 36px; max-width: 900px; font-size: 12px;
+      color: var(--board-muted); line-height: 1.55;
+    }
+    .notes h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--board-ink); }
+    .notes code {
+      font-family: var(--mono); font-size: 11px; padding: 1px 5px; border-radius: 4px;
+      background: rgba(255,255,255,0.06); color: #cfcfd6;
+    }
+  </style>
+</head>
+<body>
+  <header class="board-header">
+    <h1>Story Nexus — palette candidates (Linear A + Raycast)</h1>
+    <p>
+      Chrome posture locked. These are <strong style="color:inherit;font-weight:500">proposed color packs</strong>
+      (not app themes yet). Includes darker parchment + Matrix/Borg, plus day/night companions.
+      Accent energy stays on chrome only.
+    </p>
+  </header>
+  <div class="legend">
+    <span><strong>Day</strong> Mist · Bone · (Dark parchment = dim warm)</span>
+    <span><strong>Night</strong> Abyss · Matrix/Borg · Ember</span>
+  </div>
+
+  <div class="grid" id="grid">
+    <!-- MIST -->
+    <section class="variant">
+      <div class="variant-meta">
+        <h2>Day · Mist</h2>
+        <p>Cool paper, slate ink, indigo Raycast. Clean office day mode.</p>
+        <div class="swatches">
+          <i style="background:#f4f5f8"></i><i style="background:#1a1d26"></i>
+          <i style="background:#5b5bd6"></i><i style="background:#e4e6ec"></i>
+        </div>
+      </div>
+      <div class="shell" data-p="mist"></div>
+    </section>
+
+    <!-- BONE -->
+    <section class="variant">
+      <div class="variant-meta">
+        <h2>Day · Bone</h2>
+        <p>Warm light clay paper; copper accent. Softer than Mist, brighter than parchment.</p>
+        <div class="swatches">
+          <i style="background:#f7f2ea"></i><i style="background:#2a241c"></i>
+          <i style="background:#b07d4a"></i><i style="background:#ebe3d6"></i>
+        </div>
+      </div>
+      <div class="shell" data-p="bone"></div>
+    </section>
+
+    <!-- DARK PARCHMENT -->
+    <section class="variant">
+      <div class="variant-meta">
+        <h2>Dim · Dark parchment</h2>
+        <p>Deep warm brown “aged paper at night.” Amber-copper glow. Reading lamp energy.</p>
+        <div class="swatches">
+          <i style="background:#2a2218"></i><i style="background:#e4d5b8"></i>
+          <i style="background:#d4a574"></i><i style="background:#3d3224"></i>
+        </div>
+      </div>
+      <div class="shell" data-p="parchment-dark"></div>
+    </section>
+
+    <!-- ABYSS -->
+    <section class="variant">
+      <div class="variant-meta">
+        <h2>Night · Abyss</h2>
+        <p>Cold void + ice blue. Less violet than Midnight; cinematic night.</p>
+        <div class="swatches">
+          <i style="background:#070a0f"></i><i style="background:#c5ced9"></i>
+          <i style="background:#5eb0ff"></i><i style="background:#141b24"></i>
+        </div>
+      </div>
+      <div class="shell" data-p="abyss"></div>
+    </section>
+
+    <!-- MATRIX -->
+    <section class="variant">
+      <div class="variant-meta">
+        <h2>Night · Matrix / Borg</h2>
+        <p>Void black, phosphor green, cyan in gradient. Terminal assimilation vibes — restrained glow.</p>
+        <div class="swatches">
+          <i style="background:#030805"></i><i style="background:#9fe8a8"></i>
+          <i style="background:#33ff66"></i><i style="background:#00e5a8"></i>
+        </div>
+      </div>
+      <div class="shell" data-p="matrix"></div>
+    </section>
+
+    <!-- EMBER -->
+    <section class="variant">
+      <div class="variant-meta">
+        <h2>Night · Ember</h2>
+        <p>Charcoal rose + muted crimson. Softer than Matrix; evening prose without green HUD.</p>
+        <div class="swatches">
+          <i style="background:#121014"></i><i style="background:#e2d6d4"></i>
+          <i style="background:#e06b6b"></i><i style="background:#261f24"></i>
+        </div>
+      </div>
+      <div class="shell" data-p="ember"></div>
+    </section>
+  </div>
+
+  <section class="notes">
+    <h3>Status</h3>
+    <p>
+      Candidates only — chrome lock stays Linear+Raycast. Existing SN themes (Midnight, Eclipse, Sand, Light, Sepia, Forest…) remain.
+      Promote any pack by adding a class in <code>src/index.css</code> + label in <code>theme-provider.tsx</code>.
+    </p>
+  </section>
+
+  <script>
+    const shellHTML = `
+      <div class="topbar">
+        <span class="story">Dominus et Servi</span>
+        <span class="sep">/</span>
+        <span class="muted">Ch. 3</span>
+        <span class="spacer"></span>
+        <div class="cmd"><span class="spark"></span><span>Jump…</span><kbd>⌘K</kbd></div>
+        <span class="pill accent">Editor</span>
+      </div>
+      <div class="body">
+        <nav class="rail">
+          <div class="rail-btn active">Ed</div>
+          <div class="rail-btn">Lb</div>
+          <div class="rail-btn">Ou</div>
+          <div class="rail-btn">No</div>
+        </nav>
+        <div class="main">
+          <div class="editor-wrap">
+            <div class="editor-label">Manuscript</div>
+            <div class="prose">
+              <p>Vex kept the folder closed until Marcus finished pouring.</p>
+              <p class="dim">“Clause twelve,” she said. “You already know which knife.”</p>
+            </div>
+            <div class="actions">
+              <button class="btn-primary" type="button">Rework</button>
+              <button class="btn-ghost" type="button">Shuttle</button>
+            </div>
+          </div>
+        </div>
+        <aside class="chat">
+          <div class="chat-head"><span>Chat</span><button class="btn-primary" type="button">Send</button></div>
+          <div class="chat-msgs">
+            <div class="bubble user">Tighten the hold.</div>
+            <div class="bubble">Keep stillness. Cut the smile.</div>
+          </div>
+          <div class="compose"><div class="compose-box">Message…</div></div>
+        </aside>
+      </div>`;
+    document.querySelectorAll('.shell').forEach(s => { s.innerHTML = shellHTML; });
+  </script>
+</body>
+</html>
