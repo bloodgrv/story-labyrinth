@@ -28,6 +28,7 @@ export { chaptersApi } from "./chaptersClient";
 export { chapterSnapshotsApi } from "./chapterSnapshotsClient";
 export { chapterVersionsApi } from "./chapterVersionsClient";
 export { codexApi } from "./codexClient";
+export { deskTransfersApi } from "./deskTransfersClient";
 export { foldersApi } from "./foldersClient";
 export { grammarApi } from "./grammarClient";
 export { humanizerApi } from "./humanizerClient";

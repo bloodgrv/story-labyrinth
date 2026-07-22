@@ -163,7 +163,9 @@ export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
                     renderNewChatAction={renderNewChatButton}
                     side="right"
                 />
-                {selectedChat && <NotesChecklistTray chatId={selectedChat.id} storyId={storyId} />}
+                {selectedChat && (
+                    <NotesChecklistTray chatId={selectedChat.id} storyId={storyId} fromChatTitleSnapshot={selectedChat.title} />
+                )}
             </div>
         </div>
     );

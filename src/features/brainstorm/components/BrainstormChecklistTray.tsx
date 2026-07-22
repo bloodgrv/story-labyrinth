@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCreateNoteMutation } from "@/features/notes/hooks/useNotesQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useUpdateStoryMutation } from "@/features/stories/hooks/useStoriesQuery";
-import { agentMemoriesApi } from "@/services/api/client";
+import { agentMemoriesApi, deskTransfersApi } from "@/services/api/client";
 import { AGENT_MEMORY_CATEGORIES, type AgentMemoryCategory } from "@/types/agentMemory";
 import type { BrainstormChecklistItem, HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
 import { useBrainstormChecklistQuery, useUpdateChecklistStatusMutation } from "../hooks/useBrainstormChecklistQuery";
@@ -17,6 +17,8 @@ import { SlotChecklistPanel } from "./SlotChecklistPanel";
 interface BrainstormChecklistTrayProps {
     chatId: string;
     storyId: string;
+    // Transfer Log (T1) — this chat's own title, for the 'opened' event's fromChatTitleSnapshot.
+    fromChatTitleSnapshot: string;
 }
 
 const overviewSummary = (payload: OverviewProposalPayload): { label: string; body: string } => {
@@ -29,7 +31,7 @@ const overviewSummary = (payload: OverviewProposalPayload): { label: string; bod
 // Open/Send/Accept do NOT clear the queue — only Mark done does) + the slot checklist (a
 // genuinely different, simpler known/unknown model, see SlotChecklistPanel). "This chat only"
 // scope, mirroring CodexProposalTray.tsx.
-export function BrainstormChecklistTray({ chatId, storyId }: BrainstormChecklistTrayProps) {
+export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: BrainstormChecklistTrayProps) {
     const [statusTab, setStatusTab] = useState<"active" | "done">("active");
     const { data: items = [] } = useBrainstormChecklistQuery(chatId, statusTab);
     const updateStatus = useUpdateChecklistStatusMutation();
@@ -63,6 +65,22 @@ export function BrainstormChecklistTray({ chatId, storyId }: BrainstormChecklist
         }
         if (payload.slotKey) setSlotStatus.mutate({ slotKey: payload.slotKey, status: "known" });
         updateStatus.mutate({ id: item.id, status: "opened" });
+        // Transfer Log (T1) — only "note" crosses a desk boundary; synopsis/memory write directly
+        // into story fields/Project Memory, not a desk (see ChatInterface.tsx's onOverviewProposal
+        // for the matching 'proposed' half of this same scoping decision).
+        if (payload.proposalType === "note")
+            deskTransfersApi
+                .log(storyId, {
+                    event: "opened",
+                    kind: "overview_proposal",
+                    fromDesk: "brainstorm",
+                    fromChatId: chatId,
+                    fromChatTitleSnapshot,
+                    toDesk: "notes",
+                    subject: payload.title,
+                    sourceChecklistItemId: item.id
+                })
+                .catch(() => {});
     };
 
     // WB reuses the existing pendingLorebookSeed handoff mechanism unchanged (same shape a
@@ -79,6 +97,19 @@ export function BrainstormChecklistTray({ chatId, storyId }: BrainstormChecklist
             setCurrentTool(payload.destination);
         }
         updateStatus.mutate({ id: item.id, status: "opened" });
+        deskTransfersApi
+            .log(storyId, {
+                event: "opened",
+                kind: "handoff",
+                fromDesk: "brainstorm",
+                fromChatId: chatId,
+                fromChatTitleSnapshot,
+                toDesk: payload.destination,
+                subject: payload.summary,
+                crumb: payload.detail,
+                sourceChecklistItemId: item.id
+            })
+            .catch(() => {});
     };
 
     const renderChecklistCard = (item: BrainstormChecklistItem) => {

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { WriterPrefsCard } from "@/features/agent-memory/components/WriterPrefsCard";
 import { FeatureEndpointsCard } from "@/features/ai/components/FeatureEndpointsCard";
 import { GrokOAuthCard } from "@/features/ai/components/GrokOAuthCard";
@@ -20,14 +22,22 @@ import {
     useUpdateDefaultModelMutation,
     useUpdateLocalApiUrlMutation
 } from "@/features/ai/hooks/useAISettingsQuery";
+import { TransfersLogCard } from "@/features/transfers/components/TransfersLogCard";
 import { GrammarSettingsCard } from "@/features/grammar/components/GrammarSettingsCard";
 import { HumanizerSettingsCard } from "@/features/humanizer/components/HumanizerSettingsCard";
 import { TtsSettingsCard } from "@/features/tts/components/TtsSettingsCard";
+
+// Settings IA (S0, docs/Transfer_Log_And_Settings_IA_Design.md) — previously one long undifferentiated
+// scroll; now sub-nav headings per the design doc's locked decision #5. Per-chat toggles (auto-shuttle,
+// notes gates, etc.) deliberately stay on chat chrome, not here (design doc: "not Settings").
+const SECTIONS = ["appearance", "providers", "local", "routing", "writing", "logs", "data"] as const;
+type Section = (typeof SECTIONS)[number];
 
 export default function SettingsPage() {
     const navigate = useNavigate();
     const [localApiUrlInput, setLocalApiUrlInput] = useState("");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [section, setSection] = useState<Section>("appearance");
 
     const { data: settings, isLoading: isLoadingSettings } = useAISettingsQuery();
 
@@ -44,7 +54,6 @@ export default function SettingsPage() {
                 <Loader2 className="h-8 w-8 animate-spin" />
             </div>
         );
-    
 
     const allModels = settings?.availableModels || [];
     const openaiModels = allModels.filter(m => m.provider === "openai");
@@ -58,7 +67,7 @@ export default function SettingsPage() {
 
     return (
         <div className="p-8">
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-4xl mx-auto">
                 <div className="flex items-center mb-8">
                     <Button variant="ghost" className="gap-2" onClick={() => navigate(-1)}>
                         <ArrowLeft className="h-4 w-4" />
@@ -67,151 +76,189 @@ export default function SettingsPage() {
                     <h1 className="text-3xl font-bold ml-4">Settings</h1>
                 </div>
 
-                <div className="space-y-6">
-                    <ProviderCard
-                        provider="openai"
-                        title="OpenAI Configuration"
-                        keyLabel="OpenAI API Key"
-                        keyPlaceholder="Enter your OpenAI API key"
-                        storedKey={settings?.openaiKey}
-                        models={openaiModels}
-                        defaultModel={settings?.defaultOpenAIModel}
-                        isKeyMutating={updateKeyMutation.isPending}
-                        isRefreshing={refreshModelsMutation.isPending}
-                        onSaveKey={key => updateKeyMutation.mutate({ provider: "openai", key })}
-                        onRefresh={() => refreshModelsMutation.mutate("openai")}
-                        onDefaultModelChange={modelId =>
-                            updateDefaultModelMutation.mutate({ provider: "openai", modelId })
-                        }
-                    />
+                <Tabs value={section} onValueChange={value => setSection(value as Section)} orientation="vertical">
+                    <div className="flex gap-8 items-start">
+                        <TabsList className="flex-col h-auto w-48 shrink-0 items-stretch bg-transparent p-0 gap-1">
+                            <TabsTrigger value="appearance" className="justify-start w-full data-[state=active]:bg-muted">
+                                Appearance
+                            </TabsTrigger>
+                            <TabsTrigger value="providers" className="justify-start w-full data-[state=active]:bg-muted">
+                                Providers &amp; keys
+                            </TabsTrigger>
+                            <TabsTrigger value="local" className="justify-start w-full data-[state=active]:bg-muted">
+                                Local
+                            </TabsTrigger>
+                            <TabsTrigger value="routing" className="justify-start w-full data-[state=active]:bg-muted">
+                                Feature routing
+                            </TabsTrigger>
+                            <TabsTrigger value="writing" className="justify-start w-full data-[state=active]:bg-muted">
+                                Writing tools
+                            </TabsTrigger>
+                            <TabsTrigger value="logs" className="justify-start w-full data-[state=active]:bg-muted">
+                                Logs
+                            </TabsTrigger>
+                            <TabsTrigger value="data" className="justify-start w-full data-[state=active]:bg-muted">
+                                Data
+                            </TabsTrigger>
+                        </TabsList>
 
-                    <ProviderCard
-                        provider="openrouter"
-                        title="OpenRouter Configuration"
-                        keyLabel="OpenRouter API Key"
-                        keyPlaceholder="Enter your OpenRouter API key"
-                        storedKey={settings?.openrouterKey}
-                        models={openrouterModels}
-                        defaultModel={settings?.defaultOpenRouterModel}
-                        isKeyMutating={updateKeyMutation.isPending}
-                        isRefreshing={refreshModelsMutation.isPending}
-                        onSaveKey={key => updateKeyMutation.mutate({ provider: "openrouter", key })}
-                        onRefresh={() => refreshModelsMutation.mutate("openrouter")}
-                        onDefaultModelChange={modelId =>
-                            updateDefaultModelMutation.mutate({ provider: "openrouter", modelId })
-                        }
-                    />
+                        <div className="flex-1 min-w-0 space-y-6">
+                            <TabsContent value="appearance" className="mt-0 space-y-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Theme</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ThemeToggle isExpanded />
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
 
-                    <ProviderCard
-                        provider="gemini"
-                        title="Google Gemini Configuration"
-                        keyLabel="Gemini API Key"
-                        keyPlaceholder="Enter your Gemini API key"
-                        storedKey={settings?.geminiKey}
-                        models={geminiModels}
-                        defaultModel={settings?.defaultGeminiModel}
-                        isKeyMutating={updateKeyMutation.isPending}
-                        isRefreshing={refreshModelsMutation.isPending}
-                        onSaveKey={key => updateKeyMutation.mutate({ provider: "gemini", key })}
-                        onRefresh={() => refreshModelsMutation.mutate("gemini")}
-                        onDefaultModelChange={modelId =>
-                            updateDefaultModelMutation.mutate({ provider: "gemini", modelId })
-                        }
-                    />
+                            <TabsContent value="providers" className="mt-0 space-y-6">
+                                <ProviderCard
+                                    provider="openai"
+                                    title="OpenAI Configuration"
+                                    keyLabel="OpenAI API Key"
+                                    keyPlaceholder="Enter your OpenAI API key"
+                                    storedKey={settings?.openaiKey}
+                                    models={openaiModels}
+                                    defaultModel={settings?.defaultOpenAIModel}
+                                    isKeyMutating={updateKeyMutation.isPending}
+                                    isRefreshing={refreshModelsMutation.isPending}
+                                    onSaveKey={key => updateKeyMutation.mutate({ provider: "openai", key })}
+                                    onRefresh={() => refreshModelsMutation.mutate("openai")}
+                                    onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "openai", modelId })}
+                                />
 
-                    <ProviderCard
-                        provider="grok"
-                        title="Grok (xAI) Configuration"
-                        keyLabel="xAI API Key"
-                        keyPlaceholder="Enter your xAI API key"
-                        storedKey={settings?.grokKey}
-                        models={grokModels}
-                        defaultModel={settings?.defaultGrokModel}
-                        isKeyMutating={updateKeyMutation.isPending}
-                        isRefreshing={refreshModelsMutation.isPending}
-                        onSaveKey={key => updateKeyMutation.mutate({ provider: "grok", key })}
-                        onRefresh={() => refreshModelsMutation.mutate("grok")}
-                        onDefaultModelChange={modelId =>
-                            updateDefaultModelMutation.mutate({ provider: "grok", modelId })
-                        }
-                    />
+                                <ProviderCard
+                                    provider="openrouter"
+                                    title="OpenRouter Configuration"
+                                    keyLabel="OpenRouter API Key"
+                                    keyPlaceholder="Enter your OpenRouter API key"
+                                    storedKey={settings?.openrouterKey}
+                                    models={openrouterModels}
+                                    defaultModel={settings?.defaultOpenRouterModel}
+                                    isKeyMutating={updateKeyMutation.isPending}
+                                    isRefreshing={refreshModelsMutation.isPending}
+                                    onSaveKey={key => updateKeyMutation.mutate({ provider: "openrouter", key })}
+                                    onRefresh={() => refreshModelsMutation.mutate("openrouter")}
+                                    onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "openrouter", modelId })}
+                                />
 
-                    <GrokOAuthCard
-                        connected={!!settings?.grokOAuthAccessToken}
-                        defaultModel={settings?.defaultGrokOAuthModel}
-                        models={grokOAuthModels}
-                        isRefreshing={refreshModelsMutation.isPending}
-                        onRefresh={() => refreshModelsMutation.mutate("grok-oauth")}
-                        onDefaultModelChange={modelId =>
-                            updateDefaultModelMutation.mutate({ provider: "grok-oauth", modelId })
-                        }
-                        onDisconnect={() => disconnectGrokOAuthMutation.mutate()}
-                        isDisconnecting={disconnectGrokOAuthMutation.isPending}
-                    />
+                                <ProviderCard
+                                    provider="gemini"
+                                    title="Google Gemini Configuration"
+                                    keyLabel="Gemini API Key"
+                                    keyPlaceholder="Enter your Gemini API key"
+                                    storedKey={settings?.geminiKey}
+                                    models={geminiModels}
+                                    defaultModel={settings?.defaultGeminiModel}
+                                    isKeyMutating={updateKeyMutation.isPending}
+                                    isRefreshing={refreshModelsMutation.isPending}
+                                    onSaveKey={key => updateKeyMutation.mutate({ provider: "gemini", key })}
+                                    onRefresh={() => refreshModelsMutation.mutate("gemini")}
+                                    onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "gemini", modelId })}
+                                />
 
-                    <FeatureEndpointsCard allModels={allModels} />
+                                <ProviderCard
+                                    provider="grok"
+                                    title="Grok (xAI) Configuration"
+                                    keyLabel="xAI API Key"
+                                    keyPlaceholder="Enter your xAI API key"
+                                    storedKey={settings?.grokKey}
+                                    models={grokModels}
+                                    defaultModel={settings?.defaultGrokModel}
+                                    isKeyMutating={updateKeyMutation.isPending}
+                                    isRefreshing={refreshModelsMutation.isPending}
+                                    onSaveKey={key => updateKeyMutation.mutate({ provider: "grok", key })}
+                                    onRefresh={() => refreshModelsMutation.mutate("grok")}
+                                    onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "grok", modelId })}
+                                />
 
-                    <LocalModelsCard
-                        localModels={localModels}
-                        currentLocalUrl={currentLocalUrl}
-                        onLocalUrlChange={setLocalApiUrlInput}
-                        isSavingUrl={updateLocalUrlMutation.isPending}
-                        onSaveUrl={() => updateLocalUrlMutation.mutate(currentLocalUrl)}
-                        isRefreshing={refreshModelsMutation.isPending}
-                        onRefresh={() => refreshModelsMutation.mutate("local")}
-                        defaultModel={settings?.defaultLocalModel}
-                        onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "local", modelId })}
-                    />
+                                <GrokOAuthCard
+                                    connected={!!settings?.grokOAuthAccessToken}
+                                    defaultModel={settings?.defaultGrokOAuthModel}
+                                    models={grokOAuthModels}
+                                    isRefreshing={refreshModelsMutation.isPending}
+                                    onRefresh={() => refreshModelsMutation.mutate("grok-oauth")}
+                                    onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "grok-oauth", modelId })}
+                                    onDisconnect={() => disconnectGrokOAuthMutation.mutate()}
+                                    isDisconnecting={disconnectGrokOAuthMutation.isPending}
+                                />
+                            </TabsContent>
 
-                    <TtsSettingsCard />
+                            <TabsContent value="local" className="mt-0 space-y-6">
+                                <LocalModelsCard
+                                    localModels={localModels}
+                                    currentLocalUrl={currentLocalUrl}
+                                    onLocalUrlChange={setLocalApiUrlInput}
+                                    isSavingUrl={updateLocalUrlMutation.isPending}
+                                    onSaveUrl={() => updateLocalUrlMutation.mutate(currentLocalUrl)}
+                                    isRefreshing={refreshModelsMutation.isPending}
+                                    onRefresh={() => refreshModelsMutation.mutate("local")}
+                                    defaultModel={settings?.defaultLocalModel}
+                                    onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "local", modelId })}
+                                />
+                            </TabsContent>
 
-                    <HumanizerSettingsCard />
+                            <TabsContent value="routing" className="mt-0 space-y-6">
+                                <FeatureEndpointsCard allModels={allModels} />
+                            </TabsContent>
 
-                    <GrammarSettingsCard />
+                            <TabsContent value="writing" className="mt-0 space-y-6">
+                                <TtsSettingsCard />
+                                <HumanizerSettingsCard />
+                                <GrammarSettingsCard />
+                                <WriterPrefsCard />
+                            </TabsContent>
 
-                    <RecentJobsCard />
+                            <TabsContent value="logs" className="mt-0 space-y-6">
+                                <TransfersLogCard />
+                                <RecentJobsCard />
+                            </TabsContent>
 
-                    <WriterPrefsCard />
+                            <TabsContent value="data" className="mt-0 space-y-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Demo Data</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="flex items-start gap-2 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-md">
+                                            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-500 flex-shrink-0 mt-0.5" />
+                                            <div className="text-sm text-red-800 dark:text-red-200">
+                                                <p className="font-semibold mb-1">Warning</p>
+                                                <p>
+                                                    This will permanently delete all demo content including stories, chapters, and
+                                                    lorebook entries marked as demo data.
+                                                </p>
+                                            </div>
+                                        </div>
 
-                    {/* Delete Demo Data Section */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Demo Data</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-start gap-2 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-md">
-                                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-500 flex-shrink-0 mt-0.5" />
-                                <div className="text-sm text-red-800 dark:text-red-200">
-                                    <p className="font-semibold mb-1">Warning</p>
-                                    <p>
-                                        This will permanently delete all demo content including stories, chapters, and
-                                        lorebook entries marked as demo data.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Delete Demo Content</Label>
-                                <Button
-                                    onClick={() => setShowDeleteDialog(true)}
-                                    disabled={deleteDemoMutation.isPending}
-                                    className="w-full"
-                                    variant="destructive"
-                                >
-                                    {deleteDemoMutation.isPending ? (
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    ) : (
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                    )}
-                                    Delete All Demo Data
-                                </Button>
-                                <p className="text-xs text-muted-foreground">
-                                    Remove the demo spy thriller story and all related content
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                                        <div className="space-y-2">
+                                            <Label>Delete Demo Content</Label>
+                                            <Button
+                                                onClick={() => setShowDeleteDialog(true)}
+                                                disabled={deleteDemoMutation.isPending}
+                                                className="w-full"
+                                                variant="destructive"
+                                            >
+                                                {deleteDemoMutation.isPending ? (
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                ) : (
+                                                    <Trash2 className="h-4 w-4 mr-2" />
+                                                )}
+                                                Delete All Demo Data
+                                            </Button>
+                                            <p className="text-xs text-muted-foreground">
+                                                Remove the demo spy thriller story and all related content
+                                            </p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        </div>
+                    </div>
+                </Tabs>
             </div>
 
             <ConfirmDialog

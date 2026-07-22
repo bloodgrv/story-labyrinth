@@ -240,9 +240,9 @@ See `DECISIONS.md`'s "Lorebook Relationship Graph — G1.5+ (AI-Suggested Edges,
 
 | Item | Notes |
 |------|--------|
-| **Planning talk list (queued topics)** | **Living list:** `docs/SN_Planning_Talk_List.md`. **T2** Lexical plugin-add **partial lock** (`Lexical_Editor_Design.md`); other T2 axes open. T3 Amazon/KDP (discuss). **T4** token meter design-locked P3. T1 chrome locked/shipped. Transfer log + Settings IA design-locked P3. |
+| **Planning talk list (queued topics)** | **Living list:** `docs/SN_Planning_Talk_List.md`. **T2** Lexical plugin-add **partial lock** (`Lexical_Editor_Design.md`); other T2 axes open. T3 Amazon/KDP (discuss). **T4** token meter design-locked P3. T1 chrome locked/shipped. Transfer log + Settings IA shipped 2026-07-22. |
 | **UI visual direction** | **Locked 2026-07-21, chrome pass complete 2026-07-21** (talk list **T1**). Chrome: **Linear A + Raycast accents**. Doc: `docs/UI_Visual_Direction.md`. Canonical mocks: Eclipse + Light Linear+Raycast PNGs in `docs/design-mocks/`. Token/chrome pass only; no shell rewrite. **V0/V1/V2 all done 2026-07-21** — V0: per-theme `--raycast-a`/`--raycast-b`/`--accent-glow`/`--accent-glow-strength` + tightened `--radius`. V1: topbar gradient hairline, sidebar active-rail bar+glow, cmd-palette hover glow, opt-in `Button variant="gradient"` (demoed on Notes' empty-state CTA). V2: chat user-bubble ring+glow, Research Story/Global pill gradient underline — deliberately stops before manuscript prose. Live-verified across Dark/Mist/Abyss, no console errors. Open follow-ups (default theme choice, exact glow dial, Light's button hue) don't block calling this done. |
-| **Transfer log + Settings IA** | **Design locked 2026-07-21.** Doc: `docs/Transfer_Log_And_Settings_IA_Design.md`. Settings sub-nav (Appearance / Providers & keys / Local / Feature routing / Writing tools / **Logs** / Data). **Logs → Transfers**: story-scoped send journal (desk→desk seeds only; proposed+opened; 30d UI / 90d hard delete); `deskTransfers` table; origin jump + re-seed; all seed writers v1. Slices **S0** then **T0–T3**. **Not started** (code). P3 until promoted. |
+| **Transfer log + Settings IA** | ✅ **Done (2026-07-22).** Doc: `docs/Transfer_Log_And_Settings_IA_Design.md`. Settings reorganized into sub-nav headings (Appearance / Providers & keys / Local / Feature routing / Writing tools / **Logs** / Data — vertical Radix `Tabs`, `SettingsPage.tsx`). **Logs → Transfers**: new `deskTransfers` table (story-scoped send journal, desk→desk seeds only; `proposed`+`opened` events; 30d UI default / 90d hard delete via `pruneHistoryJob.ts`'s existing daily cadence); `TransfersLogCard.tsx` (story picker, search, Open origin, Re-seed destination); Recent Jobs moved under Logs alongside it. All slices **S0, T0–T3** shipped. Every writer lives client-side (a tray button, a fence-parse callback), so rows are created via a client `POST` rather than an internal service call — genuinely instrumented: Chat Shuttle propose/open/return, Brainstorm/Notes handoff propose/open, Outline lore-suggestion "Open in WB", and highlight→Notes-chat (new `highlight_to_notes` kind, not in the original design doc's enumerated mechanisms). Deliberately **not** logged (scoping call): same-desk sends (`note_split`, Notes' Import dump) and `overview_proposal`'s synopsis/memory sub-types (no desk destination, only the `note` sub-type counts). See `DECISIONS.md`'s "Transfer Log + Settings IA — S0, T0-T3, Load-Bearing Decisions" for the full trail, including why Re-seed needed client-side `navigate()` instead of a hard reload (the pending-seed fields are in-memory only) and why Open-origin stops at story+desk navigation rather than auto-selecting the specific chat. |
 | **Lexical editor (deepen)** | **Partial lock 2026-07-21** (talk list **T2**). Doc: `docs/Lexical_Editor_Design.md`. **Plugin-add axis:** ADD `ListPlugin`+`CheckListPlugin`; tables **C** (nodes only, no TablePlugin/insert); skip CharacterLimit/collab product/TOC/AutoEmbed/ClearEditor-as-feature; defer CodeHighlight/TreeView/playground toys. Implement pairing: Lexical **0.39→0.48** all pkgs same version (React 19 OK). Slices **LE0–LE3**. Other T2 axes (list done-bar, toolbar/mobile/selection) still open. **Not started** (code). P3 until promoted. |
 | **Amazon / KDP text standards** | **To discuss** (talk list **T3**). Manuscript + export alignment with Kindle/KDP expectations. Scope TBD. |
 | **Context / token meter (local)** | **Design locked 2026-07-21.** Doc: `docs/Context_Token_Meter_Design.md`. Talk list **T4**. Pre-send hybrid estimate of full assembled prompt + post-turn usage; chip+expand slices; local always / others when usage; n_ctx fetch+override; optional soft-warn; message badges. Slices **M0–M5**. **Not started.** P3 until promoted. |
@@ -278,11 +278,13 @@ See `DECISIONS.md`'s "Lorebook Relationship Graph — G1.5+ (AI-Suggested Edges,
 
 ```text
 Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
-P0.1–P0.4 are all done (R/B/S/K tracks, R0–R8/B0–B5/S0–S5/K0–K5).
-Chat Shuttle (H0–H7, docs/Chat_Shuttle_Design.md) is also done (2026-07-21).
-Design-locked P3 follow-ons: Outline Import (OI0–OI8); Transfer log + Settings IA (S0, T0–T3,
-docs/Transfer_Log_And_Settings_IA_Design.md); Name Generator; Locations & Maps.
-Recommended: P1 polish (Agent Framework Phase C, Graph G1.5+), or promote a P3 item.
+P0 (P0.1–P0.4) and P1 (Agent Framework Phase C / P1.1, Relationship Graph G1.5+ / P1.2) are all done.
+Chat Shuttle (H0–H7) and Transfer Log + Settings IA (S0, T0–T3) are also both done (2026-07-21/22).
+Remaining P1: P1.3 (per-message RAG, explicitly deferred) and P1.4 (Visible AI Reasoning full
+product, needs a scope conversation before building).
+Design-locked P3 follow-ons ready to promote: Outline Import (OI0–OI8); Name Generator (NG0–NG7);
+Locations & Maps (L0–L5); Lexical Editor deepen (LE0–LE3, partial lock); Context/Token Meter (M0–M5).
+Recommended: pick a P2 bug (B2/B4/B6) or promote a P3 item — no more "just pick it up" P1 work left.
 Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 
@@ -301,7 +303,7 @@ Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when do
 | `docs/Name_Generator_Design.md` | Name generator v0.3 (gaps closed 2026-07-19); NG0–NG7 |
 | `docs/Outline_Import_Design.md` | Import to Outline (**locked** 2026-07-20); OI0–OI8; parked Brainstorm/story-import note |
 | `docs/Chat_Shuttle_Design.md` | Cross-desk chat shuttle (**locked** 2026-07-20); H0–H7 **shipped 2026-07-21** — see `DECISIONS.md` |
-| `docs/Transfer_Log_And_Settings_IA_Design.md` | Settings IA + desk **send** transfer log (**locked** 2026-07-21); S0, T0–T3 — not started |
+| `docs/Transfer_Log_And_Settings_IA_Design.md` | Settings IA + desk **send** transfer log (**locked/shipped** 2026-07-22); S0, T0–T3 done — see `DECISIONS.md` |
 | `docs/Lorebook_Browse_Density_Design.md` | Lorebook Cards\|List toggle (**locked** 2026-07-21); L0–L3 — P2 B8, not started |
 | `docs/Folders_Org_Design.md` | Cosmetic folders lore + chats (**locked/shipped** 2026-07-21); F0–F5 done — P2 B9 |
 | `docs/Context_Token_Meter_Design.md` | T4 context/token meter (**locked** 2026-07-21); M0–M5 — P3, not started |

@@ -106,15 +106,17 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 7. Main Editor integration + MultiView / beats / outline / focus sessions  
 8. Dashboard + tab system + persistence  
 9. Project Saves — **Codex layer done**; **Story layer done** (chapter undo/restore); chapter **alternate-version tabs done** too (AI/manual drafts, compile, compare — a separate feature from linear history, both now shipped)  
-10. Agent Framework — **Phase A + B done**; Phase C not started  
+10. Agent Framework — **Phase A + B done**; **P1.1 (Phase C à la carte) done** — superseded tab, real pin semantics, cross-project writer_pref browser (2026-07-21)  
 11. Lorebook Relationship Graph — **Phase G1 done**; **P1.2 fully done** (pending-edge review 2026-07-21; AI-suggested edges, persisted layout, RAG reindex-on-edge-change 2026-07-22)  
+12. Transfer Log + Settings IA — **done** (S0, T0-T3, 2026-07-22) — Settings sub-nav IA, `deskTransfers` send journal, every known desk→desk seed path instrumented, Logs → Transfers UI
 
 ### Next (see backlog for detail)
 1. **P0.3 done** (2026-07-20) — continuity glue (memory ↔ chat/scan) fully shipped: Notes/Outline bridge, project memory chat toggle, save-as-note/note-proposal, scanner-memory integration, unattended scan schedule, Codex auto-compile
 2. **P0.4 done in full** (2026-07-20/21) — Editor selection rework + Codex tray (R0-R3); Lorebook field rework → WB chat, dedicated Outline chat with its own `chatType` (R4/R5/R7), outline row rework + "Open in WB" lore-suggestion handoff (R8); auto-insert/auto-accept toggles per host (R6); Brainstorm Hub migrated onto the shared chat stack with Guided Setup, depth-adaptive propose, and a durable handoff/checklist tray (B0-B4); WB + Outline guided-start extended with the same shell, plus WB's Character psych module (B5); Research web desk — Story/Global mode, live DuckDuckGo web search + page fetch, citations, dedicated system prompt (S0-S5); Notes desk — badges/filters/pin, own `notes` chatType + chat rail, whole-note rework, split-dump + promote tray reusing Brainstorm's checklist mechanism, import dump (K0-K5).
 3. **Chat Shuttle done** (2026-07-21, H0-H7) — propose-by-default shuttle card from Editor/Outline/WB to Research (`shuttle-proposal` fence, reuses `brainstormChecklist` via new `shuttle`/`shuttle_return` kinds), Open seeds/reuses the story's Research chat via a new `StoryContext.pendingShuttleSeed`, origin-chat `ShuttleTray.tsx` (Open/Answer here/Mark done, same B4 tray morals), optional "Send brief to origin" return packet with extracted citation links, per-chat "always-shuttle" pref (`aiChats.autoShuttle`, still no auto-send/auto-navigate), and highlight→Note for both chapter prose selection (floating toolbar) and chat-bubble text selection. See `DECISIONS.md`'s "Chat Shuttle — H0-H7" entry.
-4. **Pending-edge review UI done** (P1.2, 2026-07-21) — Relationships tool's new "Pending" tab (Approve/Reject, live count badge) plus a minimal manual "Propose for review" producer on the edge-create dialog. See `DECISIONS.md`'s "Lorebook Relationship Graph — Pending-Edge Review UI (P1.2)" entry.
-4. P1 polish (Agent C, Graph G1.5) and P2 bugs as needed
+4. **P1.1 + P1.2 done** (2026-07-21/22) — Agent Framework Phase C (superseded tab, pin semantics, writer_pref browser) and Relationship Graph G1.5+ in full (pending-edge review, AI-suggested edges, persisted layout, RAG reindex-on-edge-change). See `DECISIONS.md`'s respective entries.
+5. **Transfer Log + Settings IA done** (2026-07-22, S0/T0-T3) — Settings reorganized into sub-nav headings; new `deskTransfers` table logs every cross-desk seed (`proposed`/`opened`, 30d UI window / 90d hard delete); Logs → Transfers UI with story picker, search, Open origin, Re-seed destination. See `DECISIONS.md`'s "Transfer Log + Settings IA — S0, T0-T3" entry.
+6. Remaining P1: P1.3 (per-message RAG, explicitly deferred) and P1.4 (Visible AI Reasoning full product, needs scope confirmation). Otherwise P2 bugs or promote a P3 item as needed.
 
 ---
 

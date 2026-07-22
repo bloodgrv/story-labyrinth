@@ -161,7 +161,15 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
                     side="right"
                 />
                 {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
-                {selectedChat && <ShuttleTray chatId={selectedChat.id} onAnswerHere={setComposerSeedText} />}
+                {selectedChat && (
+                    <ShuttleTray
+                        chatId={selectedChat.id}
+                        storyId={storyId}
+                        fromDesk={selectedChat.chatType ?? "editor"}
+                        fromChatTitleSnapshot={selectedChat.title}
+                        onAnswerHere={setComposerSeedText}
+                    />
+                )}
             </div>
         </div>
     );

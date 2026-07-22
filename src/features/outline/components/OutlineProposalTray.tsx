@@ -7,6 +7,9 @@ interface OutlineProposalTrayProps {
     // lore suggestions are never persisted server-side, so this list lives only as long as the
     // rail stays mounted, unlike CodexProposalTray's server-backed pending/approved/rejected tabs.
     loreSuggestions: ParsedLoreSuggestion[];
+    storyId: string;
+    fromChatId: string;
+    fromChatTitleSnapshot: string;
 }
 
 // P0.4 R8 — sits under CodexProposalTray in OutlineChatRail's sidebar column. Outline chat
@@ -18,7 +21,7 @@ interface OutlineProposalTrayProps {
 // renderProposalsForMessage). Lore suggestions are the one case that's both ephemeral AND wants a
 // standing tray section rather than inline-per-message, since "Open in WB" is a one-way handoff
 // the user may want to revisit across several turns, not a single accept/reject decision.
-export function OutlineProposalTray({ loreSuggestions }: OutlineProposalTrayProps) {
+export function OutlineProposalTray({ loreSuggestions, storyId, fromChatId, fromChatTitleSnapshot }: OutlineProposalTrayProps) {
     if (loreSuggestions.length === 0) return null;
 
     return (
@@ -32,7 +35,13 @@ export function OutlineProposalTray({ loreSuggestions }: OutlineProposalTrayProp
                     // Suggestions are never persisted, so there's no stable id to key on — index
                     // is fine here since this list only ever grows (appended in OutlineChatRail),
                     // never reorders or removes an item from the middle.
-                    <LoreSuggestionCard key={`${suggestion.name}-${index}`} suggestion={suggestion} />
+                    <LoreSuggestionCard
+                        key={`${suggestion.name}-${index}`}
+                        suggestion={suggestion}
+                        storyId={storyId}
+                        fromChatId={fromChatId}
+                        fromChatTitleSnapshot={fromChatTitleSnapshot}
+                    />
                 ))}
             </div>
         </div>

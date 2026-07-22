@@ -7,12 +7,15 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBrainstormChecklistQuery, useUpdateChecklistStatusMutation } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useUpdateStoryMutation } from "@/features/stories/hooks/useStoriesQuery";
+import { deskTransfersApi } from "@/services/api/client";
 import type { BrainstormChecklistItem, HandoffPacket, NoteSplitProposalPayload, OverviewProposalPayload } from "@/types/brainstorm";
 import { useCreateNoteMutation } from "../hooks/useNotesQuery";
 
 interface NotesChecklistTrayProps {
     chatId: string;
     storyId: string;
+    // Transfer Log (T1) — this chat's own title, for the 'opened' event's fromChatTitleSnapshot.
+    fromChatTitleSnapshot: string;
 }
 
 // P0.4 K3 — Notes' own durable tray, forked from BrainstormChecklistTray.tsx (not generalizing
@@ -24,7 +27,7 @@ interface NotesChecklistTrayProps {
 // own NOTES_PROMOTE_INSTRUCTIONS never offers the "note"/"memory" sub-types), handoff
 // (worldbuilding/outline only — promoting a note to itself or to Research isn't offered). Same
 // "Open/Accept doesn't clear, only Mark done does" doctrine as Brainstorm's tray throughout.
-export function NotesChecklistTray({ chatId, storyId }: NotesChecklistTrayProps) {
+export function NotesChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: NotesChecklistTrayProps) {
     const [statusTab, setStatusTab] = useState<"active" | "done">("active");
     const { data: items = [] } = useBrainstormChecklistQuery(chatId, statusTab);
     const updateStatus = useUpdateChecklistStatusMutation();
@@ -74,6 +77,22 @@ export function NotesChecklistTray({ chatId, storyId }: NotesChecklistTrayProps)
             setCurrentTool(payload.destination);
         }
         updateStatus.mutate({ id: item.id, status: "opened" });
+        // Transfer Log (T1) — Notes -> WB/Outline crosses a desk boundary (unlike this tray's
+        // overview_proposal "synopsis"/"note" sub-types, which stay within Notes/story-fields —
+        // see handleAcceptOverview above, deliberately not instrumented for that reason).
+        deskTransfersApi
+            .log(storyId, {
+                event: "opened",
+                kind: "handoff",
+                fromDesk: "notes",
+                fromChatId: chatId,
+                fromChatTitleSnapshot,
+                toDesk: payload.destination,
+                subject: payload.summary,
+                crumb: payload.detail,
+                sourceChecklistItemId: item.id
+            })
+            .catch(() => {});
     };
 
     const renderSplitCard = (item: BrainstormChecklistItem) => {

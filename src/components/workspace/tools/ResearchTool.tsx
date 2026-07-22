@@ -11,7 +11,7 @@ import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hoo
 import { extractMarkdownLinks } from "@/features/chat/services/extractMarkdownLinks";
 import { LorebookProvider } from "@/features/lorebook/context/LorebookContext";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
-import { brainstormApi, chatsApi } from "@/services/api/client";
+import { brainstormApi, chatsApi, deskTransfersApi } from "@/services/api/client";
 import type { AIChat } from "@/types/story";
 
 const ChatErrorFallback = (error: Error, resetError: () => void) => (
@@ -138,7 +138,29 @@ export const ResearchTool = () => {
                 payload: { summary: lastAssistant.content.slice(0, 1200), links: extractMarkdownLinks(lastAssistant.content) },
                 sourceMessageId: lastAssistant.id
             })
-            .then(() => toast.success("Sent brief back to the origin chat's tray"))
+            .then(item => {
+                toast.success("Sent brief back to the origin chat's tray");
+                // Transfer Log (T1) — fetch the origin chat for its chatType/title (not carried
+                // by activeShuttleContext, which only has the id) rather than logging with an
+                // unknown toDesk.
+                chatsApi
+                    .getById(activeShuttleContext.originChatId)
+                    .then(originChat =>
+                        deskTransfersApi.log(currentStoryId, {
+                            event: "proposed",
+                            kind: "shuttle_return",
+                            fromDesk: "research",
+                            fromChatId: chat.id,
+                            fromChatTitleSnapshot: chat.title,
+                            toDesk: originChat.chatType ?? "general",
+                            toChatId: originChat.id,
+                            toChatTitleSnapshot: originChat.title,
+                            subject: lastAssistant.content.slice(0, 1200),
+                            sourceChecklistItemId: item.id
+                        })
+                    )
+                    .catch(() => {});
+            })
             .catch(() => toast.error("Failed to send brief back"));
     };
 

@@ -1,7 +1,7 @@
 # Transfer Log + Settings IA — Design
 
-**Status:** **Design locked 2026-07-21** (grill) — **not started (code)**  
-**Backlog:** P3 until promoted  
+**Status:** **Design locked 2026-07-21** (grill) — **shipped 2026-07-22** (S0, T0–T3). See `DECISIONS.md`'s "Transfer Log + Settings IA — S0, T0-T3, Load-Bearing Decisions" and `docs/CURRENT_BACKLOG.md`.  
+**Backlog:** Done  
 **Related:** `docs/Chat_Shuttle_Design.md` (H0–H7 shipped); `docs/UI_Visual_Direction.md` (Appearance / themes)
 
 ---
@@ -146,5 +146,4 @@ If a path only creates a tray row and never “opens,” still log **`proposed`*
 ## Document history
 
 - 2026-07-21 — Grill locked; this doc created  
-
-*Do not treat as shipped until S0 + T0–T3 land.*
+- 2026-07-22 — S0 + T0–T3 shipped. See `DECISIONS.md`'s "Transfer Log + Settings IA — S0, T0-T3, Load-Bearing Decisions" entry.

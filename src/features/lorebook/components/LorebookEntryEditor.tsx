@@ -215,7 +215,15 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
                     edit-before-approve too, not just Editor's. See ChatInterface.tsx's
                     usesCodexTray. */}
                 {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
-                {selectedChat && <ShuttleTray chatId={selectedChat.id} onAnswerHere={setComposerSeedText} />}
+                {selectedChat && (
+                    <ShuttleTray
+                        chatId={selectedChat.id}
+                        storyId={storyId}
+                        fromDesk={selectedChat.chatType ?? "worldbuilding"}
+                        fromChatTitleSnapshot={selectedChat.title}
+                        onAnswerHere={setComposerSeedText}
+                    />
+                )}
             </div>
         </div>
     );

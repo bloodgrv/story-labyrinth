@@ -8,6 +8,7 @@ import { useEditorStoryId } from "@/features/editor-multiview/context/EditorPane
 import { NoteFormDialog } from "@/features/notes/components/NoteFormDialog";
 import { useCreateNoteMutation } from "@/features/notes/hooks/useNotesQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { deskTransfersApi } from "@/services/api/client";
 import type { Note } from "@/types/story";
 
 interface SaveSelectionAsNoteButtonProps {
@@ -52,6 +53,11 @@ export function SaveSelectionAsNoteButton({ editor }: SaveSelectionAsNoteButtonP
         }
         setPendingChatComposerSeed({ tool: "notes", text });
         setCurrentTool("notes");
+        // Transfer Log (T1) — single-step action, both events logged together (no chat/chatId
+        // exists on this side — the seed originates from chapter prose, not a chat message).
+        if (storyId)
+            for (const event of ["proposed", "opened"] as const)
+                deskTransfersApi.log(storyId, { event, kind: "highlight_to_notes", fromDesk: "editor", toDesk: "notes", subject: text }).catch(() => {});
     };
 
     const handleSubmitNote = (title: string, type: Note["type"]) => {

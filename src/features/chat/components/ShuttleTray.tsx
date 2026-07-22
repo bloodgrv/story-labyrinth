@@ -6,10 +6,17 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBrainstormChecklistQuery, useUpdateChecklistStatusMutation } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { deskTransfersApi } from "@/services/api/client";
 import type { BrainstormChecklistItem, ShuttlePayload, ShuttleReturnPayload } from "@/types/brainstorm";
 
 interface ShuttleTrayProps {
     chatId: string;
+    storyId: string;
+    // Transfer Log (T1) — this chat's own chatType/title, for the 'opened' event's fromDesk/
+    // fromChatTitleSnapshot. Passed down rather than fetched here since every caller already has
+    // the full selectedChat object in scope.
+    fromDesk: string;
+    fromChatTitleSnapshot: string;
     // "Answer here" (decision #8) fills THIS host chat's own composer — a sibling concern to
     // ChatInterface's initialComposerText prop, so the rail passing this down is expected to wire
     // it to the same local composerSeedText state it already threads there (see EditorChatRail.tsx/
@@ -22,7 +29,7 @@ interface ShuttleTrayProps {
 // done does), reusing the same brainstormChecklist table/query/mutation via two new kinds
 // ("shuttle"/"shuttle_return", H0). Mounted by each outbound host's own rail (Editor/Outline/WB)
 // alongside CodexProposalTray, same "this chat only" scope.
-export function ShuttleTray({ chatId, onAnswerHere }: ShuttleTrayProps) {
+export function ShuttleTray({ chatId, storyId, fromDesk, fromChatTitleSnapshot, onAnswerHere }: ShuttleTrayProps) {
     const [statusTab, setStatusTab] = useState<"active" | "done">("active");
     const { data: items = [] } = useBrainstormChecklistQuery(chatId, statusTab);
     const updateStatus = useUpdateChecklistStatusMutation();
@@ -43,6 +50,19 @@ export function ShuttleTray({ chatId, onAnswerHere }: ShuttleTrayProps) {
         setPendingShuttleSeed({ originChatId: chatId, shuttleItemId: item.id, text });
         setCurrentTool("research");
         updateStatus.mutate({ id: item.id, status: "opened" });
+        deskTransfersApi
+            .log(storyId, {
+                event: "opened",
+                kind: "shuttle",
+                fromDesk,
+                fromChatId: chatId,
+                fromChatTitleSnapshot,
+                toDesk: "research",
+                subject: payload.question,
+                crumb: payload.crumb ?? null,
+                sourceChecklistItemId: item.id
+            })
+            .catch(() => {});
     };
 
     // "Answer here" (decision #8) — seeds THIS chat's own composer with a short direct-answer

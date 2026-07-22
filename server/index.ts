@@ -16,6 +16,7 @@ import brainstormRouter from "./routes/brainstorm.js";
 import chaptersRouter from "./routes/chapters.js";
 import chatsRouter from "./routes/chats.js";
 import codexRouter from "./routes/codex.js";
+import deskTransfersRouter from "./routes/deskTransfers.js";
 import foldersRouter from "./routes/folders.js";
 import grammarRouter from "./routes/grammar.js";
 import humanizerRouter from "./routes/humanizer.js";
@@ -102,6 +103,12 @@ app.use("/api/agent/memories", agentMemoriesRouter);
 // storyGraph.ts's own top-of-file comment. Editor-level auth (requireAuth + blockViewerMutations,
 // both already applied globally above), no requireOwner — matches /api/codex's auth level.
 app.use("/api", storyGraphRouter);
+// Transfer Log (docs/Transfer_Log_And_Settings_IA_Design.md) — mounted at bare /api for the same
+// reason storyGraphRouter is: its routes are /stories/:storyId/transfers, a story sub-resource
+// rather than its own top-level prefix. Editor-level auth (requireAuth + blockViewerMutations,
+// already applied globally above) — a viewer can read the log but not create rows, same posture
+// as every other editor-gated write in this app.
+app.use("/api", deskTransfersRouter);
 app.use("/api/rag", ragRouter);
 app.use("/api/tts", ttsRouter);
 app.use("/api/humanizer", humanizerRouter);

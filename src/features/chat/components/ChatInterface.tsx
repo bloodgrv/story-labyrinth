@@ -26,7 +26,7 @@ import {
     useReorderOutlineMutation,
     useUpdateOutlineItemMutation
 } from "@/features/outline/hooks/useOutlineQuery";
-import { brainstormApi, chatsApi } from "@/services/api/client";
+import { brainstormApi, chatsApi, deskTransfersApi } from "@/services/api/client";
 import type { ChapterSelectionTarget } from "@/types/rework";
 import type { AIChat, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { ChatSystemPromptControl } from "./ChatSystemPromptControl";
@@ -609,19 +609,61 @@ export function ChatInterface({
             if (!storyId) return;
             brainstormApi
                 .createChecklistItem({ chatId: selectedChat.id, storyId, kind: "overview_proposal", payload: proposal, sourceMessageId: messageId })
-                .then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
+                .then(item => {
+                    queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] });
+                    // Transfer Log (T1) — only the "note" sub-type crosses a desk boundary (a new
+                    // Note gets created); synopsis/memory write directly into story fields/Project
+                    // Memory, neither of which is a "desk" in the design doc's sense, so they're
+                    // deliberately not logged here. Also skip if this chat IS already Notes (Notes'
+                    // own NotesChecklistTray.tsx never actually offers "note" via its own prompt
+                    // instructions, but the parser is shared/defensive) — same-desk, not a transfer.
+                    const fromDesk = selectedChat.chatType ?? "general";
+                    if (proposal.proposalType !== "note" || fromDesk === "notes") return;
+                    deskTransfersApi
+                        .log(storyId, {
+                            event: "proposed",
+                            kind: "overview_proposal",
+                            fromDesk,
+                            fromChatId: selectedChat.id,
+                            fromChatTitleSnapshot: selectedChat.title,
+                            toDesk: "notes",
+                            subject: proposal.title,
+                            sourceChecklistItemId: item.id
+                        })
+                        .catch(() => {});
+                });
         },
         onHandoffPackets: (messageId, packets) => {
             if (!storyId) return;
             Promise.all(
                 packets.map(packet =>
-                    brainstormApi.createChecklistItem({
-                        chatId: selectedChat.id,
-                        storyId,
-                        kind: "handoff",
-                        payload: packet,
-                        sourceMessageId: messageId
-                    })
+                    brainstormApi
+                        .createChecklistItem({
+                            chatId: selectedChat.id,
+                            storyId,
+                            kind: "handoff",
+                            payload: packet,
+                            sourceMessageId: messageId
+                        })
+                        .then(item => {
+                            // Transfer Log (T1) — one row per packet, logged the moment it's
+                            // offered (the tray's later Open is the 'opened' event — see
+                            // BrainstormChecklistTray.tsx/NotesChecklistTray.tsx's handleOpenHandoff).
+                            deskTransfersApi
+                                .log(storyId, {
+                                    event: "proposed",
+                                    kind: "handoff",
+                                    fromDesk: selectedChat.chatType ?? "general",
+                                    fromChatId: selectedChat.id,
+                                    fromChatTitleSnapshot: selectedChat.title,
+                                    toDesk: packet.destination,
+                                    subject: packet.summary,
+                                    crumb: packet.detail,
+                                    sourceChecklistItemId: item.id
+                                })
+                                .catch(() => {});
+                            return item;
+                        })
                 )
             ).then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
         },
@@ -647,12 +689,40 @@ export function ChatInterface({
                 .createChecklistItem({ chatId: selectedChat.id, storyId, kind: "shuttle", payload: proposal, sourceMessageId: messageId })
                 .then(item => {
                     queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] });
+                    // Transfer Log (T1) — 'proposed' fires here regardless of autoShuttle; the
+                    // manual-Open path's 'opened' event lives in ShuttleTray.tsx's handleOpen.
+                    deskTransfersApi
+                        .log(storyId, {
+                            event: "proposed",
+                            kind: "shuttle",
+                            fromDesk: selectedChat.chatType ?? "general",
+                            fromChatId: selectedChat.id,
+                            fromChatTitleSnapshot: selectedChat.title,
+                            toDesk: "research",
+                            subject: proposal.question,
+                            crumb: proposal.crumb ?? null,
+                            sourceChecklistItemId: item.id
+                        })
+                        .catch(() => {});
                     if (!autoShuttle) return;
                     const text = proposal.crumb ? `${proposal.question}\n\n(Scene context: ${proposal.crumb})` : proposal.question;
                     setPendingShuttleSeed({ originChatId: selectedChat.id, shuttleItemId: item.id, text });
                     brainstormApi
                         .updateChecklistStatus(item.id, "opened")
                         .then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
+                    deskTransfersApi
+                        .log(storyId, {
+                            event: "opened",
+                            kind: "shuttle",
+                            fromDesk: selectedChat.chatType ?? "general",
+                            fromChatId: selectedChat.id,
+                            fromChatTitleSnapshot: selectedChat.title,
+                            toDesk: "research",
+                            subject: proposal.question,
+                            crumb: proposal.crumb ?? null,
+                            sourceChecklistItemId: item.id
+                        })
+                        .catch(() => {});
                     toast.info("Auto-shuttled to Research — question is ready there whenever you switch over.");
                 });
         }
@@ -756,6 +826,21 @@ export function ChatInterface({
     const handleSendSelectionToNotesChat = (text: string) => {
         setPendingChatComposerSeed({ tool: "notes", text });
         setCurrentTool("notes");
+        // Transfer Log (T1) — single-step action (no separate propose/open moment, unlike the
+        // tray-backed mechanisms above), so both events log together here.
+        if (storyId)
+            for (const event of ["proposed", "opened"] as const)
+                deskTransfersApi
+                    .log(storyId, {
+                        event,
+                        kind: "highlight_to_notes",
+                        fromDesk: selectedChat.chatType ?? "general",
+                        fromChatId: selectedChat.id,
+                        fromChatTitleSnapshot: selectedChat.title,
+                        toDesk: "notes",
+                        subject: text
+                    })
+                    .catch(() => {});
     };
     const handleSubmitSelectionNote = (title: string, type: "idea" | "research" | "todo" | "other") => {
         if (!selectionNoteText || !storyId) return;

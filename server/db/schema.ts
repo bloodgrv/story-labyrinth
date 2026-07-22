@@ -975,3 +975,43 @@ export const brainstormSlots = sqliteTable(
         storySlotIdx: uniqueIndex("brainstormslot_story_slot_idx").on(table.storyId, table.slotKey)
     })
 );
+
+// Desk Transfers table — story-scoped send journal of desk→desk seeds (Transfer Log,
+// docs/Transfer_Log_And_Settings_IA_Design.md). Deliberately separate from brainstormChecklist:
+// that table is the Active-work tray (Open/Send/Accept, Mark-done lifecycle); this table is a
+// read-only historical log of the same underlying sends, with its own retention (30d UI default,
+// 90d hard delete — see pruneHistoryJob.ts) and NEVER a destination's answer body/transcript.
+// fromChatId/toChatId are loose columns with NO real FK (same convention as storyGraphEdges'
+// fromId/toId): a transfer row must survive its origin/destination chat being deleted or renamed,
+// which is exactly why fromChatTitleSnapshot/toChatTitleSnapshot exist — the UI's "Open origin"
+// falls back to a toast if the live chat is gone, rather than the log row disappearing with it.
+export const deskTransfers = sqliteTable(
+    "deskTransfers",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        event: text("event").notNull(), // 'proposed' | 'opened'
+        kind: text("kind").notNull(), // DeskTransferKind (src/types/deskTransfer.ts) — app-validated allowlist
+        fromDesk: text("fromDesk").notNull(),
+        fromChatId: text("fromChatId"),
+        fromChatTitleSnapshot: text("fromChatTitleSnapshot"),
+        toDesk: text("toDesk").notNull(),
+        toChatId: text("toChatId"),
+        toChatTitleSnapshot: text("toChatTitleSnapshot"),
+        subject: text("subject").notNull(),
+        crumb: text("crumb"),
+        // Optional link back to the brainstormChecklist row this transfer originated from — no
+        // real FK (same "informational cross-reference, not enforced integrity" posture as
+        // codexPendingChanges' own loose refs), purely for the UI to jump to the tray item if it
+        // still exists.
+        sourceChecklistItemId: text("sourceChecklistItemId"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdIdx: index("desktransfer_story_id_idx").on(table.storyId),
+        storyCreatedAtIdx: index("desktransfer_story_created_at_idx").on(table.storyId, table.createdAt),
+        createdAtIdx: index("desktransfer_created_at_idx").on(table.createdAt)
+    })
+);

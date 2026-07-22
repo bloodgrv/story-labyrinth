@@ -201,8 +201,21 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
                     side="right"
                 />
                 {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
-                {selectedChat && <ShuttleTray chatId={selectedChat.id} onAnswerHere={setComposerSeedText} />}
-                <OutlineProposalTray loreSuggestions={loreSuggestions} />
+                {selectedChat && (
+                    <ShuttleTray
+                        chatId={selectedChat.id}
+                        storyId={storyId}
+                        fromDesk={selectedChat.chatType ?? "outline"}
+                        fromChatTitleSnapshot={selectedChat.title}
+                        onAnswerHere={setComposerSeedText}
+                    />
+                )}
+                <OutlineProposalTray
+                    loreSuggestions={loreSuggestions}
+                    storyId={storyId}
+                    fromChatId={selectedChat?.id ?? ""}
+                    fromChatTitleSnapshot={selectedChat?.title ?? ""}
+                />
             </div>
         </div>
     );

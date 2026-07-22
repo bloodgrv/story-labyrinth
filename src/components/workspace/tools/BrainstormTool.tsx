@@ -148,7 +148,9 @@ export const BrainstormTool = () => {
                         renderNewChatAction={renderNewChatButton}
                         side="right"
                     />
-                    {selectedChat && <BrainstormChecklistTray chatId={selectedChat.id} storyId={currentStoryId} />}
+                    {selectedChat && (
+                        <BrainstormChecklistTray chatId={selectedChat.id} storyId={currentStoryId} fromChatTitleSnapshot={selectedChat.title} />
+                    )}
                 </div>
             </div>
         </LorebookProvider>
