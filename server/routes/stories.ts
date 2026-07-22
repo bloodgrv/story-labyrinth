@@ -356,21 +356,24 @@ export default createCrudRouter({
             asyncHandler(async (req, res) => {
                 const storyId = req.params.id;
 
-                await db.transaction(async tx => {
+                // better-sqlite3's transaction API is sync-only and throws if the callback
+                // returns a promise, so this must not be `async` — each query is forced to
+                // execute synchronously via `.run()` instead of being awaited.
+                db.transaction(tx => {
                     // 1. Delete story-level lorebook entries
-                    await tx
-                        .delete(schema.lorebookEntries)
+                    tx.delete(schema.lorebookEntries)
                         .where(
                             and(eq(schema.lorebookEntries.level, "story"), eq(schema.lorebookEntries.scopeId, storyId))
-                        );
+                        )
+                        .run();
 
                     // 2. Delete folders (B9, docs/Folders_Org_Design.md) — both story-level lore
                     // folders and chat folders share scopeId=storyId (same query shape as this
                     // route's own export above); no FK to rely on, so explicit cleanup here too.
-                    await tx.delete(schema.orgFolders).where(eq(schema.orgFolders.scopeId, storyId));
+                    tx.delete(schema.orgFolders).where(eq(schema.orgFolders.scopeId, storyId)).run();
 
                     // 3. Delete story (FK cascades handle chapters, aiChats, notes, etc.)
-                    await tx.delete(schema.stories).where(eq(schema.stories.id, storyId));
+                    tx.delete(schema.stories).where(eq(schema.stories.id, storyId)).run();
                 });
 
                 res.status(204).send();

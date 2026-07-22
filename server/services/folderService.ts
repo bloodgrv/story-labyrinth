@@ -40,7 +40,7 @@ const computeDepth = (folderId: string, parentMap: Map<string, string | null>): 
     const visited = new Set<string>();
     while (currentId && !visited.has(currentId)) {
         visited.add(currentId);
-        const parentId = parentMap.get(currentId) ?? null;
+        const parentId: string | null = parentMap.get(currentId) ?? null;
         if (!parentId) break;
         currentId = parentId;
         depth++;

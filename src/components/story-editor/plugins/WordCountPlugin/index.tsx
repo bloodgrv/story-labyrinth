@@ -1,7 +1,7 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $isElementNode, type LexicalNode } from "lexical";
+import { $getRoot } from "lexical";
 import { debounce } from "lodash";
-import { useCallback, useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useEditorChapterId } from "@/features/editor-multiview/context/EditorPaneContext";
 import { reportChapterWordCount } from "@/lib/chapterWordCountStore";
 import { countWords } from "@/utils/textUtils";
@@ -12,36 +12,28 @@ export function WordCountPlugin() {
     const { updateToolbarState } = useToolbarState();
     const chapterId = useEditorChapterId();
 
-    const updateWordCount = useCallback(
+    // Stable debounced fn — previous version wrapped debounce in useCallback(() => debounce(...))()
+    // so a *new* debounced instance was created every render (effect thrash + cancel on the wrong fn → stuck at 0).
+    const updateWordCount = useMemo(
         () =>
             debounce(() => {
                 let text = "";
                 editor.getEditorState().read(() => {
-                    const root = editor._editorState._nodeMap.get("root");
-                    if (root && $isElementNode(root)) {
-                        function traverse(node: LexicalNode) {
-                            if ($isElementNode(node)) {
-                                const children = node.getChildren();
-                                if (children.length === 0 && node.getTextContent)
-                                    // Element node with no children, treat as leaf
-                                    text += `${node.getTextContent()} `;
-                                else children.forEach(traverse);
-                            } else if (node.getTextContent) text += `${node.getTextContent()} `;
-                        }
-                        root.getChildren().forEach(traverse);
-                    }
+                    text = $getRoot().getTextContent();
                 });
                 const count = countWords(text);
                 updateToolbarState("wordCount", count);
                 if (chapterId) reportChapterWordCount(chapterId, count);
             }, 500),
         [editor, updateToolbarState, chapterId]
-    )();
+    );
 
     useEffect(() => {
         const unregister = editor.registerUpdateListener(() => {
             updateWordCount();
         });
+        // Initial count for already-loaded chapter content (update listener alone can lag first paint).
+        updateWordCount();
         return () => {
             unregister();
             updateWordCount.cancel();

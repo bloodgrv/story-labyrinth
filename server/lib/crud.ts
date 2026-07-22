@@ -1,6 +1,6 @@
 import { attemptPromise } from "@jfdi/attempt";
 import type { Table } from "drizzle-orm";
-import { eq, getTableColumns, type InferSelectModel } from "drizzle-orm";
+import { eq, getTableColumns, type InferInsertModel, type InferSelectModel } from "drizzle-orm";
 import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import { type Request, type Response, Router } from "express";
 import { db } from "../db/client.js";
@@ -12,12 +12,9 @@ type TableWithId = Table & { id: SQLiteColumn };
 // throws "value.getTime is not a function". Coerce those columns back to real Date instances
 // before they reach drizzle, for every table this router is used with.
 //
-// Returns `any` (matching req.body's own type) rather than a precise record type — the caller
-// spreads this directly into drizzle's insert/update `values()`, which needs to infer the exact
-// per-table shape from the spread; a `Record<string, unknown>` return here would widen that and
-// break drizzle's type inference despite being runtime-safe, since this route already trusts the
-// request body's shape (no schema validation on this generic path).
-const coerceTimestampColumns = (table: TableWithId, data: Record<string, unknown>): any => {
+// Returns Record<string, unknown>; call sites cast to InferInsertModel / Partial<> for drizzle
+// .values()/.set() — this route already trusts req.body (no schema validation on this generic path).
+const coerceTimestampColumns = (table: TableWithId, data: Record<string, unknown>): Record<string, unknown> => {
     const columns = getTableColumns(table);
     const coerced = { ...data };
     for (const [key, column] of Object.entries(columns))
@@ -120,7 +117,7 @@ export const createCrudRouter = <
                 id: req.body.id || crypto.randomUUID(),
                 ...coerceTimestampColumns(table, bodyWithoutReserved),
                 createdAt: new Date()
-            };
+            } as InferInsertModel<TTable>;
             const result = await db.insert(table).values(data).returning();
             const created = Array.isArray(result) ? result[0] : result;
             res.status(201).json(applyTransform(created as TRow));
@@ -135,7 +132,7 @@ export const createCrudRouter = <
             const column = table.id;
             const result = await db
                 .update(table)
-                .set(coerceTimestampColumns(table, updates))
+                .set(coerceTimestampColumns(table, updates) as Partial<InferInsertModel<TTable>>)
                 .where(eq(column, req.params.id))
                 .returning();
             const updated = Array.isArray(result) ? result[0] : result;
