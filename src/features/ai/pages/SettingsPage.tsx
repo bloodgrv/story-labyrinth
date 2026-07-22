@@ -21,12 +21,14 @@ import {
     useRefreshModelsMutation,
     useUpdateAPIKeyMutation,
     useUpdateDefaultModelMutation,
-    useUpdateLocalApiUrlMutation
+    useUpdateLocalApiUrlMutation,
+    useUpdatePreferredModeMutation
 } from "@/features/ai/hooks/useAISettingsQuery";
 import { TransfersLogCard } from "@/features/transfers/components/TransfersLogCard";
 import { GrammarSettingsCard } from "@/features/grammar/components/GrammarSettingsCard";
 import { HumanizerSettingsCard } from "@/features/humanizer/components/HumanizerSettingsCard";
 import { TtsSettingsCard } from "@/features/tts/components/TtsSettingsCard";
+import type { ChatMode } from "@/types/story";
 
 // Settings IA (S0, docs/Transfer_Log_And_Settings_IA_Design.md) — previously one long undifferentiated
 // scroll; now sub-nav headings per the design doc's locked decision #5. Per-chat toggles (auto-shuttle,
@@ -48,6 +50,7 @@ export default function SettingsPage() {
     const refreshModelsMutation = useRefreshModelsMutation();
     const disconnectGrokOAuthMutation = useDisconnectGrokOAuthMutation();
     const deleteDemoMutation = useDeleteDemoDataMutation();
+    const updatePreferredModeMutation = useUpdatePreferredModeMutation();
 
     if (isLoadingSettings)
         return (
@@ -116,6 +119,26 @@ export default function SettingsPage() {
                             </TabsContent>
 
                             <TabsContent value="providers" className="mt-0 space-y-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Chat default routing</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="flex items-center gap-4">
+                                        <Label className="text-sm font-normal text-muted-foreground">
+                                            New chats default to
+                                        </Label>
+                                        <Tabs
+                                            value={settings?.preferredMode ?? "cloud"}
+                                            onValueChange={value => updatePreferredModeMutation.mutate(value as ChatMode)}
+                                        >
+                                            <TabsList>
+                                                <TabsTrigger value="cloud">Cloud</TabsTrigger>
+                                                <TabsTrigger value="local">Local</TabsTrigger>
+                                            </TabsList>
+                                        </Tabs>
+                                    </CardContent>
+                                </Card>
+
                                 <ProviderCard
                                     provider="openai"
                                     title="OpenAI Configuration"

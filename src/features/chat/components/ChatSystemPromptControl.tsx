@@ -1,12 +1,23 @@
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, MoreHorizontal, Pencil } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getModeForProvider } from "@/features/ai/utils/resolveChatDefaultModel";
 import { MessageEditor } from "@/features/prompts/components/MessageEditor";
 import { usePromptMessages } from "@/features/prompts/hooks/usePromptMessages";
 import { useUpdatePromptMutation } from "@/features/prompts/hooks/usePromptsQuery";
-import type { AIModel, AllowedModel, Prompt } from "@/types/story";
+import type { AIModel, AIProvider, AllowedModel, ChatMode, Prompt } from "@/types/story";
 
 interface EditSystemPromptDialogProps {
     prompt: Prompt;
@@ -46,12 +57,27 @@ function EditSystemPromptDialog({ prompt, open, onOpenChange }: EditSystemPrompt
     );
 }
 
+const PROVIDER_GROUP_LABEL: Record<AIProvider, string> = {
+    openai: "OpenAI",
+    openrouter: "OpenRouter",
+    local: "Local",
+    gemini: "Gemini",
+    grok: "Grok (xAI)",
+    "grok-session": "SuperGrok (Session)",
+    "grok-oauth": "Grok (xAI OAuth)"
+};
+
 interface ChatSystemPromptControlProps {
     prompt: Prompt | null;
     isLoading: boolean;
     availableModels: AIModel[];
     selectedModel: AllowedModel | null;
     onSelectModel: (model: AIModel) => void;
+    // Chat Model Routing (MR2) — mode is derived by the caller from selectedModel's own provider
+    // (falling back to the global preferred mode when nothing's selected yet); this component just
+    // renders the segmented control and filters/groups the model menu by it.
+    mode: ChatMode;
+    onModeChange: (mode: ChatMode) => void;
 }
 
 // Replaces PromptControls for chat-type contexts (Brainstorm/World-Building/Research/Editor) — there's
@@ -62,35 +88,82 @@ export function ChatSystemPromptControl({
     isLoading,
     availableModels,
     selectedModel,
-    onSelectModel
+    onSelectModel,
+    mode,
+    onModeChange
 }: ChatSystemPromptControlProps) {
     const [isEditOpen, setIsEditOpen] = useState(false);
 
     if (isLoading) return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
     if (!prompt) return <p className="text-sm text-destructive">No system prompt configured for this chat type.</p>;
 
+    const modelsInMode = availableModels.filter(m => getModeForProvider(m.provider) === mode);
+    const cloudGroups =
+        mode === "cloud"
+            ? Object.entries(
+                  modelsInMode.reduce<Partial<Record<AIProvider, AIModel[]>>>((groups, model) => {
+                      (groups[model.provider] ??= []).push(model);
+                      return groups;
+                  }, {})
+              )
+            : [];
+
     return (
-        <div className="flex items-center gap-2">
-            <Select value={selectedModel?.id} onValueChange={id => {
-                const model = availableModels.find(m => m.id === id);
-                if (model) onSelectModel(model);
-            }}>
-                <SelectTrigger className="w-[240px]">
-                    <SelectValue placeholder="Select a model" />
+        <div className="flex items-center gap-2 flex-wrap">
+            <Tabs value={mode} onValueChange={value => onModeChange(value as ChatMode)}>
+                <TabsList>
+                    <TabsTrigger value="cloud" className={mode === "cloud" ? "raycast-pill-active" : ""}>
+                        Cloud
+                    </TabsTrigger>
+                    <TabsTrigger value="local" className={mode === "local" ? "raycast-pill-active" : ""}>
+                        Local
+                    </TabsTrigger>
+                </TabsList>
+            </Tabs>
+
+            <Select
+                value={selectedModel?.id}
+                onValueChange={id => {
+                    const model = availableModels.find(m => m.id === id);
+                    if (model) onSelectModel(model);
+                }}
+            >
+                <SelectTrigger className="w-[220px]">
+                    <SelectValue placeholder={modelsInMode.length ? "Select a model" : `No ${mode} models configured`} />
                 </SelectTrigger>
                 <SelectContent>
-                    {availableModels.map(model => (
-                        <SelectItem key={model.id} value={model.id}>
-                            {model.name}
-                        </SelectItem>
-                    ))}
+                    {mode === "local"
+                        ? modelsInMode.map(model => (
+                              <SelectItem key={model.id} value={model.id}>
+                                  {model.name}
+                              </SelectItem>
+                          ))
+                        : cloudGroups.map(([provider, models]) => (
+                              <SelectGroup key={provider}>
+                                  <SelectLabel>{PROVIDER_GROUP_LABEL[provider as AIProvider]}</SelectLabel>
+                                  {models?.map(model => (
+                                      <SelectItem key={model.id} value={model.id}>
+                                          {model.name}
+                                      </SelectItem>
+                                  ))}
+                              </SelectGroup>
+                          ))}
                 </SelectContent>
             </Select>
 
-            <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)}>
-                <Pencil className="h-4 w-4 mr-1" />
-                Edit System Prompt
-            </Button>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9">
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit system prompt
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
 
             <EditSystemPromptDialog prompt={prompt} open={isEditOpen} onOpenChange={setIsEditOpen} />
         </div>

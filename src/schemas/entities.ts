@@ -122,6 +122,7 @@ export const aiSettingsSchema = baseEntitySchema.extend({
     defaultGrokModel: z.string().optional(),
     defaultGrokSessionModel: z.string().optional(),
     defaultGrokOAuthModel: z.string().optional(),
+    preferredMode: z.enum(["cloud", "local"]).optional(),
     contextWindowOverride: z.number().nullable().optional(),
     softWarnNearLimit: z.boolean().optional(),
     softWarnThreshold: z.number().optional()

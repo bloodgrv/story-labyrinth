@@ -276,6 +276,10 @@ export const aiSettings = sqliteTable("aiSettings", {
     defaultGrokModel: text("defaultGrokModel"),
     defaultGrokSessionModel: text("defaultGrokSessionModel"),
     defaultGrokOAuthModel: text("defaultGrokOAuthModel"),
+    // Chat Model Routing (MR0, docs/Chat_Model_Routing_And_Chrome_Design.md) — sticky global
+    // Cloud|Local default for new/unset chat model resolution. Not a "current provider" — a
+    // chat's actual provider is still whatever model it lands on (M1/M2/M4).
+    preferredMode: text("preferredMode", { enum: ["cloud", "local"] }).notNull().default("cloud"),
     featureEndpoints: text("featureEndpoints"), // JSON: FeatureEndpoints — per-feature model/endpoint overrides
     // Context/Token Meter (T4, docs/Context_Token_Meter_Design.md) — Local's context window (n_ctx)
     // user override. Wins over whatever AIModel.contextLength was fetched/guessed for the current

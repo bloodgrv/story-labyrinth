@@ -323,6 +323,13 @@
       "when": 1784696880312,
       "tag": "0045_large_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "6",
+      "when": 1784721703709,
+      "tag": "0046_solid_quasimodo",
+      "breakpoints": true
     }
   ]
 }

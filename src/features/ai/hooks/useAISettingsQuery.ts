@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { aiService } from "@/services/ai/AIService";
 import { adminApi, featureEndpointsApi } from "@/services/api/client";
 import type { FeatureEndpoint, FeatureKey } from "@/types/aiSettings";
-import type { AIProvider, AISettings } from "@/types/story";
+import type { AIProvider, AISettings, ChatMode } from "@/types/story";
 
 export const aiSettingsKeys = {
     all: ["ai"] as const,
@@ -137,6 +137,20 @@ export const useUpdateContextMeterSettingsMutation = () => {
             toast.success("Context meter settings saved");
         },
         onError: () => toast.error("Failed to save context meter settings")
+    });
+};
+
+// Chat Model Routing (MR0) — Settings → Providers "chat default routing" row.
+export const useUpdatePreferredModeMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (mode: ChatMode) => aiService.updatePreferredMode(mode),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: aiSettingsKeys.settings() });
+            toast.success("Preferred chat mode updated");
+        },
+        onError: () => toast.error("Failed to update preferred chat mode")
     });
 };
 

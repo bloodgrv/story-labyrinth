@@ -1,7 +1,7 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { API_URLS } from "@/constants/urls";
 import { aiSettingsSchema } from "@/schemas/entities";
-import type { AIModel, AIProvider, AISettings, PromptMessage } from "@/types/story";
+import type { AIModel, AIProvider, AISettings, ChatMode, PromptMessage } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { aiApi } from "../api/client";
 import { AIProviderFactory } from "./AIProviderFactory";
@@ -282,6 +282,12 @@ export class AIService {
         }
 
         Object.assign(this.settings, updateData);
+    }
+
+    // Chat Model Routing (MR0) — sticky global Cloud|Local default for new/unset chat model
+    // resolution (docs/Chat_Model_Routing_And_Chrome_Design.md, M1).
+    async updatePreferredMode(mode: ChatMode): Promise<void> {
+        await this.updateSettingsField({ preferredMode: mode });
     }
 
     async updateLocalApiUrl(url: string): Promise<void> {

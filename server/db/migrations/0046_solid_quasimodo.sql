@@ -1,0 +1,1 @@
+ALTER TABLE `aiSettings` ADD `preferredMode` text DEFAULT 'cloud' NOT NULL;

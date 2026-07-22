@@ -208,11 +208,18 @@ export interface AISettings extends BaseEntity {
     defaultGrokModel?: string;
     defaultGrokSessionModel?: string;
     defaultGrokOAuthModel?: string;
+    // Chat Model Routing (MR0) — see server/db/schema.ts's aiSettings comment.
+    preferredMode: ChatMode;
     // Context/Token Meter (T4) — see server/db/schema.ts's aiSettings comment.
     contextWindowOverride?: number | null;
     softWarnNearLimit?: boolean;
     softWarnThreshold?: number;
 }
+
+// Chat Model Routing (docs/Chat_Model_Routing_And_Chrome_Design.md) — not a "current provider",
+// just which family a chat's model should default to. "local" maps to provider "local"; every
+// other AIProvider (openai/openrouter/gemini/grok/grok-session/grok-oauth) is "cloud".
+export type ChatMode = "cloud" | "local";
 
 // Note types
 export interface Note extends BaseEntity {

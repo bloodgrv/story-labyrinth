@@ -1,9 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useContextMemoryExpanded } from "@/lib/useContextMemoryExpanded";
 import { ChatMessageList } from "@/features/brainstorm/components/ChatMessageList";
 import { ContextSelector } from "@/features/brainstorm/components/ContextSelector";
 import { MessageInputArea } from "@/features/brainstorm/components/MessageInputArea";
@@ -164,8 +168,10 @@ export function ChatInterface({
         isLoading: promptLoading,
         availableModels,
         selectedModel,
-        selectModel
-    } = useChatSystemPrompt(promptType, selectedChat.lastUsedModelId, modelId =>
+        selectModel,
+        mode: chatMode,
+        switchMode: switchChatMode
+    } = useChatSystemPrompt(promptType, selectedChat.id, selectedChat.lastUsedModelId, modelId =>
         chatsApi.update(selectedChat.id, { lastUsedModelId: modelId })
     );
 
@@ -243,6 +249,23 @@ export function ChatInterface({
         chatsApi.update(selectedChat.id, { webSearchEnabled: value }).then(() => setWebSearchEnabled(value));
     const toggleAutoShuttle = (value: boolean) =>
         chatsApi.update(selectedChat.id, { autoShuttle: value }).then(() => setAutoShuttle(value));
+
+    // Chat chrome density (CC0) — collapsed-by-default "Context & memory" disclosure wrapping the
+    // two toggle groups below; armed-only summary chips (C3) mirror each group's own render
+    // conditions exactly, so a toggle only ever shows up here if it's actually rendered there too.
+    const [contextMemoryExpanded, setContextMemoryExpanded] = useContextMemoryExpanded();
+    const armedContextLabels = [
+        !isNotesChat && includeNotes && "Notes",
+        !isOutlineChat && !isResearchChat && includeOutline && "Outline",
+        !isResearchChat && !isNotesChat && includeMemory && "Memory",
+        (isBrainstormChat || isResearchChat || isNotesChat) && includeLorebook && "Lorebook",
+        isResearchChat && webSearchEnabled && "Web search",
+        isBrainstormChat && includeChapterSummaries && "Chapter summaries",
+        usesCodexTray && isEditorChat && autoInsertProse && "Auto-insert prose",
+        usesCodexTray && autoAcceptCodex && "Auto-accept Codex",
+        usesCodexTray && isOutlineChat && autoAcceptOutline && "Auto-accept outline",
+        usesCodexTray && usesShuttle && autoShuttle && "Auto-shuttle"
+    ].filter((label): label is string => typeof label === "string");
 
     // Grounds the AI in the chat's context (chat-type framing, project synopsis, the chat's
     // anchor entry/chapter + the entry's one-hop relationships, other relevant Codex entries, and
@@ -972,12 +995,26 @@ export function ChatInterface({
                     availableModels={availableModels}
                     selectedModel={selectedModel}
                     onSelectModel={selectModel}
+                    mode={chatMode}
+                    onModeChange={switchChatMode}
                 />
 
                 {activeRework && (
                     <ReworkCard packet={activeRework.packet} onClear={() => setActiveRework(null)} hostHint={reworkHostHint} />
                 )}
 
+                {(!isEditorChat || usesCodexTray) && (
+                    <Collapsible open={contextMemoryExpanded} onOpenChange={setContextMemoryExpanded}>
+                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                            <ChevronRight className={`h-4 w-4 transition-transform ${contextMemoryExpanded ? "rotate-90" : ""}`} />
+                            Context &amp; memory
+                            {!contextMemoryExpanded && armedContextLabels.length > 0 && (
+                                <Badge variant="secondary" className="font-normal">
+                                    {armedContextLabels.join(" · ")}
+                                </Badge>
+                            )}
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-4 pt-3">
                 {!isEditorChat && (
                     <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border p-3">
                         {/* Include Notes (the bridge toggle) is meaningless for the Notes chat itself — it
@@ -1096,6 +1133,9 @@ export function ChatInterface({
                             </div>
                         )}
                     </div>
+                )}
+                        </CollapsibleContent>
+                    </Collapsible>
                 )}
 
                 {showContextSelector && (

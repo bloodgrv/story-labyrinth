@@ -25,6 +25,7 @@ router.get(
             const initial = {
                 id: crypto.randomUUID(),
                 availableModels: [],
+                preferredMode: "cloud" as const,
                 createdAt: new Date()
             };
             await db.insert(schema.aiSettings).values(initial);
