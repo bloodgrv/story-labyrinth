@@ -1,19 +1,16 @@
 import { INSERT_HORIZONTAL_RULE_COMMAND } from "@lexical/react/LexicalHorizontalRuleNode";
-import { $createParagraphNode, $getSelection, type LexicalEditor } from "lexical";
-import { Bot, ChevronDown, Minus } from "lucide-react";
+import type { LexicalEditor } from "lexical";
+import { ChevronDown, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { $createSceneBeatNode } from "../../nodes/SceneBeatNode";
 import { INSERT_PAGE_BREAK } from "../PageBreakPlugin";
-import { SHORTCUTS } from "../ShortcutsPlugin/shortcuts";
 
 interface InsertDropdownProps {
-    editor: LexicalEditor;
     activeEditor: LexicalEditor;
     disabled: boolean;
 }
 
-export const InsertDropdown = ({ editor, activeEditor, disabled }: InsertDropdownProps) => (
+export const InsertDropdown = ({ activeEditor, disabled }: InsertDropdownProps) => (
     <DropdownMenu>
         <DropdownMenuTrigger asChild>
             <Button
@@ -44,25 +41,6 @@ export const InsertDropdown = ({ editor, activeEditor, disabled }: InsertDropdow
                     <i className="icon page-break" />
                     <span className="text">Page Break</span>
                 </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-                className="hover:bg-accent/50 transition-colors cursor-pointer"
-                onClick={() => {
-                    editor.update(() => {
-                        const selection = $getSelection();
-                        if (selection) {
-                            const beatNode = $createSceneBeatNode();
-                            const paragraphNode = $createParagraphNode();
-                            selection.insertNodes([beatNode, paragraphNode]);
-                        }
-                    });
-                }}
-            >
-                <div className="flex items-center gap-2">
-                    <Bot className="h-4 w-4" />
-                    <span className="text">Scene Beat</span>
-                </div>
-                <span className="ml-auto text-xs text-muted-foreground">{SHORTCUTS.SCENE_BEAT}</span>
             </DropdownMenuItem>
         </DropdownMenuContent>
     </DropdownMenu>

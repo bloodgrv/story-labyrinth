@@ -10,7 +10,7 @@ interface UsePromptFormStateProps {
 
 export const usePromptFormState = ({ prompt, fixedType }: UsePromptFormStateProps) => {
     const [name, setName] = useState(prompt?.name || "");
-    const [promptType, setPromptType] = useState<PromptType>(fixedType || prompt?.promptType || "scene_beat");
+    const [promptType, setPromptType] = useState<PromptType>(fixedType || prompt?.promptType || "other");
 
     return {
         name,

@@ -25,7 +25,7 @@ Prompts are structured instructions that tell the AI how to generate content for
 ### Key Benefits
 
 - **Consistent Writing Style:** Create prompts that maintain a consistent tone and style throughout your story
-- **Specialised Generation:** Tailor prompts for specific tasks like scene beats, summaries, or brainstorming
+- **Specialised Generation:** Tailor prompts for specific tasks like summaries, selection rewrites, or brainstorming
 - **Customisable Parameters:** Adjust temperature and token settings to control creativity and length
 - **Model Selection:** Choose which AI models can use each prompt for optimal results
 - **Variable System:** Use dynamic variables to automatically include story context
@@ -46,7 +46,6 @@ The Story Nexus supports various types of prompts to help you with different asp
 
 | Type | Description |
 |------|-------------|
-| **Scene Beat** | For generating story content based on a scene description |
 | **Generate Summary** | For creating summaries of chapters or sections |
 | **Selection-Specific** | For working with selected text in your document |
 | **Continue Writing** | For extending the current text naturally |
@@ -75,8 +74,8 @@ Click the "New Prompt" button to open the prompt creation form.
 
 Fill in the basic information for your prompt:
 
-- **Name:** Give your prompt a descriptive name (e.g., "Descriptive Scene Beat", "Character Dialog Generator")
-- **Prompt Type:** Select the appropriate type (Scene Beat, Generate Summary, Selection-Specific, Continue Writing, Brainstorm, or Other)
+- **Name:** Give your prompt a descriptive name (e.g., "Atmospheric Description", "Character Dialog Generator")
+- **Prompt Type:** Select the appropriate type (Generate Summary, Selection-Specific, Continue Writing, Brainstorm, or Other)
 
 ### Step 4: Create Messages
 
@@ -123,7 +122,7 @@ Maximum number of tokens (roughly words) the AI can generate.
 | Range | Use Case |
 |-------|----------|
 | 100–300 | Quick responses, dialogue, brief descriptions |
-| 400–800 | Scene beats, substantial paragraphs |
+| 400–800 | Descriptive passages, substantial paragraphs |
 | 1000+ | Extended scenes, multiple paragraphs |
 
 *Note: The AI may generate fewer tokens than the max if it reaches a natural stopping point. Higher max tokens = slower generation and higher API costs.*
@@ -147,8 +146,7 @@ Variables are placeholders in your prompts that get replaced with actual content
 
 | Variable | Description |
 |----------|-------------|
-| `{{scenebeat}}` | The scene beat command you enter |
-| `{{scenebeat_context}}` | Dynamically generated context based on matched lorebook entries |
+| `{{scenebeat}}` | The current message/instruction you send when using this prompt |
 | `{{brainstorm_context}}` | Dynamic Brainstorm Context |
 | `{{summaries}}` | Summaries of all previous chapters |
 | `{{previous_words(1000)}}` | The last 1000 words before the cursor in the editor |
@@ -174,7 +172,7 @@ Maintain this perspective and style in your writing.
 
 **User Message Example:**
 ```
-Write a scene where {{scenebeat}}.
+Write a scene where {{scenebeat}} happens.
 Use the following context from my story: {{previous_words(500)}}
 ```
 
@@ -200,7 +198,7 @@ Prompts won't fail, but empty variables may affect AI output quality. Write prom
 
 > [!IMPORTANT]
 > You can create sophisticated prompts that adapt to your story context by combining variables:
-> `Write a scene where {{scenebeat}}. The scene involves the following characters: {{scenebeat_context}}. The scene takes place after these events: {{summaries}}. Maintain the {{pov}} perspective.`
+> `Write a scene where {{scenebeat}}. The scene involves the following characters: {{all_characters}}. The scene takes place after these events: {{summaries}}. Maintain the {{pov}} perspective.`
 
 </TabsContent>
 
@@ -290,14 +288,13 @@ Share prompts between stories or back them up using import/export functionality.
 
 ### Prompt Integration with Writing
 
-Prompts are integrated with the writing process through the Scene Beat feature and other AI generation tools.
+Prompts are integrated with the writing process through the editor's AI generation menus and the Editor Chat.
 
-**Using Prompts with Scene Beats:**
-1. In the editor, press `Alt+S` (Windows) or `Option+S` (Mac) to insert a Scene Beat
-2. Enter your scene beat command describing what you want the AI to write
-3. Select one of your prompts from the dropdown menu
-4. The system will process your prompt, replacing variables with context from your story
-5. Click "Generate Prose" to create content based on your prompt
+**Using Prompts in the Editor:**
+1. Select text and open the floating toolbar's "More" menu for Selection-Specific prompts (Expand/Rewrite/Shorten), or use the Chapter Summary section's Generate Summary menu
+2. Choose one of your prompts from the dropdown menu
+3. The system will process your prompt, replacing variables with context from your story
+4. For open-ended generation, talk to the Editor Chat directly — its composer text resolves through `{{scenebeat}}` in any custom prompt you attach to it
 
 </TabsContent>
 
@@ -324,7 +321,7 @@ Use multiple prompts in sequence for complex writing tasks:
 
 1. **Brainstorming Prompt** - Generate ideas and possibilities
 2. **Scene Structure Prompt** - Outline the scene
-3. **Detailed Scene Beat Prompt** - Write the full content
+3. **Detailed Continue Writing Prompt** - Write the full content
 
 ### Troubleshooting Common Issues
 

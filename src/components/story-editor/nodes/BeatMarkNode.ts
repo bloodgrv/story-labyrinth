@@ -4,9 +4,9 @@ import type { EditorConfig, LexicalNode, NodeKey, Spread } from "lexical";
 import { CONCRETE_BEAT_TYPE_MAP } from "@/types/beats";
 import type { ConcreteBeatType } from "@/types/beats";
 
-// Wraps a span of chapter prose to mark it as a concrete beat (see src/types/beats.ts) —
-// distinct from SceneBeatNode (an AI-generation command). Extends the official @lexical/mark
-// MarkNode (already registered in this codebase but otherwise unused) rather than building a
+// Wraps a span of chapter prose to mark it as a concrete beat (see src/types/beats.ts). Extends
+// the official @lexical/mark MarkNode (already registered in this codebase but otherwise unused)
+// rather than building a
 // custom inline node from scratch, since MarkNode already handles the tricky parts: surviving
 // edits around/inside the marked span, overlapping marks, and serialization.
 //

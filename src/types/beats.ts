@@ -4,10 +4,9 @@
 // internal — this taxonomy is fixed and should stay that way; see CLAUDE.md's Character Codex
 // section, which this feature is designed to eventually feed (wardrobe/items/wounds tracking).
 //
-// This is NOT the same as the existing "Scene Beat" feature (src/types/story.ts SceneBeat) —
-// that's a command a writer inserts for the AI to expand into prose. A Concrete Beat is a tag
-// applied to prose that already exists, for tracking/consistency purposes. Two different
-// concepts that happen to share the word "beat".
+// A Concrete Beat is a tag applied to prose that already exists, for tracking/consistency
+// purposes — never a command that generates new prose (that was the old, removed "Scene Beat"
+// feature, which shared the word "beat" but was otherwise unrelated).
 
 export type ConcreteBeatType =
     | "physical_action"
@@ -97,7 +96,7 @@ export interface ConcreteBeat {
     text: string;
     // The character (lorebookEntries.id) this beat's concrete state applies to, if any — lets
     // the beat reference/pull the character's Codex state (wardrobe, items, wounds, appearance).
-    // A real FK, unlike Chapter.povCharacter/SceneBeat.povCharacter which store a display name —
+    // A real FK, unlike Chapter.povCharacter which stores a display name —
     // this needs to reliably re-fetch structured Codex data, not just render a label. May point
     // to a since-deleted entry (FK enforcement is off database-wide in this app — see
     // DECISIONS.md), so treat a non-resolving id as "character removed", not an error.

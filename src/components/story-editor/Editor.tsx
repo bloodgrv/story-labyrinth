@@ -34,8 +34,6 @@ import MarkdownShortcutPlugin from "./plugins/MarkdownShortcutPlugin";
 import PageBreakPlugin from "./plugins/PageBreakPlugin";
 import RegisterActiveEditorPlugin from "./plugins/RegisterActiveEditorPlugin";
 import { SaveChapterContentPlugin } from "./plugins/SaveChapterContent";
-import SceneBeatShortcutPlugin from "./plugins/SceneBeatShortcutPlugin";
-import SlashCommandPlugin from "./plugins/SlashCommandPlugin";
 import TabFocusPlugin from "./plugins/TabFocusPlugin";
 import ToolbarPlugin from "./plugins/ToolbarPlugin";
 import { WordCountPlugin } from "./plugins/WordCountPlugin";
@@ -128,8 +126,6 @@ export default function Editor(): JSX.Element {
                         <PageBreakPlugin />
                         <LorebookTagPlugin />
                         <LayoutPlugin />
-                        <SceneBeatShortcutPlugin editor={editor} />
-                        <SlashCommandPlugin editor={editor} />
                         <BeatMarkSyncPlugin />
                         <GrammarCheckPlugin />
                         {floatingAnchorElem && <FloatingTextFormatToolbarPlugin anchorElem={floatingAnchorElem} />}

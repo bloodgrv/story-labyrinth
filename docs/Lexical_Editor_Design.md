@@ -29,11 +29,13 @@ This document locks the **plugin-add** grill axis. Upgrade breakage plan, list â
 
 **Upstream:** Heading, Quote, List/ListItem, Code/CodeHighlight, Table*, Hashtag, AutoLink, Link, Overflow, HorizontalRule, Mark  
 
-**SN custom:** Image, InlineImage, Collapsible*, PageBreak, Layout*, SpecialText, SceneBeat, BeatMark, GrammarMark
+**SN custom:** Image, InlineImage, Collapsible*, PageBreak, Layout*, SpecialText, BeatMark, GrammarMark
 
 ### Main Editor plugins (mounted today)
 
-RichText, History (shared), AutoFocus, Hashtag, AutoLink, Link, ClickableLink, HR, TabIndentation, MarkdownShortcut, Images, InlineImage, Collapsible, PageBreak, Layout, DragDropPaste, DraggableBlock, Floating format/link, ContextMenu, TabFocus, Toolbar + SN: Load/Save chapter, RegisterActiveEditor, WordCount, LorebookTag, SceneBeatShortcut, SlashCommand, BeatMarkSync, GrammarCheck.
+RichText, History (shared), AutoFocus, Hashtag, AutoLink, Link, ClickableLink, HR, TabIndentation, MarkdownShortcut, Images, InlineImage, Collapsible, PageBreak, Layout, DragDropPaste, DraggableBlock, Floating format/link, ContextMenu, TabFocus, Toolbar + SN: Load/Save chapter, RegisterActiveEditor, WordCount, LorebookTag, BeatMarkSync, GrammarCheck.
+
+(SceneBeat node, SceneBeatShortcut, and SlashCommand plugins removed â€” see `docs/Scene_Beat_Removal_Design.md`.)
 
 **Gap that motivated this axis:** Toolbar already dispatches list/checklist **commands** and list **nodes** are registered, but **`ListPlugin` / `CheckListPlugin` are not mounted** in `Editor.tsx`. Table **nodes** are registered; **`TablePlugin` is not mounted**.
 

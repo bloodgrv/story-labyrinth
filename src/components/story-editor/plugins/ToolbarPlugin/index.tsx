@@ -191,7 +191,7 @@ export default function ToolbarPlugin({
             {canViewerSeeInsertDropdown && (
                 <>
                     <div className="w-[1px] h-6 bg-border mx-1" />
-                    <InsertDropdown editor={editor} activeEditor={activeEditor} disabled={!isEditable} />
+                    <InsertDropdown activeEditor={activeEditor} disabled={!isEditable} />
                 </>
             )}
 

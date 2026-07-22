@@ -26,8 +26,6 @@ import {
     MatchedEntriesChapterResolver,
     PoVResolver,
     PreviousWordsResolver,
-    SceneBeatContextResolver,
-    SceneBeatMatchedEntriesResolver,
     SceneBeatResolver,
     SelectedTextResolver,
     StoryLanguageResolver,
@@ -67,7 +65,6 @@ export class PromptParser {
         registry.register("matched_entries_chapter", new MatchedEntriesChapterResolver(this.formatter));
         registry.register("lorebook_chapter_matched_entries", new MatchedEntriesChapterResolver(this.formatter));
         registry.register("lorebook_data", new MatchedEntriesChapterResolver(this.formatter));
-        registry.register("lorebook_scenebeat_matched_entries", new SceneBeatMatchedEntriesResolver(this.formatter));
         registry.register("all_entries", new AllEntriesResolver(this.formatter, entries));
         registry.register("character", new CharacterResolver(this.formatter, entries));
         registry.register("all_characters", new AllCharactersResolver(this.formatter, entries));
@@ -78,7 +75,6 @@ export class PromptParser {
         registry.register("all_synopsis", new AllSynopsisResolver(this.formatter, entries));
         registry.register("all_starting_scenarios", new AllStartingScenariosResolver(this.formatter, entries));
         registry.register("all_timelines", new AllTimelinesResolver(this.formatter, entries));
-        registry.register("scenebeat_context", new SceneBeatContextResolver(this.formatter, entries));
 
         // Metadata resolvers
         registry.register("pov", new PoVResolver());

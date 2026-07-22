@@ -5,11 +5,11 @@ import { type Request, type Response, Router } from "express";
 import multer from "multer";
 import { nanoid } from "nanoid";
 import { db } from "../db/client.js";
-import { aiChats, chapters, lorebookEntries, orgFolders, sceneBeats, series, stories } from "../db/schema.js";
+import { aiChats, chapters, lorebookEntries, orgFolders, series, stories } from "../db/schema.js";
+import { migrateSceneBeatNodesInContent } from "../services/sceneBeatContentMigration.js";
 
 type ImportedChapter = InferSelectModel<typeof chapters>;
 type ImportedLorebookEntry = InferSelectModel<typeof lorebookEntries>;
-type ImportedSceneBeat = InferSelectModel<typeof sceneBeats>;
 type ImportedAiChat = InferSelectModel<typeof aiChats>;
 type ImportedOrgFolder = InferSelectModel<typeof orgFolders>;
 
@@ -163,13 +163,12 @@ seriesRouter.get(
         // Export each story with full data
         const storyExports = await Promise.all(
             seriesStories.map(async story => {
-                const [storyChapters, storyLorebook, storySceneBeats, storyAiChats] = await Promise.all([
+                const [storyChapters, storyLorebook, storyAiChats] = await Promise.all([
                     db.select().from(chapters).where(eq(chapters.storyId, story.id)),
                     db
                         .select()
                         .from(lorebookEntries)
                         .where(and(eq(lorebookEntries.level, "story"), eq(lorebookEntries.scopeId, story.id))),
-                    db.select().from(sceneBeats).where(eq(sceneBeats.storyId, story.id)),
                     db.select().from(aiChats).where(eq(aiChats.storyId, story.id))
                 ]);
 
@@ -181,7 +180,6 @@ seriesRouter.get(
                     series: seriesResult,
                     chapters: storyChapters,
                     lorebookEntries: storyLorebook,
-                    sceneBeats: storySceneBeats,
                     aiChats: storyAiChats
                 };
             })
@@ -296,12 +294,20 @@ seriesRouter.post(
             };
             await db.insert(stories).values(newStory);
 
-            // Import chapters
+            // Import chapters. Scene Beat Removal (SB5) — an old export's own `sceneBeats` array
+            // (if present, from a backup taken before the feature was removed) is the only source
+            // of command text left once there's no live `sceneBeats` table row to look up from,
+            // so it's used here to rewrite any `scene-beat` Lexical nodes into plain paragraphs
+            // before the chapter content is ever stored — never inserted into a table itself.
+            const sceneBeatCommandsById = new Map<string, string>(
+                (storyExport.sceneBeats ?? []).map((beat: { id: string; command: string }) => [beat.id, beat.command])
+            );
             if (storyExport.chapters?.length) {
                 const newChapters = storyExport.chapters.map((chapter: ImportedChapter) => ({
                     ...chapter,
                     id: nanoid(),
                     storyId: newStoryId,
+                    content: migrateSceneBeatNodesInContent(chapter.content, sceneBeatCommandsById),
                     createdAt: new Date()
                 }));
                 await db.insert(chapters).values(newChapters);
@@ -321,17 +327,6 @@ seriesRouter.post(
                     .filter((entry: ImportedLorebookEntry): entry is NonNullable<typeof entry> => entry !== null);
 
                 if (newEntries.length > 0) await db.insert(lorebookEntries).values(newEntries);
-            }
-
-            // Import scene beats
-            if (storyExport.sceneBeats?.length) {
-                const newSceneBeats = storyExport.sceneBeats.map((sceneBeat: ImportedSceneBeat) => ({
-                    ...sceneBeat,
-                    id: nanoid(),
-                    storyId: newStoryId,
-                    createdAt: new Date()
-                }));
-                await db.insert(sceneBeats).values(newSceneBeats);
             }
 
             // Import AI chats

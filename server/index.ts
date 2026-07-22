@@ -3,7 +3,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runMigrations } from "./db/migrate.js";
-import { patchStaleSystemPrompts, seedSystemPrompts } from "./db/seedSystemPrompts.js";
+import { migrateSceneBeatPromptType, patchStaleSystemPrompts, seedSystemPrompts } from "./db/seedSystemPrompts.js";
 import { blockViewerMutations, requireAuth, requireOwner } from "./middleware/auth.js";
 import { start as startJobRunner, stop as stopJobRunner } from "./services/jobRunner.js";
 import adminRouter from "./routes/admin.js";
@@ -26,7 +26,6 @@ import outlineRouter from "./routes/outline.js";
 import outlineCharactersRouter from "./routes/outlineCharacters.js";
 import promptsRouter from "./routes/prompts.js";
 import ragRouter from "./routes/rag.js";
-import scenebeatsRouter from "./routes/scenebeats.js";
 import seriesRouter from "./routes/series.js";
 // Import routes
 import storiesRouter from "./routes/stories.js";
@@ -49,6 +48,8 @@ const initializeDatabase = async () => {
     runMigrations();
     await seedSystemPrompts();
     await patchStaleSystemPrompts();
+    // Scene Beat Removal (SB7) — recategorizes existing promptType: "scene_beat" rows to "other".
+    await migrateSceneBeatPromptType();
     await startJobRunner();
 };
 
@@ -89,7 +90,6 @@ app.use("/api/lorebook", lorebookRouter);
 app.use("/api/prompts", promptsRouter);
 app.use("/api/ai", requireOwner, aiRouter);
 app.use("/api/brainstorm", brainstormRouter);
-app.use("/api/scenebeats", scenebeatsRouter);
 app.use("/api/notes", notesRouter);
 app.use("/api/admin", requireOwner, adminRouter);
 // System-level infrastructure (LLM-spend-triggering, story-wide reindexing) that a

@@ -7,6 +7,7 @@ import {
     getFeatureEndpoints,
     setFeatureEndpoints
 } from "../services/aiClientFactory.js";
+import { migrateSceneBeatNodesInContent } from "../services/sceneBeatContentMigration.js";
 import type { FeatureEndpoint, FeatureKey } from "../../src/types/aiSettings.js";
 import { FEATURE_KEYS } from "../../src/types/aiSettings.js";
 
@@ -20,7 +21,6 @@ type ImportedChapter = typeof schema.chapters.$inferSelect;
 type ImportedPrompt = typeof schema.prompts.$inferSelect;
 type ImportedLorebookEntry = typeof schema.lorebookEntries.$inferSelect;
 type ImportedAiChat = typeof schema.aiChats.$inferSelect;
-type ImportedSceneBeat = typeof schema.sceneBeats.$inferSelect;
 type ImportedNote = typeof schema.notes.$inferSelect;
 type ImportedAiSetting = typeof schema.aiSettings.$inferSelect;
 
@@ -36,7 +36,6 @@ router.get("/export", async (_, res) => {
             db.select().from(schema.prompts),
             db.select().from(schema.lorebookEntries),
             db.select().from(schema.aiChats),
-            db.select().from(schema.sceneBeats),
             db.select().from(schema.notes),
             db.select().from(schema.aiSettings)
         ])
@@ -48,11 +47,11 @@ router.get("/export", async (_, res) => {
         return;
     }
 
-    const [series, stories, chapters, prompts, lorebookEntries, aiChats, sceneBeats, notes, aiSettings] = tables;
+    const [series, stories, chapters, prompts, lorebookEntries, aiChats, notes, aiSettings] = tables;
     res.json({
         version: "1.0",
         exportedAt: new Date().toISOString(),
-        tables: { series, stories, chapters, prompts, lorebookEntries, aiChats, sceneBeats, notes, aiSettings }
+        tables: { series, stories, chapters, prompts, lorebookEntries, aiChats, notes, aiSettings }
     });
 });
 
@@ -93,7 +92,7 @@ router.delete("/demo", async (_, res) => {
         const seriesResult = await db.delete(schema.series).where(eq(schema.series.isDemo, true));
         const storiesResult = await db.delete(schema.stories).where(eq(schema.stories.isDemo, true));
 
-        // Note: chapters, sceneBeats, aiChats, notes will cascade automatically
+        // Note: chapters, aiChats, notes will cascade automatically
         // lorebook entries need explicit deletion
         const lorebookResult = await db.delete(schema.lorebookEntries).where(eq(schema.lorebookEntries.isDemo, true));
 
@@ -172,9 +171,17 @@ router.post("/import", upload.single("file"), async (req, res) => {
         return data.length;
     };
 
+    // Scene Beat Removal (SB5) — an old backup's own `tables.sceneBeats` (if present, taken
+    // before the feature was removed) is the only source of command text left once there's no
+    // live `sceneBeats` table row to look up from, so it's used below to rewrite any `scene-beat`
+    // Lexical nodes into plain paragraphs before chapter content is ever restored — never
+    // reinserted into a table itself (same posture as the story/series import routes).
+    const sceneBeatCommandsById = new Map<string, string>(
+        ((tables.sceneBeats as Array<{ id: string; command: string }>) ?? []).map(beat => [beat.id, beat.command])
+    );
+
     const [error, counts] = await attemptPromise(async () => {
         console.log("[Import] Clearing existing data...");
-        await db.delete(schema.sceneBeats);
         await db.delete(schema.notes);
         await db.delete(schema.lorebookEntries);
         await db.delete(schema.aiChats);
@@ -196,6 +203,7 @@ router.post("/import", upload.single("file"), async (req, res) => {
             })),
             chapters: await importTable("chapters", schema.chapters, tables.chapters, (c: ImportedChapter) => ({
                 ...c,
+                content: migrateSceneBeatNodesInContent(c.content, sceneBeatCommandsById),
                 createdAt: new Date(c.createdAt)
             })),
             prompts: await importTable("prompts", schema.prompts, tables.prompts, (p: ImportedPrompt) => ({
@@ -213,12 +221,6 @@ router.post("/import", upload.single("file"), async (req, res) => {
                 createdAt: new Date(c.createdAt),
                 updatedAt: c.updatedAt ? new Date(c.updatedAt) : undefined
             })),
-            sceneBeats: await importTable(
-                "sceneBeats",
-                schema.sceneBeats,
-                tables.sceneBeats,
-                (s: ImportedSceneBeat) => ({ ...s, createdAt: new Date(s.createdAt) })
-            ),
             notes: await importTable("notes", schema.notes, tables.notes, (n: ImportedNote) => ({
                 ...n,
                 createdAt: new Date(n.createdAt),

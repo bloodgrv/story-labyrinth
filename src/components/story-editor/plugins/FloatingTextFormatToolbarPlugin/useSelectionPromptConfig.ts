@@ -1,7 +1,6 @@
 import { $getSelection, $isElementNode, $isRangeSelection, $isTextNode, type LexicalEditor, type LexicalNode } from "lexical";
 import { useCallback } from "react";
 import type { Prompt, PromptParserConfig } from "@/types/story";
-import { $isSceneBeatNode } from "../../nodes/SceneBeatNode";
 
 type PovType = "First Person" | "Third Person Limited" | "Third Person Omniscient";
 
@@ -48,7 +47,6 @@ export const useSelectionPromptConfig = ({
 
                     const traverseNodes = (node: LexicalNode): boolean => {
                         if (reachedStartNode) return true;
-                        if ($isSceneBeatNode(node)) return false;
 
                         if (node.is(startNode)) {
                             if ($isTextNode(node)) textParts.push(node.getTextContent().substring(0, startOffset));

@@ -9,7 +9,6 @@ import type {
     LorebookEntry,
     Note,
     Prompt,
-    SceneBeat,
     Series,
     SeriesExport,
     Story,
@@ -127,17 +126,6 @@ export const grokOAuthApi = {
             method: "POST",
             body: JSON.stringify({ deviceCode })
         })
-};
-
-// Scene Beats API
-export const scenebeatsApi = {
-    getByChapter: (chapterId: string) => fetchJSON<SceneBeat[]>(`/scenebeats/chapter/${chapterId}`),
-    getById: (id: string) => fetchJSON<SceneBeat>(`/scenebeats/${id}`),
-    create: (data: Omit<SceneBeat, "createdAt">) =>
-        fetchJSON<SceneBeat>("/scenebeats", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<SceneBeat>) =>
-        fetchJSON<SceneBeat>(`/scenebeats/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    delete: (id: string) => fetchJSON<{ success: boolean }>(`/scenebeats/${id}`, { method: "DELETE" })
 };
 
 // Notes API

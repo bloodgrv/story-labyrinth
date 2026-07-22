@@ -68,3 +68,17 @@ export const patchStaleSystemPrompts = async () => {
         console.log(`Patched stale system prompt content for promptType "${promptType}" (missing ${requiredToken})`);
     }
 };
+
+// Scene Beat Removal (SB7, docs/Scene_Beat_Removal_Design.md) — "scene_beat" is no longer a
+// selectable promptType (the feature it backed is gone), but per the design's own "do not
+// hard-delete user prompt rows" decision, existing rows (system-seeded or user-authored) are
+// recategorized to "other" rather than deleted. Idempotent (the UPDATE only ever matches rows
+// still tagged "scene_beat", none after the first successful run) — safe on every boot.
+export const migrateSceneBeatPromptType = async () => {
+    const result = await db
+        .update(schema.prompts)
+        .set({ promptType: "other" })
+        .where(eq(schema.prompts.promptType, "scene_beat"));
+    if (result.changes > 0)
+        console.log(`Migrated ${result.changes} prompt row(s) from promptType "scene_beat" to "other" (Scene Beat Removal)`);
+};

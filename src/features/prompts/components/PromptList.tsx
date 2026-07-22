@@ -14,7 +14,6 @@ interface PromptsListProps {
 
 const getPromptTypeLabel = (type: Prompt["promptType"]) => {
     const labels: Record<Prompt["promptType"], string> = {
-        scene_beat: "Scene Beat",
         gen_summary: "Generate Summary",
         selection_specific: "Selection-Specific",
         continue_writing: "Continue Writing",
@@ -31,7 +30,6 @@ const getPromptTypeLabel = (type: Prompt["promptType"]) => {
 
 // Define order for prompt types to display
 const promptTypeOrder: Prompt["promptType"][] = [
-    "scene_beat",
     "continue_writing",
     "selection_specific",
     "gen_summary",

@@ -11,7 +11,6 @@ export const SHORTCUTS = Object.freeze({
     CHECK_LIST: IS_APPLE ? "⌘+Opt+6" : "Ctrl+Alt+6",
     CODE_BLOCK: IS_APPLE ? "⌘+Opt+C" : "Ctrl+Alt+C",
     QUOTE: IS_APPLE ? "⌘+Opt+Q" : "Ctrl+Alt+Q",
-    SCENE_BEAT: IS_APPLE ? "Opt+S" : "Alt+S",
 
     // (Ctrl|⌘) + Shift + <key> shortcuts
     INCREASE_FONT_SIZE: IS_APPLE ? "⌘+Shift+." : "Ctrl+Shift+.",
@@ -40,9 +39,3 @@ export const SHORTCUTS = Object.freeze({
     INSERT_LINK: IS_APPLE ? "⌘+K" : "Ctrl+K"
 });
 
-const controlOrMeta = (metaKey: boolean, ctrlKey: boolean): boolean => (IS_APPLE ? metaKey : ctrlKey);
-
-export const isInsertSceneBeat = (event: KeyboardEvent): boolean => {
-    const { code, shiftKey, altKey, metaKey, ctrlKey } = event;
-    return code === "KeyS" && !shiftKey && altKey && !controlOrMeta(metaKey, ctrlKey);
-};

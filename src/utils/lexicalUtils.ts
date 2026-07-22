@@ -48,7 +48,6 @@ interface LexicalTextExtractionOptions {
 
 const defaultOptions: LexicalTextExtractionOptions = {
     paragraphSpacing: "\n",
-    excludeNodeTypes: ["scene-beat"],
     cleanupMultipleNewlines: true
 };
 
@@ -62,17 +61,12 @@ const defaultOptions: LexicalTextExtractionOptions = {
  *
  * @example
  * ```ts
- * // Extract with default options (single newline, exclude scene-beats)
+ * // Extract with default options (single newline)
  * const text = extractPlainTextFromLexical(editorState);
  *
  * // Extract with double newlines for paragraphs
  * const text = extractPlainTextFromLexical(editorState, {
  *   paragraphSpacing: '\n\n'
- * });
- *
- * // Include scene-beat nodes in extraction
- * const text = extractPlainTextFromLexical(editorState, {
- *   excludeNodeTypes: []
  * });
  * ```
  */

@@ -25,7 +25,7 @@ import { CollapsibleContentNode } from "../../../components/story-editor/plugins
 import { CollapsibleTitleNode } from "../../../components/story-editor/plugins/CollapsiblePlugin/CollapsibleTitleNode";
 import PlaygroundEditorTheme from "../../../components/story-editor/themes/PlaygroundEditorTheme";
 
-// Read-only nodes - excludes SceneBeatNode which requires LorebookProvider
+// Read-only nodes
 const ReaderNodes = [
     HeadingNode,
     ListNode,

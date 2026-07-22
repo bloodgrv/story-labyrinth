@@ -12,7 +12,6 @@ export class ContextBuilder {
             ...config,
             chapters,
             currentChapter,
-            matchedEntries: config.matchedEntries,
             povCharacter: config.povCharacter || currentChapter?.povCharacter,
             povType: config.povType || currentChapter?.povType || "Third Person Omniscient",
             additionalContext: config.additionalContext || {}

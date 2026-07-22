@@ -94,7 +94,7 @@ Click the expand arrow on a chapter card to view its summary. You can:
 - Export the chapter to various formats using the download menu
 
 **Deleting Chapters**
-Click the delete icon on a chapter card and confirm. **Deletion is permanent and cannot be undone.** All chapter content, notes, outlines, and scene beats are deleted.
+Click the delete icon on a chapter card and confirm. **Deletion is permanent and cannot be undone.** All chapter content, notes, and outlines are deleted.
 
 **Chapter Notes & Outlines**
 Access notes and outlines from within the chapter editor:
@@ -122,7 +122,7 @@ Click the edit icon on a story card to modify:
 5. Your story now has access to series-level lorebook entries
 
 **Deleting Stories**
-Click the delete icon and confirm. **This permanently deletes the story and all its chapters, prompts, lorebook entries, notes, brainstorm chats, and scene beats.** Consider exporting before deletion.
+Click the delete icon and confirm. **This permanently deletes the story and all its chapters, prompts, lorebook entries, notes, and chats.** Consider exporting before deletion.
 
 ### Notes Feature
 
@@ -205,7 +205,6 @@ Chapter summaries help the AI maintain continuity across your story. Generate su
 
 | Action | Shortcut |
 |--------|----------|
-| Insert Scene Beat | `Alt+S` / `Option+S` |
 | Trigger @ Autocomplete | `@` |
 | Save Chapter | Auto-save |
 
@@ -238,21 +237,12 @@ Solutions to common problems you might encounter while using The Story Nexus.
 - Click the "Refresh Models" button after starting your local server
 - Verify a model is loaded in LM Studio
 
-**Scene Beat Won't Generate**
-
-Check these requirements:
-- You've entered a scene beat command
-- You've selected a prompt from the dropdown
-- You've selected a model from the dropdown
-- The "Generate Prose" button should become active when all three are set
-- If using a local model, ensure your server is running
-
 **Generation Fails or Returns Error**
 
 Common causes:
 - **API Key Issues:** Invalid or expired key, insufficient credits
 - **Rate Limits:** Provider rate limits hit—wait and retry
-- **Context Too Large:** Too much lorebook context. Try "Use Custom Context" with fewer entries
+- **Context Too Large:** Too much lorebook context. Toggle off Lorebook/Notes/Outline in the chat's context controls, or disable entries you don't need
 - **Local Server:** Server crashed or model unloaded—restart LM Studio
 - **Network Issues:** Check internet connection for cloud providers
 

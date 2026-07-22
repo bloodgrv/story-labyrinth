@@ -15,7 +15,6 @@ import { ModelSelector } from "./ModelSelector";
 type PromptType = Prompt["promptType"];
 
 const PROMPT_TYPES: Array<{ value: PromptType; label: string }> = [
-    { value: "scene_beat", label: "Scene Beat" },
     { value: "gen_summary", label: "Generate Summary" },
     { value: "selection_specific", label: "Selection-Specific" },
     { value: "continue_writing", label: "Continue Writing" },

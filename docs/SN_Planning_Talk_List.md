@@ -30,7 +30,7 @@
 | Research S* / Notes desk K* | **Shipped** (P0.4) |
 | Name gen / Locations & maps | Own design docs |
 | **Dep majors (pack 3)** | Backlog P3 parked — sqlite/jspdf/lucide/router/panels/vite8/tw4/ts7; not LE* |
-| **Scene Beat removal** | `docs/Scene_Beat_Removal_Design.md` — **locked**; keep Concrete Beats; SB0–SB8; P3 |
+| **Scene Beat removal** | ✅ **Shipped in full 2026-07-22.** `docs/Scene_Beat_Removal_Design.md` — SB0-SB8 done, including table drop (user-confirmed), see `DECISIONS.md` |
 | **Chat model routing + chrome** | `docs/Chat_Model_Routing_And_Chrome_Design.md` — **locked**; Cloud\|Local; collapse memory; compact list; MR*/CC0/CL0; P3 |
 
 ---

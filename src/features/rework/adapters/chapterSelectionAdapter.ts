@@ -11,7 +11,6 @@ import {
     type LexicalNode,
     type TextNode
 } from "lexical";
-import { $isSceneBeatNode } from "@/components/story-editor/nodes/SceneBeatNode";
 import { getActiveChapterEditor } from "@/lib/activeChapterEditorStore";
 import { insertProposedProse } from "@/features/chat/services/insertProposedProse";
 import type { ChapterSelectionTarget, FocusPacket } from "@/types/rework";
@@ -47,8 +46,7 @@ export const captureFocusTarget = (editor: LexicalEditor, chapterId: string): Ch
 // Generalizes useSelectionPromptConfig.ts's existing backward-only, unbounded "previousWords"
 // tree-walk into both directions, bounded to a local window per the design doc's "local window
 // for fit" (docs/Chat_Panel_Integrations_Design.md §2.1) rather than that hook's whole-document
-// walk (left untouched — it serves a different, unrelated purpose). Excludes SceneBeatNode
-// subtrees entirely, matching that hook's convention.
+// walk (left untouched — it serves a different, unrelated purpose).
 export const buildChapterFocusWindow = (editor: LexicalEditor): FocusPacket | null => {
     let packet: FocusPacket | null = null;
 
@@ -90,7 +88,6 @@ export const buildChapterFocusWindow = (editor: LexicalEditor): FocusPacket | nu
         };
 
         const traverse = (node: LexicalNode) => {
-            if ($isSceneBeatNode(node)) return;
             if ($isTextNode(node)) {
                 visitTextNode(node);
                 return;

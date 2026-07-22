@@ -24,7 +24,7 @@ I'm also in the process of reworking the UI/UX to be more of a writer's workspac
 - **Rich Text Editor**: Write and edit your stories using a powerful Lexical-based editor
 - **AI Integration**: Generate content using AI models from OpenAI, Google Gemini, OpenRouter, or locally hosted models
 - **Custom Prompts**: Create and manage custom prompts to guide AI generation
-- **Scene Beats Addon to Editor**: Press alt (option for mac) + s in editor to open Scene Beat AI command
+- **Editor Chat**: A docked AI conversation alongside your chapter, with prose you can accept directly into your story
 - **Lorebook**: Maintain a database of characters, locations, items, events, and notes for your story
 - **Local-First**: All your data is stored locally in a SQLite database
 - **Data Migration**: Import data from previous IndexedDB-based versions or export your current database
@@ -208,7 +208,6 @@ The script automatically bumps the version, pushes to GitHub, and opens the rele
 ![App Screenshot](screenshots/Lorebook.jpg)
 ![App Screenshot](screenshots/CreateChapter.jpg)
 ![App Screenshot](screenshots/Editor.jpg)
-![App Screenshot](screenshots/SceneBeat.jpg)
 ![App Screenshot](screenshots/GeneratedProse.jpg)
 
 ## Project Structure

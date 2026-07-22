@@ -6,7 +6,7 @@ export const getFilteredEntries = (entries: LorebookEntry[], includeDisabled = f
 
 /**
  * Builds a tag map for efficient lorebook entry lookups.
- * Used by SceneBeatNode and LorebookTagPlugin for autocomplete functionality.
+ * Used by LorebookTagPlugin for autocomplete functionality.
  */
 export const buildTagMap = (entries: LorebookEntry[]): Record<string, LorebookEntry> => {
     const tagMap: Record<string, LorebookEntry> = {};

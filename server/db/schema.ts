@@ -548,31 +548,6 @@ export const codexPendingChanges = sqliteTable(
     })
 );
 
-// Scene Beats table
-export const sceneBeats = sqliteTable(
-    "sceneBeats",
-    {
-        id: text("id").primaryKey(),
-        storyId: text("storyId")
-            .notNull()
-            .references(() => stories.id, { onDelete: "cascade" }),
-        chapterId: text("chapterId")
-            .notNull()
-            .references(() => chapters.id, { onDelete: "cascade" }),
-        command: text("command").notNull(),
-        povType: text("povType"), // 'First Person' | 'Third Person Limited' | 'Third Person Omniscient'
-        povCharacter: text("povCharacter"),
-        generatedContent: text("generatedContent"),
-        accepted: integer("accepted", { mode: "boolean" }),
-        metadata: text("metadata", { mode: "json" }), // JSON: metadata object
-        createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
-    },
-    table => ({
-        storyIdIdx: index("scenebeat_story_id_idx").on(table.storyId),
-        chapterIdIdx: index("scenebeat_chapter_id_idx").on(table.chapterId)
-    })
-);
-
 // Concrete Beats table — small, observable narrative beats (physical actions, wardrobe/item
 // changes, environmental/sensory detail, movement, dialogue, time/setting shifts) tagged on
 // spans of chapter prose. NOT the same as sceneBeats above (that's an AI-generation command

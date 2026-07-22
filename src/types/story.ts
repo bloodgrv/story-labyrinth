@@ -50,23 +50,6 @@ export interface ChapterNotes {
     lastUpdated: Date;
 }
 
-// SceneBeat structure
-export interface SceneBeat extends BaseEntity {
-    storyId: string;
-    chapterId: string;
-    command: string;
-    povType?: "First Person" | "Third Person Limited" | "Third Person Omniscient";
-    povCharacter?: string;
-    generatedContent?: string; // To store the last generated content
-    accepted?: boolean; // Whether the generated content was accepted
-    metadata?: {
-        useMatchedChapter?: boolean;
-        useMatchedSceneBeat?: boolean;
-        useCustomContext?: boolean;
-        [key: string]: unknown;
-    };
-}
-
 // AI Chat types
 export interface AIChat extends BaseEntity {
     storyId: string | null; // null for global chats (e.g. Research) — see ChatType
@@ -161,7 +144,6 @@ export interface Prompt extends BaseEntity {
     name: string;
     description?: string;
     promptType:
-        | "scene_beat"
         | "gen_summary"
         | "selection_specific"
         | "continue_writing"
@@ -282,22 +264,17 @@ export interface PromptParserConfig {
     storyId: string;
     chapterId?: string;
     promptId: string;
+    // Generic "current instruction" carrier resolved by {{scenebeat}} in any prompt template —
+    // named after its origin (the old Scene Beat feature), but populated by every chat type's
+    // createPromptConfig (ChatInterface.tsx) with the composer's current input text.
     scenebeat?: string;
     cursorPosition?: number;
     previousWords?: string;
-    matchedEntries?: Set<LorebookEntry>;
     additionalContext?: Record<string, unknown>;
     chapterMatchedEntries?: Set<LorebookEntry>;
-    sceneBeatMatchedEntries?: Set<LorebookEntry>;
     povCharacter?: string;
     povType?: "First Person" | "Third Person Limited" | "Third Person Omniscient";
     storyLanguage?: string;
-    sceneBeatContext?: {
-        useMatchedChapter: boolean;
-        useMatchedSceneBeat: boolean;
-        useCustomContext: boolean;
-        customContextItems?: string[]; // IDs of selected lorebook items
-    };
 }
 
 export interface PromptContext {
@@ -306,21 +283,13 @@ export interface PromptContext {
     scenebeat?: string;
     cursorPosition?: number;
     previousWords?: string;
-    matchedEntries?: Set<LorebookEntry>;
     chapters?: Chapter[];
     currentChapter?: Chapter;
     additionalContext?: Record<string, unknown>;
     chapterMatchedEntries?: Set<LorebookEntry>;
-    sceneBeatMatchedEntries?: Set<LorebookEntry>;
     povCharacter?: string;
     povType?: "First Person" | "Third Person Limited" | "Third Person Omniscient";
     storyLanguage?: string;
-    sceneBeatContext?: {
-        useMatchedChapter: boolean;
-        useMatchedSceneBeat: boolean;
-        useCustomContext: boolean;
-        customContextItems?: string[]; // IDs of selected lorebook items
-    };
 }
 
 export interface ParsedPrompt {
@@ -337,7 +306,6 @@ export interface StoryExport {
     series?: Series;
     chapters: Chapter[];
     lorebookEntries: LorebookEntry[];
-    sceneBeats: SceneBeat[];
     aiChats: AIChat[];
     notes?: Note[];
 }
@@ -368,7 +336,6 @@ export interface DatabaseExport {
         prompts: Prompt[];
         lorebookEntries: LorebookEntry[];
         aiChats: AIChat[];
-        sceneBeats: SceneBeat[];
         notes: Note[];
         aiSettings: AISettings[];
     };
