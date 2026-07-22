@@ -225,7 +225,7 @@ See `DECISIONS.md`'s "Lorebook Relationship Graph — G1.5+ (AI-Suggested Edges,
 | ID | Issue | Notes |
 |----|--------|--------|
 | B1 | **Word count reads 0** | ✅ **Fixed 2026-07-21.** `WordCountPlugin`: stable `useMemo`+`debounce` (was recreating debounced fn every render via `useCallback(() => debounce)()`); public `$getRoot().getTextContent()` instead of private `_editorState._nodeMap`; initial count on mount. Still reports toolbar + `chapterWordCountStore` for focus goals. |
-| B2 | **Beat mark text deleted in editor leaves DB row** | Needs mutation listener / cleanup on mark removal |
+| B2 | **Beat mark text deleted in editor leaves DB row** | ✅ **Done (2026-07-22).** `BeatMarkSyncPlugin.tsx` now registers a `registerMutationListener(BeatMarkNode, ...)`: on a "destroyed" mutation, it reads the mark's beat id(s) from `prevEditorState`, then checks the post-mutation document for any surviving `BeatMarkNode` with that id (guards against split/rebuild edits that destroy+recreate within the same transaction) — only ids truly gone from the whole document call the existing `useDeleteBeatMutation`, the same cleanup path the panel's trash button already used. Live-verified in the Browser pane: marking a word as a beat then deleting it in-editor (not via the panel) now auto-fires "Beat removed" and the row drops out of the Concrete Beats panel; editing adjacent/unrelated text leaves an untouched beat mark alone; undo of the mark-creation itself correctly cleans up the row too (same orphan risk via a different path, closed for free). |
 | B3 | **Global/series lorebook not in RAG** | By design for now; multi-story association needed later |
 | B4 | **Story scan job restarts from chapter 0 after crash** | Visibility yes; mid-scan resume no |
 | B5 | **Legacy `metadata.relationships` wiped on lorebook save** | Edge table is SoT; don’t re-depend on metadata JSON for links |
@@ -287,7 +287,7 @@ Remaining P1: P1.3 (per-message RAG, explicitly deferred) and P1.4 (Visible AI R
 product, needs a scope conversation before building).
 Design-locked P3 follow-ons ready to promote: Outline Import (OI0–OI8); Name Generator (NG0–NG7);
 Locations & Maps (L0–L5); Lexical Editor deepen (LE0–LE3, partial lock).
-Recommended: pick a P2 bug (B2/B4/B6) or promote a P3 item — no more "just pick it up" P1 work left.
+Recommended: pick a P2 bug (B4/B6) or promote a P3 item — no more "just pick it up" P1 work left.
 Record load-bearing decisions in DECISIONS.md; update CURRENT_BACKLOG.md when done.
 ```
 

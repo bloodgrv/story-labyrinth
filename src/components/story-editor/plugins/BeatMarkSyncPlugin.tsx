@@ -1,6 +1,6 @@
 import { $unwrapMarkNode, $wrapSelectionInMarkNode } from "@lexical/mark";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $nodesOfType } from "lexical";
+import { $getNodeByKey, $nodesOfType } from "lexical";
 import { useEffect } from "react";
 import { toast } from "react-toastify";
 import {
@@ -9,6 +9,8 @@ import {
     type BeatAcceptedEventDetail,
     type BeatDeletedEventDetail
 } from "@/features/beats/beatEvents";
+import { useDeleteBeatMutation } from "@/features/beats/hooks/useBeatsQuery";
+import { useEditorChapterId } from "@/features/editor-multiview/context/EditorPaneContext";
 import { $createBeatMarkNode, BeatMarkNode } from "../nodes/BeatMarkNode";
 import { $findTextNodeRange } from "../nodes/beatTextSearch";
 
@@ -20,6 +22,8 @@ import { $findTextNodeRange } from "../nodes/beatTextSearch";
  */
 export default function BeatMarkSyncPlugin(): null {
     const [editor] = useLexicalComposerContext();
+    const chapterId = useEditorChapterId();
+    const { mutate: deleteBeat } = useDeleteBeatMutation(chapterId ?? "");
 
     useEffect(() => {
         const handleBeatDeleted = (event: Event) => {
@@ -59,6 +63,36 @@ export default function BeatMarkSyncPlugin(): null {
             window.removeEventListener(BEAT_ACCEPTED_EVENT, handleBeatAccepted);
         };
     }, [editor]);
+
+    // B2 fix: a BeatMarkNode can also disappear because the user edited the marked prose
+    // directly (backspace, cut, retyping over a selection) rather than via the panel's Trash
+    // button, which never reaches the delete API — leaving the confirmedBeats row orphaned,
+    // pointing at text that no longer exists in the chapter. Watch for a mark's id truly
+    // vanishing from the whole document (as opposed to being split across multiple
+    // BeatMarkNodes by the same edit, which shows up as destroy+create within the same
+    // mutation batch and is checked against the post-update document below) and clean up its
+    // row to match.
+    useEffect(() => {
+        if (!chapterId) return undefined;
+
+        return editor.registerMutationListener(BeatMarkNode, (mutatedNodes, { prevEditorState }) => {
+            const candidateIds = new Set<string>();
+            for (const [key, mutation] of mutatedNodes) {
+                if (mutation !== "destroyed") continue;
+                prevEditorState.read(() => {
+                    const node = $getNodeByKey(key);
+                    if (node instanceof BeatMarkNode) for (const id of node.getIDs()) candidateIds.add(id);
+                });
+            }
+            if (candidateIds.size === 0) return;
+
+            editor.getEditorState().read(() => {
+                const liveIds = new Set<string>();
+                for (const mark of $nodesOfType(BeatMarkNode)) for (const id of mark.getIDs()) liveIds.add(id);
+                for (const id of candidateIds) if (!liveIds.has(id)) deleteBeat(id);
+            });
+        });
+    }, [editor, chapterId, deleteBeat]);
 
     return null;
 }
