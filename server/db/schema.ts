@@ -691,7 +691,7 @@ export const agentJobs = sqliteTable(
         entityId: text("entityId"),
         payload: text("payload", { mode: "json" }), // JSON: job-specific input, shape varies by jobType
         result: text("result", { mode: "json" }), // JSON: job-specific output summary, shape varies by jobType
-        progress: text("progress", { mode: "json" }), // JSON: { processed: number, total: number, message?: string }
+        progress: text("progress", { mode: "json" }), // JSON: { processed: number, total: number, message?: string, scanId?: string }
         attempts: integer("attempts").notNull().default(0),
         maxAttempts: integer("maxAttempts").notNull().default(3),
         error: text("error"),

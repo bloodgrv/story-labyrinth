@@ -24,6 +24,11 @@ export interface AgentJobProgress {
     processed: number;
     total: number;
     message?: string;
+    // rag_scan_story only (B4, docs/CURRENT_BACKLOG.md P2): the ragScans row this attempt is
+    // writing to. Recorded before each chapter, not just after, so a requeue after a crash can
+    // find it (via getScan) and resume into the same scan at `processed` rather than starting a
+    // fresh scan from chapter 0 — see ragScanJobs.ts's runRagScanStoryJob.
+    scanId?: string;
 }
 
 export interface AgentJob {
