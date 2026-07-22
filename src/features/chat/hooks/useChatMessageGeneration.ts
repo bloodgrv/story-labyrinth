@@ -74,6 +74,9 @@ interface UseChatMessageGenerationParams {
     // of waiting for a manual tray click. Editor/WB/Outline chats only (see ChatInterface.tsx's
     // usesCodexTray-gated toggle row) — default false, doctrine requires an explicit opt-in.
     autoAcceptCodex?: boolean;
+    // Context/Token Meter (T4, M3) — fires when this turn's response carried real usage (Local
+    // only this pass). Caller uses it to refresh its "last known usage" chip state.
+    onUsage?: (usage: ChatMessage["usage"]) => void;
 }
 
 interface UseChatMessageGenerationReturn {
@@ -103,7 +106,8 @@ export const useChatMessageGeneration = ({
     onPsychProposal,
     onNoteSplitProposal,
     onShuttleProposal,
-    autoAcceptCodex
+    autoAcceptCodex,
+    onUsage
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
     const [isSending, setIsSending] = useState(false);
     const { generateWithPrompt } = useGenerateWithPrompt();
@@ -134,7 +138,7 @@ export const useChatMessageGeneration = ({
                     return;
                 }
 
-                const fullResponse = await processStream(response);
+                const { text: fullResponse, usage } = await processStream(response);
                 if (!fullResponse) return;
 
                 const { cleanedContent: afterCodexStrip, proposals } = parseCodexProposals(fullResponse);
@@ -148,11 +152,18 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterPsychStrip, psychProposal } = parsePsychProposal(afterSplitStrip);
                 const { cleanedContent, proposal: shuttleProposal } = parseShuttleProposal(afterPsychStrip);
 
-                const afterAssistantMessage = await chatsApi.appendMessage(selectedChat.id, "assistant", cleanedContent);
+                const afterAssistantMessage = await chatsApi.appendMessage(
+                    selectedChat.id,
+                    "assistant",
+                    cleanedContent,
+                    usage ?? undefined
+                );
                 onChatUpdate(afterAssistantMessage);
 
                 const assistantMessage: ChatMessage | undefined =
                     afterAssistantMessage.messages[afterAssistantMessage.messages.length - 1];
+                // Context/Token Meter (T4, M3) — Local only this pass (see streamUtils.ts).
+                if (usage) onUsage?.(usage);
 
                 proposals.forEach(proposal =>
                     createProposalMutation.mutate(
@@ -206,7 +217,8 @@ export const useChatMessageGeneration = ({
             onPsychProposal,
             onNoteSplitProposal,
             onShuttleProposal,
-            autoAcceptCodex
+            autoAcceptCodex,
+            onUsage
         ]
     );
 

@@ -277,6 +277,15 @@ export const aiSettings = sqliteTable("aiSettings", {
     defaultGrokSessionModel: text("defaultGrokSessionModel"),
     defaultGrokOAuthModel: text("defaultGrokOAuthModel"),
     featureEndpoints: text("featureEndpoints"), // JSON: FeatureEndpoints — per-feature model/endpoint overrides
+    // Context/Token Meter (T4, docs/Context_Token_Meter_Design.md) — Local's context window (n_ctx)
+    // user override. Wins over whatever AIModel.contextLength was fetched/guessed for the current
+    // default local model (design decision #5: "user override wins"). Null = no override, fall
+    // back to that model's own contextLength.
+    contextWindowOverride: integer("contextWindowOverride"),
+    // Default OFF (design decision #7) — confirm-before-send when the pre-send estimate crosses
+    // softWarnThreshold. Never a hard block on the estimate alone (non-goal #2).
+    softWarnNearLimit: integer("softWarnNearLimit", { mode: "boolean" }).notNull().default(false),
+    softWarnThreshold: real("softWarnThreshold").notNull().default(0.9),
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
 });
 

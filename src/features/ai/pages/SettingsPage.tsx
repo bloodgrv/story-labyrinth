@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WriterPrefsCard } from "@/features/agent-memory/components/WriterPrefsCard";
+import { ContextMeterSettingsCard } from "@/features/ai/components/ContextMeterSettingsCard";
 import { FeatureEndpointsCard } from "@/features/ai/components/FeatureEndpointsCard";
 import { GrokOAuthCard } from "@/features/ai/components/GrokOAuthCard";
 import { LocalModelsCard } from "@/features/ai/components/LocalModelsCard";
@@ -199,6 +200,7 @@ export default function SettingsPage() {
                                     defaultModel={settings?.defaultLocalModel}
                                     onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "local", modelId })}
                                 />
+                                <ContextMeterSettingsCard />
                             </TabsContent>
 
                             <TabsContent value="routing" className="mt-0 space-y-6">

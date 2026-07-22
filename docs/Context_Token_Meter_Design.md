@@ -1,7 +1,7 @@
 # Context / Token Meter (T4) — Design
 
-**Status:** **Design locked 2026-07-21** (grill) — **not started (code)**  
-**Priority:** **P3** until promoted  
+**Status:** **Design locked 2026-07-21** (grill) — **shipped 2026-07-22** (M0–M5). See `DECISIONS.md`'s "Context / Token Meter — M0-M5, Load-Bearing Decisions" and `docs/CURRENT_BACKLOG.md`.  
+**Priority:** Done  
 **Talk list:** T4  
 **Related:** Settings IA (`docs/Transfer_Log_And_Settings_IA_Design.md` — **Local** heading for n_ctx); not Transfer log; not packet-injection transparency
 
@@ -124,5 +124,4 @@ If refine fails: keep heuristic and mark UI as **est.**
 ## Document history
 
 - 2026-07-21 — Grill locked; this doc created  
-
-*Not shipped until M0–M5 land.*
+- 2026-07-22 — M0–M5 shipped. See `DECISIONS.md`'s "Context / Token Meter — M0-M5, Load-Bearing Decisions" entry.

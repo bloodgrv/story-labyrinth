@@ -5,7 +5,7 @@ import type { AIModel, AIProvider, AISettings, PromptMessage } from "@/types/sto
 import { logger } from "@/utils/logger";
 import { aiApi } from "../api/client";
 import { AIProviderFactory } from "./AIProviderFactory";
-import { formatStreamAsSSE, processStreamedResponse } from "./streamUtils";
+import { formatStreamAsSSE, processStreamedResponse, type StreamUsage } from "./streamUtils";
 
 export class AIService {
     private static instance: AIService;
@@ -178,9 +178,10 @@ export class AIService {
         response: Response,
         onToken: (text: string) => void,
         onComplete: () => void,
-        onError: (error: Error) => void
+        onError: (error: Error) => void,
+        onUsage?: (usage: StreamUsage) => void
     ) {
-        await processStreamedResponse(response, onToken, onComplete, onError);
+        await processStreamedResponse(response, onToken, onComplete, onError, onUsage);
         this.abortController = null;
     }
 
@@ -287,6 +288,16 @@ export class AIService {
         await this.updateSettingsField({ localApiUrl: url });
         this.providerFactory.updateLocalApiUrl(url);
         await this.fetchAvailableModels("local");
+    }
+
+    // Context/Token Meter (T4) — contextWindowOverride wins over whatever AIModel.contextLength
+    // was fetched/guessed for the current default local model (design decision #5).
+    async updateContextMeterSettings(data: {
+        contextWindowOverride?: number | null;
+        softWarnNearLimit?: boolean;
+        softWarnThreshold?: number;
+    }): Promise<void> {
+        await this.updateSettingsField(data);
     }
 
     getSettings(): AISettings | null {

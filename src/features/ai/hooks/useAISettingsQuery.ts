@@ -125,6 +125,21 @@ export const useUpdateDefaultModelMutation = () => {
     });
 };
 
+// Context/Token Meter (T4) — contextWindowOverride/softWarnNearLimit/softWarnThreshold.
+export const useUpdateContextMeterSettingsMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: { contextWindowOverride?: number | null; softWarnNearLimit?: boolean; softWarnThreshold?: number }) =>
+            aiService.updateContextMeterSettings(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: aiSettingsKeys.settings() });
+            toast.success("Context meter settings saved");
+        },
+        onError: () => toast.error("Failed to save context meter settings")
+    });
+};
+
 export const useRefreshModelsMutation = () => {
     const queryClient = useQueryClient();
 

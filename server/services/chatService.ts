@@ -117,7 +117,10 @@ export const getOrCreateGlobalChat = async (chatType: ChatType, title: string): 
 export const appendMessage = async (
     chatId: string,
     role: "user" | "assistant",
-    content: string
+    content: string,
+    // Context/Token Meter (T4, M3) — real provider usage for this turn, when the caller captured
+    // one (Local only this pass — see streamUtils.ts/LocalAIProvider.generate()).
+    usage?: ChatMessage["usage"]
 ): Promise<ChatRow> => {
     const chat = await getOrThrow(chatId);
     if (!content.trim()) throw new Error("Message content cannot be empty");
@@ -126,7 +129,8 @@ export const appendMessage = async (
         id: crypto.randomUUID(),
         role,
         content: content.trim(),
-        timestamp: new Date()
+        timestamp: new Date(),
+        ...(usage ? { usage } : {})
     };
 
     const updated = await updateChatMessages(chatId, [...chat.messages, newMessage]);

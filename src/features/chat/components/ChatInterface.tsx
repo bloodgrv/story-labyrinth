@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ChatMessageList } from "@/features/brainstorm/components/ChatMessageList";
@@ -9,6 +10,9 @@ import { MessageInputArea } from "@/features/brainstorm/components/MessageInputA
 import { useChatMessages } from "@/features/brainstorm/hooks/useChatMessages";
 import { useContextSelection } from "@/features/brainstorm/hooks/useContextSelection";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
+import { useAISettingsQuery } from "@/features/ai/hooks/useAISettingsQuery";
+import { ContextMeterChip } from "@/features/context-meter/components/ContextMeterChip";
+import { useContextEstimate } from "@/features/context-meter/hooks/useContextEstimate";
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { getFilteredEntries as getFilteredLorebookEntries } from "@/features/lorebook/utils/lorebookFilters";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
@@ -29,6 +33,7 @@ import {
 import { brainstormApi, chatsApi, deskTransfersApi } from "@/services/api/client";
 import type { ChapterSelectionTarget } from "@/types/rework";
 import type { AIChat, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
+import type { ChatContext } from "@/types/worldbuilding";
 import { ChatSystemPromptControl } from "./ChatSystemPromptControl";
 import { NoteProposalCard } from "./NoteProposalCard";
 import { OutlineProposalCard } from "./OutlineProposalCard";
@@ -164,6 +169,15 @@ export function ChatInterface({
         chatsApi.update(selectedChat.id, { lastUsedModelId: modelId })
     );
 
+    // Context/Token Meter (T4) — M3. Chip shows for Local always, or for any provider once a
+    // post-turn usage is known this session (design decision #8) — lastUsage is reset per chat
+    // switch since it's session-local, not persisted (only the per-message badge is persisted).
+    const { data: aiSettings } = useAISettingsQuery();
+    const [lastUsage, setLastUsage] = useState<{ promptTokens: number; completionTokens: number; totalTokens: number } | null>(
+        null
+    );
+    useEffect(() => setLastUsage(null), [selectedChat.id]);
+
     const {
         includeFullContext,
         contextOpen,
@@ -243,10 +257,16 @@ export function ChatInterface({
     // from whichever role="anchor" list is non-empty is correct. Derived from the same context
     // fetch, no extra request.
     const [focusedOnLabel, setFocusedOnLabel] = useState<string | null>(null);
+    // Context/Token Meter (T4, M1) — the raw ChatContext object, otherwise fully consumed into
+    // the flattened codexContext string above and discarded. Exposed as-is so useContextEstimate
+    // can derive budget slices from the same real assembly this chat actually uses, without a
+    // second network fetch or a second divergent prompt builder.
+    const [rawChatContext, setRawChatContext] = useState<ChatContext | null>(null);
     useEffect(() => {
         let cancelled = false;
         chatsApi.getContext(selectedChat.id, undefined, focusedNoteId).then(context => {
             if (cancelled) return;
+            setRawChatContext(context);
 
             const anchorEntries = context.relevantCodexEntries.filter(e => e.role === "anchor");
             const relatedEntries = context.relevantCodexEntries.filter(e => e.role === "related");
@@ -377,6 +397,18 @@ export function ChatInterface({
         selectedChat.outlineStyle,
         selectedChat.includePsychModule
     ]);
+
+    // Context/Token Meter (T4) — M2. contextWindowOverride only applies to Local (design decision
+    // #5's "store with Local / model settings"); other providers just use whatever contextLength
+    // was fetched/guessed for the model, relevant only once showContextMeter is true via a known
+    // post-turn usage (M3).
+    const selectedAIModel = availableModels.find(m => m.id === selectedModel?.id);
+    const contextLimit =
+        selectedModel?.provider === "local"
+            ? (aiSettings?.contextWindowOverride ?? selectedAIModel?.contextLength ?? null)
+            : (selectedAIModel?.contextLength ?? null);
+    const contextEstimate = useContextEstimate(rawChatContext, selectedChat.messages, input, contextLimit);
+    const showContextMeter = selectedModel?.provider === "local" || lastUsage !== null;
 
     // Selection Rework Bridge context (docs/Chat_Panel_Integrations_Design.md §2.1) — kept
     // separate from the codexContext fetch effect above (rather than re-fetching context on every
@@ -526,6 +558,7 @@ export function ChatInterface({
         onChatUpdate,
         createPromptConfig,
         autoAcceptCodex,
+        onUsage: usage => setLastUsage(usage ?? null),
         onProseProposal: enableProseProposals
             ? (messageId, proposal) => {
                   // Only chapter-selection rework turns produce a prose-proposal Accept path —
@@ -896,7 +929,7 @@ export function ChatInterface({
     // Fetched fresh here and threaded straight into generate() as extraContext rather than via
     // React state, since a setState right before calling generate() wouldn't be visible in
     // createPromptConfig's closure until the next render — see useChatMessageGeneration.ts.
-    const handleSubmit = async () => {
+    const doSend = async () => {
         let extraContext: string | undefined;
         if (isResearchChat && input.trim()) {
             const ctx = await chatsApi.getContext(selectedChat.id, input);
@@ -906,6 +939,20 @@ export function ChatInterface({
         }
         await generate(input, extraContext);
         setInput("");
+    };
+
+    // Context/Token Meter (T4, M4) — soft-warn confirm only, never a hard block on the estimate
+    // (design decision #7 / non-goal #2). Off by default (aiSettings.softWarnNearLimit); Local
+    // only, since that's the only provider with a real n_ctx concept in v1.
+    const [pendingSendConfirm, setPendingSendConfirm] = useState(false);
+    const handleSubmit = async () => {
+        const softWarnOn = selectedModel?.provider === "local" && aiSettings?.softWarnNearLimit;
+        const threshold = aiSettings?.softWarnThreshold ?? 0.9;
+        if (softWarnOn && contextEstimate.pctUsed !== null && contextEstimate.pctUsed >= threshold) {
+            setPendingSendConfirm(true);
+            return;
+        }
+        await doSend();
     };
 
     const handleItemSelect = (itemId: string) => {
@@ -1178,6 +1225,23 @@ export function ChatInterface({
                 onSubmit={handleSubmitSelectionNote}
             />
 
+            {showContextMeter && (
+                <div className="px-3 pb-1 flex justify-end">
+                    <ContextMeterChip estimate={contextEstimate} />
+                </div>
+            )}
+
+            <ConfirmDialog
+                open={pendingSendConfirm}
+                onOpenChange={setPendingSendConfirm}
+                title="Near the context limit"
+                description={`This message would use an estimated ${Math.round((contextEstimate.pctUsed ?? 0) * 100)}% of the model's context window. You can send anyway — nothing is blocked.`}
+                confirmLabel="Send anyway"
+                onConfirm={() => {
+                    setPendingSendConfirm(false);
+                    doSend();
+                }}
+            />
             <MessageInputArea
                 input={input}
                 isGenerating={isGenerating}

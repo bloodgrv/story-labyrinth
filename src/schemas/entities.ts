@@ -121,5 +121,8 @@ export const aiSettingsSchema = baseEntitySchema.extend({
     defaultGeminiModel: z.string().optional(),
     defaultGrokModel: z.string().optional(),
     defaultGrokSessionModel: z.string().optional(),
-    defaultGrokOAuthModel: z.string().optional()
+    defaultGrokOAuthModel: z.string().optional(),
+    contextWindowOverride: z.number().nullable().optional(),
+    softWarnNearLimit: z.boolean().optional(),
+    softWarnThreshold: z.number().optional()
 });

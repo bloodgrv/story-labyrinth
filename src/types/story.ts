@@ -139,6 +139,10 @@ export interface ChatMessage {
     editedAt?: string; // ISO timestamp when last edited
     editedBy?: string; // who edited it (e.g., 'user')
     edited?: boolean; // convenience flag
+    // Context/Token Meter (T4, M3) — real provider usage for this turn, when reported (Local
+    // only this pass, via stream_options.include_usage — see LocalAIProvider.generate()).
+    // Assistant messages only; absent for every other provider or if usage wasn't reported.
+    usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
 }
 
 // Prompt related types
@@ -204,6 +208,10 @@ export interface AISettings extends BaseEntity {
     defaultGrokModel?: string;
     defaultGrokSessionModel?: string;
     defaultGrokOAuthModel?: string;
+    // Context/Token Meter (T4) — see server/db/schema.ts's aiSettings comment.
+    contextWindowOverride?: number | null;
+    softWarnNearLimit?: boolean;
+    softWarnThreshold?: number;
 }
 
 // Note types

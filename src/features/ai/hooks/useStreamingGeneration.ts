@@ -2,6 +2,7 @@ import { attemptPromise } from "@jfdi/attempt";
 import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
 import { aiService } from "@/services/ai/AIService";
+import type { StreamUsage } from "@/services/ai/streamUtils";
 import { logger } from "@/utils/logger";
 
 type StreamingState = {
@@ -10,8 +11,11 @@ type StreamingState = {
     isComplete: boolean;
 };
 
+// Context/Token Meter (T4, M3) — processStream's return value carries whatever usage the
+// provider reported (Local only this pass, via stream_options.include_usage — see
+// LocalAIProvider.generate()); null for every other provider/no usage reported.
 type UseStreamingGenerationReturn = StreamingState & {
-    processStream: (response: Response) => Promise<string>;
+    processStream: (response: Response) => Promise<{ text: string; usage: StreamUsage | null }>;
     abort: () => void;
     reset: () => void;
 };
@@ -27,19 +31,20 @@ export const useStreamingGeneration = (): UseStreamingGenerationReturn => {
         isComplete: false
     });
 
-    const processStream = useCallback(async (response: Response): Promise<string> => {
+    const processStream = useCallback(async (response: Response): Promise<{ text: string; usage: StreamUsage | null }> => {
         if (response.status === 204) {
             logger.info("Generation was aborted");
-            return "";
+            return { text: "", usage: null };
         }
 
-        if (!response.ok) 
+        if (!response.ok)
             throw new Error("Failed to generate response");
-        
+
 
         setState({ isStreaming: true, streamedText: "", isComplete: false });
 
         const chunks: string[] = [];
+        let capturedUsage: StreamUsage | null = null;
 
         const [error] = await attemptPromise(
             () =>
@@ -57,6 +62,9 @@ export const useStreamingGeneration = (): UseStreamingGenerationReturn => {
                         streamError => {
                             logger.error("Streaming error:", streamError);
                             reject(streamError);
+                        },
+                        usage => {
+                            capturedUsage = usage;
                         }
                     );
                 })
@@ -68,7 +76,7 @@ export const useStreamingGeneration = (): UseStreamingGenerationReturn => {
             throw error;
         }
 
-        return chunks.join("");
+        return { text: chunks.join(""), usage: capturedUsage };
     }, []);
 
     const abort = useCallback(() => {

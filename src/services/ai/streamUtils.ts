@@ -102,6 +102,24 @@ export const formatStreamAsSSE = (response: Response): Response => {
     });
 };
 
+// Context/Token Meter (T4, M3) — camelCase mirror of the OpenAI-compatible
+// `usage: {prompt_tokens, completion_tokens, total_tokens}` shape.
+export interface StreamUsage {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+}
+
+const readUsage = (json: { usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }): StreamUsage | null => {
+    const usage = json.usage;
+    if (!usage || typeof usage.total_tokens !== "number") return null;
+    return {
+        promptTokens: usage.prompt_tokens ?? 0,
+        completionTokens: usage.completion_tokens ?? 0,
+        totalTokens: usage.total_tokens
+    };
+};
+
 /**
  * Processes an SSE stream, invoking callbacks for tokens, completion, and errors.
  */
@@ -109,7 +127,11 @@ export const processStreamedResponse = async (
     response: Response,
     onToken: (text: string) => void,
     onComplete: () => void,
-    onError: (error: Error) => void
+    onError: (error: Error) => void,
+    // Context/Token Meter (T4, M3) — fires at most once, if the final chunk carries a `usage`
+    // field (requires `stream_options: {include_usage: true}` on the request — see
+    // LocalAIProvider.generate()). Optional since most callers/providers don't request it.
+    onUsage?: (usage: StreamUsage) => void
 ): Promise<void> => {
     if (!response.body) return onError(new Error("Response body is null"));
 
@@ -138,6 +160,8 @@ export const processStreamedResponse = async (
                     if (!parseError && json) {
                         const text = json.choices[0]?.delta?.content || "";
                         if (text) onToken(text);
+                        const usage = readUsage(json);
+                        if (usage) onUsage?.(usage);
                     }
                 }
         }

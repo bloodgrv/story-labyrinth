@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { formatTokenCount } from "@/features/context-meter/lib/estimateTokens";
 import { TtsPlayButton } from "@/features/tts/components/TtsPlayButton";
 import type { ChatMessage } from "@/types/story";
 import { parseThinkingContent } from "@/utils/parseThinking";
@@ -141,6 +142,15 @@ export function ChatMessageList({
                                     ) : message.role === "assistant" ? (
                                         <>
                                             <AssistantMessageContent content={message.content} />
+                                            {message.usage && (
+                                                // Context/Token Meter (T4, M3) — real provider usage for this turn
+                                                // (Local only this pass, see streamUtils.ts).
+                                                <p className="mt-1 text-[10px] text-muted-foreground">
+                                                    in {formatTokenCount(message.usage.promptTokens)} · out{" "}
+                                                    {formatTokenCount(message.usage.completionTokens)} · total{" "}
+                                                    {formatTokenCount(message.usage.totalTokens)}
+                                                </p>
+                                            )}
                                             {renderProposalsForMessage && (
                                                 <div className="mt-3 space-y-2">{renderProposalsForMessage(message.id)}</div>
                                             )}

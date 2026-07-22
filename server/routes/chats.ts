@@ -285,7 +285,11 @@ router.post(
             return;
         }
 
-        const { role, content } = req.body as { role?: string; content?: string };
+        const { role, content, usage } = req.body as {
+            role?: string;
+            content?: string;
+            usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+        };
         if (role !== "user" && role !== "assistant") {
             res.status(400).json({ error: "role must be 'user' or 'assistant'" });
             return;
@@ -295,7 +299,7 @@ router.post(
             return;
         }
 
-        const updated = await appendMessage(req.params.chatId, role, content);
+        const updated = await appendMessage(req.params.chatId, role, content, usage);
         res.status(201).json(updated);
     })
 );

@@ -4,6 +4,7 @@ import type { CodexPendingChange, CodexPendingStatus, CodexState } from "@/types
 import type {
     AIChat,
     AISettings,
+    ChatMessage,
     DatabaseExport,
     LorebookEntry,
     Note,
@@ -195,8 +196,8 @@ export const chatsApi = {
             folderId?: string | null; // B9, docs/Folders_Org_Design.md — null unfiles
         }
     ) => fetchJSON<AIChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-    appendMessage: (id: string, role: "user" | "assistant", content: string) =>
-        fetchJSON<AIChat>(`/chats/${id}/messages`, { method: "POST", body: JSON.stringify({ role, content }) }),
+    appendMessage: (id: string, role: "user" | "assistant", content: string, usage?: ChatMessage["usage"]) =>
+        fetchJSON<AIChat>(`/chats/${id}/messages`, { method: "POST", body: JSON.stringify({ role, content, usage }) }),
     delete: (id: string) => fetchJSON<void>(`/chats/${id}`, { method: "DELETE" }),
 
     // Context for generating a response/proposal: system prompt, this chat's own pending
