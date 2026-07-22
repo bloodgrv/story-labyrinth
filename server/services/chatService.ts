@@ -17,6 +17,7 @@ import {
     type ChatRow,
     type UpdateChatMetaFields
 } from "./chatRepository.js";
+import { resolveChatFolderId } from "./folderService.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -153,8 +154,18 @@ export const updateMeta = async (
     chatId: string,
     fields: UpdateChatMetaFields
 ): Promise<ChatRow> => {
-    await getOrThrow(chatId);
-    const updated = await updateChatMeta(chatId, fields);
+    const chat = await getOrThrow(chatId);
+
+    // Resolve folderId (B9, docs/Folders_Org_Design.md) — validates the folder belongs to this
+    // chat's own story + chatType before it's ever persisted. Throws (→ 400 at the route) on a
+    // mismatched explicit choice.
+    let resolvedFields = fields;
+    if (fields.folderId !== undefined) {
+        const resolvedFolderId = await resolveChatFolderId(chat, fields);
+        resolvedFields = { ...fields, folderId: resolvedFolderId ?? null };
+    }
+
+    const updated = await updateChatMeta(chatId, resolvedFields);
     if (!updated) throw new Error(`Failed to update chat: ${chatId}`);
     return updated;
 };

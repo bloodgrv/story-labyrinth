@@ -53,7 +53,13 @@ export const useUpdateChatMutation = () => {
             data
         }: {
             id: string;
-            data: { messages?: unknown[]; title?: string; lastUsedPromptId?: string | null; lastUsedModelId?: string | null };
+            data: {
+                messages?: unknown[];
+                title?: string;
+                lastUsedPromptId?: string | null;
+                lastUsedModelId?: string | null;
+                folderId?: string | null; // B9, docs/Folders_Org_Design.md — null unfiles
+            };
         }) => chatsApi.update(id, data),
         onSuccess: chat => {
             // Same prefix-invalidation fix as useCreateChatMutation above — chatKeys.byStory(storyId)

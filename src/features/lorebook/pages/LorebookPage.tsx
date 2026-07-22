@@ -4,7 +4,7 @@ import { type ChangeEvent, useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { lorebookApi } from "@/services/api/client";
-import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { useLorebookFolderFilter } from "@/features/folders/hooks/useLorebookFolderFilter";
 import type { DocumentImportDraft } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
 import { randomUUID } from "@/utils/crypto";
@@ -12,9 +12,10 @@ import { logger } from "@/utils/logger";
 import { CreateEntryDialog } from "../components/CreateEntryDialog";
 import { LorebookBrowsePanel } from "../components/LorebookBrowsePanel";
 import { LorebookEntryTab } from "../components/LorebookEntryTab";
-import { EMPTY_CODEX_STATE, type LorebookCategory } from "../components/form";
+import type { LorebookCategory } from "../components/form";
 import { LorebookImportDraftTab } from "../components/LorebookImportDraftTab";
 import { LorebookTabStrip, type LorebookOpenTab } from "../components/LorebookTabStrip";
+import { useLorebookPendingHandoffs } from "../hooks/useLorebookPendingHandoffs";
 import { lorebookKeys, useHierarchicalLorebookQuery, useSeriesLorebookQuery } from "../hooks/useLorebookQuery";
 import { exportEntries, importEntries } from "../stores/LorebookImportExportService";
 
@@ -57,6 +58,9 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
     };
 
     const [selectedCategory, setSelectedCategory] = useState<LorebookCategory>("character");
+    // Folders (B9) — per-category, cleared by handleCategoryChange below.
+    const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+    const [includeDescendants, setIncludeDescendants] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [openTabs, setOpenTabs] = useState<LorebookOpenTab[]>(() => loadStoredTabs().tabs);
     const [activeTabIndex, setActiveTabIndex] = useState(() => loadStoredTabs().activeIndex);
@@ -81,8 +85,28 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
     const isRefreshing = storyId ? isFetchingStory : isFetchingSeries;
     const refetchEntries = storyId ? refetchStory : refetchSeries;
 
-    // Filter by category
-    const entriesByCategory = entries.filter(e => e.category === selectedCategory);
+    const handleCategoryChange = (category: LorebookCategory) => {
+        setSelectedCategory(category);
+        setSelectedFolderId(null); // folders are per-category — a prior selection can't carry over
+    };
+
+    // Filter by category, then hand off to Folders (B9) to narrow further — see useLorebookFolderFilter.ts.
+    const entriesByCategoryRaw = entries.filter(e => e.category === selectedCategory);
+    const { folderScope, folders, entriesByCategory } = useLorebookFolderFilter({
+        storyId,
+        seriesId,
+        entriesByCategoryRaw,
+        selectedCategory,
+        selectedFolderId,
+        includeDescendants
+    });
+
+    // Deleting the currently-selected folder reparents its contents (server-side) but the
+    // selection itself would otherwise dangle, stranding the browse pane on "no entries" — fall
+    // back to Unfiled/All once the folder list has loaded and no longer contains it.
+    useEffect(() => {
+        if (selectedFolderId && folders.length > 0 && !folders.some(f => f.id === selectedFolderId)) setSelectedFolderId(null);
+    }, [selectedFolderId, folders]);
 
     // Calculate category counts from the current entries
     const categoryCounts = entries.reduce(
@@ -106,41 +130,10 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
         setOpenTabs(prev => [...prev, { kind: "entry", entryId: entry.id }]);
     };
 
-    // Consume the Relationships graph's "open entry" pointer (StoryContext.pendingLorebookEntryId)
-    // once entries have loaded — one-shot, mirrors useWorkspaceDeepLink.ts's own pattern. Guarded
-    // on isLoading since `entries` starts empty on first mount right after a tool switch.
-    const { pendingLorebookEntryId, setPendingLorebookEntryId, pendingLorebookSeed, setPendingLorebookSeed } = useStoryContext();
-    useEffect(() => {
-        if (!pendingLorebookEntryId || isLoading) return;
-        const entry = entries.find(e => e.id === pendingLorebookEntryId);
-        if (entry) openEntryTab(entry);
-        else toast.error("That entry could not be found");
-        setPendingLorebookEntryId(null);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pendingLorebookEntryId, isLoading, entries]);
-
-    // Consumes the Outline chat's "Open in WB" lore-suggestion handoff (P0.4 R8,
-    // StoryContext.pendingLorebookSeed) — same one-shot pattern as pendingLorebookEntryId above,
-    // opening CreateEntryDialog pre-filled instead of an existing entry tab. The seed is copied
-    // into local state (activeDraftSeed) rather than read directly from context at render time —
-    // pendingLorebookSeed is cleared in this same effect (so it can't re-trigger the dialog on a
-    // later remount), but CreateEntryDialog still needs the value as a prop on the render(s) that
-    // follow, after it's already null in context.
+    // Two one-shot StoryContext handoff pointers (Relationships graph "open entry", Outline chat
+    // "Open in WB" lore-suggestion seed) — see useLorebookPendingHandoffs.ts.
     const [activeDraftSeed, setActiveDraftSeed] = useState<DocumentImportDraft | null>(null);
-    useEffect(() => {
-        if (!pendingLorebookSeed) return;
-        setActiveDraftSeed({
-            name: pendingLorebookSeed.name,
-            category: pendingLorebookSeed.category,
-            description: pendingLorebookSeed.blurb,
-            tags: [],
-            codexState: EMPTY_CODEX_STATE,
-            image: null
-        });
-        setIsCreateDialogOpen(true);
-        setPendingLorebookSeed(null);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pendingLorebookSeed]);
+    useLorebookPendingHandoffs({ entries, isLoading, openEntryTab, setActiveDraftSeed, setIsCreateDialogOpen });
 
     const openDraftTab = (draft: DocumentImportDraft) => {
         setActiveTabIndex(openTabs.length);
@@ -265,7 +258,7 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                 <LorebookBrowsePanel
                     seriesId={seriesId}
                     selectedCategory={selectedCategory}
-                    onCategoryChange={setSelectedCategory}
+                    onCategoryChange={handleCategoryChange}
                     categoryCounts={categoryCounts}
                     entriesByCategory={entriesByCategory}
                     isLoading={isLoading}
@@ -278,6 +271,14 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                     onNewEntry={() => {
                         setActiveDraftSeed(null);
                         setIsCreateDialogOpen(true);
+                    }}
+                    folderProps={{
+                        scope: folderScope,
+                        folders,
+                        selectedFolderId,
+                        onFolderChange: setSelectedFolderId,
+                        includeDescendants,
+                        onIncludeDescendantsChange: setIncludeDescendants
                     }}
                 />
             )}

@@ -16,6 +16,7 @@ import brainstormRouter from "./routes/brainstorm.js";
 import chaptersRouter from "./routes/chapters.js";
 import chatsRouter from "./routes/chats.js";
 import codexRouter from "./routes/codex.js";
+import foldersRouter from "./routes/folders.js";
 import grammarRouter from "./routes/grammar.js";
 import humanizerRouter from "./routes/humanizer.js";
 import lorebookRouter from "./routes/lorebook.js";
@@ -108,6 +109,7 @@ app.use("/api/beats", beatsRouter);
 app.use("/api/grammar", grammarRouter);
 app.use("/api/outline", outlineRouter);
 app.use("/api/outline-characters", outlineCharactersRouter);
+app.use("/api/folders", foldersRouter);
 app.use("/api/users", requireOwner, usersRouter);
 
 // Serve static files in production

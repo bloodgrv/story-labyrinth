@@ -16,7 +16,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { DraggableLeaf } from "@/features/folders/components/DraggableLeaf";
+import { getFolderPath } from "@/features/folders/lib/folderTree";
 import { useLorebookBrowseView } from "@/lib/useLorebookBrowseView";
+import type { OrgFolder } from "@/types/folders";
 import type { LorebookEntry } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { useDeleteLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
@@ -31,6 +34,10 @@ interface LorebookEntryListProps {
     // Clicking a card opens the entry here instead of an inline edit dialog — LorebookPage
     // opens it as a tab; other callers can pass whatever they like.
     onOpenEntry: (entry: LorebookEntry) => void;
+    // Folder tree for this scope+category (B9, docs/Folders_Org_Design.md) — omitted entirely by
+    // callers that don't use folders, in which case entries just render without a crumb or drag
+    // handle, unchanged from pre-B9 behavior.
+    folders?: OrgFolder[];
 }
 
 type SortOption = "name" | "category" | "importance" | "created";
@@ -43,7 +50,8 @@ export function LorebookEntryList({
     editable = true,
     showLevel = false,
     editableFilter,
-    onOpenEntry
+    onOpenEntry,
+    folders
 }: LorebookEntryListProps) {
     const deleteMutation = useDeleteLorebookMutation();
     const updateMutation = useUpdateLorebookMutation();
@@ -160,15 +168,17 @@ export function LorebookEntryList({
                                 {sortedEntries.map(entry => {
                                     const isEntryEditable = editableFilter ? editableFilter(entry) : editable;
                                     return (
-                                        <LorebookEntryRow
-                                            key={entry.id}
-                                            entry={entry}
-                                            showLevel={showLevel}
-                                            isEditable={isEntryEditable}
-                                            onOpen={() => onOpenEntry(entry)}
-                                            onToggleDisabled={() => toggleDisabled(entry)}
-                                            onDelete={() => setDeletingEntry(entry)}
-                                        />
+                                        <DraggableLeaf key={entry.id} id={entry.id} data={{ type: "lorebook-entry", leafId: entry.id }}>
+                                            <LorebookEntryRow
+                                                entry={entry}
+                                                showLevel={showLevel}
+                                                isEditable={isEntryEditable}
+                                                onOpen={() => onOpenEntry(entry)}
+                                                onToggleDisabled={() => toggleDisabled(entry)}
+                                                onDelete={() => setDeletingEntry(entry)}
+                                                folderPath={folders ? getFolderPath(folders, entry.folderId) : undefined}
+                                            />
+                                        </DraggableLeaf>
                                     );
                                 })}
                             </div>
@@ -177,15 +187,17 @@ export function LorebookEntryList({
                                 {sortedEntries.map(entry => {
                                     const isEntryEditable = editableFilter ? editableFilter(entry) : editable;
                                     return (
-                                        <LorebookEntryCard
-                                            key={entry.id}
-                                            entry={entry}
-                                            showLevel={showLevel}
-                                            isEditable={isEntryEditable}
-                                            onOpen={() => onOpenEntry(entry)}
-                                            onToggleDisabled={() => toggleDisabled(entry)}
-                                            onDelete={() => setDeletingEntry(entry)}
-                                        />
+                                        <DraggableLeaf key={entry.id} id={entry.id} data={{ type: "lorebook-entry", leafId: entry.id }}>
+                                            <LorebookEntryCard
+                                                entry={entry}
+                                                showLevel={showLevel}
+                                                isEditable={isEntryEditable}
+                                                onOpen={() => onOpenEntry(entry)}
+                                                onToggleDisabled={() => toggleDisabled(entry)}
+                                                onDelete={() => setDeletingEntry(entry)}
+                                                folderPath={folders ? getFolderPath(folders, entry.folderId) : undefined}
+                                            />
+                                        </DraggableLeaf>
                                     );
                                 })}
                             </div>

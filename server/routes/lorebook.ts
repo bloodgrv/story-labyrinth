@@ -14,6 +14,7 @@ import {
     isSupportedImageMimetype,
     saveLorebookImage
 } from "../services/lorebookImageStorage.js";
+import { resolveLorebookFolderId } from "../services/folderService.js";
 import { indexLorebookEntry, removeEntityFromIndex } from "../services/ragIndexService.js";
 import { deleteEdgesForEntity } from "../services/storyGraphService.js";
 
@@ -202,6 +203,26 @@ export default createCrudRouter({
                 }
 
                 const { id: _id, createdAt: _createdAt, ...updates } = req.body;
+
+                // Resolve folderId (B9, docs/Folders_Org_Design.md) — validates an explicit
+                // choice against the entry's (possibly also-changing) level/scopeId/category, or
+                // auto-clears a folderId that a category change alone made stale. Undefined means
+                // "don't touch folderId at all", so it's only merged in when actually resolved.
+                if (updates.folderId !== undefined || updates.category !== undefined) {
+                    const [existing] = await db.select().from(table).where(eq(table.id, req.params.id));
+                    if (!existing) {
+                        res.status(404).json({ error: "Lorebook entry not found" });
+                        return;
+                    }
+                    const [folderError, resolvedFolderId] = await attemptPromise(() =>
+                        resolveLorebookFolderId(existing, updates)
+                    );
+                    if (folderError) {
+                        res.status(400).json({ error: folderError.message });
+                        return;
+                    }
+                    if (resolvedFolderId !== undefined) updates.folderId = resolvedFolderId;
+                }
 
                 const result = await db.update(table).set(updates).where(eq(table.id, req.params.id)).returning();
                 const updated = Array.isArray(result) ? result[0] : result;

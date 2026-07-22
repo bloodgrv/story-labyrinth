@@ -124,6 +124,9 @@ export interface AIChat extends BaseEntity {
     // Chat Shuttle H7 (docs/Chat_Shuttle_Design.md) — Editor/Outline/WB-only "always-shuttle" pref.
     // Defaults false server-side, same posture as autoAcceptCodex.
     autoShuttle?: boolean;
+    // Cosmetic org folder this chat is filed under (B9, docs/Folders_Org_Design.md) — null =
+    // Unfiled. See src/types/folders.ts's OrgFolder.
+    folderId?: string | null;
 }
 
 export interface ChatMessage {
@@ -254,6 +257,9 @@ export interface LorebookEntry extends BaseEntity {
     // Generated filename on disk (server/services/lorebookImageStorage.ts) — fetch the actual
     // image via GET /api/lorebook/:id/image, this is not a usable URL on its own.
     imageFilename?: string | null;
+    // Cosmetic org folder this entry is filed under (B9, docs/Folders_Org_Design.md) — null =
+    // Unfiled. See src/types/folders.ts's OrgFolder.
+    folderId?: string | null;
 }
 
 // Prompt Parser types

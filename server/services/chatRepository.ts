@@ -52,6 +52,7 @@ export type UpdateChatMetaFields = Partial<{
     autoAcceptOutline: boolean;
     webSearchEnabled: boolean;
     autoShuttle: boolean;
+    folderId: string | null;
 }>;
 
 // ── Queries ────────────────────────────────────────────────────────────────────
@@ -148,6 +149,7 @@ export const updateChatMeta = async (
     if (fields.autoAcceptOutline !== undefined) updates.autoAcceptOutline = fields.autoAcceptOutline;
     if (fields.webSearchEnabled !== undefined) updates.webSearchEnabled = fields.webSearchEnabled;
     if (fields.autoShuttle !== undefined) updates.autoShuttle = fields.autoShuttle;
+    if (fields.folderId !== undefined) updates.folderId = fields.folderId;
 
     const [row] = await db
         .update(schema.aiChats)

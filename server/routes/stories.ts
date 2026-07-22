@@ -14,6 +14,7 @@ type ImportedAiChat = InferSelectModel<typeof schema.aiChats>;
 type ImportedNote = InferSelectModel<typeof schema.notes>;
 type ImportedOutlineItem = InferSelectModel<typeof schema.outlineItems>;
 type ImportedOutlineItemCharacter = InferSelectModel<typeof schema.outlineItemCharacters>;
+type ImportedOrgFolder = InferSelectModel<typeof schema.orgFolders>;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -49,7 +50,7 @@ export default createCrudRouter({
                             and(eq(schema.lorebookEntries.level, "story"), eq(schema.lorebookEntries.scopeId, storyId))
                         );
 
-                    const [chapters, sceneBeats, aiChats, notes, outlineItems, outlineItemCharacters] = await Promise.all([
+                    const [chapters, sceneBeats, aiChats, notes, outlineItems, outlineItemCharacters, orgFolders] = await Promise.all([
                         db.select().from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
                         db.select().from(schema.sceneBeats).where(eq(schema.sceneBeats.storyId, storyId)),
                         db.select().from(schema.aiChats).where(eq(schema.aiChats.storyId, storyId)),
@@ -58,7 +59,11 @@ export default createCrudRouter({
                         db
                             .select()
                             .from(schema.outlineItemCharacters)
-                            .where(eq(schema.outlineItemCharacters.storyId, storyId))
+                            .where(eq(schema.outlineItemCharacters.storyId, storyId)),
+                        // Folders (B9, docs/Folders_Org_Design.md) — both lorebook (level='story')
+                        // and chat folders are scoped by scopeId=storyId, so one query covers both
+                        // kinds; series-level lore folders are exported separately by series.ts.
+                        db.select().from(schema.orgFolders).where(eq(schema.orgFolders.scopeId, storyId))
                     ]);
 
                     return {
@@ -73,7 +78,8 @@ export default createCrudRouter({
                         aiChats,
                         notes,
                         outlineItems,
-                        outlineItemCharacters
+                        outlineItemCharacters,
+                        orgFolders
                     };
                 });
 
@@ -129,6 +135,26 @@ export default createCrudRouter({
 
                     await db.insert(schema.stories).values(newStory);
 
+                    // Folders (B9, docs/Folders_Org_Design.md) — two-pass, same technique as
+                    // outlineIdMap below: a folder's parentId references another folder's OLD id,
+                    // so every new id must exist before any row (or a leaf's folderId) is remapped.
+                    // Built before lorebookEntries/aiChats below since both need to remap folderId.
+                    const folderIdMap = new Map<string, string>();
+                    if (storyData.orgFolders?.length)
+                        for (const folder of storyData.orgFolders as ImportedOrgFolder[]) folderIdMap.set(folder.id, crypto.randomUUID());
+
+                    if (storyData.orgFolders?.length) {
+                        const newFolders = (storyData.orgFolders as ImportedOrgFolder[]).map(folder => ({
+                            ...folder,
+                            id: folderIdMap.get(folder.id) as string,
+                            scopeId: newStoryId,
+                            parentId: folder.parentId ? (folderIdMap.get(folder.parentId) ?? null) : null,
+                            createdAt: new Date(),
+                            updatedAt: new Date()
+                        }));
+                        await db.insert(schema.orgFolders).values(newFolders);
+                    }
+
                     if (storyData.chapters?.length) {
                         const newChapters = storyData.chapters.map((chapter: ImportedChapter) => {
                             const newChapterId = crypto.randomUUID();
@@ -178,7 +204,10 @@ export default createCrudRouter({
                                     // object round-tripped through export/import JSON), and without this override
                                     // drizzle's insert calls .getTime() on it as if it were still a Date and throws.
                                     // createdAt above was already handled this way; updatedAt was the gap.
-                                    updatedAt: entry.updatedAt ? new Date() : null
+                                    updatedAt: entry.updatedAt ? new Date() : null,
+                                    // Folders (B9) — null-fallback if the folder didn't survive (shouldn't happen,
+                                    // orgFolders is imported first, but a stale/malformed export shouldn't hard-fail).
+                                    folderId: entry.folderId ? (folderIdMap.get(entry.folderId) ?? null) : null
                                 };
                             })
                             .filter(
@@ -210,7 +239,9 @@ export default createCrudRouter({
                                 id: newChatId,
                                 storyId: newStoryId,
                                 createdAt: new Date(),
-                                updatedAt: new Date()
+                                updatedAt: new Date(),
+                                // Folders (B9) — same null-fallback as lorebookEntries above.
+                                folderId: chat.folderId ? (folderIdMap.get(chat.folderId) ?? null) : null
                             };
                         });
                         await db.insert(schema.aiChats).values(newChats);
@@ -312,7 +343,8 @@ export default createCrudRouter({
                         aiChats: storyData.aiChats?.length || 0,
                         notes: storyData.notes?.length || 0,
                         outlineItems: storyData.outlineItems?.length || 0,
-                        outlineItemCharacters: storyData.outlineItemCharacters?.length || 0
+                        outlineItemCharacters: storyData.outlineItemCharacters?.length || 0,
+                        orgFolders: storyData.orgFolders?.length || 0
                     }
                 });
             })
@@ -332,7 +364,12 @@ export default createCrudRouter({
                             and(eq(schema.lorebookEntries.level, "story"), eq(schema.lorebookEntries.scopeId, storyId))
                         );
 
-                    // 2. Delete story (FK cascades handle chapters, aiChats, notes, etc.)
+                    // 2. Delete folders (B9, docs/Folders_Org_Design.md) — both story-level lore
+                    // folders and chat folders share scopeId=storyId (same query shape as this
+                    // route's own export above); no FK to rely on, so explicit cleanup here too.
+                    await tx.delete(schema.orgFolders).where(eq(schema.orgFolders.scopeId, storyId));
+
+                    // 3. Delete story (FK cascades handle chapters, aiChats, notes, etc.)
                     await tx.delete(schema.stories).where(eq(schema.stories.id, storyId));
                 });
 

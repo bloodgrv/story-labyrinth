@@ -28,6 +28,7 @@ export { chaptersApi } from "./chaptersClient";
 export { chapterSnapshotsApi } from "./chapterSnapshotsClient";
 export { chapterVersionsApi } from "./chapterVersionsClient";
 export { codexApi } from "./codexClient";
+export { foldersApi } from "./foldersClient";
 export { grammarApi } from "./grammarClient";
 export { humanizerApi } from "./humanizerClient";
 export { lorebookApi } from "./lorebookClient";
@@ -118,8 +119,7 @@ export type GrokDevicePollResult =
     | { status: "error"; error: string };
 
 export const grokOAuthApi = {
-    startDeviceFlow: () =>
-        fetchJSON<GrokDeviceAuthorization>("/ai/grok-oauth/device/start", { method: "POST" }),
+    startDeviceFlow: () => fetchJSON<GrokDeviceAuthorization>("/ai/grok-oauth/device/start", { method: "POST" }),
     pollDeviceToken: (deviceCode: string) =>
         fetchJSON<GrokDevicePollResult>("/ai/grok-oauth/device/poll", {
             method: "POST",
@@ -191,6 +191,7 @@ export const chatsApi = {
             autoAcceptOutline?: boolean;
             webSearchEnabled?: boolean;
             autoShuttle?: boolean;
+            folderId?: string | null; // B9, docs/Folders_Org_Design.md — null unfiles
         }
     ) => fetchJSON<AIChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     appendMessage: (id: string, role: "user" | "assistant", content: string) =>

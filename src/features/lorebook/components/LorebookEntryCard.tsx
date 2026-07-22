@@ -13,6 +13,9 @@ interface LorebookEntryCardProps {
     onOpen: () => void;
     onToggleDisabled: () => void;
     onDelete: () => void;
+    // Folder path crumb (B9, docs/Folders_Org_Design.md) — e.g. ["Cast", "Antagonists"]. Shown
+    // when browsing unfiltered so filing stays visible without narrowing the list.
+    folderPath?: string[];
 }
 
 // Card grid tile for Lorebook Browse's "Cards" density mode — see docs/Lorebook_Browse_Density_Design.md.
@@ -22,7 +25,8 @@ export function LorebookEntryCard({
     isEditable,
     onOpen,
     onToggleDisabled,
-    onDelete
+    onDelete,
+    folderPath
 }: LorebookEntryCardProps) {
     return (
         <Card
@@ -85,6 +89,9 @@ export function LorebookEntryCard({
                     ))}
                 </div>
                 <p className="text-sm text-muted-foreground line-clamp-3">{entry.description}</p>
+                {folderPath && folderPath.length > 0 && (
+                    <p className="mt-2 truncate text-xs text-muted-foreground/70">{folderPath.join(" / ")}</p>
+                )}
             </CardContent>
         </Card>
     );

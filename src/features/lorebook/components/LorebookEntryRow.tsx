@@ -15,6 +15,8 @@ interface LorebookEntryRowProps {
     onOpen: () => void;
     onToggleDisabled: () => void;
     onDelete: () => void;
+    // Folder path crumb (B9, docs/Folders_Org_Design.md) — e.g. ["Cast", "Antagonists"].
+    folderPath?: string[];
 }
 
 // Compact list row for Lorebook Browse's "List" density mode — see docs/Lorebook_Browse_Density_Design.md.
@@ -25,7 +27,8 @@ export function LorebookEntryRow({
     isEditable,
     onOpen,
     onToggleDisabled,
-    onDelete
+    onDelete,
+    folderPath
 }: LorebookEntryRowProps) {
     const visibleTags = entry.tags?.slice(0, MAX_VISIBLE_TAGS) ?? [];
     const hiddenTagCount = (entry.tags?.length ?? 0) - visibleTags.length;
@@ -52,6 +55,11 @@ export function LorebookEntryRow({
             )}
             {showLevel && <LevelBadge level={entry.level} />}
             <span className="truncate font-medium text-sm">{entry.name}</span>
+            {folderPath && folderPath.length > 0 && (
+                <span className="hidden shrink-0 truncate text-xs text-muted-foreground/70 sm:inline max-w-[140px]">
+                    {folderPath.join(" / ")}
+                </span>
+            )}
             {entry.metadata?.importance && (
                 <Badge variant="outline" className="shrink-0 text-xs">
                     {entry.metadata.importance}

@@ -192,6 +192,11 @@ export const aiChats = sqliteTable(
         // matches the existing convention of per-purpose typed columns over a generic shared one.
         wbStyle: text("wbStyle").notNull().default("standard"), // 'light' | 'standard' | 'grill' — worldbuilding chats only
         outlineStyle: text("outlineStyle").notNull().default("standard"), // 'light' | 'standard' | 'grill' — outline chats only
+        // Cosmetic org folder this chat is filed under (B9, docs/Folders_Org_Design.md) — null =
+        // Unfiled. No FK — same reasoning as anchorEntryId above (fresh ALTER TABLE ADD COLUMN,
+        // FK enforcement is on, folders can be deleted independently of chats). Cleaned up in
+        // application code by folderService.deleteFolder (reparents leaves, never cascades).
+        folderId: text("folderId"),
         // Opt-in for the Character template's psych module (MBTI + Enneagram + freeform blurb,
         // docs/Chat_Panel_Integrations_Design.md §1's "Character playbook — psych module").
         // Explicitly NOT Codex state — never read by codexService.ts, stored instead on the
@@ -348,7 +353,13 @@ export const lorebookEntries = sqliteTable(
         needsFleshingOut: integer("needsFleshingOut", { mode: "boolean" }),
         codexState: text("codexState", { mode: "json" }), // JSON: { wardrobe: [], appearance: [], wounds: [], items: [], customFields: [{ key, label, value }] }
         updatedAt: integer("updatedAt", { mode: "timestamp" }),
-        imageFilename: text("imageFilename") // Generated filename on disk under UPLOADS_DIR/lorebook/ - see server/routes/lorebook.ts's /:id/image routes
+        imageFilename: text("imageFilename"), // Generated filename on disk under UPLOADS_DIR/lorebook/ - see server/routes/lorebook.ts's /:id/image routes
+        // Cosmetic org folder this entry is filed under (B9, docs/Folders_Org_Design.md) — null =
+        // Unfiled. No FK — same reasoning as scopeId above. Must match the folder's own
+        // level/scopeId/category (enforced in folderService.assignLorebookFolder, called from
+        // lorebook.ts's PUT). Cleaned up in application code on folder delete (reparented, not
+        // cascaded).
+        folderId: text("folderId")
     },
     table => ({
         levelIdx: index("lorebook_level_idx").on(table.level),
@@ -411,6 +422,43 @@ export const storyGraphEdges = sqliteTable(
         uniqueActiveEdgeIdx: uniqueIndex("storygraphedge_unique_active_idx")
             .on(table.storyId, table.fromId, table.toId, table.edgeType)
             .where(sql`status = 'active'`)
+    })
+);
+
+// Org Folders table — cosmetic-only user filing for lorebook entries and chat sessions (B9,
+// docs/Folders_Org_Design.md). One shared "folder engine" table for both leaf kinds rather than
+// two near-identical tables — `kind` selects which of the scope columns below are meaningful.
+// Explicitly UI-only: never read by RAG, Codex, or agent context assembly.
+//
+// Lorebook folders: scoped by (level, scopeId, category) — the same level/scopeId convention
+// lorebookEntries itself uses (no real storyId/seriesId split at the entry level, so folders
+// can't use one either). Global-level entries have no folder tree in v1 (design doc: "unfiled
+// only"), so `level` is only ever 'series' | 'story' here.
+// Chat folders: scoped by (scopeId=storyId, chatType) — aiChats does have a real storyId.
+//
+// `parentId` is a self-reference with NO real FK, same convention as outlineItems.parentId
+// (schema.ts) — SQLite ALTER TABLE ADD COLUMN can't carry ON DELETE, and FK enforcement is
+// genuinely on in this app, so a real FK here would block deleting any non-leaf folder. Depth
+// (max 3) is enforced in application code (folderService.ts), not at the DB level.
+export const orgFolders = sqliteTable(
+    "orgFolders",
+    {
+        id: text("id").primaryKey(),
+        kind: text("kind").notNull(), // 'lorebook' | 'chat'
+        level: text("level"), // lorebook only: 'series' | 'story'
+        scopeId: text("scopeId"), // lorebook: seriesId/storyId per level; chat: storyId
+        category: text("category"), // lorebook only
+        chatType: text("chatType"), // chat only
+        parentId: text("parentId"), // null = root folder; no FK, see above
+        name: text("name").notNull(),
+        order: integer("order").notNull().default(0), // position among siblings sharing the same parentId
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        kindIdx: index("orgfolder_kind_idx").on(table.kind),
+        scopeIdx: index("orgfolder_scope_idx").on(table.kind, table.scopeId),
+        parentIdIdx: index("orgfolder_parent_id_idx").on(table.parentId)
     })
 );
 

@@ -150,6 +150,7 @@ router.get(
 //   autoAcceptOutline: boolean     — Outline-only auto-accept create/edit/reorder toggle, never delete (P0.4 R6)
 //   webSearchEnabled: boolean      — Research-only, defaults true, off-switch for live web search (P0.4 S1)
 //   autoShuttle: boolean           — Editor/Outline/WB-only always-shuttle pref (Chat Shuttle H7)
+//   folderId: string|null          — cosmetic org folder (B9); null unfiles
 router.patch(
     "/:chatId",
     asyncHandler(async (req, res) => {
@@ -177,7 +178,8 @@ router.patch(
             autoAcceptCodex,
             autoAcceptOutline,
             webSearchEnabled,
-            autoShuttle
+            autoShuttle,
+            folderId
         } = req.body as {
             messages?: unknown[];
             title?: string;
@@ -197,6 +199,7 @@ router.patch(
             autoAcceptOutline?: boolean;
             webSearchEnabled?: boolean;
             autoShuttle?: boolean;
+            folderId?: string | null; // B9, docs/Folders_Org_Design.md — null unfiles
         };
 
         let result = chat;
@@ -229,30 +232,41 @@ router.patch(
         if (autoAcceptOutline !== undefined) metaFields.autoAcceptOutline = autoAcceptOutline;
         if (webSearchEnabled !== undefined) metaFields.webSearchEnabled = webSearchEnabled;
         if (autoShuttle !== undefined) metaFields.autoShuttle = autoShuttle;
+        if (folderId !== undefined) metaFields.folderId = folderId;
 
         if (Object.keys(metaFields).length > 0) {
-            result = await updateMeta(
-                req.params.chatId,
-                metaFields as {
-                    title?: string;
-                    lastUsedPromptId?: string | null;
-                    lastUsedModelId?: string | null;
-                    includeNotes?: boolean;
-                    includeOutline?: boolean;
-                    includeMemory?: boolean;
-                    includeLorebook?: boolean;
-                    includeChapterSummaries?: boolean;
-                    brainstormStyle?: string;
-                    wbStyle?: string;
-                    outlineStyle?: string;
-                    includePsychModule?: boolean;
-                    autoInsertProse?: boolean;
-                    autoAcceptCodex?: boolean;
-                    autoAcceptOutline?: boolean;
-                    webSearchEnabled?: boolean;
-                    autoShuttle?: boolean;
-                }
+            // folderId validation (resolveChatFolderId, called inside updateMeta) is a user
+            // mistake, not a server error — 400, not 500, matching storyGraph.ts's convention.
+            const [error, updated] = await attemptPromise(() =>
+                updateMeta(
+                    req.params.chatId,
+                    metaFields as {
+                        title?: string;
+                        lastUsedPromptId?: string | null;
+                        lastUsedModelId?: string | null;
+                        includeNotes?: boolean;
+                        includeOutline?: boolean;
+                        includeMemory?: boolean;
+                        includeLorebook?: boolean;
+                        includeChapterSummaries?: boolean;
+                        brainstormStyle?: string;
+                        wbStyle?: string;
+                        outlineStyle?: string;
+                        includePsychModule?: boolean;
+                        autoInsertProse?: boolean;
+                        autoAcceptCodex?: boolean;
+                        autoAcceptOutline?: boolean;
+                        webSearchEnabled?: boolean;
+                        autoShuttle?: boolean;
+                        folderId?: string | null;
+                    }
+                )
             );
+            if (error) {
+                res.status(400).json({ error: error.message });
+                return;
+            }
+            result = updated;
         }
 
         res.json(result);

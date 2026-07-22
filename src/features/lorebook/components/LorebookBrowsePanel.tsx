@@ -1,10 +1,14 @@
+import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { Download, Loader2, Plus, RefreshCw, Upload } from "lucide-react";
 import type { ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LorebookFolderSidebar } from "@/features/folders/components/LorebookFolderSidebar";
+import type { OrgFolder } from "@/types/folders";
 import type { LorebookEntry } from "@/types/story";
+import { useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
 import { CATEGORIES, type LorebookCategory } from "./form";
 import { LorebookEntryList } from "./LorebookEntryList";
 
@@ -22,6 +26,16 @@ interface LorebookBrowsePanelProps {
     isImportingDocument: boolean;
     onOpenEntry: (entry: LorebookEntry) => void;
     onNewEntry: () => void;
+    // Folders (B9, docs/Folders_Org_Design.md) — scope undefined (no story/series id) means the
+    // sidebar simply doesn't render (global entries have no folder tree).
+    folderProps: {
+        scope?: { level: "series" | "story"; scopeId: string };
+        folders: OrgFolder[];
+        selectedFolderId: string | null;
+        onFolderChange: (folderId: string | null) => void;
+        includeDescendants: boolean;
+        onIncludeDescendantsChange: (value: boolean) => void;
+    };
 }
 
 // The default "Browse" tab's content — header, export/import controls, category selector, and
@@ -40,8 +54,24 @@ export function LorebookBrowsePanel({
     onImport,
     isImportingDocument,
     onOpenEntry,
-    onNewEntry
+    onNewEntry,
+    folderProps
 }: LorebookBrowsePanelProps) {
+    const updateLorebookMutation = useUpdateLorebookMutation();
+
+    // Drag an entry (LorebookEntryList's DraggableLeaf) onto a folder row or "Unfiled" (both
+    // FolderDropZone in LorebookFolderSidebar) to file it — folder-onto-folder reparenting goes
+    // through the "Move to…" dialog instead (B9 plan decision #7), so this only ever sees
+    // lorebook-entry drags landing on a lorebook-folder target.
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over) return;
+        const activeData = active.data.current as { type?: string; leafId?: string } | undefined;
+        const overData = over.data.current as { type?: string; targetFolderId?: string | null } | undefined;
+        if (activeData?.type !== "lorebook-entry" || overData?.type !== "lorebook-folder") return;
+        updateLorebookMutation.mutate({ id: activeData.leafId as string, data: { folderId: overData.targetFolderId ?? null } });
+    };
+
     return (
         <div className="flex-1 min-h-0 overflow-y-auto container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* Header - horizontal with buttons alongside title */}
@@ -159,10 +189,35 @@ export function LorebookBrowsePanel({
                     <div className="flex justify-center p-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                     </div>
-                ) : entriesByCategory.length > 0 ? (
-                    <LorebookEntryList entries={entriesByCategory} editable={true} showLevel={true} onOpenEntry={onOpenEntry} />
                 ) : (
-                    <div className="text-center text-muted-foreground py-12">No {selectedCategory} entries yet</div>
+                    <DndContext onDragEnd={handleDragEnd}>
+                        <div className="flex gap-4">
+                            {folderProps.scope && (
+                                <LorebookFolderSidebar
+                                    level={folderProps.scope.level}
+                                    scopeId={folderProps.scope.scopeId}
+                                    category={selectedCategory}
+                                    selectedFolderId={folderProps.selectedFolderId}
+                                    onSelectFolder={folderProps.onFolderChange}
+                                    includeDescendants={folderProps.includeDescendants}
+                                    onIncludeDescendantsChange={folderProps.onIncludeDescendantsChange}
+                                />
+                            )}
+                            <div className="min-w-0 flex-1">
+                                {entriesByCategory.length > 0 ? (
+                                    <LorebookEntryList
+                                        entries={entriesByCategory}
+                                        editable={true}
+                                        showLevel={true}
+                                        onOpenEntry={onOpenEntry}
+                                        folders={folderProps.folders}
+                                    />
+                                ) : (
+                                    <div className="text-center text-muted-foreground py-12">No {selectedCategory} entries yet</div>
+                                )}
+                            </div>
+                        </div>
+                    </DndContext>
                 )}
             </div>
         </div>

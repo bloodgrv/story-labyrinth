@@ -5,12 +5,13 @@ import { type Request, type Response, Router } from "express";
 import multer from "multer";
 import { nanoid } from "nanoid";
 import { db } from "../db/client.js";
-import { aiChats, chapters, lorebookEntries, sceneBeats, series, stories } from "../db/schema.js";
+import { aiChats, chapters, lorebookEntries, orgFolders, sceneBeats, series, stories } from "../db/schema.js";
 
 type ImportedChapter = InferSelectModel<typeof chapters>;
 type ImportedLorebookEntry = InferSelectModel<typeof lorebookEntries>;
 type ImportedSceneBeat = InferSelectModel<typeof sceneBeats>;
 type ImportedAiChat = InferSelectModel<typeof aiChats>;
+type ImportedOrgFolder = InferSelectModel<typeof orgFolders>;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
@@ -94,7 +95,11 @@ seriesRouter.delete(
             .delete(lorebookEntries)
             .where(and(eq(lorebookEntries.level, "series"), eq(lorebookEntries.scopeId, seriesId)));
 
-        // 3. Delete the series itself
+        // 3. Delete series-level lore folders (B9, docs/Folders_Org_Design.md) — no FK, so no
+        // cascade to rely on, same call as the entries above.
+        await db.delete(orgFolders).where(and(eq(orgFolders.kind, "lorebook"), eq(orgFolders.level, "series"), eq(orgFolders.scopeId, seriesId)));
+
+        // 4. Delete the series itself
         await db.delete(series).where(eq(series.id, seriesId));
 
         res.json({ success: true });
@@ -145,6 +150,13 @@ seriesRouter.get(
             .from(lorebookEntries)
             .where(and(eq(lorebookEntries.level, "series"), eq(lorebookEntries.scopeId, seriesId)));
 
+        // Series-level lore folders (B9, docs/Folders_Org_Design.md) — chat folders and per-story
+        // lore folders round-trip through stories.ts's own export/import instead, unchanged here.
+        const seriesFolders = await db
+            .select()
+            .from(orgFolders)
+            .where(and(eq(orgFolders.kind, "lorebook"), eq(orgFolders.level, "series"), eq(orgFolders.scopeId, seriesId)));
+
         // Fetch all stories in series
         const seriesStories = await db.select().from(stories).where(eq(stories.seriesId, seriesId));
 
@@ -181,6 +193,7 @@ seriesRouter.get(
             exportDate: new Date().toISOString(),
             series: seriesResult,
             lorebookEntries: seriesLorebook,
+            orgFolders: seriesFolders,
             stories: storyExports
         };
 
@@ -224,6 +237,25 @@ seriesRouter.post(
         };
         await db.insert(series).values(newSeries);
 
+        // Folders (B9, docs/Folders_Org_Design.md) — two-pass, same technique as stories.ts's own
+        // import: a folder's parentId references another folder's OLD id, so every new id must
+        // exist before any row is remapped. Built before lorebookEntries below since it needs the map.
+        const folderIdMap = new Map<string, string>();
+        if (seriesData.orgFolders?.length)
+            for (const folder of seriesData.orgFolders as ImportedOrgFolder[]) folderIdMap.set(folder.id, nanoid());
+
+        if (seriesData.orgFolders?.length) {
+            const newFolders = (seriesData.orgFolders as ImportedOrgFolder[]).map(folder => ({
+                ...folder,
+                id: folderIdMap.get(folder.id) as string,
+                scopeId: newSeriesId,
+                parentId: folder.parentId ? (folderIdMap.get(folder.parentId) ?? null) : null,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            }));
+            await db.insert(orgFolders).values(newFolders);
+        }
+
         // Import series-level lorebook entries
         if (seriesData.lorebookEntries?.length) {
             const newEntries = seriesData.lorebookEntries
@@ -240,7 +272,9 @@ seriesRouter.post(
                         level: "series",
                         scopeId: newSeriesId,
                         storyId: "", // Temporary for Phase 1
-                        createdAt: new Date()
+                        createdAt: new Date(),
+                        // Folders (B9) — null-fallback if the folder didn't survive.
+                        folderId: entry.folderId ? (folderIdMap.get(entry.folderId) ?? null) : null
                     };
                 })
                 .filter((entry: ImportedLorebookEntry): entry is NonNullable<typeof entry> => entry !== null);
@@ -318,7 +352,8 @@ seriesRouter.post(
             seriesId: newSeriesId,
             imported: {
                 stories: importedStoryIds.length,
-                lorebookEntries: seriesData.lorebookEntries?.length || 0
+                lorebookEntries: seriesData.lorebookEntries?.length || 0,
+                orgFolders: seriesData.orgFolders?.length || 0
             }
         });
     })
