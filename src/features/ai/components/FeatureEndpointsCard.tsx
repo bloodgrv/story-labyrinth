@@ -2,11 +2,13 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Input } from "@/components/ui/input";
 import { ModelCombobox } from "@/components/ui/model-combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     useFeatureEndpointsQuery,
+    useRebuildEmbeddingIndexMutation,
     useRemoveFeatureEndpointMutation,
     useSetFeatureEndpointMutation
 } from "@/features/ai/hooks/useAISettingsQuery";
@@ -18,10 +20,17 @@ const PROVIDER_LABELS: Record<FeatureProvider, string> = {
     openai: "OpenAI",
     openrouter: "OpenRouter",
     grok: "Grok (xAI)",
-    "grok-oauth": "Grok (xAI OAuth)"
+    "grok-oauth": "Grok (xAI OAuth)",
+    "local-inprocess": "Local (in-process)"
 };
 
 const PROVIDERS: FeatureProvider[] = ["local", "openai", "openrouter", "grok", "grok-oauth"];
+
+// Runs entirely inside the Node server (server/services/localEmbeddingService.ts) — no HTTP
+// endpoint, no live /models list to query, and only one supported model. Valid only for the
+// "embedding" feature: it has no way to serve chat/scanner/etc. (see docs/Local_Embeddings_Design.md
+// and the matching server-side check in routes/admin.ts).
+const LOCAL_INPROCESS_MODEL_ID = "nomic-embed-text-v1.5 (local)";
 
 interface FeatureEndpointRowProps {
     featureKey: FeatureKey;
@@ -47,6 +56,7 @@ function FeatureEndpointRow({ featureKey, override, allModels, isSaving, onSave,
         setApiUrl(override?.apiUrl ?? "");
     }, [override]);
 
+    const availableProviders = featureKey === "embedding" ? [...PROVIDERS, "local-inprocess" as const] : PROVIDERS;
     const providerModels = provider === "default" ? [] : allModels.filter(m => m.provider === provider);
     const isDirty =
         provider !== (override?.provider ?? "default") || modelId !== override?.model || apiUrl !== (override?.apiUrl ?? "");
@@ -54,7 +64,9 @@ function FeatureEndpointRow({ featureKey, override, allModels, isSaving, onSave,
     const handleProviderChange = (value: string) => {
         const next = value as FeatureProvider | "default";
         setProvider(next);
-        setModelId(undefined);
+        // Only one model is ever valid for local-inprocess — pre-fill it rather than making the
+        // user pick from a combobox with nothing real to query.
+        setModelId(next === "local-inprocess" ? LOCAL_INPROCESS_MODEL_ID : undefined);
         if (next === "default" && override) onClear();
     };
 
@@ -76,7 +88,7 @@ function FeatureEndpointRow({ featureKey, override, allModels, isSaving, onSave,
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="default">Global default</SelectItem>
-                    {PROVIDERS.map(p => (
+                    {availableProviders.map(p => (
                         <SelectItem key={p} value={p}>
                             {PROVIDER_LABELS[p]}
                         </SelectItem>
@@ -94,13 +106,19 @@ function FeatureEndpointRow({ featureKey, override, allModels, isSaving, onSave,
                             className="w-64"
                         />
                     )}
-                    <ModelCombobox
-                        models={providerModels}
-                        value={modelId}
-                        onValueChange={setModelId}
-                        placeholder="Select model"
-                        className="w-56"
-                    />
+                    {provider === "local-inprocess" ? (
+                        <span className="text-sm text-muted-foreground w-56">
+                            {LOCAL_INPROCESS_MODEL_ID} — baked into the Docker image, no endpoint needed
+                        </span>
+                    ) : (
+                        <ModelCombobox
+                            models={providerModels}
+                            value={modelId}
+                            onValueChange={setModelId}
+                            placeholder="Select model"
+                            className="w-56"
+                        />
+                    )}
                     <Button size="sm" onClick={handleSave} disabled={!isDirty || !modelId || isSaving}>
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
                     </Button>
@@ -124,6 +142,8 @@ export function FeatureEndpointsCard({ allModels }: FeatureEndpointsCardProps) {
     const { data: featureEndpoints = {} } = useFeatureEndpointsQuery();
     const setMutation = useSetFeatureEndpointMutation();
     const removeMutation = useRemoveFeatureEndpointMutation();
+    const rebuildMutation = useRebuildEmbeddingIndexMutation();
+    const [confirmRebuildOpen, setConfirmRebuildOpen] = useState(false);
 
     return (
         <Card>
@@ -149,6 +169,34 @@ export function FeatureEndpointsCard({ allModels }: FeatureEndpointsCardProps) {
                         />
                     ))}
                 </div>
+
+                <div className="mt-4 pt-4 border-t flex items-center justify-between gap-4">
+                    <p className="text-sm text-muted-foreground">
+                        Switched the Embeddings provider? Existing chunks keep their old model's vectors until
+                        reindexed — mixing embedding spaces in search silently degrades relevance.
+                    </p>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0"
+                        onClick={() => setConfirmRebuildOpen(true)}
+                        disabled={rebuildMutation.isPending}
+                    >
+                        {rebuildMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Rebuild embedding index"}
+                    </Button>
+                </div>
+
+                <ConfirmDialog
+                    open={confirmRebuildOpen}
+                    onOpenChange={setConfirmRebuildOpen}
+                    title="Rebuild embedding index for every story?"
+                    description="Re-embeds every lorebook entry, chapter, memory, note, and outline item across every
+                        story whose embedding doesn't match the currently configured model/provider. Search relevance
+                        may be degraded until it finishes. Runs in the background — check Settings → Logs → Recent
+                        Jobs for progress."
+                    confirmLabel="Rebuild"
+                    onConfirm={() => rebuildMutation.mutate()}
+                />
             </CardContent>
         </Card>
     );

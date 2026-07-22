@@ -27,7 +27,13 @@ export type FeatureKey =
 // already flagged as unofficial/fragile in the UI. "grok"/"grok-oauth" are both real
 // https://api.x.ai/v1 connections and fit the same `new OpenAI({baseURL, apiKey})` shape as
 // every other provider here.
-export type FeatureProvider = "local" | "openai" | "openrouter" | "grok" | "grok-oauth";
+//
+// "local-inprocess" is a different kind of thing entirely: it runs an embedding model directly
+// inside the Node server (server/services/localEmbeddingService.ts, via @huggingface/transformers)
+// with no HTTP client at all. Valid only for the "embedding" feature — enforced in the Settings UI
+// (FeatureEndpointsCard.tsx) and server-side (routes/admin.ts) — since it has no way to serve any
+// other feature.
+export type FeatureProvider = "local" | "openai" | "openrouter" | "grok" | "grok-oauth" | "local-inprocess";
 
 export type FeatureEndpoint = {
     provider: FeatureProvider;

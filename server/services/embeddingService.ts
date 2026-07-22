@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { buildClientForFeature } from "./aiClientFactory.js";
+import { buildClientForFeature, getFeatureEndpoints } from "./aiClientFactory.js";
+import { LOCAL_EMBEDDING_MODEL_NAME, embedTextsLocally } from "./localEmbeddingService.js";
 
 // Fixed at extension-load time by the `vec_chunks` virtual table (migration 0009).
 // Changing embedding models to a different dimension requires a new migration that
@@ -44,6 +45,11 @@ export const chunkText = (text: string): string[] => {
 export const embedTexts = async (texts: string[]): Promise<{ embedding: number[]; model: string }[]> => {
     if (texts.length === 0) return [];
 
+    // "local-inprocess" has no HTTP client at all — skip buildClientForFeature/OpenAI entirely.
+    // See docs/Local_Embeddings_Design.md.
+    const endpoints = await getFeatureEndpoints();
+    if (endpoints.embedding?.provider === "local-inprocess") return embedTextsLocally(texts);
+
     const connection = await buildClientForFeature("embedding");
     if (!connection) {
         throw new Error(
@@ -67,4 +73,18 @@ export const embedTexts = async (texts: string[]): Promise<{ embedding: number[]
         }
         return { embedding: item.embedding, model };
     });
+};
+
+// Reports which embedding model is currently active for the "embedding" feature, without making
+// a real embedding call — used by reconcileIndexJob.ts to detect chunks embedded by a since-
+// abandoned backend/model (e.g. after switching to/from "local-inprocess") so they get re-embedded
+// rather than silently mixed into the same vector index alongside the new model's output.
+// Returns null when no provider is configured at all (mirrors embedTexts()'s own "unavailable"
+// case — reconcile already tolerates that by leaving embeddingModel comparisons a no-op).
+export const resolveActiveEmbeddingModel = async (): Promise<string | null> => {
+    const endpoints = await getFeatureEndpoints();
+    if (endpoints.embedding?.provider === "local-inprocess") return LOCAL_EMBEDDING_MODEL_NAME;
+
+    const connection = await buildClientForFeature("embedding");
+    return connection?.model ?? null;
 };

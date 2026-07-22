@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { aiService } from "@/services/ai/AIService";
+import { agentJobsApi } from "@/services/api/agentJobsClient";
 import { adminApi, featureEndpointsApi } from "@/services/api/client";
 import type { FeatureEndpoint, FeatureKey } from "@/types/aiSettings";
 import type { AIProvider, AISettings, ChatMode } from "@/types/story";
@@ -49,6 +50,28 @@ export const useRemoveFeatureEndpointMutation = () => {
         onError: (error: Error) => {
             toast.error(`Failed to clear feature endpoint: ${error.message}`);
         }
+    });
+};
+
+// "Rebuild embedding index (all stories)" — Settings action for after switching the embedding
+// feature's provider (e.g. to/from "local-inprocess"). Reuses the existing reconcile_index job
+// type with no storyId, which jobRunner.ts now treats as "run across every story" — see
+// docs/Local_Embeddings_Design.md. No new job type, no new progress UI: watch it in Settings →
+// Logs → Recent Jobs like every other job.
+export const useRebuildEmbeddingIndexMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => agentJobsApi.enqueue({ jobType: "reconcile_index" }),
+        onSuccess: job => {
+            queryClient.invalidateQueries({ queryKey: ["agentJobs"] });
+            toast.success(
+                job.status === "running" || job.status === "queued"
+                    ? "Rebuilding embedding index for every story…"
+                    : "A rebuild job already ran"
+            );
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to queue embedding index rebuild")
     });
 };
 

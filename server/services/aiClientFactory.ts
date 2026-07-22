@@ -65,6 +65,15 @@ const clientFromEndpoint = async (endpoint: FeatureEndpoint, settings: AiSetting
                 model: endpoint.model
             };
         }
+        case "local-inprocess":
+            // No HTTP client exists for this provider — it's handled entirely inside
+            // embeddingService.ts (embedTexts() checks the endpoint's provider before ever
+            // calling buildClientForFeature). Reaching here means something tried to route a
+            // non-embedding feature through it, which routes/admin.ts's validation should
+            // already reject at write time — see docs/Local_Embeddings_Design.md.
+            throw new Error(
+                "'local-inprocess' has no HTTP client; it is only valid for the 'embedding' feature."
+            );
     }
 };
 

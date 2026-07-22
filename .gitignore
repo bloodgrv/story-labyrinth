@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Baked local embedding model weights (server/scripts/prefetchEmbeddingModel.mjs) — large
+# downloaded ONNX weights, not source. See docs/Local_Embeddings_Design.md.
+.embedding-model-cache
+
 # Editor directories and files
 .idea
 .DS_Store

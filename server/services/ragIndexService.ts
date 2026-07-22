@@ -84,6 +84,15 @@ export const buildLorebookEntryText = async (entry: LorebookRow): Promise<string
     return [entry.name, entry.description, codexText, relationshipText].filter(Boolean).join("\n\n");
 };
 
+// Exported (moved here from routes/notes.ts and routes/outline.ts) so reconcileIndexJob.ts's
+// staleness check can recompute the same indexable text those routes' own sync-on-write calls
+// use, without a services→routes layering inversion.
+export const buildNoteText = (note: Pick<typeof schema.notes.$inferSelect, "title" | "content">): string =>
+    [note.title, note.content].filter(Boolean).join("\n\n");
+
+export const buildOutlineItemText = (item: Pick<typeof schema.outlineItems.$inferSelect, "title" | "summary">): string =>
+    [item.title, item.summary].filter(Boolean).join("\n\n");
+
 // Only story-level entries map to a single concrete story. Global/series-level entries can
 // apply across many stories at once, so they're excluded from indexing in this phase —
 // see DECISIONS.md for the tradeoff.

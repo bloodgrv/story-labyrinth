@@ -4,12 +4,9 @@ import type { OutlineReorderUpdate } from "../../src/types/outline.js";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { getCharacterArc } from "../services/outlineArcService.js";
-import { indexOutlineItem, removeEntityFromIndex } from "../services/ragIndexService.js";
+import { buildOutlineItemText, indexOutlineItem, removeEntityFromIndex } from "../services/ragIndexService.js";
 
 type OutlineItemRow = typeof schema.outlineItems.$inferSelect;
-
-const buildOutlineItemText = (item: Pick<OutlineItemRow, "title" | "summary">): string =>
-    [item.title, item.summary].filter(Boolean).join("\n\n");
 
 // Indexes or de-indexes an outline item per its own includeInAi flag (the Notes/Outline ↔ chat
 // bridge's per-item gate — docs/Notes_Outline_Chat_Bridges_Design.md). Same fire-and-forget /

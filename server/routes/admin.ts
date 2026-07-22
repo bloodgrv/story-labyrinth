@@ -13,7 +13,14 @@ import { FEATURE_KEYS } from "../../src/types/aiSettings.js";
 
 // Kept as a plain string[] (not FeatureProvider[]) since this is a runtime validation boundary
 // over unvalidated request bodies, not a typed context.
-const VALID_FEATURE_PROVIDERS: string[] = ["local", "openai", "openrouter", "grok", "grok-oauth"];
+const VALID_FEATURE_PROVIDERS: string[] = ["local", "openai", "openrouter", "grok", "grok-oauth", "local-inprocess"];
+
+// "local-inprocess" has no HTTP client — it's only meaningful for the "embedding" feature (see
+// docs/Local_Embeddings_Design.md and the matching UI restriction in FeatureEndpointsCard.tsx).
+const validateProviderForFeature = (feature: string, provider: string): string | null =>
+    provider === "local-inprocess" && feature !== "embedding"
+        ? `'local-inprocess' is only valid for the 'embedding' feature, not '${feature}'`
+        : null;
 
 type ImportedSeries = typeof schema.series.$inferSelect;
 type ImportedStory = typeof schema.stories.$inferSelect;
@@ -286,6 +293,11 @@ router.put("/feature-endpoints", async (req, res) => {
             res.status(400).json({ error: `'${key}.provider' must be one of: ${VALID_FEATURE_PROVIDERS.join(", ")}` });
             return;
         }
+        const scopeError = validateProviderForFeature(key, ep.provider as string);
+        if (scopeError) {
+            res.status(400).json({ error: scopeError });
+            return;
+        }
         if (typeof ep.model !== "string" || !ep.model.trim()) {
             res.status(400).json({ error: `'${key}.model' must be a non-empty string` });
             return;
@@ -320,6 +332,11 @@ router.put("/feature-endpoints/:feature", async (req, res) => {
 
     if (!VALID_FEATURE_PROVIDERS.includes(provider as string)) {
         res.status(400).json({ error: `provider must be one of: ${VALID_FEATURE_PROVIDERS.join(", ")}` });
+        return;
+    }
+    const scopeError = validateProviderForFeature(feature, provider as string);
+    if (scopeError) {
+        res.status(400).json({ error: scopeError });
         return;
     }
     if (typeof model !== "string" || !model.trim()) {

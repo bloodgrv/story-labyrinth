@@ -2,12 +2,9 @@ import { attemptPromise } from "@jfdi/attempt";
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
-import { indexNote, removeEntityFromIndex } from "../services/ragIndexService.js";
+import { buildNoteText, indexNote, removeEntityFromIndex } from "../services/ragIndexService.js";
 
 type NoteRow = typeof schema.notes.$inferSelect;
-
-const buildNoteText = (note: Pick<NoteRow, "title" | "content">): string =>
-    [note.title, note.content].filter(Boolean).join("\n\n");
 
 // Indexes or de-indexes a note per its own includeInAi flag (the Notes/Outline ↔ chat bridge's
 // per-item gate — docs/Notes_Outline_Chat_Bridges_Design.md). Fire-and-forget on index (mirrors

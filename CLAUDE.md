@@ -50,6 +50,7 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - Vector RAG uses sqlite-vec (hybrid FTS5 + vector)
 - RAG Scanner focuses on factual + concrete state consistency
 - **Per-feature endpoint selection** required (writing model and scanner model can run on different machines)
+- **Local in-process embeddings** (**implemented**, 2026-07-22) — a `"local-inprocess"` provider, valid only for the `embedding` feature, runs `nomic-ai/nomic-embed-text-v1.5` directly inside the Node server via `@huggingface/transformers` (`server/services/localEmbeddingService.ts`), so RAG indexing has zero external-endpoint dependency when selected. Model weights are baked into the Docker image at build time (`server/scripts/prefetchEmbeddingModel.mjs`); runtime never reaches the network (`env.allowRemoteModels = false`). Switching to/from this provider and re-running the "Rebuild embedding index" action (reuses the existing `reconcile_index` job with `storyId: null` = all stories) re-embeds everything so no vector index ever mixes two models' embedding spaces. See `docs/Local_Embeddings_Design.md` and `DECISIONS.md`'s "Local In-Process Embeddings — IE0-IE6" entry.
 
 ### UX Flow
 - Dashboard as central hub (card grid + preferences sidebar)
@@ -84,9 +85,10 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 - Base: JonSilver/TheStoryNexus (Express + SQLite + Drizzle + Lexical)
 - Vector layer: sqlite-vec
 - Graph visualization: React Flow (`@xyflow/react`)
-- All model access via OpenAI-compatible endpoints
+- All model access via OpenAI-compatible endpoints, **except** the embedding feature's optional `"local-inprocess"` provider (runs directly in-process, no endpoint — see RAG Systems above)
 - Local-first with optional LAN/Tailscale access
 - `canvas` (native Cairo bindings) — used only by document-import PDF image extraction; the one deliberate exception to this project's usual native-binding-dependency avoidance, added 2026-07-17 by explicit user decision after the tradeoff was raised. `Dockerfile` installs the required system libs (`libcairo2-dev` etc.) in both build stages — see `DECISIONS.md`'s "Document Import" entry
+- `onnxruntime-node` (via `@huggingface/transformers`, local in-process embeddings) — ships **prebuilt** native binaries (no compile step, unlike `canvas`), same lighter risk class as `sqlite-vec`'s own prebuilt binary. Needs `libgomp1` installed at runtime (Dockerfile, both stages) — see `DECISIONS.md`'s "Local In-Process Embeddings" entry
 
 ---
 
@@ -119,7 +121,8 @@ Create a purpose-built fork of JonSilver/TheStoryNexus optimized for long-form e
 6. **Context/Token Meter done** (2026-07-22, M0-M5) — composer chip + expandable budget-slice breakdown (hybrid char-heuristic estimate reusing the chat's own real `ChatContext`, not a second prompt builder); shown for Local always, hidden for other providers unless a post-turn usage is already known; real usage capture scoped to Local only this pass (`stream_options.include_usage`) with a per-message badge; Local settings gain a context-window override + best-effort server-metadata fetch + soft-warn confirm-before-send (off by default, never a hard block). See `DECISIONS.md`'s "Context / Token Meter — M0-M5" entry.
 7. **Chat Model Routing + Chat Chrome Density done** (2026-07-22, MR0-MR2/CC0/CL0) — sticky global Cloud|Local preferred mode (new `aiSettings.preferredMode`) drives `resolveChatDefaultModel`/`resolveModelForModeSwitch` so a chat is never left modelless; chat control is a Cloud|Local segmented pill + mode-filtered/provider-grouped model menu, Edit system prompt moved to a "⋯" overflow; Notes/Outline/Memory/Lorebook/auto-*/shuttle toggles collapsed by default behind one "Context & memory" disclosure with an armed-only summary chip; chat list rows are single-line/compact across every rail sharing `ChatList`/`ChatListItem`. See `DECISIONS.md`'s "Chat Model Routing + Chat Chrome Density — MR0-MR2, CC0, CL0" entry.
 8. **Scene Beat removal done in full** (2026-07-22, SB0-SB8) — the inline "Scene Beat" AI-generation feature (Alt+S, `SceneBeatNode`, `/api/scenebeats`, the `sceneBeats` table) is fully removed; **Concrete Beats is a separate, untouched system** (confirmed still working). Existing chapter content and prompt rows were migrated (not silently dropped) before the table itself was removed — `scene-beat` Lexical nodes became plain paragraphs carrying their command text, `promptType: "scene_beat"` rows were recategorized to `"other"`. The table drop (SB6) specifically waited on user confirmation first, since it's the one irreversible step in the pass. See `DECISIONS.md`'s "Scene Beat Removal — SB1-SB8" entry.
-9. Remaining P1: P1.3 (per-message RAG, explicitly deferred) and P1.4 (Visible AI Reasoning full product, needs scope confirmation). Otherwise P2 bugs or promote a P3 item as needed.
+9. **Local in-process embeddings done** (2026-07-22, IE0-IE6) — new `"local-inprocess"` provider for the `embedding` feature only (`@huggingface/transformers`, `nomic-ai/nomic-embed-text-v1.5`, 768-dim, no `vec_chunks` migration needed), model weights baked into the Docker image at build time so the running container needs no network access for it; `reconcileIndexJob.ts` now detects an embedding-model mismatch as drift across all five embeddable entity types and supports a global (`storyId: null`) run across every story, surfaced via a new "Rebuild embedding index" Settings action — so switching backends can't leave two models' embedding spaces mixed in one vector index. See `docs/Local_Embeddings_Design.md` and `DECISIONS.md`'s "Local In-Process Embeddings — IE0-IE6" entry.
+10. Remaining P1: P1.3 (per-message RAG, explicitly deferred) and P1.4 (Visible AI Reasoning full product, needs scope confirmation). Otherwise P2 bugs or promote a P3 item as needed.
 
 ---
 
