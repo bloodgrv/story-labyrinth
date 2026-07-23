@@ -1,5 +1,5 @@
 import { attemptPromise } from "@jfdi/attempt";
-import { Plus, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
@@ -77,6 +77,12 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
     const [composerSeedText, setComposerSeedText] = useState<string | null>(null);
+    // ChatList's own built-in collapse toggle only shrinks itself — CodexProposalTray/ShuttleTray
+    // are siblings inside the same fixed-width column, not inside ChatList, so that toggle alone
+    // can't reclaim the column's width once a chat (and therefore the trays) is selected. This is
+    // a second, outer toggle that hides the whole column — same pattern as EditorChatRail's own
+    // "Show/Hide Editor Chats" toggle.
+    const [railCollapsed, setRailCollapsed] = useState(false);
     const createMutation = useCreateChatMutation();
     const { data: templates = [] } = useChatTemplatesQuery();
     // Same query ChatList already runs internally — needed here too to resolve which WB chat a
@@ -165,7 +171,7 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
 
     return (
         <div className="flex h-full border-l">
-            <div className="flex-1 h-full min-h-0 min-w-0 flex flex-col">
+            <div className="relative flex-1 h-full min-h-0 min-w-0 flex flex-col">
                 {selectedChat && (
                     <div className="p-3 pb-0">
                         <GuidedSetupControl
@@ -182,14 +188,20 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
                     </div>
                 )}
                 {selectedChat ? (
-                    <ChatInterface
-                        storyId={storyId}
-                        promptType="worldbuilding"
-                        selectedChat={selectedChat}
-                        onChatUpdate={setSelectedChat}
-                        initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
-                        initialComposerText={composerSeedText}
-                    />
+                    // min-h-0 is load-bearing here, not decorative — without it this flex-1 child
+                    // (a sibling of the GuidedSetupControl block above) can't shrink below its
+                    // content's height, so a long reply grows the whole column instead of
+                    // scrolling internally, pushing the composer out of view below the fold.
+                    <div className="flex-1 min-h-0">
+                        <ChatInterface
+                            storyId={storyId}
+                            promptType="worldbuilding"
+                            selectedChat={selectedChat}
+                            onChatUpdate={setSelectedChat}
+                            initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
+                            initialComposerText={composerSeedText}
+                        />
+                    </div>
                 ) : (
                     <div className="flex items-center justify-center h-full flex-col gap-4 text-muted-foreground p-4">
                         <Sparkles className="h-10 w-10 text-muted-foreground/50" />
@@ -197,34 +209,45 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
                         {renderTemplatePicker()}
                     </div>
                 )}
+
+                <button
+                    type="button"
+                    onClick={() => setRailCollapsed(v => !v)}
+                    className="absolute top-1/2 -translate-y-1/2 -right-3 z-10 rounded-full border border-input bg-background p-1 shadow-sm hover:bg-muted"
+                    title={railCollapsed ? "Show World-Building Chats" : "Hide World-Building Chats"}
+                >
+                    {railCollapsed ? <ChevronLeft className="h-4 w-4 text-foreground" /> : <ChevronRight className="h-4 w-4 text-foreground" />}
+                </button>
             </div>
 
-            <div className="flex flex-col w-[300px] shrink-0">
-                <ChatList
-                    storyId={storyId}
-                    chatType="worldbuilding"
-                    title="World-Building Chats"
-                    emptyLabel="No world-building chats yet"
-                    selectedChat={selectedChat}
-                    onSelectChat={setSelectedChat}
-                    renderNewChatAction={renderTemplatePicker}
-                    side="right"
-                />
-                {/* Was inline ProposalCard rendering only, Approve/Reject with no Edit — moved to
-                    the same tray Editor chats use (P0.4 R4 scope decision #1) so rework turns get
-                    edit-before-approve too, not just Editor's. See ChatInterface.tsx's
-                    usesCodexTray. */}
-                {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
-                {selectedChat && (
-                    <ShuttleTray
-                        chatId={selectedChat.id}
+            {!railCollapsed && (
+                <div className="flex flex-col w-[300px] shrink-0">
+                    <ChatList
                         storyId={storyId}
-                        fromDesk={selectedChat.chatType ?? "worldbuilding"}
-                        fromChatTitleSnapshot={selectedChat.title}
-                        onAnswerHere={setComposerSeedText}
+                        chatType="worldbuilding"
+                        title="World-Building Chats"
+                        emptyLabel="No world-building chats yet"
+                        selectedChat={selectedChat}
+                        onSelectChat={setSelectedChat}
+                        renderNewChatAction={renderTemplatePicker}
+                        side="right"
                     />
-                )}
-            </div>
+                    {/* Was inline ProposalCard rendering only, Approve/Reject with no Edit — moved to
+                        the same tray Editor chats use (P0.4 R4 scope decision #1) so rework turns get
+                        edit-before-approve too, not just Editor's. See ChatInterface.tsx's
+                        usesCodexTray. */}
+                    {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
+                    {selectedChat && (
+                        <ShuttleTray
+                            chatId={selectedChat.id}
+                            storyId={storyId}
+                            fromDesk={selectedChat.chatType ?? "worldbuilding"}
+                            fromChatTitleSnapshot={selectedChat.title}
+                            onAnswerHere={setComposerSeedText}
+                        />
+                    )}
+                </div>
+            )}
         </div>
     );
 }
