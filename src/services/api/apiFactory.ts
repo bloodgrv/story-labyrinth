@@ -24,6 +24,11 @@ export const fetchJSON = async <T>(url: string, options?: RequestInit): Promise<
         throw new Error(error.error || `Request failed with status ${response.status}`);
     }
 
+    // 204/other no-body responses have nothing for response.json() to parse — it throws
+    // "Unexpected end of JSON input" on the empty string. Callers (e.g. chat/story delete)
+    // expect a resolved promise on success, not a thrown error.
+    if (response.status === 204) return undefined as T;
+
     return response.json();
 };
 
