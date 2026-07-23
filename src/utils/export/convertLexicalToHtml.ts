@@ -25,6 +25,17 @@ export async function convertLexicalToHtml(jsonContent: string): Promise<string>
             if (node.children) node.children.forEach(child => processNode(child, heading));
 
             parentElement.appendChild(heading);
+        } else if (node.type === "list") {
+            const list = document.createElement(node.listType === "number" ? "ol" : "ul");
+            if (node.children) node.children.forEach(child => processNode(child, list));
+
+            parentElement.appendChild(list);
+        } else if (node.type === "listitem") {
+            const li = document.createElement("li");
+            if (node.checked !== undefined) li.textContent = node.checked ? "☑ " : "☐ ";
+            if (node.children) node.children.forEach(child => processNode(child, li));
+
+            parentElement.appendChild(li);
         } else if (node.children) node.children.forEach(child => processNode(child, parentElement));
     };
 

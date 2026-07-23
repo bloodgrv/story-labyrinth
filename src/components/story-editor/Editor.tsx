@@ -1,10 +1,12 @@
 import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
+import { CheckListPlugin } from "@lexical/react/LexicalCheckListPlugin";
 import { ClickableLinkPlugin } from "@lexical/react/LexicalClickableLinkPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HashtagPlugin } from "@lexical/react/LexicalHashtagPlugin";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { HorizontalRulePlugin } from "@lexical/react/LexicalHorizontalRulePlugin";
+import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { SelectionAlwaysOnDisplay } from "@lexical/react/LexicalSelectionAlwaysOnDisplay";
@@ -114,6 +116,8 @@ export default function Editor(): JSX.Element {
                             }
                             ErrorBoundary={LexicalErrorBoundary}
                         />
+                        <ListPlugin />
+                        <CheckListPlugin />
                         <MarkdownShortcutPlugin />
                         <ImagesPlugin />
                         <InlineImagePlugin />

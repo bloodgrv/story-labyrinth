@@ -108,11 +108,18 @@ export const extractPlainTextFromLexical = (
             return "\n";
         
 
+        // List items get their own line, separate from surrounding prose
+        if (node.type === "listitem") {
+            const childrenText = Array.isArray(node.children) ? node.children.map(extractText).join("") : "";
+            return `${childrenText}\n`;
+        }
+
         // Recursively extract text from children
         const childrenText = Array.isArray(node.children) ? node.children.map(extractText).join("") : "";
 
-        // Add spacing after paragraphs and headings
-        const lineBreak = node.type === "paragraph" || node.type === "heading" ? opts.paragraphSpacing : "";
+        // Add spacing after paragraphs, headings, and lists
+        const lineBreak =
+            node.type === "paragraph" || node.type === "heading" || node.type === "list" ? opts.paragraphSpacing : "";
 
         return childrenText + lineBreak;
     };

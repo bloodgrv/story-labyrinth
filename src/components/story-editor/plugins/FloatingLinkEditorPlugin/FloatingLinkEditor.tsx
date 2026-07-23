@@ -108,7 +108,9 @@ export const FloatingLinkEditor = ({
     useEffect(
         () =>
             mergeRegister(
-                editor.registerUpdateListener(({ editorState }) => editorState.read(() => $updateLinkEditor())),
+                editor.registerUpdateListener(({ editorState }) => {
+                    editorState.read(() => $updateLinkEditor());
+                }),
                 editor.registerCommand(
                     SELECTION_CHANGE_COMMAND,
                     () => {

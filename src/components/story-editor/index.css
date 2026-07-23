@@ -333,6 +333,48 @@ pre::-webkit-scrollbar-thumb {
     background-position: center;
 }
 
+.lexical-context-menu {
+    background: #fff;
+    box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 4px;
+    min-width: 180px;
+    z-index: 100;
+}
+
+.lexical-context-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 0;
+    padding: 8px;
+    color: #050505;
+    cursor: pointer;
+    line-height: 16px;
+    font-size: 15px;
+    background-color: transparent;
+    border: 0;
+    border-radius: 8px;
+    text-align: left;
+}
+
+.lexical-context-menu-item:hover,
+.lexical-context-menu-item:focus {
+    background-color: #eee;
+    outline: none;
+}
+
+.lexical-context-menu-item:disabled {
+    color: #999;
+    cursor: default;
+}
+
+.lexical-context-menu-separator {
+    margin: 4px 8px;
+    border: 0;
+    border-top: 1px solid #eee;
+}
+
 .component-picker-menu {
     width: 200px;
 }

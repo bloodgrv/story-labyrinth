@@ -35,6 +35,17 @@ export function convertLexicalToMarkdown(jsonContent: string): string {
             const prefix = "#".repeat(level);
             const childrenText = node.children ? node.children.map(processNode).join("") : "";
             return `${prefix} ${childrenText}\n\n`;
+        } else if (node.type === "list") {
+            const isOrdered = node.listType === "number";
+            const items = node.children
+                ? node.children.map((child, index) => {
+                      const marker = isOrdered ? `${index + 1}.` : "-";
+                      const checkbox = child.checked !== undefined ? (child.checked ? "[x] " : "[ ] ") : "";
+                      const childrenText = child.children ? child.children.map(processNode).join("") : "";
+                      return `${marker} ${checkbox}${childrenText}`;
+                  })
+                : [];
+            return `${items.join("\n")}\n\n`;
         } else if (node.children) return node.children.map(processNode).join("");
 
         return "";
