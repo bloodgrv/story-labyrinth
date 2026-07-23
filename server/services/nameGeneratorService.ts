@@ -14,6 +14,8 @@ import type {
     GenerateNamesRequest,
     GenerateNamesResponse,
     GeneratedName,
+    GeneratedNamePair,
+    NamePoolKind,
     NamePoolTier,
     UsedName,
     UsedNameType
@@ -31,7 +33,7 @@ const MAX_COUNT = 20;
 // hardcoded here for v1 since no pack has shipped its own weights yet.
 const DEFAULT_TIER_WEIGHTS: Record<NamePoolTier, number> = { common: 0.7, uncommon: 0.25, rare: 0.05 };
 
-const kindToUsedNameType = (kind: GenerateNamesRequest["kind"]): UsedNameType => (kind === "first_name" ? "first" : "surname");
+const kindToUsedNameType = (kind: NamePoolKind): UsedNameType => (kind === "first_name" ? "first" : "surname");
 
 const parseEraBucket = (era: string | undefined): { eraStart?: number; eraEnd?: number } => {
     if (!era) return {};
@@ -77,6 +79,37 @@ const pickWeighted = (candidates: NameCandidate[], count: number): NameCandidate
 };
 
 export const generateNames = async (request: GenerateNamesRequest): Promise<GenerateNamesResponse> => {
+    if (request.kind === "full_name") return generateFullNamePairs(request);
+    return generateSingleKind(request as GenerateNamesRequest & { kind: NamePoolKind });
+};
+
+// "Full name" mode (independent-draw pairing, per the design's locked decision) — runs the
+// existing single-kind generation once for first_name and once for surname, then zips the two
+// result lists index-by-index into pairs. Each half keeps applying its own filters exactly as a
+// solo generate would (gender only ever applies to the first-name half); a poolId override
+// doesn't make sense here since a pair always spans two different pools.
+const generateFullNamePairs = async (request: GenerateNamesRequest): Promise<GenerateNamesResponse> => {
+    if (request.poolId) throw new Error("poolId is not supported with kind 'full_name' — a pair always draws from separate first-name and surname pools");
+
+    const count = Math.min(Math.max(request.count ?? DEFAULT_COUNT, 1), MAX_COUNT);
+    const [firstResult, lastResult] = await Promise.all([
+        generateSingleKind({ ...request, kind: "first_name", count }),
+        generateSingleKind({ ...request, kind: "surname", count, gender: undefined })
+    ]);
+
+    const pairCount = Math.min(firstResult.names.length, lastResult.names.length);
+    const pairs: GeneratedNamePair[] = [];
+    for (let i = 0; i < pairCount; i++) pairs.push({ firstName: firstResult.names[i], lastName: lastResult.names[i] });
+
+    return {
+        names: [],
+        pairs,
+        matchedPoolIds: [...new Set([...firstResult.matchedPoolIds, ...lastResult.matchedPoolIds])],
+        excludedCount: firstResult.excludedCount + lastResult.excludedCount
+    };
+};
+
+const generateSingleKind = async (request: GenerateNamesRequest & { kind: NamePoolKind }): Promise<GenerateNamesResponse> => {
     const count = Math.min(Math.max(request.count ?? DEFAULT_COUNT, 1), MAX_COUNT);
     const { eraStart, eraEnd } = parseEraBucket(request.era);
 

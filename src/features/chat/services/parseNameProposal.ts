@@ -1,9 +1,9 @@
 import { attempt } from "@jfdi/attempt";
-import { NAME_POOL_GENDERS, NAME_POOL_KINDS } from "@/types/nameGenerator";
-import type { NamePoolGender, NamePoolKind } from "@/types/nameGenerator";
+import { GENERATE_KINDS, NAME_POOL_GENDERS } from "@/types/nameGenerator";
+import type { GenerateKind, NamePoolGender } from "@/types/nameGenerator";
 
 export interface ParsedNameProposal {
-    kind: NamePoolKind;
+    kind: GenerateKind;
     gender?: NamePoolGender;
     region?: string;
     era?: string;
@@ -29,7 +29,7 @@ export const parseNameProposal = (content: string): { cleanedContent: string; pr
     if (error || typeof parsed !== "object" || parsed === null) return { cleanedContent, proposal: null };
 
     const record = parsed as Record<string, unknown>;
-    const kind = typeof record.kind === "string" && NAME_POOL_KINDS.includes(record.kind as NamePoolKind) ? (record.kind as NamePoolKind) : null;
+    const kind = typeof record.kind === "string" && GENERATE_KINDS.includes(record.kind as GenerateKind) ? (record.kind as GenerateKind) : null;
     if (!kind) return { cleanedContent, proposal: null };
 
     const gender =

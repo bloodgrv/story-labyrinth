@@ -1,7 +1,7 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { nameGeneratorApi } from "@/services/api/client";
 import type { PromptContext } from "@/types/story";
-import { NAME_POOL_GENDERS, NAME_POOL_KINDS, type NamePoolGender, type NamePoolKind } from "@/types/nameGenerator";
+import { GENERATE_KINDS, NAME_POOL_GENDERS, type GenerateKind, type NamePoolGender } from "@/types/nameGenerator";
 import { logger } from "@/utils/logger";
 import type { IVariableResolver } from "./types";
 
@@ -12,6 +12,10 @@ import type { IVariableResolver } from "./types";
 // All params optional; `kind` defaults to "first_name" since a bare `{{name}}` inline in prose is
 // the most common case. Registered in VariableResolverRegistry like `character`/`all_characters`,
 // not the separate hardcoded parenthesis-call path that only handles two functions today.
+//
+// `kind=full_name` draws a first name and surname independently and pairs them (e.g.
+// `{{name kind=full_name gender=female region=UK count=3}}` → "Emily Carter, Alice Whitfield,
+// ..."); `pool` isn't supported with this kind since a pair always spans two different pools.
 //
 // Read-only, same as the panel's generate action (NG1/NG2) — never writes to the used-names
 // ledger. A model completion that actually uses a generated name still goes through the normal
@@ -29,7 +33,7 @@ const parseNameParams = (params: string[]): Record<string, string> => {
     return parsed;
 };
 
-const isKind = (value: string): value is NamePoolKind => NAME_POOL_KINDS.includes(value as NamePoolKind);
+const isKind = (value: string): value is GenerateKind => GENERATE_KINDS.includes(value as GenerateKind);
 const isGender = (value: string): value is NamePoolGender => NAME_POOL_GENDERS.includes(value as NamePoolGender);
 
 export class NameResolver implements IVariableResolver {
@@ -58,6 +62,11 @@ export class NameResolver implements IVariableResolver {
         if (error) {
             logger.error("NameResolver: failed to generate names", error);
             return "[Name Generator error]";
+        }
+
+        if (kind === "full_name") {
+            if (!result.pairs || result.pairs.length === 0) return "[No matching names — try broadening the pool filters]";
+            return result.pairs.map(p => `${p.firstName.name} ${p.lastName.name}`).join(", ");
         }
         if (result.names.length === 0) return "[No matching names — try broadening the pool filters]";
 

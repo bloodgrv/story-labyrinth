@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
-import type { GenerateNamesResponse, NamePoolGender, NamePoolKind, UsedNameType } from "@/types/nameGenerator";
+import type { GenerateKind, GenerateNamesResponse, NamePoolGender, UsedNameType } from "@/types/nameGenerator";
 import {
     useAddFavoriteMutation,
     useFavoritesQuery,
@@ -18,6 +18,7 @@ import {
 } from "../hooks/useNameGeneratorQuery";
 import { ERA_BUCKETS, NameGeneratorFilters } from "./NameGeneratorFilters";
 import { GeneratedNameRow } from "./GeneratedNameRow";
+import { GeneratedNamePairRow } from "./GeneratedNamePairRow";
 import { ImportPoolDialog } from "./ImportPoolDialog";
 
 // NG7 — keep the last few generate batches instead of replacing the single result each time, so
@@ -40,11 +41,11 @@ interface RecentBatch {
 // with an unlisted region is still reachable through the panel's own filters.
 const FALLBACK_REGIONS = ["US", "UK"];
 
-const kindToNameType = (kind: NamePoolKind): UsedNameType => (kind === "first_name" ? "first" : "surname");
+const kindToNameType = (kind: GenerateKind): UsedNameType => (kind === "surname" ? "surname" : kind === "full_name" ? "full" : "first");
 
 export function NameGeneratorPanel() {
     const { currentStoryId, setPendingLorebookSeed, setCurrentTool } = useStoryContext();
-    const [kind, setKind] = useState<NamePoolKind>("first_name");
+    const [kind, setKind] = useState<GenerateKind>("first_name");
     const [gender, setGender] = useState<NamePoolGender | "any">("any");
     const [region, setRegion] = useState<string>("any");
     const [era, setEra] = useState<string>("any");
@@ -92,11 +93,13 @@ export function NameGeneratorPanel() {
     const favoriteKey = (name: string, type: UsedNameType) => `${name.toLowerCase()}::${type}`;
     const favoritesByKey = new Map((favoritesData?.favorites ?? []).map(f => [favoriteKey(f.name, f.nameType), f]));
 
+    const usesGenderEra = kind === "first_name" || kind === "full_name";
+
     const describeFilters = (): string => {
-        const parts = [kind === "first_name" ? "First name" : "Surname"];
-        if (kind === "first_name" && gender !== "any") parts.push(gender);
+        const parts = [kind === "first_name" ? "First name" : kind === "surname" ? "Surname" : "Full name"];
+        if (usesGenderEra && gender !== "any") parts.push(gender);
         if (region !== "any") parts.push(region);
-        if (kind === "first_name" && era !== "any") parts.push(ERA_BUCKETS.find(b => b.value === era)?.label ?? era);
+        if (usesGenderEra && era !== "any") parts.push(ERA_BUCKETS.find(b => b.value === era)?.label ?? era);
         return parts.join(" · ");
     };
 
@@ -106,9 +109,9 @@ export function NameGeneratorPanel() {
             {
                 storyId,
                 kind,
-                gender: kind === "first_name" && gender !== "any" ? gender : undefined,
+                gender: usesGenderEra && gender !== "any" ? gender : undefined,
                 region: region === "any" ? undefined : region,
-                era: era === "any" ? undefined : era,
+                era: usesGenderEra && era !== "any" ? era : undefined,
                 count,
                 maxLength: maxLength ? Number(maxLength) : undefined,
                 startsWith: startsWith || undefined
@@ -118,9 +121,9 @@ export function NameGeneratorPanel() {
                     setRecentBatches(prev => [{ id: crypto.randomUUID(), label, result: data, nameType }, ...prev].slice(0, MAX_RECENT_BATCHES));
                     saveDefaultsMutation.mutate({
                         storyId,
-                        era: kind === "first_name" && era !== "any" ? era : null,
+                        era: usesGenderEra && era !== "any" ? era : null,
                         region: region === "any" ? null : region,
-                        gender: kind === "first_name" && gender !== "any" ? gender : null
+                        gender: usesGenderEra && gender !== "any" ? gender : null
                     });
                 }
             }
@@ -132,7 +135,7 @@ export function NameGeneratorPanel() {
         setCurrentTool("lorebook");
     };
 
-    const handleToggleFavorite = (name: string, type: UsedNameType, poolId: string) => {
+    const handleToggleFavorite = (name: string, type: UsedNameType, poolId: string | undefined) => {
         const existing = favoritesByKey.get(favoriteKey(name, type));
         if (existing) removeFavoriteMutation.mutate({ storyId, id: existing.id });
         else addFavoriteMutation.mutate({ storyId, name, nameType: type, poolId });
@@ -189,7 +192,38 @@ export function NameGeneratorPanel() {
                         )}
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        {batch.result.names.length === 0 ? (
+                        {batch.nameType === "full" ? (
+                            !batch.result.pairs || batch.result.pairs.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                    No names matched those filters — try a broader region, era, or fewer light filters.
+                                </p>
+                            ) : (
+                                batch.result.pairs.map((pair, index) => {
+                                    const fullName = `${pair.firstName.name} ${pair.lastName.name}`;
+                                    return (
+                                        <GeneratedNamePairRow
+                                            key={`${pair.firstName.poolId}-${pair.lastName.poolId}-${fullName}-${index}`}
+                                            pair={pair}
+                                            isUsed={isNameUsed(fullName, "full")}
+                                            markUsedPending={markUsedMutation.isPending}
+                                            onMarkUsed={() =>
+                                                markUsedMutation.mutate({
+                                                    storyId,
+                                                    name: fullName,
+                                                    nameType: "full",
+                                                    source: "generated",
+                                                    poolNameId: undefined
+                                                })
+                                            }
+                                            onCreateCodexEntry={() => handleCreateCodexEntry(fullName)}
+                                            isFavorited={favoritesByKey.has(favoriteKey(fullName, "full"))}
+                                            favoritePending={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
+                                            onToggleFavorite={() => handleToggleFavorite(fullName, "full", undefined)}
+                                        />
+                                    );
+                                })
+                            )
+                        ) : batch.result.names.length === 0 ? (
                             <p className="text-sm text-muted-foreground">
                                 No names matched those filters — try a broader region, era, or fewer light filters.
                             </p>

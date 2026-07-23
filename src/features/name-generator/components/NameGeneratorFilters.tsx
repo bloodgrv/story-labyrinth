@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { NamePoolGender, NamePoolKind } from "@/types/nameGenerator";
+import type { GenerateKind, NamePoolGender } from "@/types/nameGenerator";
 
 // Split out of NameGeneratorPanel.tsx once NG7's favorites/defaults/recent-batches logic pushed
 // that file over the max-lines limit — same reasoning as client.ts's own file splits.
@@ -19,8 +19,8 @@ export const ERA_BUCKETS: { value: string; label: string }[] = [
 ];
 
 interface NameGeneratorFiltersProps {
-    kind: NamePoolKind;
-    onKindChange: (kind: NamePoolKind) => void;
+    kind: GenerateKind;
+    onKindChange: (kind: GenerateKind) => void;
     gender: NamePoolGender | "any";
     onGenderChange: (gender: NamePoolGender | "any") => void;
     region: string;
@@ -65,15 +65,16 @@ export function NameGeneratorFilters({
                 <CardTitle className="text-base">Filters</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                <Tabs value={kind} onValueChange={value => onKindChange(value as NamePoolKind)}>
+                <Tabs value={kind} onValueChange={value => onKindChange(value as GenerateKind)}>
                     <TabsList>
                         <TabsTrigger value="first_name">First name</TabsTrigger>
                         <TabsTrigger value="surname">Surname</TabsTrigger>
+                        <TabsTrigger value="full_name">Full name</TabsTrigger>
                     </TabsList>
                 </Tabs>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {kind === "first_name" && (
+                    {(kind === "first_name" || kind === "full_name") && (
                         <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Gender</Label>
                             <Select value={gender} onValueChange={value => onGenderChange(value as NamePoolGender | "any")}>
@@ -105,7 +106,7 @@ export function NameGeneratorFilters({
                             </SelectContent>
                         </Select>
                     </div>
-                    {kind === "first_name" && (
+                    {(kind === "first_name" || kind === "full_name") && (
                         <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Era</Label>
                             <Select value={era} onValueChange={onEraChange}>

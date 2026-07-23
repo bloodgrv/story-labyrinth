@@ -184,9 +184,10 @@ const NAME_PROPOSAL_INSTRUCTIONS =
     "```name-proposal\n" +
     '{"kind": "first_name", "gender": "female", "region": "US", "era": "1980-1999", "count": 5}\n' +
     "```\n\n" +
-    '"kind" is required and must be "first_name" or "surname". "gender" ("male"/"female"/"unisex"), "region", ' +
-    '"era" (a "YYYY-YYYY" range), and "count" are all optional — omit any you don\'t have a clear reason to set. ' +
-    "Propose at most one name-proposal per reply.";
+    '"kind" is required and must be "first_name", "surname", or "full_name" (a first+last pair, drawn independently ' +
+    'and paired up — use this when the user wants full names, not just one part). "gender" ("male"/"female"/"unisex", ' +
+    'only meaningful for "first_name"/"full_name"), "region", "era" (a "YYYY-YYYY" range), and "count" are all ' +
+    "optional — omit any you don't have a clear reason to set. Propose at most one name-proposal per reply.";
 
 const OUTLINE_FRAMING =
     "You are a structure partner for this story's outline — chapter/scene sequencing and narrative arc. " +

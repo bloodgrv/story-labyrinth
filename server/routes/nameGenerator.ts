@@ -11,8 +11,8 @@ import {
     saveStoryDefaults
 } from "../services/nameGeneratorRepository.js";
 import { generateNames, listUsedNamesForStory, markNameUsed } from "../services/nameGeneratorService.js";
-import { NAME_POOL_GENDERS, NAME_POOL_KINDS, USED_NAME_SOURCES, USED_NAME_TYPES } from "../../src/types/nameGenerator.js";
-import type { NamePoolGender, NamePoolKind, UsedNameSource, UsedNameType } from "../../src/types/nameGenerator.js";
+import { GENERATE_KINDS, NAME_POOL_GENDERS, NAME_POOL_KINDS, USED_NAME_SOURCES, USED_NAME_TYPES } from "../../src/types/nameGenerator.js";
+import type { GenerateKind, NamePoolGender, NamePoolKind, UsedNameSource, UsedNameType } from "../../src/types/nameGenerator.js";
 
 const router = express.Router();
 // Same limits/config posture as lorebook.ts's own import upload — small text files (JSON/CSV
@@ -67,8 +67,8 @@ router.post("/generate", async (req, res) => {
         res.status(400).json({ error: "storyId is required" });
         return;
     }
-    if (typeof kind !== "string" || !NAME_POOL_KINDS.includes(kind as NamePoolKind)) {
-        res.status(400).json({ error: `kind must be one of: ${NAME_POOL_KINDS.join(", ")}` });
+    if (typeof kind !== "string" || !GENERATE_KINDS.includes(kind as GenerateKind)) {
+        res.status(400).json({ error: `kind must be one of: ${GENERATE_KINDS.join(", ")}` });
         return;
     }
     if (gender !== undefined && (typeof gender !== "string" || !NAME_POOL_GENDERS.includes(gender as NamePoolGender))) {
@@ -79,7 +79,7 @@ router.post("/generate", async (req, res) => {
     const [error, result] = await attemptPromise(() =>
         generateNames({
             storyId,
-            kind: kind as NamePoolKind,
+            kind: kind as GenerateKind,
             gender: gender as NamePoolGender | undefined,
             region: typeof region === "string" ? region : undefined,
             era: typeof era === "string" ? era : undefined,

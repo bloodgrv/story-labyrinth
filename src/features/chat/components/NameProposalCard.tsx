@@ -12,6 +12,7 @@ import {
     useUsedNamesQuery
 } from "@/features/name-generator/hooks/useNameGeneratorQuery";
 import { GeneratedNameRow } from "@/features/name-generator/components/GeneratedNameRow";
+import { GeneratedNamePairRow } from "@/features/name-generator/components/GeneratedNamePairRow";
 import type { GenerateNamesResponse, UsedNameType } from "@/types/nameGenerator";
 import type { ParsedNameProposal } from "../services/parseNameProposal";
 
@@ -20,7 +21,8 @@ interface NameProposalCardProps {
     storyId: string;
 }
 
-const kindToNameType = (kind: ParsedNameProposal["kind"]): UsedNameType => (kind === "first_name" ? "first" : "surname");
+const kindToNameType = (kind: ParsedNameProposal["kind"]): UsedNameType =>
+    kind === "surname" ? "surname" : kind === "full_name" ? "full" : "first";
 
 // NG6 — sibling to PsychProposalCard/ProseProposalCard, but there's no single value to Accept/
 // Reject: the model is requesting the (non-LLM, deterministic) generate action run, so this card
@@ -70,11 +72,13 @@ export function NameProposalCard({ proposal, storyId }: NameProposalCardProps) {
         setCurrentTool("lorebook");
     };
 
-    const handleToggleFavorite = (name: string, poolId: string) => {
+    const handleToggleFavorite = (name: string, poolId: string | undefined) => {
         const existing = favoritesData?.favorites.find(f => f.nameType === nameType && f.name.toLowerCase() === name.toLowerCase());
         if (existing) removeFavoriteMutation.mutate({ storyId, id: existing.id });
         else addFavoriteMutation.mutate({ storyId, name, nameType, poolId });
     };
+
+    const kindLabel = proposal.kind === "first_name" ? "First name" : proposal.kind === "surname" ? "Surname" : "Full name";
 
     return (
         <Card className="border-dashed">
@@ -85,7 +89,7 @@ export function NameProposalCard({ proposal, storyId }: NameProposalCardProps) {
                         Name Generator
                     </Badge>
                     <span className="text-sm text-muted-foreground">
-                        {proposal.kind === "first_name" ? "First name" : "Surname"} suggestions
+                        {kindLabel} suggestions
                         {proposal.region ? ` — ${proposal.region}` : ""}
                     </span>
                 </div>
@@ -97,25 +101,53 @@ export function NameProposalCard({ proposal, storyId }: NameProposalCardProps) {
                         Generating...
                     </div>
                 )}
-                {result?.names.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No names matched those filters.</p>
+                {proposal.kind === "full_name" ? (
+                    <>
+                        {result && (!result.pairs || result.pairs.length === 0) && (
+                            <p className="text-sm text-muted-foreground">No names matched those filters.</p>
+                        )}
+                        {result?.pairs?.map((pair, index) => {
+                            const fullName = `${pair.firstName.name} ${pair.lastName.name}`;
+                            return (
+                                <GeneratedNamePairRow
+                                    key={`${pair.firstName.poolId}-${pair.lastName.poolId}-${fullName}-${index}`}
+                                    pair={pair}
+                                    isUsed={usedNameSet.has(fullName.toLowerCase())}
+                                    markUsedPending={markUsedMutation.isPending}
+                                    onMarkUsed={() =>
+                                        markUsedMutation.mutate({ storyId, name: fullName, nameType, source: "generated", poolNameId: undefined })
+                                    }
+                                    onCreateCodexEntry={() => handleCreateCodexEntry(fullName)}
+                                    isFavorited={favoritedNames.has(fullName.toLowerCase())}
+                                    favoritePending={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
+                                    onToggleFavorite={() => handleToggleFavorite(fullName, undefined)}
+                                />
+                            );
+                        })}
+                    </>
+                ) : (
+                    <>
+                        {result?.names.length === 0 && (
+                            <p className="text-sm text-muted-foreground">No names matched those filters.</p>
+                        )}
+                        {result?.names.map((name, index) => (
+                            <GeneratedNameRow
+                                key={`${name.poolId}-${name.name}-${index}`}
+                                result={name}
+                                nameType={nameType}
+                                isUsed={usedNameSet.has(name.name.toLowerCase())}
+                                markUsedPending={markUsedMutation.isPending}
+                                onMarkUsed={() =>
+                                    markUsedMutation.mutate({ storyId, name: name.name, nameType, source: "generated", poolNameId: undefined })
+                                }
+                                onCreateCodexEntry={() => handleCreateCodexEntry(name.name)}
+                                isFavorited={favoritedNames.has(name.name.toLowerCase())}
+                                favoritePending={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
+                                onToggleFavorite={() => handleToggleFavorite(name.name, name.poolId)}
+                            />
+                        ))}
+                    </>
                 )}
-                {result?.names.map((name, index) => (
-                    <GeneratedNameRow
-                        key={`${name.poolId}-${name.name}-${index}`}
-                        result={name}
-                        nameType={nameType}
-                        isUsed={usedNameSet.has(name.name.toLowerCase())}
-                        markUsedPending={markUsedMutation.isPending}
-                        onMarkUsed={() =>
-                            markUsedMutation.mutate({ storyId, name: name.name, nameType, source: "generated", poolNameId: undefined })
-                        }
-                        onCreateCodexEntry={() => handleCreateCodexEntry(name.name)}
-                        isFavorited={favoritedNames.has(name.name.toLowerCase())}
-                        favoritePending={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
-                        onToggleFavorite={() => handleToggleFavorite(name.name, name.poolId)}
-                    />
-                ))}
             </CardContent>
         </Card>
     );

@@ -8,6 +8,13 @@ export type NamePoolTier = "common" | "uncommon" | "rare";
 
 export const NAME_POOL_KINDS: NamePoolKind[] = ["first_name", "surname"];
 export const NAME_POOL_GENDERS: NamePoolGender[] = ["male", "female", "unisex"];
+
+// Generate-request kind — a superset of NamePoolKind. "full_name" isn't a pool kind (no pool is
+// ever stored as "full_name"; every pool is still strictly first_name or surname) — it's a
+// generate-time mode meaning "draw from both independently and pair them up", added for the
+// first+last "name pairs" feature.
+export type GenerateKind = NamePoolKind | "full_name";
+export const GENERATE_KINDS: GenerateKind[] = [...NAME_POOL_KINDS, "full_name"];
 export const NAME_POOL_TIERS: NamePoolTier[] = ["common", "uncommon", "rare"];
 
 export interface NamePool {
@@ -53,7 +60,7 @@ export interface UsedName {
 // and NG6's chat fence both resolve down to the same generateNames() call server-side).
 export interface GenerateNamesRequest {
     storyId: string;
-    kind: NamePoolKind;
+    kind: GenerateKind;
     gender?: NamePoolGender;
     region?: string;
     // "YYYY-YYYY" era bucket key, e.g. "1980-1999". Matched against pools whose [eraStart,
@@ -74,8 +81,16 @@ export interface GeneratedName {
     tier: NamePoolTier;
 }
 
+// A first+surname pair for kind: "full_name" — each half keeps its own pool/tier attribution
+// since the two names are drawn independently from separate pools.
+export interface GeneratedNamePair {
+    firstName: GeneratedName;
+    lastName: GeneratedName;
+}
+
 export interface GenerateNamesResponse {
-    names: GeneratedName[];
+    names: GeneratedName[]; // empty when kind was "full_name" — see `pairs` instead
+    pairs?: GeneratedNamePair[]; // present only when kind was "full_name"
     matchedPoolIds: string[];
     excludedCount: number; // candidates filtered out as used-name/lorebook-character collisions
 }
