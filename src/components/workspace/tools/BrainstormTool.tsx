@@ -119,16 +119,22 @@ export const BrainstormTool = () => {
                         </div>
                     )}
                     {selectedChat ? (
-                        <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[selectedChat.id]}>
-                            <ChatInterface
-                                storyId={currentStoryId}
-                                promptType="brainstorm"
-                                selectedChat={selectedChat}
-                                onChatUpdate={setSelectedChat}
-                                enableProseProposals={false}
-                                initialComposerText={composerSeedText}
-                            />
-                        </ErrorBoundary>
+                        // min-h-0 is load-bearing — without it this flex-1 child (a sibling of the
+                        // GuidedSetupControl block above) can't shrink below its content's height,
+                        // so a long reply grows the whole column instead of scrolling internally,
+                        // pushing the composer out of view below the fold.
+                        <div className="flex-1 min-h-0">
+                            <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[selectedChat.id]}>
+                                <ChatInterface
+                                    storyId={currentStoryId}
+                                    promptType="brainstorm"
+                                    selectedChat={selectedChat}
+                                    onChatUpdate={setSelectedChat}
+                                    enableProseProposals={false}
+                                    initialComposerText={composerSeedText}
+                                />
+                            </ErrorBoundary>
+                        </div>
                     ) : (
                         <div className="flex items-center justify-center h-full flex-col gap-4 text-muted-foreground p-4">
                             <MessageSquare className="h-10 w-10 text-muted-foreground/50" />
