@@ -158,21 +158,10 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
     return (
         <div className="flex h-full">
             <div className="flex-1 h-full min-h-0 flex flex-col">
-                {selectedChat && (
-                    <div className="p-3 pb-0">
-                        <GuidedSetupControl
-                            style={(selectedChat.outlineStyle as ChatStyle) ?? "standard"}
-                            onStyleChange={handleStyleChange}
-                            blurb="Plan your story structure here — or run Guided setup for a structured interview."
-                            onGuidedSetup={style => setComposerSeedText(OUTLINE_OPENING_LINES[style])}
-                        />
-                    </div>
-                )}
                 {selectedChat ? (
-                    // min-h-0 is load-bearing — without it this flex-1 child (a sibling of the
-                    // GuidedSetupControl block above) can't shrink below its content's height, so
-                    // a long reply grows the whole column instead of scrolling internally,
-                    // pushing the composer out of view below the fold.
+                    // min-h-0 is load-bearing — without it this flex-1 child can't shrink below
+                    // its content's height, so a long reply grows the whole column instead of
+                    // scrolling internally, pushing the composer out of view below the fold.
                     <div className="flex-1 min-h-0">
                         <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[selectedChat.id]}>
                             <ChatInterface
@@ -184,6 +173,14 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
                                 initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
                                 initialComposerText={composerSeedText}
                                 onLoreSuggestions={suggestions => setLoreSuggestions(prev => [...prev, ...suggestions])}
+                                guidedSetup={
+                                    <GuidedSetupControl
+                                        style={(selectedChat.outlineStyle as ChatStyle) ?? "standard"}
+                                        onStyleChange={handleStyleChange}
+                                        blurb="Plan your story structure here — or run Guided setup for a structured interview."
+                                        onGuidedSetup={style => setComposerSeedText(OUTLINE_OPENING_LINES[style])}
+                                    />
+                                }
                             />
                         </ErrorBoundary>
                     </div>

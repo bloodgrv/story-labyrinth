@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronRight } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "react-toastify";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -98,6 +98,13 @@ interface ChatInterfaceProps {
     // desk context pack's "focused note" read (chatContextService.ts's resolveFocusedNote)
     // reflects what the user is actually looking at.
     focusedNoteId?: string;
+    // Brainstorm/WB/Outline pass their own <GuidedSetupControl /> here (each owns its own
+    // blurb/style-hint/opening-line text) instead of rendering it themselves above this
+    // component — doing it here instead of in the host lets one collapse toggle hide the whole
+    // header cluster (Guided Setup + the model row + Context & memory + Story Context) down to a
+    // single line, rather than just the Guided Setup box alone. Absent for Editor/Research/Notes,
+    // which keep their existing always-expanded header unchanged.
+    guidedSetup?: ReactNode;
 }
 
 // ChatInterface for chats.ts-backed chats (World-Building, Research, Editor) — reuses the same
@@ -114,9 +121,13 @@ export function ChatInterface({
     onLoreSuggestions,
     initialRework = null,
     initialComposerText = null,
-    focusedNoteId
+    focusedNoteId,
+    guidedSetup
 }: ChatInterfaceProps) {
     const [input, setInput] = useState("");
+    // Only meaningful when `guidedSetup` is provided — resets to expanded on remount (chat
+    // switch), same as GuidedSetupControl's own collapse used to before it moved here.
+    const [headerExpanded, setHeaderExpanded] = useState(true);
     const queryClient = useQueryClient();
     // Editor chats rely entirely on the auto-pulled codexContext (chapter passages + Codex
     // entries, fetched below) instead of the manual chapter-summary/lorebook checkboxes —
@@ -1064,7 +1075,32 @@ export function ChatInterface({
 
     return (
         <div className="flex flex-col h-full">
+            {guidedSetup && !headerExpanded ? (
+                <div className="p-4 pb-0">
+                    <button
+                        type="button"
+                        onClick={() => setHeaderExpanded(true)}
+                        className="flex w-full items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                        Guided setup
+                    </button>
+                </div>
+            ) : (
             <div className="p-4 space-y-4">
+                {guidedSetup && (
+                    <div className="flex items-start gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setHeaderExpanded(false)}
+                            className="mt-3 shrink-0 text-muted-foreground hover:text-foreground"
+                            title="Collapse guided setup"
+                        >
+                            <ChevronUp className="h-4 w-4" />
+                        </button>
+                        <div className="flex-1 min-w-0">{guidedSetup}</div>
+                    </div>
+                )}
                 {focusedOnLabel && (
                     <p className="text-xs text-muted-foreground">Focused on: {focusedOnLabel}</p>
                 )}
@@ -1237,6 +1273,7 @@ export function ChatInterface({
                     />
                 )}
             </div>
+            )}
 
             <ChatMessageList
                 messages={displayMessages}
