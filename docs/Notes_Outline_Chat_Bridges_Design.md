@@ -1,7 +1,7 @@
 # Notes & Outline ↔ Chat Bridges — Design
 
 **Project:** Story Nexus Fork (`E:\StoryNexus-Fork`)  
-**Status:** Design locked (2026-07-18) — not implemented  
+**Status:** Design locked (2026-07-18) — implemented (N0-N6, O1-O4, C1-C5 all shipped; see `CLAUDE.md` "Chat System" and `docs/CURRENT_BACKLOG.md` P0.3); this doc is the original design record, may be stale on specifics  
 **Audience:** Claude Code (implementation) + Hermes (architecture)  
 **Related:** `docs/CURRENT_BACKLOG.md` P0.3 / continuity glue; `docs/Agent_Framework_And_Project_Memory_Design.md` (opt-in retrieval precedent); story export in `server/routes/stories.ts`
 

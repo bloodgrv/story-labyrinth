@@ -1,7 +1,7 @@
 # Agent Framework & Project Persistent Memory — Design Spec
 
 **Project:** Story Nexus Fork (`E:\StoryNexus-Fork`)  
-**Status:** Design only — not implemented  
+**Status:** Phase A + Phase B implemented (see `CLAUDE.md` "Agent Framework & Project Memory" and `docs/CURRENT_BACKLOG.md` P1.1 for Phase C progress) — this doc is the original design record, may be stale on specifics  
 **Audience:** Claude Code (implementation) + Hermes (architecture)  
 **Date:** 2026-07-16  
 **Supersedes / realigns:**

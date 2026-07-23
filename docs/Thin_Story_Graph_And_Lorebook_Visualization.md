@@ -1,7 +1,7 @@
 # Thin Story Graph + Lorebook Relationship Visualization
 
 **Project:** Story Nexus Fork  
-**Status:** Design — not implemented  
+**Status:** Phase G1 + G1.5+ implemented (pending-edge review, AI-suggested edges, persisted layout, RAG reindex-on-edge-change) — see `CLAUDE.md` "Lorebook Relationship Graph" and `docs/CURRENT_BACKLOG.md` P1.2; this doc is the original design record, may be stale on specifics  
 **Date:** 2026-07-16  
 **Audience:** Claude Code + Hermes  
 **Depends on:** Lorebook, Codex, Agent Framework Phase A/B (optional integration later)  
