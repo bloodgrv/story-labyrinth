@@ -45,6 +45,7 @@ import { OutlineProposalCard } from "./OutlineProposalCard";
 import { ProposalCard } from "./ProposalCard";
 import { ProseProposalCard } from "./ProseProposalCard";
 import { PsychProposalCard } from "./PsychProposalCard";
+import { PlaceSheetProposalCard } from "./PlaceSheetProposalCard";
 import { useChatMessageGeneration } from "../hooks/useChatMessageGeneration";
 import { useChatSystemPrompt } from "../hooks/useChatSystemPrompt";
 import { groupProposalsByMessage, useChatProposalsQuery } from "../hooks/useCodexProposalsQuery";
@@ -58,6 +59,7 @@ import type {
     ParsedOutlineReorderProposal
 } from "../services/parseOutlineProposals";
 import type { ParsedPsychProposal } from "../services/parsePsychProposal";
+import type { PlaceState } from "@/types/story";
 
 type NonCreateOutlineProposal = ParsedOutlineEditProposal | ParsedOutlineReorderProposal | ParsedOutlineDeleteProposal;
 
@@ -549,6 +551,12 @@ export function ChatInterface({
     const [psychProposals, setPsychProposals] = useState<Record<string, ParsedPsychProposal>>({});
     const updateLorebookMutation = useUpdateLorebookMutation();
 
+    // L1, docs/Locations_And_Maps_Design.md — Locations template's place sheet. Same ephemeral-
+    // state posture as psychProposals above; only ever populated for WB chats since
+    // chatContextService.ts's PLACE_SHEET_INSTRUCTIONS is only ever included when
+    // templateSlug === "locations".
+    const [placeSheetProposals, setPlaceSheetProposals] = useState<Record<string, PlaceState>>({});
+
     // NG6 — same ephemeral-state posture as psychProposals above. No accept/reject dismissal to
     // track: NameProposalCard itself runs the real generate call and owns its own results state.
     const [nameProposals, setNameProposals] = useState<Record<string, ParsedNameProposal>>({});
@@ -730,6 +738,7 @@ export function ChatInterface({
             ).then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
         },
         onPsychProposal: (messageId, proposal) => setPsychProposals(prev => ({ ...prev, [messageId]: proposal })),
+        onPlaceSheetProposal: (messageId, proposal) => setPlaceSheetProposals(prev => ({ ...prev, [messageId]: proposal })),
         onNameProposal: (messageId, proposal) => setNameProposals(prev => ({ ...prev, [messageId]: proposal })),
         // Notes chats only (P0.4 K2/K4) — same "persist immediately as a durable checklist row"
         // posture as onOverviewProposal/onHandoffPackets above; NotesChecklistTray.tsx handles the
@@ -867,6 +876,32 @@ export function ChatInterface({
             }
         });
         dismissPsychProposal(messageId);
+    };
+
+    const dismissPlaceSheetProposal = (messageId: string) =>
+        setPlaceSheetProposals(prev => {
+            const next = { ...prev };
+            delete next[messageId];
+            return next;
+        });
+
+    // L1, docs/Locations_And_Maps_Design.md — same merge-not-replace posture as handleAcceptPsych
+    // above, into metadata.placeState instead of metadata.psychProfile.
+    const handleAcceptPlaceSheet = (messageId: string) => {
+        const proposal = placeSheetProposals[messageId];
+        const entryId = selectedChat.anchorEntryId;
+        if (!proposal || !entryId) return;
+        const entry = entryLookup.get(entryId);
+        updateLorebookMutation.mutate({
+            id: entryId,
+            data: {
+                metadata: {
+                    ...entry?.metadata,
+                    placeState: { ...entry?.metadata?.placeState, ...proposal }
+                }
+            }
+        });
+        dismissPlaceSheetProposal(messageId);
     };
 
     // N5 (Notes_Outline_Chat_Bridges_Design.md §4) — manual "Save message as note". Reuses
@@ -1198,6 +1233,7 @@ export function ChatInterface({
                     const noteProposal = noteProposals[messageId];
                     const outlineProposalsForMessage = outlineProposals[messageId];
                     const psychProposal = psychProposals[messageId];
+                    const placeSheetProposal = placeSheetProposals[messageId];
                     const nameProposal = storyId ? nameProposals[messageId] : undefined;
                     if (
                         !proposals?.length &&
@@ -1205,6 +1241,7 @@ export function ChatInterface({
                         !noteProposal &&
                         !outlineProposalsForMessage?.length &&
                         !psychProposal &&
+                        !placeSheetProposal &&
                         !nameProposal
                     )
                         return null;
@@ -1251,6 +1288,13 @@ export function ChatInterface({
                                     proposal={psychProposal}
                                     onAccept={() => handleAcceptPsych(messageId)}
                                     onReject={() => dismissPsychProposal(messageId)}
+                                />
+                            )}
+                            {isWorldBuildingChat && placeSheetProposal && (
+                                <PlaceSheetProposalCard
+                                    proposal={placeSheetProposal}
+                                    onAccept={() => handleAcceptPlaceSheet(messageId)}
+                                    onReject={() => dismissPlaceSheetProposal(messageId)}
                                 />
                             )}
                             {nameProposal && storyId && <NameProposalCard proposal={nameProposal} storyId={storyId} />}

@@ -40,7 +40,13 @@ export const WORLD_BUILDING_TEMPLATES: readonly WorldBuildingTemplate[] = [
             "Build out the geography, architecture, and atmosphere of story locations.",
         defaultTitle: "Locations",
         systemPromptHint:
-            "Focus on sensory details: sights, sounds, smells, textures. Build a vivid sense of place grounded in concrete description."
+            "Focus on sensory details: sights, sounds, smells, textures. Build a vivid sense of place grounded in " +
+            "concrete description. When developing a location, let the conversation work through these threads as " +
+            "they come up naturally (not a rigid checklist to march through in order): role in the story, scale " +
+            "(room / building / district / city / region / plane), sensory spine, layout bones, rules of the " +
+            "place (what's allowed/forbidden/dangerous here), who holds or controls it, places it's linked to, " +
+            "story functions it could serve, open mysteries worth leaving unresolved, and a visual/map brief for " +
+            "image generation."
     },
     {
         slug: "factions",

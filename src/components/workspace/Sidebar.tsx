@@ -9,6 +9,7 @@ import {
     Library,
     List,
     ListTree,
+    Map,
     MessageSquare,
     Network,
     ScanSearch,
@@ -41,6 +42,7 @@ const tools = [
     { id: "name-generator" as WorkspaceTool, label: "Names", icon: Sparkles, requiresStory: true },
     { id: "memory" as WorkspaceTool, label: "Memory", icon: Brain, requiresStory: true },
     { id: "relationships" as WorkspaceTool, label: "Relations", icon: Network, requiresStory: true },
+    { id: "story-map" as WorkspaceTool, label: "Story Map", icon: Map, requiresStory: true },
     { id: "scanner" as WorkspaceTool, label: "Scanner", icon: ScanSearch, requiresStory: true }
 ];
 

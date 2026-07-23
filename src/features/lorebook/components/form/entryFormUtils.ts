@@ -1,5 +1,7 @@
 import type { CodexState, DocumentImportDraft } from "@/types/codex";
-import type { LorebookEntry } from "@/types/story";
+import type { LorebookEntry, PlaceState } from "@/types/story";
+
+export const EMPTY_PLACE_STATE: PlaceState = {};
 
 export type LorebookLevel = LorebookEntry["level"];
 export type LorebookCategory = LorebookEntry["category"];
@@ -53,6 +55,13 @@ export interface CreateEntryForm {
     // true = generate a new image from the description on save (lorebookApi.generateImage).
     // Mutually exclusive with imageFile — picking one clears the other. See ImageUploadField.tsx.
     generateImageOnSave?: boolean;
+    // Which prompt preset to use when generateImageOnSave is true — "mood" (default, current
+    // description-driven path) or "map" (location-only, top-down/ink style, see
+    // grokImageService.ts's MAP_IMAGE_PROMPT_PREFIX). Only ever shown for category="location".
+    generateImagePreset?: "mood" | "map";
+    // Location template's light place sheet (L1) — only rendered/relevant for category="location"
+    // (PlaceSheetFields.tsx), submitted into metadata.placeState alongside the rest of the form.
+    placeState: PlaceState;
 }
 
 // Synchronous data-URL -> File conversion (no fetch/Blob round trip needed) so a draft's
@@ -93,11 +102,19 @@ export const getDefaultFormValues = (
         isDisabled: entry?.isDisabled || false,
         codexEnabled: entry?.codexEnabled ?? hasCodexContent(codexState),
         codexState,
-        imageFile: !entry && draft?.image ? dataUrlToFile(draft.image.dataUrl, draft.image.filename) : undefined
+        imageFile: !entry && draft?.image ? dataUrlToFile(draft.image.dataUrl, draft.image.filename) : undefined,
+        generateImagePreset: "mood",
+        placeState: entry?.metadata?.placeState ?? EMPTY_PLACE_STATE
     };
 };
 
-export const buildSubmitData = (data: CreateEntryForm) => {
+// `entry` (when editing) is spread in first so metadata keys this form doesn't know about —
+// psychProfile, placeState, and any future chat-proposal-only fields — survive a normal save.
+// The generic PUT route (server/lib/crud.ts) replaces the whole metadata column wholesale, it
+// doesn't merge, so omitting this spread silently wipes those keys on every edit-and-save.
+// relationships stays force-reset to [] regardless — intentional (P2 bug B5: the graph edge
+// table is SoT now, metadata.relationships is legacy and never re-depended on).
+export const buildSubmitData = (data: CreateEntryForm, entry?: LorebookEntry) => {
     const processedTags = data.tags
         .split(",")
         .map(tag => tag.trim())
@@ -110,10 +127,12 @@ export const buildSubmitData = (data: CreateEntryForm) => {
         tags: processedTags,
         isDisabled: data.isDisabled,
         metadata: {
+            ...entry?.metadata,
             importance: data.importance,
             status: data.status,
             type: data.type,
-            relationships: []
+            relationships: [],
+            ...(data.category === "location" ? { placeState: data.placeState } : {})
         },
         level: data.level,
         scopeId: data.level === "global" ? undefined : data.scopeId

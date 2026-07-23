@@ -462,6 +462,62 @@ export const storyGraphLayout = sqliteTable(
     })
 );
 
+// Story Map Edges table — spatial links between location lorebook entries (L3, docs/
+// Locations_And_Maps_Design.md). Deliberately a separate table from storyGraphEdges rather than
+// widening that one: the design doc treats maps as complementary to the Relationship Graph, not a
+// replacement, and CLAUDE.md's Relationship Graph section locks storyGraphEdges to its own
+// 15-value concrete/factual allowlist — spatial types (contains/borders/road_to/...) don't belong
+// there. No `status`/`source` columns this pass (L3 ships manual-CRUD-only, no pending/AI-suggest
+// lane — see docs/CURRENT_BACKLOG.md's L3 scope note); every row here is implicitly "active".
+export const storyMapEdges = sqliteTable(
+    "storyMapEdges",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        // Lorebook entry ids (locations). NO real FK — same loose-column convention as
+        // storyGraphEdges.fromId/toId (an entry can be global/series scoped). Cleaned up in
+        // application code on entry delete — see storyMapService.deleteEdgesForEntity, called
+        // from server/routes/lorebook.ts's DELETE /:id alongside the graph's own cleanup call.
+        fromId: text("fromId").notNull(),
+        toId: text("toId").notNull(),
+        // Allowlisted, server-validated against STORY_MAP_EDGE_TYPES (src/types/storyMap.ts).
+        edgeType: text("edgeType").notNull(),
+        label: text("label"),
+        description: text("description"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" })
+    },
+    table => ({
+        storyIdIdx: index("storymapedge_story_id_idx").on(table.storyId),
+        fromIdIdx: index("storymapedge_from_id_idx").on(table.fromId),
+        toIdIdx: index("storymapedge_to_id_idx").on(table.toId),
+        uniqueEdgeIdx: uniqueIndex("storymapedge_unique_idx").on(table.storyId, table.fromId, table.toId, table.edgeType)
+    })
+);
+
+// Story Map Layout table — persisted node positions for the Story Map tool's single canvas view
+// (L3). Identical shape to storyGraphLayout, kept as its own table since it's keyed to a
+// different edge/node set (locations only) with its own lifecycle.
+export const storyMapLayout = sqliteTable(
+    "storyMapLayout",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        nodeId: text("nodeId").notNull(),
+        x: real("x").notNull(),
+        y: real("y").notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdIdx: index("storymaplayout_story_id_idx").on(table.storyId),
+        uniqueNodeIdx: uniqueIndex("storymaplayout_unique_node_idx").on(table.storyId, table.nodeId)
+    })
+);
+
 // Org Folders table — cosmetic-only user filing for lorebook entries and chat sessions (B9,
 // docs/Folders_Org_Design.md). One shared "folder engine" table for both leaf kinds rather than
 // two near-identical tables — `kind` selects which of the scope columns below are meaningful.

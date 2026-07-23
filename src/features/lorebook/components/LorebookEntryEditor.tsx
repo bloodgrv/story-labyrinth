@@ -267,7 +267,7 @@ export function LorebookEntryEditor({
     const handleSubmit = async (data: CreateEntryForm) => {
         setIsSubmitting(true);
         const [error] = await attemptPromise(async () => {
-            const dataToSubmit = buildSubmitData(data);
+            const dataToSubmit = buildSubmitData(data, entry);
             const entryId = entry?.id ?? randomUUID();
 
             if (entry) await updateMutation.mutateAsync({ id: entry.id, data: dataToSubmit });
@@ -293,7 +293,7 @@ export function LorebookEntryEditor({
             // CreateEntryForm's imageFile/generateImageOnSave doc comments.
             if (data.imageFile instanceof File) await lorebookApi.uploadImage(entryId, data.imageFile);
             else if (data.imageFile === null) await lorebookApi.removeImage(entryId);
-            else if (data.generateImageOnSave) await lorebookApi.generateImage(entryId);
+            else if (data.generateImageOnSave) await lorebookApi.generateImage(entryId, data.generateImagePreset);
 
             onSaved?.();
         });
@@ -325,6 +325,7 @@ export function LorebookEntryEditor({
                             setValue={form.setValue}
                             entryId={entry?.id}
                             hasExistingImage={!!entry?.imageFilename}
+                            isLocation={selectedCategory === "location"}
                         />
 
                         {naturalView ? (

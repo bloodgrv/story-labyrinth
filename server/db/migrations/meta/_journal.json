@@ -351,6 +351,13 @@
       "when": 1784761214719,
       "tag": "0049_burly_meggan",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "6",
+      "when": 1784778124734,
+      "tag": "0050_dusty_nemesis",
+      "breakpoints": true
     }
   ]
 }

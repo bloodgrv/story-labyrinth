@@ -14,6 +14,7 @@ export type WorkspaceTool =
     | "research"
     | "memory"
     | "relationships"
+    | "story-map"
     | "scanner"
     | "name-generator";
 

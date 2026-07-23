@@ -17,6 +17,7 @@ import {
 import { resolveLorebookFolderId } from "../services/folderService.js";
 import { indexLorebookEntry, removeEntityFromIndex } from "../services/ragIndexService.js";
 import { deleteEdgesForEntity } from "../services/storyGraphService.js";
+import { deleteMapEdgesForEntity, deleteMapLayoutForEntity } from "../services/storyMapService.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -409,7 +410,8 @@ export default createCrudRouter({
         router.post(
             "/:id/generate-image",
             asyncHandler(async (req, res) => {
-                const [error] = await attemptPromise(() => generateLorebookImage(req.params.id));
+                const preset = req.body?.preset === "map" ? "map" : "mood";
+                const [error] = await attemptPromise(() => generateLorebookImage(req.params.id, preset));
                 if (error) {
                     res.status(400).json({ error: error.message });
                     return;
@@ -421,8 +423,8 @@ export default createCrudRouter({
 
         // DELETE /lorebook/:id - overrides the generic CRUD delete (customRoutes are registered
         // before the generic routes, see server/lib/crud.ts) to also delete the entry's image
-        // file, remove it from the RAG index, and remove its story-graph edges, so deleting an
-        // entry never orphans any of the three.
+        // file, remove it from the RAG index, and remove its story-graph edges and story-map
+        // edges/layout (L3), so deleting an entry never orphans any of those.
         router.delete(
             "/:id",
             asyncHandler(async (req, res) => {
@@ -431,6 +433,8 @@ export default createCrudRouter({
                 await db.delete(table).where(eq(table.id, req.params.id));
                 removeEntityFromIndex("lorebook_entry", req.params.id);
                 await deleteEdgesForEntity(req.params.id);
+                await deleteMapEdgesForEntity(req.params.id);
+                await deleteMapLayoutForEntity(req.params.id);
                 res.json({ success: true });
             })
         );

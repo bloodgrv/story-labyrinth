@@ -10,6 +10,7 @@ import { CATEGORIES, IMPORTANCE_LEVELS } from "./entryFormUtils";
 import type { CreateEntryForm, LorebookCategory } from "./entryFormUtils";
 import { CodexStateEditor } from "./CodexStateEditor";
 import { LorebookReworkButton } from "./LorebookReworkButton";
+import { PlaceSheetFields } from "./PlaceSheetFields";
 import { SelectField } from "./SelectField";
 import { TagsField } from "./TagsField";
 
@@ -99,6 +100,7 @@ export function RawEntryFields({ control, tagInput, selectedCategory, entryId, s
             />
 
             {selectedCategory === "character" && <CodexStateEditor control={control} />}
+            {selectedCategory === "location" && <PlaceSheetFields control={control} />}
         </>
     );
 }

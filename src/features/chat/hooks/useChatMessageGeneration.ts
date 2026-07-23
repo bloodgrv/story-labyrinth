@@ -21,7 +21,9 @@ import { parseOverviewProposals } from "../services/parseOverviewProposals";
 import { parseProseProposal } from "../services/parseProseProposal";
 import type { ParsedPsychProposal } from "../services/parsePsychProposal";
 import { parsePsychProposal } from "../services/parsePsychProposal";
+import { parsePlaceSheetProposal } from "../services/parsePlaceSheetProposal";
 import { parseShuttleProposal } from "../services/parseShuttleProposal";
+import type { PlaceState } from "@/types/story";
 import { useApproveProposalMutation, useCreateProposalMutation } from "./useCodexProposalsQuery";
 import type { HandoffPacket, NoteSplitProposalPayload, OverviewProposalPayload, ShuttlePayload } from "@/types/brainstorm";
 
@@ -62,6 +64,10 @@ interface UseChatMessageGenerationParams {
     // P0.4 B5 — see chatContextService.ts's PSYCH_MODULE_INSTRUCTIONS). Not persisted server-side
     // — ephemeral until Accept merges it into the anchor entry's own metadata.psychProfile.
     onPsychProposal?: (messageId: string, proposal: ParsedPsychProposal) => void;
+    // Called when a reply contains a ```place-sheet-proposal block (WB Locations-template chats
+    // only, L1 — see chatContextService.ts's PLACE_SHEET_INSTRUCTIONS). Not persisted server-side
+    // — ephemeral until Accept merges it into the anchor entry's own metadata.placeState.
+    onPlaceSheetProposal?: (messageId: string, proposal: PlaceState) => void;
     // Called when a reply contains a ```note-split-proposal block (Notes chats only, P0.4 K2 —
     // see chatContextService.ts's NOTE_SPLIT_PROPOSAL_INSTRUCTIONS). Same "persist immediately as
     // a durable brainstormChecklist row" posture as onOverviewProposal/onHandoffPackets above.
@@ -111,6 +117,7 @@ export const useChatMessageGeneration = ({
     onOverviewProposal,
     onHandoffPackets,
     onPsychProposal,
+    onPlaceSheetProposal,
     onNoteSplitProposal,
     onShuttleProposal,
     onNameProposal,
@@ -158,7 +165,8 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterHandoffStrip, packets: handoffPackets } = parseHandoffPackets(afterOverviewStrip);
                 const { cleanedContent: afterSplitStrip, proposal: noteSplitProposal } = parseNoteSplitProposal(afterHandoffStrip);
                 const { cleanedContent: afterPsychStrip, psychProposal } = parsePsychProposal(afterSplitStrip);
-                const { cleanedContent: afterShuttleStrip, proposal: shuttleProposal } = parseShuttleProposal(afterPsychStrip);
+                const { cleanedContent: afterPlaceSheetStrip, placeSheetProposal } = parsePlaceSheetProposal(afterPsychStrip);
+                const { cleanedContent: afterShuttleStrip, proposal: shuttleProposal } = parseShuttleProposal(afterPlaceSheetStrip);
                 const { cleanedContent, proposal: nameProposal } = parseNameProposal(afterShuttleStrip);
 
                 const afterAssistantMessage = await chatsApi.appendMessage(
@@ -196,6 +204,7 @@ export const useChatMessageGeneration = ({
                 if (handoffPackets.length > 0 && assistantMessage) onHandoffPackets?.(assistantMessage.id, handoffPackets);
                 if (noteSplitProposal && assistantMessage) onNoteSplitProposal?.(assistantMessage.id, noteSplitProposal);
                 if (psychProposal && assistantMessage) onPsychProposal?.(assistantMessage.id, psychProposal);
+                if (placeSheetProposal && assistantMessage) onPlaceSheetProposal?.(assistantMessage.id, placeSheetProposal);
                 if (shuttleProposal && assistantMessage) onShuttleProposal?.(assistantMessage.id, shuttleProposal);
                 if (nameProposal && assistantMessage) onNameProposal?.(assistantMessage.id, nameProposal);
             });
@@ -225,6 +234,7 @@ export const useChatMessageGeneration = ({
             onOverviewProposal,
             onHandoffPackets,
             onPsychProposal,
+            onPlaceSheetProposal,
             onNoteSplitProposal,
             onShuttleProposal,
             onNameProposal,

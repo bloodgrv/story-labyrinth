@@ -12,16 +12,20 @@ interface ImageUploadFieldProps {
     setValue: UseFormSetValue<CreateEntryForm>;
     entryId?: string;
     hasExistingImage: boolean;
+    // L2, docs/Locations_And_Maps_Design.md — only location entries get the Mood|Map preset
+    // toggle; every other category stays on the original description-driven "mood" generation.
+    isLocation?: boolean;
 }
 
 // Deferred like CodexStateEditor's state — picking/removing/generating an image only updates
 // local form state here (`imageFile`, `generateImageOnSave`); the actual upload/delete/generate
 // call happens in LorebookEntryEditor's handleSubmit after the base entry create/update succeeds,
 // since a brand-new entry has no id (and therefore nowhere to upload to) until that point.
-export function ImageUploadField({ control, setValue, entryId, hasExistingImage }: ImageUploadFieldProps) {
+export function ImageUploadField({ control, setValue, entryId, hasExistingImage, isLocation }: ImageUploadFieldProps) {
     const imageFile = useWatch({ control, name: "imageFile" });
     const generateImageOnSave = useWatch({ control, name: "generateImageOnSave" });
     const description = useWatch({ control, name: "description" });
+    const generateImagePreset = useWatch({ control, name: "generateImagePreset" }) ?? "mood";
     const [objectUrl, setObjectUrl] = useState<string | null>(null);
 
     useEffect(() => {
@@ -95,6 +99,28 @@ export function ImageUploadField({ control, setValue, entryId, hasExistingImage 
                     <Sparkles className="h-4 w-4 mr-1.5" />
                     Generate from Description
                 </Button>
+                {isLocation && (
+                    <div className="flex rounded-md border overflow-hidden">
+                        <Button
+                            type="button"
+                            variant={generateImagePreset === "mood" ? "secondary" : "ghost"}
+                            size="sm"
+                            className="rounded-none"
+                            onClick={() => setValue("generateImagePreset", "mood", { shouldDirty: true })}
+                        >
+                            Mood
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={generateImagePreset === "map" ? "secondary" : "ghost"}
+                            size="sm"
+                            className="rounded-none"
+                            onClick={() => setValue("generateImagePreset", "map", { shouldDirty: true })}
+                        >
+                            Map
+                        </Button>
+                    </div>
+                )}
                 {canRemove && (
                     <Button type="button" variant="ghost" size="sm" onClick={removeImage}>
                         <X className="h-4 w-4 mr-1.5" />
@@ -103,7 +129,10 @@ export function ImageUploadField({ control, setValue, entryId, hasExistingImage 
                 )}
             </div>
             {generateImageOnSave && (
-                <p className="text-xs text-muted-foreground">Will generate a new image from the description when you save.</p>
+                <p className="text-xs text-muted-foreground">
+                    Will generate a new {generateImagePreset === "map" ? "top-down map" : "mood"} image from the description when you
+                    save.
+                </p>
             )}
         </div>
     );

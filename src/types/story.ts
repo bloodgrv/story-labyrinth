@@ -220,6 +220,20 @@ export interface Note extends BaseEntity {
 // Lorebook types
 export type LorebookLevel = "global" | "series" | "story";
 
+// Location template's "light place sheet" fields (L0/L1, docs/Locations_And_Maps_Design.md) —
+// exported so both PlaceSheetFields.tsx (manual edit form) and parsePlaceSheetProposal.ts (chat
+// fence) share one shape.
+export interface PlaceState {
+    scale?: string;
+    biomeOrClimate?: string;
+    holder?: string;
+    dangerLevel?: string;
+    landmarks?: string[];
+    exitsSummary?: string;
+    layoutMd?: string;
+    imageBrief?: string;
+}
+
 export interface LorebookEntry extends BaseEntity {
     level: LorebookLevel;
     scopeId?: string; // seriesId when level='series', storyId when level='story'
@@ -244,6 +258,12 @@ export interface LorebookEntry extends BaseEntity {
         // PsychProfilePanel.tsx for display). Deliberately NOT part of codexState — writing aid
         // only, never scanner-enforced, never a continuity "law" pipeline.
         psychProfile?: { mbti?: string; enneagram?: string; blurb?: string };
+        // Location template's "light place sheet" (L0/L1, docs/Locations_And_Maps_Design.md) —
+        // scale/climate/holder/danger/landmarks/exits/layout/image-brief. Same posture as
+        // psychProfile: not Codex state, editable directly on the entry form (PlaceSheetFields.tsx)
+        // AND propose→accept via WB chat (ChatInterface.tsx's handleAcceptPlaceSheet). layoutMd is
+        // the map fallback source-of-truth when no Story Map graph exists yet for this location.
+        placeState?: PlaceState;
     };
     isDisabled?: boolean;
     // Codex extension — null/undefined means plain lorebook entry

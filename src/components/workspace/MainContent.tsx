@@ -13,6 +13,7 @@ import { RagScannerTool } from "./tools/RagScannerTool";
 import { ResearchTool } from "./tools/ResearchTool";
 import { StoriesTool } from "./tools/StoriesTool";
 import { StoryGraphTool } from "./tools/StoryGraphTool";
+import { StoryMapTool } from "./tools/StoryMapTool";
 import { UsersTool } from "./tools/UsersTool";
 
 
@@ -47,6 +48,8 @@ export const MainContent = () => {
                 return <ProjectMemoryTool />;
             case "relationships":
                 return <StoryGraphTool />;
+            case "story-map":
+                return <StoryMapTool />;
             case "scanner":
                 return <RagScannerTool />;
             default:
@@ -74,7 +77,8 @@ export const MainContent = () => {
         currentTool === "outline" ||
         currentTool === "lorebook" ||
         currentTool === "brainstorm" ||
-        currentTool === "relationships";
+        currentTool === "relationships" ||
+        currentTool === "story-map";
 
     return (
         <div

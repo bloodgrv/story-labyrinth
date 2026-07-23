@@ -32,6 +32,7 @@ import seriesRouter from "./routes/series.js";
 // Import routes
 import storiesRouter from "./routes/stories.js";
 import storyGraphRouter from "./routes/storyGraph.js";
+import storyMapRouter from "./routes/storyMap.js";
 import ttsRouter from "./routes/tts.js";
 import usersRouter from "./routes/users.js";
 
@@ -111,6 +112,10 @@ app.use("/api/agent/memories", agentMemoriesRouter);
 // storyGraph.ts's own top-of-file comment. Editor-level auth (requireAuth + blockViewerMutations,
 // both already applied globally above), no requireOwner — matches /api/codex's auth level.
 app.use("/api", storyGraphRouter);
+// Story Map (L3, docs/Locations_And_Maps_Design.md) — same bare-/api mounting reasoning as
+// storyGraphRouter directly above (its routes span /stories/:storyId/map/... and
+// /map/edges/:id). Same editor-level auth.
+app.use("/api", storyMapRouter);
 // Transfer Log (docs/Transfer_Log_And_Settings_IA_Design.md) — mounted at bare /api for the same
 // reason storyGraphRouter is: its routes are /stories/:storyId/transfers, a story sub-resource
 // rather than its own top-level prefix. Editor-level auth (requireAuth + blockViewerMutations,

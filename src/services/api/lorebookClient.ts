@@ -28,7 +28,10 @@ export const lorebookApi = {
     uploadImage: (entryId: string, file: File) => uploadFile<LorebookEntry>(`/lorebook/${entryId}/image`, file),
     removeImage: (entryId: string) => fetchJSON<LorebookEntry>(`/lorebook/${entryId}/image`, { method: "DELETE" }),
     // AI-generates a portrait from the entry's own saved description (see grokImageService.ts).
-    generateImage: (entryId: string) => fetchJSON<LorebookEntry>(`/lorebook/${entryId}/generate-image`, { method: "POST" }),
+    // `preset` — "mood" (default, description-driven) or "map" (location-only top-down/ink style,
+    // L2 docs/Locations_And_Maps_Design.md).
+    generateImage: (entryId: string, preset?: "mood" | "map") =>
+        fetchJSON<LorebookEntry>(`/lorebook/${entryId}/generate-image`, { method: "POST", body: JSON.stringify({ preset }) }),
     // Not a fetch helper — this is the literal <img src> value, GET /:id/image is served directly
     // (auth cookie goes along automatically on same-origin <img> requests, see
     // DECISIONS.md's Lorebook Image Support entry for why this isn't a public static mount).

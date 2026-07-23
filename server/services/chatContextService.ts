@@ -408,6 +408,27 @@ const PSYCH_MODULE_INSTRUCTIONS =
     "```\n\n" +
     "Propose at most one psych-proposal per reply.";
 
+// L0/L1, docs/Locations_And_Maps_Design.md — the Locations & Settings template's "light place
+// sheet" (entry.metadata.placeState). Unlike PSYCH_MODULE_INSTRUCTIONS above, this is always on
+// for the locations template (no opt-in toggle) — place-sheet fields are the whole point of this
+// template, not an optional extra. Parsed client-side (parsePlaceSheetProposal.ts) into an
+// ephemeral accept/reject card; Accept merges into the anchor entry's own metadata.placeState via
+// the existing generic lorebook update route (ChatInterface.tsx's handleAcceptPlaceSheet) —
+// deliberately not codexPendingChanges/codexService, which stays concrete-Codex-state-only (see
+// CLAUDE.md's Character Codex scope note) — same posture as the psych module.
+const PLACE_SHEET_INSTRUCTIONS =
+    "This location has a light place sheet you can help fill in — a lightweight structured " +
+    "summary, not tracked Codex state. Derive it from what's actually been discussed, not " +
+    "assumptions — never propose a place sheet in your very first reply before any real " +
+    "conversation about the place has happened.\n\n" +
+    "To propose place-sheet fields (any subset — propose only what's actually been discussed), " +
+    "include a fenced block in this exact form:\n\n" +
+    "```place-sheet-proposal\n" +
+    '{"scale": "...", "biomeOrClimate": "...", "holder": "...", "dangerLevel": "...", ' +
+    '"landmarks": ["..."], "exitsSummary": "...", "layoutMd": "ascii or markdown layout", "imageBrief": "..."}\n' +
+    "```\n\n" +
+    "Propose at most one place-sheet-proposal per reply.";
+
 // Assemble the effective system prompt for a chat: chat-type framing + template hint (World-
 // Building only). Extend the framing constants above — not the template catalogue — when
 // adding further global system instructions.
@@ -440,7 +461,9 @@ const buildSystemPrompt = (
     const template = templateSlug ? getTemplate(templateSlug as Parameters<typeof getTemplate>[0]) : undefined;
     const base = template?.systemPromptHint ? `${WORLDBUILDING_FRAMING}\n\n${template.systemPromptHint}` : WORLDBUILDING_FRAMING;
     const withStyle = base + resolveStyleHint(WB_STYLE_HINTS, style);
-    return templateSlug === "character_codex" && includePsychModule ? `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}` : withStyle;
+    if (templateSlug === "character_codex" && includePsychModule) return `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}`;
+    if (templateSlug === "locations") return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}`;
+    return withStyle;
 };
 
 // `excludeIds` keeps anchor/related entries (resolveAnchorAndRelated, below) from being listed

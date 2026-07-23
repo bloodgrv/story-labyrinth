@@ -1,7 +1,7 @@
 # Locations, Place Sheets & Story Maps — Design
 
 **Project:** Story Nexus Fork  
-**Status:** Locked 2026-07-19 — not implemented  
+**Status:** Locked 2026-07-19 — **L0-L3 implemented (2026-07-22)**, L4/L5 not started. See `docs/CURRENT_BACKLOG.md`'s "Locations & maps" row and `DECISIONS.md`'s "Locations & Maps — L0-L3" entry for the full trail; this doc is the original design record.  
 **Related:** `docs/Chat_Panel_Integrations_Design.md` (WB chat, playbooks), lorebook images, relationship graph  
 
 ---

@@ -36,6 +36,7 @@ export { nameGeneratorApi } from "./nameGeneratorClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
 export { ragApi } from "./ragClient";
 export { storyGraphApi } from "./storyGraphClient";
+export { storyMapApi } from "./storyMapClient";
 export { ttsApi } from "./ttsClient";
 export { usersApi } from "./usersClient";
 
