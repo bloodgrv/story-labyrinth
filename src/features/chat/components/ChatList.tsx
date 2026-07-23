@@ -1,4 +1,4 @@
-import { DndContext, type DragEndEvent, useDroppable } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { ChevronLeft, ChevronRight, FolderPlus, Plus } from "lucide-react";
 import { type MouseEvent, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,11 @@ import { useChatsByStoryQuery, useCreateChatMutation, useDeleteChatMutation, use
 import { ChatFolderDialogs } from "./ChatFolderDialogs";
 import { ChatFolderNode } from "./ChatFolderNode";
 import { ChatListItem } from "./ChatListItem";
+
+// Must be a stable reference — useSensor/useSensors re-memoize on options identity, and a fresh
+// object literal every render defeats that memoization (see LorebookBrowsePanel.tsx's own copy
+// of this constant for the same reason).
+const POINTER_ACTIVATION_CONSTRAINT = { distance: 8 };
 
 // Droppable wrapper for the Unfiled chats section — a plain <div> (FolderDropZone's own shape)
 // can't sit directly under this list's <ul>, so this applies useDroppable straight to an <li>
@@ -104,6 +109,12 @@ export function ChatList({
             );
     };
 
+    // DraggableLeaf spreads pointer listeners across the whole row (no dedicated drag handle),
+    // so the default zero-distance PointerSensor treats the sub-pixel movement in an ordinary
+    // click as a drag start and swallows the click before ChatListItem's onClick ever fires —
+    // same fix as LorebookBrowsePanel.tsx's sensors.
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: POINTER_ACTIVATION_CONSTRAINT }));
+
     // Drag a chat (ChatListItem/ChatFolderNode) onto a folder row or "Unfiled" to file it —
     // folder-onto-folder reparenting goes through "Move to…" instead (same restraint as
     // LorebookBrowsePanel.tsx's handleDragEnd — see B9 plan decision #7).
@@ -117,7 +128,7 @@ export function ChatList({
     };
 
     return (
-        <DndContext onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <div
                 className={cn(
                     "relative bg-background transition-all duration-300",

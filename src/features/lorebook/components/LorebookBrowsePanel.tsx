@@ -1,4 +1,4 @@
-import { DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { Download, Loader2, Plus, RefreshCw, Upload } from "lucide-react";
 import type { ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,11 @@ import type { LorebookEntry } from "@/types/story";
 import { useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
 import { CATEGORIES, type LorebookCategory } from "./form";
 import { LorebookEntryList } from "./LorebookEntryList";
+
+// Must be a stable reference — useSensor/useSensors re-memoize on options identity, and a fresh
+// object literal every render defeats that memoization (dnd-kit's own internal effects then see
+// a "new" sensor list every render, which is where the console warning came from).
+const POINTER_ACTIVATION_CONSTRAINT = { distance: 8 };
 
 interface LorebookBrowsePanelProps {
     seriesId?: string;
@@ -58,6 +63,11 @@ export function LorebookBrowsePanel({
     folderProps
 }: LorebookBrowsePanelProps) {
     const updateLorebookMutation = useUpdateLorebookMutation();
+    // DraggableLeaf spreads pointer listeners across the whole card/row (no dedicated drag
+    // handle), so the default zero-distance PointerSensor treats the sub-pixel movement in an
+    // ordinary click as a drag start and swallows the click before LorebookEntryCard/Row's
+    // onClick ever fires. A small activation distance lets real clicks through.
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: POINTER_ACTIVATION_CONSTRAINT }));
 
     // Drag an entry (LorebookEntryList's DraggableLeaf) onto a folder row or "Unfiled" (both
     // FolderDropZone in LorebookFolderSidebar) to file it — folder-onto-folder reparenting goes
@@ -190,7 +200,7 @@ export function LorebookBrowsePanel({
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                     </div>
                 ) : (
-                    <DndContext onDragEnd={handleDragEnd}>
+                    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                         <div className="flex gap-4">
                             {folderProps.scope && (
                                 <LorebookFolderSidebar
