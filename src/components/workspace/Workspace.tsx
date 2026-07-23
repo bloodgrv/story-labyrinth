@@ -7,6 +7,7 @@ import { MainContent } from "./MainContent";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { WorkspaceProvider } from "./context/WorkspaceContext";
+import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useWorkspaceDeepLink } from "./hooks/useWorkspaceDeepLink";
 import { useWorkspaceShortcuts } from "./hooks/useWorkspaceShortcuts";
 
@@ -16,6 +17,7 @@ const WorkspaceContent = () => {
     const { isActive: sessionActive } = useFocusSession();
 
     useWorkspaceDeepLink();
+    useDocumentTitle();
     useWorkspaceShortcuts({
         onOpenCommandPalette: () => setCommandPaletteOpen(true)
     });

@@ -1,10 +1,11 @@
 import {
     BookOpen,
     Brain,
+    Check,
     ChevronLeft,
     ChevronRight,
+    ExternalLink,
     FileEdit,
-    HelpCircle,
     Layers,
     Library,
     List,
@@ -12,18 +13,16 @@ import {
     Map,
     MessageSquare,
     Network,
-    ScanSearch,
     Search,
     Settings,
     Sparkles,
-    StickyNote,
-    Users
+    StickyNote
 } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
-import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { useStoryContext, type WorkspaceTool } from "@/features/stories/context/StoryContext";
 import { cn } from "@/lib/utils";
 import { version } from "../../../package.json";
@@ -42,23 +41,50 @@ const tools = [
     { id: "name-generator" as WorkspaceTool, label: "Names", icon: Sparkles, requiresStory: true },
     { id: "memory" as WorkspaceTool, label: "Memory", icon: Brain, requiresStory: true },
     { id: "relationships" as WorkspaceTool, label: "Relations", icon: Network, requiresStory: true },
-    { id: "story-map" as WorkspaceTool, label: "Story Map", icon: Map, requiresStory: true },
-    { id: "scanner" as WorkspaceTool, label: "Scanner", icon: ScanSearch, requiresStory: true }
+    { id: "story-map" as WorkspaceTool, label: "Story Map", icon: Map, requiresStory: true }
 ];
 
-const ownerOnlyTools = [{ id: "users" as WorkspaceTool, label: "Users", icon: Users, requiresStory: false }];
+// Tools that make sense as a standalone browser tab (deep-linkable via /?story=&tool=,
+// see useWorkspaceDeepLink.ts) — offered in the "Open in new tab" picker below.
+const NEW_TAB_ELIGIBLE_TOOLS: readonly WorkspaceTool[] = ["editor", "lorebook", "chapters", "outline", "notes", "research"];
 
 export const Sidebar = () => {
     const { currentTool, setCurrentTool, currentStoryId } = useStoryContext();
     const { leftSidebar, toggleLeftSidebar } = useWorkspace();
     const collapsed = leftSidebar.collapsed;
-    const isOwner = useIsOwner();
-    const visibleTools = isOwner ? [...tools, ...ownerOnlyTools] : tools;
+    const visibleTools = tools;
     const navigate = useNavigate();
+    const [newTabSelectMode, setNewTabSelectMode] = useState(false);
+    const [selectedForNewTab, setSelectedForNewTab] = useState<Set<WorkspaceTool>>(new Set());
 
     const handleToolClick = (toolId: WorkspaceTool, requiresStory: boolean) => {
         if (requiresStory && !currentStoryId) return;
         setCurrentTool(toolId);
+    };
+
+    const toggleSelectedForNewTab = (toolId: WorkspaceTool) => {
+        setSelectedForNewTab(prev => {
+            const next = new Set(prev);
+            if (next.has(toolId)) next.delete(toolId);
+            else next.add(toolId);
+            return next;
+        });
+    };
+
+    const openSelectedInNewTabs = () => {
+        if (!currentStoryId) return;
+        let blockedCount = 0;
+        for (const toolId of selectedForNewTab) {
+            const opened = window.open(`/?story=${currentStoryId}&tool=${toolId}`, "_blank", "noopener,noreferrer");
+            if (!opened) blockedCount += 1;
+        }
+        if (blockedCount > 0) {
+            toast.warn(
+                `${blockedCount} tab${blockedCount > 1 ? "s were" : " was"} blocked by the browser's popup blocker. Allow popups for this site to open them all at once.`
+            );
+        }
+        setSelectedForNewTab(new Set());
+        setNewTabSelectMode(false);
     };
 
     return (
@@ -75,31 +101,92 @@ export const Sidebar = () => {
                         const Icon = tool.icon;
                         const isActive = currentTool === tool.id;
                         const isDisabled = tool.requiresStory && !currentStoryId;
+                        const showCheckbox = newTabSelectMode && !collapsed && NEW_TAB_ELIGIBLE_TOOLS.includes(tool.id);
+                        const isSelectedForNewTab = selectedForNewTab.has(tool.id);
 
                         return (
-                            <Button
-                                key={tool.id}
-                                variant={isActive ? "secondary" : "ghost"}
-                                className={cn(
-                                    "w-full gap-2",
-                                    collapsed ? "justify-center px-0" : "justify-start",
-                                    isDisabled && "opacity-50 cursor-not-allowed",
-                                    isActive && "raycast-rail-active"
+                            <div key={tool.id} className="flex items-center gap-1">
+                                {showCheckbox && (
+                                    <button
+                                        type="button"
+                                        className={cn(
+                                            "h-4 w-4 shrink-0 rounded border flex items-center justify-center",
+                                            isSelectedForNewTab
+                                                ? "bg-primary border-primary text-primary-foreground"
+                                                : "border-muted-foreground/40"
+                                        )}
+                                        onClick={() => toggleSelectedForNewTab(tool.id)}
+                                        title={`Include ${tool.label} in new tab`}
+                                    >
+                                        {isSelectedForNewTab && <Check className="h-3 w-3" />}
+                                    </button>
                                 )}
-                                onClick={() => handleToolClick(tool.id, tool.requiresStory)}
-                                disabled={isDisabled}
-                                title={collapsed ? tool.label : undefined}
-                            >
-                                <Icon className="h-4 w-4 shrink-0" />
-                                {!collapsed && <span className="text-sm">{tool.label}</span>}
-                            </Button>
+                                <Button
+                                    variant={isActive ? "secondary" : "ghost"}
+                                    className={cn(
+                                        "w-full gap-2",
+                                        collapsed ? "justify-center px-0" : "justify-start",
+                                        isDisabled && "opacity-50 cursor-not-allowed",
+                                        isActive && "raycast-rail-active"
+                                    )}
+                                    onClick={() =>
+                                        showCheckbox
+                                            ? toggleSelectedForNewTab(tool.id)
+                                            : handleToolClick(tool.id, tool.requiresStory)
+                                    }
+                                    disabled={isDisabled}
+                                    title={collapsed ? tool.label : undefined}
+                                >
+                                    <Icon className="h-4 w-4 shrink-0" />
+                                    {!collapsed && <span className="text-sm">{tool.label}</span>}
+                                </Button>
+                            </div>
                         );
                     })}
                 </nav>
 
-                {/* Settings/Guide/Theme - moved here from the top bar on desktop; mobile still gets
-                    them in TopBar since the mobile bottom toolbar (below) is nav-only. */}
+                {/* Settings - moved here from the top bar on desktop; mobile still gets it in TopBar
+                    since the mobile bottom toolbar (below) is nav-only. Guide/Users/Scanner now live
+                    inside Settings itself. New-tab picker controls sit right above it. */}
                 <div className="p-2 border-t space-y-1">
+                    {!collapsed && currentStoryId && (
+                        <>
+                            {newTabSelectMode ? (
+                                <div className="flex gap-1">
+                                    <Button
+                                        size="sm"
+                                        className="flex-1 gap-1 px-1"
+                                        disabled={selectedForNewTab.size === 0}
+                                        onClick={openSelectedInNewTabs}
+                                    >
+                                        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                        Open{selectedForNewTab.size > 0 ? ` (${selectedForNewTab.size})` : ""}
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="px-2"
+                                        onClick={() => {
+                                            setNewTabSelectMode(false);
+                                            setSelectedForNewTab(new Set());
+                                        }}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full gap-2 justify-start px-2"
+                                    onClick={() => setNewTabSelectMode(true)}
+                                >
+                                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="text-sm">New tab</span>
+                                </Button>
+                            )}
+                        </>
+                    )}
                     <Button
                         variant="ghost"
                         className={cn("w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")}
@@ -109,16 +196,6 @@ export const Sidebar = () => {
                         <Settings className="h-4 w-4 shrink-0" />
                         {!collapsed && <span className="text-sm">Settings</span>}
                     </Button>
-                    <Button
-                        variant="ghost"
-                        className={cn("w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")}
-                        onClick={() => navigate("/guide")}
-                        title={collapsed ? "Guide" : undefined}
-                    >
-                        <HelpCircle className="h-4 w-4 shrink-0" />
-                        {!collapsed && <span className="text-sm">Guide</span>}
-                    </Button>
-                    <ThemeToggle isExpanded={!collapsed} />
                 </div>
 
                 <div className="p-2 border-t space-y-2">

@@ -7,6 +7,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { RagScannerTool } from "@/components/workspace/tools/RagScannerTool";
+import { UsersTool } from "@/components/workspace/tools/UsersTool";
 import { WriterPrefsCard } from "@/features/agent-memory/components/WriterPrefsCard";
 import { ContextMeterSettingsCard } from "@/features/ai/components/ContextMeterSettingsCard";
 import { FeatureEndpointsCard } from "@/features/ai/components/FeatureEndpointsCard";
@@ -24,20 +26,28 @@ import {
     useUpdateLocalApiUrlMutation,
     useUpdatePreferredModeMutation
 } from "@/features/ai/hooks/useAISettingsQuery";
+import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { TransfersLogCard } from "@/features/transfers/components/TransfersLogCard";
 import { GrammarSettingsCard } from "@/features/grammar/components/GrammarSettingsCard";
+import { GuideTabs } from "@/features/guide/components/GuideTabs";
 import { HumanizerSettingsCard } from "@/features/humanizer/components/HumanizerSettingsCard";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { TtsSettingsCard } from "@/features/tts/components/TtsSettingsCard";
 import type { ChatMode } from "@/types/story";
 
 // Settings IA (S0, docs/Transfer_Log_And_Settings_IA_Design.md) — previously one long undifferentiated
 // scroll; now sub-nav headings per the design doc's locked decision #5. Per-chat toggles (auto-shuttle,
 // notes gates, etc.) deliberately stay on chat chrome, not here (design doc: "not Settings").
-const SECTIONS = ["appearance", "providers", "local", "routing", "writing", "logs", "data"] as const;
+// Guide/Users/Scanner were left-sidebar workspace tools; moved here to declutter that rail — Users
+// stays owner-gated (see isOwner below), Scanner reuses the same story-scoped panel and just asks
+// for a story if none is selected yet.
+const SECTIONS = ["appearance", "providers", "local", "routing", "writing", "logs", "data", "guide", "scanner", "users"] as const;
 type Section = (typeof SECTIONS)[number];
 
 export default function SettingsPage() {
     const navigate = useNavigate();
+    const isOwner = useIsOwner();
+    const { currentStoryId } = useStoryContext();
     const [localApiUrlInput, setLocalApiUrlInput] = useState("");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [section, setSection] = useState<Section>("appearance");
@@ -104,6 +114,17 @@ export default function SettingsPage() {
                             <TabsTrigger value="data" className="justify-start w-full data-[state=active]:bg-muted">
                                 Data
                             </TabsTrigger>
+                            <TabsTrigger value="guide" className="justify-start w-full data-[state=active]:bg-muted">
+                                Guide
+                            </TabsTrigger>
+                            <TabsTrigger value="scanner" className="justify-start w-full data-[state=active]:bg-muted">
+                                Scanner
+                            </TabsTrigger>
+                            {isOwner && (
+                                <TabsTrigger value="users" className="justify-start w-full data-[state=active]:bg-muted">
+                                    Users
+                                </TabsTrigger>
+                            )}
                         </TabsList>
 
                         <div className="flex-1 min-w-0 space-y-6">
@@ -281,6 +302,26 @@ export default function SettingsPage() {
                                     </CardContent>
                                 </Card>
                             </TabsContent>
+
+                            <TabsContent value="guide" className="mt-0">
+                                <GuideTabs />
+                            </TabsContent>
+
+                            <TabsContent value="scanner" className="mt-0">
+                                {currentStoryId ? (
+                                    <RagScannerTool />
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                        Select a story to use the Scanner.
+                                    </p>
+                                )}
+                            </TabsContent>
+
+                            {isOwner && (
+                                <TabsContent value="users" className="mt-0">
+                                    <UsersTool />
+                                </TabsContent>
+                            )}
                         </div>
                     </div>
                 </Tabs>
