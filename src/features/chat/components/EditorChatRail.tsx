@@ -44,12 +44,16 @@ interface EditorChatRailProps {
     // chapter tab is open yet — no special-casing needed, see DECISIONS.md's chat-context-
     // anchoring entry.
     anchorChapterId?: string;
+    // Driven by the same rightSidebar.collapsed toggle StoryEditor already wires to
+    // EditorToolsPanel, so one control collapses the whole right-hand rail (tools icons +
+    // this chat list/tray column) together rather than adding a second, separate toggle.
+    collapsed?: boolean;
 }
 
 // Docked chat companion for the Editor and Outline tools (chatType="editor", shared between
 // both — CLAUDE.md's "Main Editor Chat" is one context, not split per-tool). Multiple named
 // chats per story (not a single unbounded thread) so context stays manageable per chapter/arc.
-export function EditorChatRail({ storyId, enableProseProposals = true, anchorChapterId }: EditorChatRailProps) {
+export function EditorChatRail({ storyId, enableProseProposals = true, anchorChapterId, collapsed = false }: EditorChatRailProps) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     // Tracks which chat a captured rework payload belongs to, not just the payload itself — so
     // if the user manually switches chats via ChatList right after a rework resolves (or any
@@ -127,7 +131,7 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
 
     return (
         <div className="flex h-full">
-            <div className="flex-1 h-full min-h-0">
+            <div className="flex-1 h-full min-h-0 min-w-0">
                 {selectedChat ? (
                     <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[selectedChat.id]}>
                         <ChatInterface
@@ -149,28 +153,30 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
                 )}
             </div>
 
-            <div className="flex flex-col w-[250px] sm:w-[300px] shrink-0">
-                <ChatList
-                    storyId={storyId}
-                    chatType="editor"
-                    title="Editor Chats"
-                    emptyLabel="No editor chats yet"
-                    selectedChat={selectedChat}
-                    onSelectChat={setSelectedChat}
-                    renderNewChatAction={renderNewChatButton}
-                    side="right"
-                />
-                {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
-                {selectedChat && (
-                    <ShuttleTray
-                        chatId={selectedChat.id}
+            {!collapsed && (
+                <div className="flex flex-col w-[250px] sm:w-[300px] shrink-0">
+                    <ChatList
                         storyId={storyId}
-                        fromDesk={selectedChat.chatType ?? "editor"}
-                        fromChatTitleSnapshot={selectedChat.title}
-                        onAnswerHere={setComposerSeedText}
+                        chatType="editor"
+                        title="Editor Chats"
+                        emptyLabel="No editor chats yet"
+                        selectedChat={selectedChat}
+                        onSelectChat={setSelectedChat}
+                        renderNewChatAction={renderNewChatButton}
+                        side="right"
                     />
-                )}
-            </div>
+                    {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
+                    {selectedChat && (
+                        <ShuttleTray
+                            chatId={selectedChat.id}
+                            storyId={storyId}
+                            fromDesk={selectedChat.chatType ?? "editor"}
+                            fromChatTitleSnapshot={selectedChat.title}
+                            onAnswerHere={setComposerSeedText}
+                        />
+                    )}
+                </div>
+            )}
         </div>
     );
 }

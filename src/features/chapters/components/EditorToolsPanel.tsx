@@ -6,6 +6,7 @@ import {
     ListChecks,
     type LucideIcon,
     Menu,
+    MessagesSquare,
     ScanSearch,
     StickyNote,
     Tags,
@@ -112,6 +113,11 @@ interface EditorToolsPanelProps {
     currentChapter: Chapter | undefined;
     collapsed: boolean;
     onToggleCollapsed: () => void;
+    // Independent from the icon-label collapse above — lets the docked Editor Chats list/tray
+    // (a sibling panel, EditorChatRail) show or hide without also expanding this bar's labels,
+    // since both fighting for width at once is what was clipping the chat list's text/tabs.
+    chatRailCollapsed: boolean;
+    onToggleChatRail: () => void;
 }
 
 // The right-rail tool sidebar (Tags/Outline/POV/Notes/Beats) plus its drawers/sheet, and the
@@ -128,7 +134,9 @@ export function EditorToolsPanel({
     currentStoryId,
     currentChapter,
     collapsed,
-    onToggleCollapsed
+    onToggleCollapsed,
+    chatRailCollapsed,
+    onToggleChatRail
 }: EditorToolsPanelProps) {
     return (
         <>
@@ -158,6 +166,17 @@ export function EditorToolsPanel({
                 )}
             >
                 <div className="flex-1 py-2 space-y-2">
+                    <Button
+                        variant={!chatRailCollapsed ? "default" : "outline"}
+                        size="sm"
+                        className={cn("mx-2", collapsed ? "justify-center px-0 w-8" : "justify-start")}
+                        onClick={onToggleChatRail}
+                        title={chatRailCollapsed ? "Show Editor Chats" : "Hide Editor Chats"}
+                    >
+                        <MessagesSquare className="h-4 w-4 shrink-0" />
+                        {!collapsed && <span className="ml-2">Chats</span>}
+                    </Button>
+
                     {sidebarButtons.map(({ id, icon: Icon, label, title }) => (
                         <Button
                             key={id}

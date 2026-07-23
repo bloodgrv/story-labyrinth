@@ -16,6 +16,10 @@ import { type DrawerType, EditorToolsPanel } from "./EditorToolsPanel";
 
 export function StoryEditor() {
     const [openDrawer, setOpenDrawer] = useState<DrawerType>(null);
+    // Independent from EditorToolsPanel's own icon-label collapse (rightSidebar.collapsed below)
+    // — starts collapsed so the Editor Chats list/tray (fixed-width) isn't fighting the chat
+    // interface's own minimum width for room in the same narrow rail by default.
+    const [chatRailCollapsed, setChatRailCollapsed] = useState(true);
     const { currentChapterId, currentStoryId } = useStoryContext();
     const { data: currentChapter } = useChapterQuery(currentChapterId || "");
     const { rightSidebar, toggleRightSidebar, isMaximised } = useWorkspace();
@@ -67,7 +71,11 @@ export function StoryEditor() {
                     </ResizablePanel>
                     <ResizableHandle withHandle />
                     <ResizablePanel defaultSize={28} minSize={20}>
-                        <EditorChatRail storyId={currentStoryId} anchorChapterId={currentChapterId ?? undefined} />
+                        <EditorChatRail
+                            storyId={currentStoryId}
+                            anchorChapterId={currentChapterId ?? undefined}
+                            collapsed={chatRailCollapsed}
+                        />
                     </ResizablePanel>
                 </ResizablePanelGroup>
             ) : (
@@ -93,6 +101,8 @@ export function StoryEditor() {
                     currentChapter={currentChapter}
                     collapsed={collapsed}
                     onToggleCollapsed={toggleRightSidebar}
+                    chatRailCollapsed={chatRailCollapsed}
+                    onToggleChatRail={() => setChatRailCollapsed(v => !v)}
                 />
             )}
         </div>
