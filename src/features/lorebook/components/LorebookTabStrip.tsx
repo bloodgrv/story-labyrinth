@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DocumentImportDraft } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
+import type { LorebookCategory } from "./form";
 
 // The permanent first tab (card grid) plus one tab per entry opened from a card, plus one per
 // pending document-import draft — a lightweight, page-local tab strip (not the Editor's
@@ -11,9 +12,11 @@ import type { LorebookEntry } from "@/types/story";
 export type LorebookOpenTab =
     | { kind: "browse" }
     | { kind: "entry"; entryId: string }
-    | { kind: "draft"; draftId: string; draft: DocumentImportDraft };
+    | { kind: "draft"; draftId: string; draft: DocumentImportDraft }
+    | { kind: "new"; tabId: string; defaultCategory: LorebookCategory };
 
-const tabKey = (tab: LorebookOpenTab) => (tab.kind === "browse" ? "browse" : tab.kind === "entry" ? tab.entryId : tab.draftId);
+const tabKey = (tab: LorebookOpenTab) =>
+    tab.kind === "browse" ? "browse" : tab.kind === "entry" ? tab.entryId : tab.kind === "draft" ? tab.draftId : tab.tabId;
 
 interface LorebookTabStripProps {
     tabs: LorebookOpenTab[];
@@ -34,7 +37,9 @@ export function LorebookTabStrip({ tabs, activeIndex, entries, onSelect, onClose
                             ? "Browse"
                             : tab.kind === "entry"
                               ? (entries.find(e => e.id === tab.entryId)?.name ?? "Entry")
-                              : tab.draft.name;
+                              : tab.kind === "draft"
+                                ? tab.draft.name
+                                : "New Entry";
                     return (
                         <div
                             key={tabKey(tab)}
