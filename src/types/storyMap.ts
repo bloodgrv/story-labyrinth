@@ -24,6 +24,10 @@ export interface StoryMapNode {
     isDisabled: boolean;
     imageFilename: string | null;
     scale: string | null;
+    // L5a — free text ("Ground Floor", "2F", ...), sourced from placeState.floorLabel (or the
+    // equivalent codexState.customFields row once graduated). Only meaningful within a
+    // "contains"-nested region — see StoryMapCanvas.tsx's region-focus sibling sort.
+    floorLabel: string | null;
 }
 
 export interface StoryMapEdge {

@@ -1,6 +1,6 @@
 import { LayoutTemplate } from "lucide-react";
 import { useRef } from "react";
-import type { Control } from "react-hook-form";
+import { type Control, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { CATEGORIES, IMPORTANCE_LEVELS } from "./entryFormUtils";
 import type { CreateEntryForm, LorebookCategory } from "./entryFormUtils";
 import { CodexStateEditor } from "./CodexStateEditor";
 import { LorebookReworkButton } from "./LorebookReworkButton";
+import { PlaceCodexStateEditor } from "./PlaceCodexStateEditor";
 import { PlaceSheetFields } from "./PlaceSheetFields";
 import { SelectField } from "./SelectField";
 import { TagsField } from "./TagsField";
@@ -31,6 +32,9 @@ interface RawEntryFieldsProps {
 export function RawEntryFields({ control, tagInput, selectedCategory, entryId, storyId }: RawEntryFieldsProps) {
     const [, setNaturalView] = useNaturalEntryView();
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
+    // L4 — locations have two tiers: PlaceSheetFields (unversioned) until codexEnabled, then
+    // PlaceCodexStateEditor (versioned) takes over. See PlaceCodexStateEditor.tsx's own comment.
+    const codexEnabled = useWatch({ control, name: "codexEnabled" });
 
     return (
         <>
@@ -100,7 +104,11 @@ export function RawEntryFields({ control, tagInput, selectedCategory, entryId, s
             />
 
             {selectedCategory === "character" && <CodexStateEditor control={control} />}
-            {selectedCategory === "location" && <PlaceSheetFields control={control} />}
+            {selectedCategory === "location" && !codexEnabled && <PlaceSheetFields control={control} />}
+            {/* PlaceCodexStateEditor renders unconditionally for locations (mirrors CodexStateEditor's
+                own always-rendered pattern for character) — its "Track Place State" switch is the
+                only way to ever flip codexEnabled on, so it can't be gated behind codexEnabled itself. */}
+            {selectedCategory === "location" && <PlaceCodexStateEditor control={control} />}
         </>
     );
 }

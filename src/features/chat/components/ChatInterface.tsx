@@ -48,7 +48,9 @@ import { PsychProposalCard } from "./PsychProposalCard";
 import { PlaceSheetProposalCard } from "./PlaceSheetProposalCard";
 import { useChatMessageGeneration } from "../hooks/useChatMessageGeneration";
 import { useChatSystemPrompt } from "../hooks/useChatSystemPrompt";
-import { groupProposalsByMessage, useChatProposalsQuery } from "../hooks/useCodexProposalsQuery";
+import { groupProposalsByMessage, useChatProposalsQuery, useCreateProposalMutation } from "../hooks/useCodexProposalsQuery";
+import { placeStateToCodexFields } from "@/features/lorebook/utils/placeCodexMapping";
+import { EMPTY_CODEX_STATE } from "@/features/lorebook/components/form/entryFormUtils";
 import { insertProposedProse } from "../services/insertProposedProse";
 import type { ParsedLoreSuggestion } from "../services/parseLoreSuggestions";
 import type { ParsedNameProposal } from "../services/parseNameProposal";
@@ -556,6 +558,10 @@ export function ChatInterface({
     // chatContextService.ts's PLACE_SHEET_INSTRUCTIONS is only ever included when
     // templateSlug === "locations".
     const [placeSheetProposals, setPlaceSheetProposals] = useState<Record<string, PlaceState>>({});
+    // L4 — once the anchor entry is codexEnabled, handleAcceptPlaceSheet routes into
+    // codexPendingChanges instead of a direct metadata merge (same mutation the codex-proposal
+    // fence pathway already uses, see useChatMessageGeneration.ts).
+    const createCodexProposalMutation = useCreateProposalMutation();
 
     // NG6 — same ephemeral-state posture as psychProposals above. No accept/reject dismissal to
     // track: NameProposalCard itself runs the real generate call and owns its own results state.
@@ -885,22 +891,53 @@ export function ChatInterface({
             return next;
         });
 
-    // L1, docs/Locations_And_Maps_Design.md — same merge-not-replace posture as handleAcceptPsych
-    // above, into metadata.placeState instead of metadata.psychProfile.
+    // L1/L4, docs/Locations_And_Maps_Design.md — two-tier accept, branching on whether the anchor
+    // entry has graduated to versioned place-Codex tracking (PlaceCodexStateEditor.tsx):
+    //   - not codexEnabled: same merge-not-replace posture as handleAcceptPsych above, direct into
+    //     metadata.placeState (L1, unchanged).
+    //   - codexEnabled: routes through codexPendingChanges instead (same mutation the
+    //     codex-proposal fence pathway uses), so it gets real Approve/Reject/Edit-First review via
+    //     CodexProposalTray.tsx / CodexPendingChangesPanel.tsx rather than an ephemeral auto-merge.
+    //     proposedState is a full CodexState replacement server-side (codexService.ts's
+    //     approvePendingChange), so existing wardrobe/appearance/wounds are carried through
+    //     untouched and customFields are merged by key (upsert) rather than duplicated.
     const handleAcceptPlaceSheet = (messageId: string) => {
         const proposal = placeSheetProposals[messageId];
         const entryId = selectedChat.anchorEntryId;
         if (!proposal || !entryId) return;
         const entry = entryLookup.get(entryId);
-        updateLorebookMutation.mutate({
-            id: entryId,
-            data: {
-                metadata: {
-                    ...entry?.metadata,
-                    placeState: { ...entry?.metadata?.placeState, ...proposal }
-                }
+
+        if (entry?.codexEnabled) {
+            const existing = entry.codexState ?? EMPTY_CODEX_STATE;
+            const proposed = placeStateToCodexFields(proposal);
+            const customFields = [...existing.customFields];
+            for (const field of proposed.customFields) {
+                const i = customFields.findIndex(f => f.key === field.key);
+                if (i >= 0) customFields[i] = field;
+                else customFields.push(field);
             }
-        });
+            const existingLandmarks = new Set(existing.items.map(item => item.value));
+            const items = [...existing.items, ...proposed.items.filter(item => !existingLandmarks.has(item.value))];
+            createCodexProposalMutation.mutate({
+                chatId: selectedChat.id,
+                data: {
+                    type: "modify_entry",
+                    entryId,
+                    messageId,
+                    proposedState: { ...existing, customFields, items }
+                }
+            });
+        } else {
+            updateLorebookMutation.mutate({
+                id: entryId,
+                data: {
+                    metadata: {
+                        ...entry?.metadata,
+                        placeState: { ...entry?.metadata?.placeState, ...proposal }
+                    }
+                }
+            });
+        }
         dismissPlaceSheetProposal(messageId);
     };
 

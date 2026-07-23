@@ -80,6 +80,19 @@ export function PlaceSheetFields({ control }: PlaceSheetFieldsProps) {
 
             <FormField
                 control={control}
+                name="placeState.floorLabel"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Floor (if nested under another location)</FormLabel>
+                        <FormControl>
+                            <Input {...field} placeholder="e.g. Ground Floor, 2F, Sub-basement" />
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+
+            <FormField
+                control={control}
                 name="placeState.landmarks"
                 render={({ field }) => (
                     <FormItem>

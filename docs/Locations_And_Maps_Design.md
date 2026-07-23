@@ -1,7 +1,7 @@
 # Locations, Place Sheets & Story Maps — Design
 
 **Project:** Story Nexus Fork  
-**Status:** Locked 2026-07-19 — **L0-L3 implemented (2026-07-22)**, L4/L5 not started. See `docs/CURRENT_BACKLOG.md`'s "Locations & maps" row and `DECISIONS.md`'s "Locations & Maps — L0-L3" entry for the full trail; this doc is the original design record.  
+**Status:** Locked 2026-07-19 — **L0-L5 implemented (2026-07-22/23)**. L5 scoped to multi-floor/sub-POI nesting + export (travel-time cut, per user decision — no existing precedent, lowest value of the three L5 ideas). See `docs/CURRENT_BACKLOG.md`'s "Locations & maps" row and `DECISIONS.md`'s "Locations & Maps — L0-L3" and "Locations & Maps — L4-L5" entries for the full trail; this doc is the original design record.  
 **Related:** `docs/Chat_Panel_Integrations_Design.md` (WB chat, playbooks), lorebook images, relationship graph  
 
 ---
@@ -97,8 +97,8 @@ User chooses preset on generate. Regen does not delete graph/text.
 | **L1** | Light place sheet fields on location entries + layoutMd |
 | **L2** | Map image preset + better briefs from grill |
 | **L3** | Story Map tool (nodes/edges SoT) + entry link |
-| **L4** | Full place Codex versioning (if still wanted) |
-| **L5** | Deeper travel-time / multi-floor / export |
+| **L4** | ✅ Full place Codex versioning — done 2026-07-23. Two-tier: `PlaceSheetFields.tsx` (unversioned) until `codexEnabled`, then `PlaceCodexStateEditor.tsx` (versioned, reuses the exact Character Codex machinery — zero schema changes) |
+| **L5** | ✅ Multi-floor/sub-POI nesting + export — done 2026-07-23. Travel-time explicitly cut (no precedent, lowest value) |
 
 **Suggested order:** L0 → L1 → L2 → L3 → L4…
 

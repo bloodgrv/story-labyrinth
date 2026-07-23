@@ -18,24 +18,32 @@ export function StoryMapNodeComponent({ data, selected }: NodeProps<StoryMapFlow
     const { node, isFocused, onOpenEntry } = data;
 
     return (
-        <div
-            className={cn(
-                "rounded-md border-[3px] bg-background shadow-sm flex items-center justify-center overflow-hidden select-none cursor-pointer",
-                node.isDisabled && "opacity-50",
-                selected && "ring-2 ring-primary ring-offset-2",
-                isFocused && "ring-2 ring-offset-2 ring-foreground/60"
+        <div className="relative" style={{ width: 64, height: 64 }}>
+            <div
+                className={cn(
+                    "rounded-md border-[3px] bg-background shadow-sm flex items-center justify-center overflow-hidden select-none cursor-pointer w-full h-full",
+                    node.isDisabled && "opacity-50",
+                    selected && "ring-2 ring-primary ring-offset-2",
+                    isFocused && "ring-2 ring-offset-2 ring-foreground/60"
+                )}
+                style={{ borderColor: "var(--primary)" }}
+                title={node.name}
+                onDoubleClick={() => onOpenEntry(node.id)}
+            >
+                <Handle type="target" position={Position.Left} className="opacity-0" />
+                {node.imageFilename ? (
+                    <img src={lorebookApi.imageUrl(node.id)} alt={node.name} className="w-full h-full object-cover" />
+                ) : (
+                    <span className="text-[10px] font-medium px-1 text-center leading-tight break-words line-clamp-3">{node.name}</span>
+                )}
+                <Handle type="source" position={Position.Right} className="opacity-0" />
+            </div>
+            {/* L5a — floor badge, only shown for locations nested under another via "contains" */}
+            {node.floorLabel && (
+                <span className="absolute -top-2 -right-2 rounded-full bg-secondary text-secondary-foreground text-[9px] px-1.5 py-0.5 border shadow-sm whitespace-nowrap">
+                    {node.floorLabel}
+                </span>
             )}
-            style={{ width: 64, height: 64, borderColor: "var(--primary)" }}
-            title={node.name}
-            onDoubleClick={() => onOpenEntry(node.id)}
-        >
-            <Handle type="target" position={Position.Left} className="opacity-0" />
-            {node.imageFilename ? (
-                <img src={lorebookApi.imageUrl(node.id)} alt={node.name} className="w-full h-full object-cover" />
-            ) : (
-                <span className="text-[10px] font-medium px-1 text-center leading-tight break-words line-clamp-3">{node.name}</span>
-            )}
-            <Handle type="source" position={Position.Right} className="opacity-0" />
         </div>
     );
 }

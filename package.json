@@ -71,6 +71,7 @@
         "epub-gen-memory": "^1.1.2",
         "express": "^5.1.0",
         "gpt-tokenizer": "^3.4.0",
+        "html-to-image": "^1.11.13",
         "jspdf": "^3.0.3",
         "lexical": "^0.48.0",
         "lodash": "^4.17.21",

@@ -32,17 +32,32 @@ const validateEdgeType = (value: string): void => {
     if (!isValidEdgeType(value)) throw new Error(`edgeType must be one of: ${STORY_MAP_EDGE_TYPES.join(", ")}`);
 };
 
-const rowToNode = (row: LorebookRow): StoryMapNode => {
-    const metadata = parseJson(row.metadata as string | null | undefined) as { placeState?: { scale?: string } } | null;
-    return {
-        id: row.id,
-        name: row.name,
-        level: row.level as StoryMapNode["level"],
-        isDisabled: !!row.isDisabled,
-        imageFilename: row.imageFilename ?? null,
-        scale: metadata?.placeState?.scale ?? null
-    };
+type PlaceCodexField = { key: string; value: string };
+
+// Once a location graduates to versioned place-Codex tracking (L4), scale/floorLabel live in
+// codexState.customFields (key/value rows, same key names PlaceState used — see
+// placeCodexMapping.ts client-side) rather than metadata.placeState. Reads whichever tier is
+// actually active, falling back to the light L1 tier when not codexEnabled.
+const readPlaceField = (row: LorebookRow, key: "scale" | "floorLabel"): string | null => {
+    if (row.codexEnabled) {
+        const codexState = parseJson(row.codexState as string | null | undefined) as { customFields?: PlaceCodexField[] } | null;
+        const field = codexState?.customFields?.find(f => f.key === key);
+        if (field) return field.value;
+        return null;
+    }
+    const metadata = parseJson(row.metadata as string | null | undefined) as { placeState?: Record<string, string> } | null;
+    return metadata?.placeState?.[key] ?? null;
 };
+
+const rowToNode = (row: LorebookRow): StoryMapNode => ({
+    id: row.id,
+    name: row.name,
+    level: row.level as StoryMapNode["level"],
+    isDisabled: !!row.isDisabled,
+    imageFilename: row.imageFilename ?? null,
+    scale: readPlaceField(row, "scale"),
+    floorLabel: readPlaceField(row, "floorLabel")
+});
 
 // "Visible" locations for a story — same scope rule as storyGraphRepository's
 // listVisibleEntriesForStory (global + story-scoped + series-scoped when applicable), filtered to

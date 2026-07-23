@@ -18,7 +18,8 @@ const FIELD_LABELS: Record<keyof PlaceState, string> = {
     landmarks: "Landmarks",
     exitsSummary: "Exits summary",
     layoutMd: "Layout",
-    imageBrief: "Image brief"
+    imageBrief: "Image brief",
+    floorLabel: "Floor"
 };
 
 // L1, docs/Locations_And_Maps_Design.md — sibling to PsychProposalCard.tsx, for the

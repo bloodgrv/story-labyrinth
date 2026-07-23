@@ -232,6 +232,10 @@ export interface PlaceState {
     exitsSummary?: string;
     layoutMd?: string;
     imageBrief?: string;
+    // L5a, docs/Locations_And_Maps_Design.md — free text ("Ground Floor", "2F", "Sub-basement"),
+    // not a strict numeric level. Only meaningful for a location nested under another via a
+    // storyMapEdges "contains" edge — see StoryMapCanvas.tsx's region-focus sibling sort.
+    floorLabel?: string;
 }
 
 export interface LorebookEntry extends BaseEntity {

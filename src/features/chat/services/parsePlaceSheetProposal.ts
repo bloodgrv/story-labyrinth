@@ -30,6 +30,7 @@ export const parsePlaceSheetProposal = (
     if (typeof record.exitsSummary === "string") proposal.exitsSummary = record.exitsSummary;
     if (typeof record.layoutMd === "string") proposal.layoutMd = record.layoutMd;
     if (typeof record.imageBrief === "string") proposal.imageBrief = record.imageBrief;
+    if (typeof record.floorLabel === "string") proposal.floorLabel = record.floorLabel;
 
     if (Object.keys(proposal).length === 0) return { cleanedContent, placeSheetProposal: null };
     return { cleanedContent, placeSheetProposal: proposal };

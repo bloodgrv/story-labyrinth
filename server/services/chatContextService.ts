@@ -425,7 +425,8 @@ const PLACE_SHEET_INSTRUCTIONS =
     "include a fenced block in this exact form:\n\n" +
     "```place-sheet-proposal\n" +
     '{"scale": "...", "biomeOrClimate": "...", "holder": "...", "dangerLevel": "...", ' +
-    '"landmarks": ["..."], "exitsSummary": "...", "layoutMd": "ascii or markdown layout", "imageBrief": "..."}\n' +
+    '"landmarks": ["..."], "exitsSummary": "...", "layoutMd": "ascii or markdown layout", "imageBrief": "...", ' +
+    '"floorLabel": "e.g. \'2F\' or \'Sub-basement\', only if this place is nested inside another via a Story Map contains link"}\n' +
     "```\n\n" +
     "Propose at most one place-sheet-proposal per reply.";
 

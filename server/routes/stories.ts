@@ -15,6 +15,8 @@ type ImportedNote = InferSelectModel<typeof schema.notes>;
 type ImportedOutlineItem = InferSelectModel<typeof schema.outlineItems>;
 type ImportedOutlineItemCharacter = InferSelectModel<typeof schema.outlineItemCharacters>;
 type ImportedOrgFolder = InferSelectModel<typeof schema.orgFolders>;
+type ImportedStoryMapEdge = InferSelectModel<typeof schema.storyMapEdges>;
+type ImportedStoryMapLayout = InferSelectModel<typeof schema.storyMapLayout>;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -50,20 +52,27 @@ export default createCrudRouter({
                             and(eq(schema.lorebookEntries.level, "story"), eq(schema.lorebookEntries.scopeId, storyId))
                         );
 
-                    const [chapters, aiChats, notes, outlineItems, outlineItemCharacters, orgFolders] = await Promise.all([
-                        db.select().from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
-                        db.select().from(schema.aiChats).where(eq(schema.aiChats.storyId, storyId)),
-                        db.select().from(schema.notes).where(eq(schema.notes.storyId, storyId)),
-                        db.select().from(schema.outlineItems).where(eq(schema.outlineItems.storyId, storyId)),
-                        db
-                            .select()
-                            .from(schema.outlineItemCharacters)
-                            .where(eq(schema.outlineItemCharacters.storyId, storyId)),
-                        // Folders (B9, docs/Folders_Org_Design.md) — both lorebook (level='story')
-                        // and chat folders are scoped by scopeId=storyId, so one query covers both
-                        // kinds; series-level lore folders are exported separately by series.ts.
-                        db.select().from(schema.orgFolders).where(eq(schema.orgFolders.scopeId, storyId))
-                    ]);
+                    const [chapters, aiChats, notes, outlineItems, outlineItemCharacters, orgFolders, storyMapEdges, storyMapLayout] =
+                        await Promise.all([
+                            db.select().from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
+                            db.select().from(schema.aiChats).where(eq(schema.aiChats.storyId, storyId)),
+                            db.select().from(schema.notes).where(eq(schema.notes.storyId, storyId)),
+                            db.select().from(schema.outlineItems).where(eq(schema.outlineItems.storyId, storyId)),
+                            db
+                                .select()
+                                .from(schema.outlineItemCharacters)
+                                .where(eq(schema.outlineItemCharacters.storyId, storyId)),
+                            // Folders (B9, docs/Folders_Org_Design.md) — both lorebook (level='story')
+                            // and chat folders are scoped by scopeId=storyId, so one query covers both
+                            // kinds; series-level lore folders are exported separately by series.ts.
+                            db.select().from(schema.orgFolders).where(eq(schema.orgFolders.scopeId, storyId)),
+                            // Story Map (L5b, docs/Locations_And_Maps_Design.md) — first graph-shaped
+                            // data to ever round-trip through story export; the Relationship Graph's
+                            // own storyGraphEdges stays out of export for now (separate, not-yet-asked-
+                            // for decision — this establishes the technique if that's wanted later).
+                            db.select().from(schema.storyMapEdges).where(eq(schema.storyMapEdges.storyId, storyId)),
+                            db.select().from(schema.storyMapLayout).where(eq(schema.storyMapLayout.storyId, storyId))
+                        ]);
 
                     return {
                         version: "1.0",
@@ -77,7 +86,9 @@ export default createCrudRouter({
                         notes,
                         outlineItems,
                         outlineItemCharacters,
-                        orgFolders
+                        orgFolders,
+                        storyMapEdges,
+                        storyMapLayout
                     };
                 });
 
@@ -225,6 +236,51 @@ export default createCrudRouter({
                         if (newEntries.length > 0) await db.insert(schema.lorebookEntries).values(newEntries);
                     }
 
+                    // Story Map (L5b, docs/Locations_And_Maps_Design.md) — fromId/toId/nodeId
+                    // reference lorebook entry ids, resolved through the same idMap the entries
+                    // block above just populated. Since story export only ships level='story'
+                    // entries, an edge/layout row pointing at a global/series entry has no id in
+                    // idMap and is silently skipped (its endpoint isn't part of this export) —
+                    // same posture as outlineItemCharacters' skip-with-warning pattern below.
+                    if (storyData.storyMapEdges?.length) {
+                        const newEdges = (storyData.storyMapEdges as ImportedStoryMapEdge[])
+                            .map(edge => {
+                                const newFromId = idMap.get(edge.fromId);
+                                const newToId = idMap.get(edge.toId);
+                                if (!newFromId || !newToId) {
+                                    console.warn(`Skipping story map edge ${edge.id}: fromId/toId not found in this export`);
+                                    return null;
+                                }
+                                return {
+                                    ...edge,
+                                    id: crypto.randomUUID(),
+                                    storyId: newStoryId,
+                                    fromId: newFromId,
+                                    toId: newToId,
+                                    createdAt: new Date(),
+                                    updatedAt: edge.updatedAt ? new Date() : null
+                                };
+                            })
+                            .filter((edge): edge is NonNullable<typeof edge> => edge !== null);
+                        if (newEdges.length > 0) await db.insert(schema.storyMapEdges).values(newEdges);
+                    }
+                    if (storyData.storyMapLayout?.length) {
+                        const newLayout = (storyData.storyMapLayout as ImportedStoryMapLayout[])
+                            .map(position => {
+                                const newNodeId = idMap.get(position.nodeId);
+                                if (!newNodeId) return null;
+                                return {
+                                    ...position,
+                                    id: crypto.randomUUID(),
+                                    storyId: newStoryId,
+                                    nodeId: newNodeId,
+                                    updatedAt: new Date()
+                                };
+                            })
+                            .filter((position): position is NonNullable<typeof position> => position !== null);
+                        if (newLayout.length > 0) await db.insert(schema.storyMapLayout).values(newLayout);
+                    }
+
                     if (storyData.aiChats?.length) {
                         const newChats = storyData.aiChats.map((chat: ImportedAiChat) => {
                             const newChatId = crypto.randomUUID();
@@ -337,7 +393,9 @@ export default createCrudRouter({
                         notes: storyData.notes?.length || 0,
                         outlineItems: storyData.outlineItems?.length || 0,
                         outlineItemCharacters: storyData.outlineItemCharacters?.length || 0,
-                        orgFolders: storyData.orgFolders?.length || 0
+                        orgFolders: storyData.orgFolders?.length || 0,
+                        storyMapEdges: storyData.storyMapEdges?.length || 0,
+                        storyMapLayout: storyData.storyMapLayout?.length || 0
                     }
                 });
             })

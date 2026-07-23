@@ -3,22 +3,27 @@ import {
     Background,
     Controls,
     type Connection,
+    getNodesBounds,
+    getViewportForBounds,
     MiniMap,
     type NodeMouseHandler,
     type OnNodeDrag,
     ReactFlow,
     ReactFlowProvider,
     useEdgesState,
-    useNodesState
+    useNodesState,
+    useReactFlow
 } from "@xyflow/react";
-import { Loader2, RotateCcw } from "lucide-react";
+import { attemptPromise } from "@jfdi/attempt";
+import { toPng } from "html-to-image";
+import { Download, Loader2, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
-import type { StoryMapEdge } from "@/types/storyMap";
+import type { StoryMapEdge, StoryMapNode } from "@/types/storyMap";
 import {
     useMapLayoutQuery,
     useResetMapLayoutMutation,
@@ -67,6 +72,38 @@ const descendantsOf = (rootId: string, edges: StoryMapEdge[]): Set<string> => {
     return visited;
 };
 
+// L5a — leading numeric prefix (handles a leading '-') from a floor label, e.g. "-1" -> -1,
+// "2F" -> 2, "Roof" -> null (non-numeric labels sort after numeric ones, alphabetically).
+const floorNumber = (label: string | null): number | null => {
+    const match = label?.match(/^-?\d+/);
+    return match ? Number(match[0]) : null;
+};
+
+// Alphabetical everywhere by default. Within a focused region (excluding the root itself), if
+// every sibling has a floorLabel set, sort by its numeric prefix instead (non-numeric labels sort
+// after, alphabetically) — a lightweight "which floor is this" ordering without a dedicated
+// depth/order column (L5a, docs/Locations_And_Maps_Design.md).
+const sortNodesForDisplay = (nodes: StoryMapNode[], rootId: string | null): StoryMapNode[] => {
+    if (!rootId) return [...nodes].sort((a, b) => a.name.localeCompare(b.name));
+
+    const root = nodes.filter(n => n.id === rootId);
+    const siblings = nodes.filter(n => n.id !== rootId);
+    const allHaveFloors = siblings.length > 0 && siblings.every(n => !!n.floorLabel);
+
+    const sortedSiblings = allHaveFloors
+        ? [...siblings].sort((a, b) => {
+              const fa = floorNumber(a.floorLabel);
+              const fb = floorNumber(b.floorLabel);
+              if (fa !== null && fb !== null) return fa - fb;
+              if (fa !== null) return -1;
+              if (fb !== null) return 1;
+              return (a.floorLabel ?? "").localeCompare(b.floorLabel ?? "");
+          })
+        : [...siblings].sort((a, b) => a.name.localeCompare(b.name));
+
+    return [...root, ...sortedSiblings];
+};
+
 function StoryMapCanvasInner({ storyId }: StoryMapCanvasProps) {
     const { setPendingLorebookEntryId, setCurrentTool } = useStoryContext();
     const isOwner = useIsOwner();
@@ -74,6 +111,8 @@ function StoryMapCanvasInner({ storyId }: StoryMapCanvasProps) {
     const layoutQuery = useMapLayoutQuery(storyId);
     const saveLayoutPositionMutation = useSaveMapLayoutPositionMutation(storyId);
     const resetLayoutMutation = useResetMapLayoutMutation();
+    const { getNodes } = useReactFlow();
+    const [isExportingImage, setIsExportingImage] = useState(false);
     const savedPositions = useMemo(
         () => new Map((layoutQuery.data?.positions ?? []).map(p => [p.nodeId, { x: p.x, y: p.y }])),
         [layoutQuery.data]
@@ -91,7 +130,10 @@ function StoryMapCanvasInner({ storyId }: StoryMapCanvasProps) {
     const [connectDraft, setConnectDraft] = useState<ConnectDraft | null>(null);
 
     const focusedIds = useMemo(() => (focusNodeId ? descendantsOf(focusNodeId, allEdges) : null), [focusNodeId, allEdges]);
-    const displayedNodes = focusedIds ? allNodes.filter(n => focusedIds.has(n.id)) : allNodes;
+    const displayedNodes = useMemo(
+        () => sortNodesForDisplay(focusedIds ? allNodes.filter(n => focusedIds.has(n.id)) : allNodes, focusNodeId),
+        [allNodes, focusedIds, focusNodeId]
+    );
     const displayedEdges = focusedIds ? allEdges.filter(e => focusedIds.has(e.fromId) && focusedIds.has(e.toId)) : allEdges;
 
     const handleOpenEntry = (id: string) => {
@@ -157,6 +199,55 @@ function StoryMapCanvasInner({ storyId }: StoryMapCanvasProps) {
 
     const handleSearchSelect = (nodeId: string) => setSelectedNodeId(nodeId);
 
+    // L5b — illustration-only export (design doc's "images never SoT" rule: this never round-trips
+    // back into the app, purely a downloadable snapshot). Standard React Flow "download image"
+    // pattern (getNodesBounds/getViewportForBounds + html-to-image's toPng against the real
+    // .react-flow__viewport DOM node) rather than html2canvas, which is only an indirect
+    // dependency via jsPDF and isn't directly used anywhere else in this codebase.
+    const handleExportImage = async () => {
+        const nodes = getNodes();
+        if (nodes.length === 0) return;
+        const viewportEl = document.querySelector<HTMLElement>(".react-flow__viewport");
+        if (!viewportEl) return;
+
+        setIsExportingImage(true);
+        const imageWidth = 1600;
+        const imageHeight = 1200;
+        const bounds = getNodesBounds(nodes);
+        const viewport = getViewportForBounds(bounds, imageWidth, imageHeight, 0.2, 2, 0.1);
+
+        // html-to-image's toPng can hang indefinitely rather than reject (observed in this
+        // project's own dev/CI browser automation, likely tied to its internal document.fonts/
+        // stylesheet-embedding step never settling in some environments) — race against a timeout
+        // so the button never gets stuck disabled forever for a real user hitting the same class
+        // of environment quirk.
+        const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Image export timed out")), 15_000));
+        const [error, dataUrl] = await attemptPromise(() =>
+            Promise.race([
+                toPng(viewportEl, {
+                    width: imageWidth,
+                    height: imageHeight,
+                    style: {
+                        width: `${imageWidth}px`,
+                        height: `${imageHeight}px`,
+                        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`
+                    }
+                }),
+                timeout
+            ])
+        );
+        setIsExportingImage(false);
+        if (error || !dataUrl) {
+            toast.error("Failed to export image");
+            return;
+        }
+
+        const link = document.createElement("a");
+        link.download = `story-map-${storyId}.png`;
+        link.href = dataUrl;
+        link.click();
+    };
+
     const selectedNode = selectedNodeId ? allNodesById.get(selectedNodeId) : undefined;
     const isLoading = mapQuery.isLoading;
 
@@ -195,6 +286,20 @@ function StoryMapCanvasInner({ storyId }: StoryMapCanvasProps) {
                 </Select>
                 <div className="flex items-center gap-2">
                     <MapSearchBox nodes={sortedNodes} onSelect={handleSearchSelect} />
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={isExportingImage}
+                        onClick={handleExportImage}
+                        title="Export the current view as a PNG image — illustration only, never re-imported"
+                    >
+                        {isExportingImage ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                            <Download className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        Export as image
+                    </Button>
                     {isOwner && savedPositions.size > 0 && (
                         <Button
                             size="sm"
