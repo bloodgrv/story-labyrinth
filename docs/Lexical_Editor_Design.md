@@ -1,7 +1,7 @@
 # Lexical Editor (T2) — Design
 
-**Status:** **Partial design lock 2026-07-21** — **plugin-add axis only**. Other T2 axes still open. **Not started (code)** for this lock.  
-**Priority:** **P3** until promoted  
+**Status:** **Plugin-add axis shipped 2026-07-22** (LE0-LE3, see `DECISIONS.md`'s "Lexical Editor Deepen — LE0-LE3" entry). Other T2 axes (list "done" bar, toolbar/mobile/selection polish, CodeHighlight/TreeView/collab-residue decisions) still open/unlocked.  
+**Priority:** Plugin-add axis done; other T2 axes stay **P3** until separately locked  
 **Talk list:** T2  
 **Related:** story editor home `src/components/story-editor/`; export paths under `src/utils/export/`; bugs B1 (word count), B2 (beat marks) are separate P2 debt
 
@@ -123,3 +123,4 @@ Do **not** add `TablePlugin` under lock C. Do **not** mix Lexical package versio
 |------|--------|
 | 2026-07-21 | Plugin-add axis Lean-locked in grill; fork doc written on user **lock**. ADD List+CheckList; tables C; skip/defer as above; upgrade pairing 0.39→0.48. |
 | 2026-07-21 | Note: non-Lexical dep majors parked on backlog as pack 3 todo later — out of LE scope. |
+| 2026-07-22 | Plugin-add axis (LE0–LE3) shipped: version bump, `ListPlugin`+`CheckListPlugin` mount, list/checklist smoke test, and an export-converter fix (list nodes were previously unhandled in HTML/Markdown/PDF export, latent since lists were never creatable before this pass). Two real Lexical-0.48 breaks found and fixed along the way (`ContextMenuPlugin` API removal, a `FloatingLinkEditor.tsx` update-listener crash). See `DECISIONS.md`. |
