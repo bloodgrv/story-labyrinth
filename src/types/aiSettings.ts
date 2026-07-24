@@ -20,7 +20,8 @@ export type FeatureKey =
     | "agent_memory_distill" // Distill factual project memory candidates from a RAG scan's findings (distillMemoryJob.ts)
     | "chapter_version" // AI-regenerate an alternate chapter draft (chapterVersionAiService.ts)
     | "codex_compile" // Suggest Codex state updates from a chapter's text (C5, codexCompileJob.ts)
-    | "graph_suggest_edges"; // Suggest Relationship Graph edges from a story's lorebook (P1.2 G1.5+, graphSuggestEdgesJob.ts)
+    | "graph_suggest_edges" // Suggest Relationship Graph edges from a story's lorebook (P1.2 G1.5+, graphSuggestEdgesJob.ts)
+    | "outline_import"; // Normalize an uploaded structure document into a chapter->scene draft (outlineImportService.ts)
 
 // "grok-session" is deliberately excluded — it isn't a simple OpenAI-compatible client (it proxies
 // through grok.com server-side via a bespoke SSE conversion, see grokSessionClient.ts) and is
@@ -66,7 +67,8 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
     agent_memory_distill: "Agent Memory Distillation",
     chapter_version: "Chapter Versions (AI Draft)",
     codex_compile: "Codex Auto-Compile (Suggest Updates)",
-    graph_suggest_edges: "Relationship Graph (Suggest Edges)"
+    graph_suggest_edges: "Relationship Graph (Suggest Edges)",
+    outline_import: "Outline Import"
 };
 
 export const FEATURE_KEYS: FeatureKey[] = [
@@ -82,5 +84,6 @@ export const FEATURE_KEYS: FeatureKey[] = [
     "agent_memory_distill",
     "chapter_version",
     "codex_compile",
-    "graph_suggest_edges"
+    "graph_suggest_edges",
+    "outline_import"
 ];

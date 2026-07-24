@@ -1,0 +1,1 @@
+ALTER TABLE `outlineImportBatches` ADD `acceptedItemIds` text;

@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { CharacterArcPanel } from "@/features/outline/components/CharacterArcPanel";
 import { OutlineChatRail } from "@/features/outline/components/OutlineChatRail";
+import { OutlineImportPanel } from "@/features/outline/components/OutlineImportPanel";
 import { OutlineItemDialog } from "@/features/outline/components/OutlineItemDialog";
 import { OutlineTree } from "@/features/outline/components/OutlineTree";
 import {
@@ -93,6 +94,8 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
                                 </Button>
                             )}
                         </div>
+
+                        <OutlineImportPanel storyId={storyId} characters={characters} />
 
                         {chapters.length === 0 ? (
                             <EmptyState

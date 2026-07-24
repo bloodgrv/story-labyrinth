@@ -34,6 +34,7 @@ export { humanizerApi } from "./humanizerClient";
 export { lorebookApi } from "./lorebookClient";
 export { nameGeneratorApi } from "./nameGeneratorClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
+export { outlineImportApi } from "./outlineImportClient";
 export { ragApi } from "./ragClient";
 export { storyGraphApi } from "./storyGraphClient";
 export { storyMapApi } from "./storyMapClient";

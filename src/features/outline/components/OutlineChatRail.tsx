@@ -1,7 +1,17 @@
-import { AlertCircle, MessageSquare, Plus, RefreshCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, MessageSquare, Paperclip, Plus, RefreshCcw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
@@ -10,9 +20,12 @@ import { GuidedSetupControl } from "@/features/chat/components/GuidedSetupContro
 import { ShuttleTray } from "@/features/chat/components/ShuttleTray";
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import type { ParsedLoreSuggestion } from "@/features/chat/services/parseLoreSuggestions";
+import { OutlineImportCard } from "@/features/outline/components/OutlineImportCard";
+import { outlineImportKeys, useUploadOutlineImportMutation } from "@/features/outline/hooks/useOutlineImportQuery";
+import { useOutlineQuery } from "@/features/outline/hooks/useOutlineQuery";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
-import { chatsApi } from "@/services/api/client";
+import { chatsApi, outlineImportApi } from "@/services/api/client";
 import type { AIChat } from "@/types/story";
 import type { ChatStyle } from "@/types/worldbuilding";
 import { OutlineProposalTray } from "./OutlineProposalTray";
@@ -67,6 +80,38 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
     const pendingRework = usePendingRework();
     const { pendingChatComposerSeed, setPendingChatComposerSeed } = useStoryContext();
     const [composerSeedText, setComposerSeedText] = useState<string | null>(null);
+
+    // OI6 — file-attach entry point. No drag/drop precedent exists anywhere in chat (see
+    // DECISIONS.md's "Outline Import" entry); a click-to-attach button matches this app's usual
+    // upload UX (hidden <input type="file"> + button) more closely than inventing a drop zone.
+    const { data: outlineItems = [] } = useOutlineQuery(storyId);
+    const uploadMutation = useUploadOutlineImportMutation(storyId);
+    const queryClient = useQueryClient();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+
+    const runImport = (file: File, mode: "append" | "replace") => {
+        uploadMutation.mutate(
+            { file, chatId: selectedChat?.id },
+            {
+                onSuccess: async result => {
+                    if (mode === "replace") {
+                        await outlineImportApi.updateBatch(result.batch.id, { mode: "replace" });
+                        queryClient.invalidateQueries({ queryKey: outlineImportKeys.active(storyId) });
+                    }
+                }
+            }
+        );
+    };
+
+    const handleImportFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        // Design lock #3: empty outline extracts immediately, non-empty asks intent first.
+        if (outlineItems.length === 0) runImport(file, "append");
+        else setPendingImportFile(file);
+    };
 
     const mostRecentChat = (candidates: AIChat[]): AIChat =>
         [...candidates].sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime())[0];
@@ -158,6 +203,19 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
     return (
         <div className="flex h-full">
             <div className="flex-1 h-full min-h-0 flex flex-col">
+                <input ref={fileInputRef} type="file" accept=".pdf,.docx,.md,.txt" className="hidden" onChange={handleImportFileSelected} />
+                <div className="flex items-center justify-end border-b border-input px-2 py-1">
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1.5 text-xs text-muted-foreground"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadMutation.isPending}
+                    >
+                        <Paperclip className="h-3.5 w-3.5" />
+                        Import structure document…
+                    </Button>
+                </div>
                 {selectedChat ? (
                     // min-h-0 is load-bearing — without it this flex-1 child can't shrink below
                     // its content's height, so a long reply grows the whole column instead of
@@ -203,6 +261,7 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
                     renderNewChatAction={renderNewChatButton}
                     side="right"
                 />
+                <OutlineImportCard storyId={storyId} />
                 {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
                 {selectedChat && (
                     <ShuttleTray
@@ -220,6 +279,41 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
                     fromChatTitleSnapshot={selectedChat?.title ?? ""}
                 />
             </div>
+
+            {/* Design lock #3 — non-empty outline: ask intent before extracting, don't silently extract. */}
+            <AlertDialog open={pendingImportFile !== null} onOpenChange={open => !open && setPendingImportFile(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Add to or replace the outline?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This story already has outline items. Should the imported structure be appended after them, or
+                            should it replace the entire outline once you accept it? You can still review and edit the draft
+                            before anything is written either way.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setPendingImportFile(null)}>Cancel</AlertDialogCancel>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                if (pendingImportFile) runImport(pendingImportFile, "append");
+                                setPendingImportFile(null);
+                            }}
+                        >
+                            Append
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => {
+                                if (pendingImportFile) runImport(pendingImportFile, "replace");
+                                setPendingImportFile(null);
+                            }}
+                        >
+                            Replace all
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

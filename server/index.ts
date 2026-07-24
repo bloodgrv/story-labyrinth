@@ -26,6 +26,7 @@ import nameGeneratorRouter from "./routes/nameGenerator.js";
 import notesRouter from "./routes/notes.js";
 import outlineRouter from "./routes/outline.js";
 import outlineCharactersRouter from "./routes/outlineCharacters.js";
+import outlineImportRouter from "./routes/outlineImport.js";
 import promptsRouter from "./routes/prompts.js";
 import ragRouter from "./routes/rag.js";
 import seriesRouter from "./routes/series.js";
@@ -129,6 +130,7 @@ app.use("/api/beats", beatsRouter);
 app.use("/api/grammar", grammarRouter);
 app.use("/api/outline", outlineRouter);
 app.use("/api/outline-characters", outlineCharactersRouter);
+app.use("/api/outline-import", outlineImportRouter);
 app.use("/api/folders", foldersRouter);
 app.use("/api/users", requireOwner, usersRouter);
 

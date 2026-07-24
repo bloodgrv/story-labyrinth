@@ -932,6 +932,72 @@ export const outlineItemCharacters = sqliteTable(
     })
 );
 
+// Outline Import Batches table — Outline Import (docs/Outline_Import_Design.md, promoted off P3).
+// Server-side SoT for a structure-document import's draft (design lock #19: "survives refresh
+// and Outline tool unmount"). `structureDraft` is the editable 2-level chapter->scene tree
+// (DraftChapter[] — src/types/outlineImport.ts) the panel/chat draft UI reads/writes wholesale
+// via PATCH; nothing here touches real `outlineItems` rows until POST .../accept (OI4). `chatId`
+// is informational only (which Outline chat, if any, the file was dropped on) — no FK constraint
+// needed since this app runs with FK enforcement off db-wide (see the outlineItems.parentId
+// comment above) and the chat's lifecycle is independent of the batch's.
+export const outlineImportBatches = sqliteTable(
+    "outlineImportBatches",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        status: text("status").notNull().default("extracting"), // 'extracting' | 'ready' | 'accepted' | 'discarded'
+        sourceFilename: text("sourceFilename").notNull(),
+        mode: text("mode").notNull().default("append"), // 'append' | 'replace' — design lock #3
+        includeInAiArm: integer("includeInAiArm", { mode: "boolean" }).notNull().default(false), // design lock #8
+        structureDraft: text("structureDraft", { mode: "json" }).notNull(), // DraftChapter[]
+        // Populated only on Accept (OI4) — the real outlineItems rows this batch wrote, so OI7's
+        // post-Accept "Link to outline item" tray action has something to target without having
+        // to re-derive it from the (now-mutable) structureDraft tempIds. null until accepted.
+        acceptedItemIds: text("acceptedItemIds", { mode: "json" }),
+        chatId: text("chatId"), // informational only, see comment above — no FK
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdIdx: index("outlineimportbatch_story_id_idx").on(table.storyId),
+        statusIdx: index("outlineimportbatch_status_idx").on(table.status)
+    })
+);
+
+// Outline Import Checklist table — the "rich lane" tray (design lock #12/#13): cast mentions, arc
+// notes, and other handoff-worthy material found during extract that should NOT be silently
+// written to the DB. Deliberately a dedicated table rather than widening `brainstormChecklist`
+// (see DECISIONS.md "Outline Import" entry) — that table's `chatId` is NOT NULL with a hard FK to
+// aiChats and every call site assumes a live chat; the Outline panel's import entry point has no
+// chat in scope at all. Same B4 morals as brainstormChecklist: Open/Send/Accept set 'opened' and
+// stay in the Active queue (`pending`/`opened`), only Mark done/Dismiss ('done'/'dismissed') moves
+// a row to the Done tab — see brainstormChecklistService.ts's ACTIVE_STATUSES/DONE_STATUSES for
+// the precedent this mirrors.
+export const outlineImportChecklist = sqliteTable(
+    "outlineImportChecklist",
+    {
+        id: text("id").primaryKey(),
+        batchId: text("batchId")
+            .notNull()
+            .references(() => outlineImportBatches.id, { onDelete: "cascade" }),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        kind: text("kind").notNull(), // 'import_cast' | 'import_arc_note' | 'import_handoff'
+        status: text("status").notNull().default("pending"), // 'pending' | 'opened' | 'done' | 'dismissed'
+        payload: text("payload", { mode: "json" }).notNull(), // shape depends on kind — src/types/outlineImport.ts
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        batchIdIdx: index("outlineimportchecklist_batch_id_idx").on(table.batchId),
+        storyIdIdx: index("outlineimportchecklist_story_id_idx").on(table.storyId),
+        statusIdx: index("outlineimportchecklist_status_idx").on(table.status)
+    })
+);
+
 // Notes table
 export const notes = sqliteTable(
     "notes",
