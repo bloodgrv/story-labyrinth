@@ -1,0 +1,47 @@
+# Chat Features
+
+A few things that apply across every AI chat window — World-Building, Editor, Outline, Research, Notes, and Brainstorm alike: which model a chat talks to, what context gets sent alongside your message, how much of that context you're using, and a way to redirect off-topic questions without derailing the conversation.
+
+---
+
+## 1. Cloud | Local Model Routing
+
+Every chat has a **Cloud** | **Local** pill at the top, next to the model dropdown. Switching modes filters the model list to just that provider group. Settings → Providers & keys has a **preferred mode** default, so a brand-new chat always starts with a real model selected instead of coming up modelless.
+
+To edit a chat's system prompt, use the **⋯** menu next to the model control → **Edit system prompt**.
+
+## 2. Context & Memory Toggles
+
+The Notes / Outline / Memory / Lorebook / auto-insert / auto-accept / shuttle toggles for a chat are tucked behind a collapsed **Context & memory** disclosure by default, to keep the composer area clean. If any of them are turned on, a small chip next to the collapsed header lists which ones (e.g. "Notes · Memory"), so you can tell at a glance without expanding it.
+
+## 3. Context / Token Meter
+
+A composer chip shows an estimated size of everything that would be sent with your next message — e.g. *"12.3k / 32k tokens (est.) · 62% left"* — with a small progress bar. It's always shown for **Local** models (since local context windows are usually the tightest constraint); for other providers it only appears once a real usage count is known from an earlier reply this session.
+
+Click the chip to expand a **Context breakdown (est.)** popover — the same context assembly the chat actually uses, broken down by source (system prompt, anchor entry, project memory, notes, etc.) with a **Total** row at the bottom.
+
+> [!TIP]
+> For **Local** models, Settings → Local lets you set a context-window override and turn on a soft warning that asks for confirmation before sending once you're near the limit. It's off by default and never blocks a send outright — it just asks first.
+
+## 4. Chat Shuttle
+
+If you ask a World-Building, Editor, or Outline chat something that's really a real-world fact lookup (historical details, tradecraft, "what would people actually use for X") rather than a craft/continuity question, the model won't try to answer it out of its own knowledge — it proposes shuttling the question to the **Research** desk instead. A card appears right in the chat with the question and a short scene crumb, and three actions:
+
+- **Open** — jumps to (or creates) your story's Research chat, pre-filled with the question
+- **Answer here** — seeds the *current* chat's composer with the question instead, if you'd rather just answer it yourself without switching tools
+- **Mark done** — dismisses the card once you've handled it
+
+Nothing is ever sent automatically — every shuttle is something you choose to open. A **Shuttles** section in the chat's sidebar keeps track of active and done shuttles for that chat; if you use Research's own "send brief back" option, a **Returned briefs** section shows what came back.
+
+## 5. Troubleshooting
+
+| Problem                                       | What's happening                                                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| A chat has no model selected                   | Set a preferred Cloud/Local mode in Settings → Providers & keys so new chats default correctly |
+| Notes/Outline/Memory toggles seem to have disappeared | They're collapsed behind **Context & memory** by default — click it to expand, or check the summary chip next to it |
+| Token meter chip isn't showing                 | It's always on for Local models; for other providers it only appears after the first reply of the session reports real usage |
+| A shuttle question just sits there             | Shuttles are never auto-opened or auto-answered — click **Open** or **Answer here** yourself |
+
+---
+
+Model routing preference, the Context & memory disclosure state, and soft-warn settings are all stored locally on your device.

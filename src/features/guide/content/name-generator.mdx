@@ -1,0 +1,47 @@
+# Name Generator
+
+Generates names drawn from real grounded name pools (not the model inventing something on the spot), filterable by kind, gender, region, and era — usable as its own tool, or proposed directly inside a chat.
+
+---
+
+## 1. Generating Names
+
+_Path: **Names** in the left sidebar_
+
+Pick a kind — **First name**, **Surname**, or **Full name** (a first + last pair, drawn independently and paired up). Then narrow the pool with whichever filters apply:
+
+| Filter                    | Applies to                | Options                                    |
+| -------------------------- | -------------------------- | -------------------------------------------- |
+| **Gender**                  | First name / Full name     | Any, Female, Male, Unisex                    |
+| **Region**                  | All kinds                  | Any, plus whatever regions the pool covers   |
+| **Era**                     | First name / Full name     | Any, 1980s-1990s, 2000s-2010s, 2020s-present |
+| **Starts with** (optional)  | All kinds                  | Free text, e.g. "Al"                         |
+| **Max length** (optional)   | All kinds                  | Free text, e.g. "6"                          |
+| **Count**                   | All kinds                  | How many results to generate                 |
+
+Click **Generate** for a fresh batch. Results stay listed under **Earlier results** as you generate more, so you can compare batches without losing anything.
+
+## 2. Working with Results
+
+Each name has a few actions:
+
+- **Copy** — copies the name to your clipboard
+- **Use** — marks the name as used in this story (shows under **Used in this story**, so you don't accidentally reuse it)
+- **Codex** — creates a Lorebook entry from this name directly (not shown for surnames on their own)
+- The star icon — **Favorite** / **Remove favorite**, keeping a name handy under **Favorites** across sessions
+
+## 3. Generating Names from Chat
+
+In World-Building, Editor, or Outline chats, if you ask for name ideas the model won't just invent one inline — it proposes a name generation instead, so suggestions come from the same grounded pools as the standalone tool. The proposal appears as a **Name Generator** card right in the chat, generating automatically, with the same Copy / Use / Codex / Favorite actions as the standalone panel.
+
+## 4. Troubleshooting
+
+| Problem                                  | What's happening                                                                  |
+| ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| No results / "No names matched those filters" | Your filters (especially Starts with / Max length / Region) narrowed the pool to nothing — loosen one and try again |
+| Gender or Era filters are missing          | They only apply to First name / Full name — Surname has neither                    |
+| Codex button missing on a result           | It's not shown for surnames on their own, since a surname alone isn't a full character name |
+
+---
+
+Favorites and "used in this story" marks are saved per story, so they persist across sessions without any extra setup.

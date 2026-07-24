@@ -1,0 +1,53 @@
+# Settings & Navigation
+
+The left sidebar was decluttered to hold only story-scoped tools; everything else — theme, the Guide, user management, and the RAG Scanner — now lives inside Settings. This guide covers where things moved and the sidebar's "open several tools as tabs at once" feature.
+
+> [!NOTE]
+> Nothing here changes what any tool *does* — only where you go to find it.
+
+---
+
+## 1. Where Things Moved
+
+The left sidebar now lists only story-scoped tools: **Stories**, **Series**, **Editor**, **Chapters**, **Outline**, **Lorebook**, **Brainstorm**, **Research**, **Notes**, **Names**, **Memory**, **Relations**, **Story Map** — plus, at the bottom, **New tab** (only shown once a story is selected, see below) and a single **Settings** button.
+
+**Theme**, the **Guide**, **Users**, and the **RAG Scanner** used to have their own top-bar/sidebar entries. They're now sub-nav tabs inside **Settings** instead.
+
+## 2. Settings Layout
+
+Settings is organized as a vertical sub-nav, in this order:
+
+| Tab              | What's there                                                              |
+| ----------------- | --------------------------------------------------------------------------- |
+| **Appearance**     | Theme toggle                                                                |
+| **Providers & keys** | Chat default routing (Cloud/Local), OpenAI/OpenRouter/Gemini/Grok API keys |
+| **Local**          | Local model connection, Context Meter settings                             |
+| **Feature routing** | Per-feature model/endpoint assignment (writing vs. scanner vs. embeddings, etc.) |
+| **Writing tools**   | Text-to-Speech, Humanizer, Grammar, Writer Prefs                           |
+| **Logs**           | Transfers log, Recent jobs                                                  |
+| **Data**           | Demo-data deletion                                                          |
+| **Guide**          | This guide                                                                   |
+| **Scanner**        | The RAG Scanner tool (story-scoped — select a story first)                  |
+| **Users**          | User management (owners only)                                               |
+
+## 3. Opening Multiple Tabs at Once
+
+_Path: with a story selected, click **New tab** at the bottom of the left sidebar_
+
+The sidebar switches into selection mode: a small checkbox appears next to every tool that can be opened as its own browser tab (**Editor**, **Lorebook**, **Chapters**, **Outline**, **Notes**, **Research** — the tools that make sense on their own). Check as many as you want, then click **Open (N)** to open all of them at once, or **Cancel** to back out.
+
+> [!IMPORTANT]
+> Browsers only allow one `window.open()` per click unless you've told them otherwise. If you select more than one tool, Chrome and Edge will silently block every tab after the first — the app will show a warning like *"3 tabs were blocked by the browser's popup blocker. Allow popups for this site to open them all at once."* if that happens. Allow popups for this site once (via the address-bar icon or your browser's site settings) and every subsequent multi-tab open will work in one click.
+
+## 4. Troubleshooting
+
+| Problem                                       | What's happening                                                                                             |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Can't find Theme, Guide, Users, or the Scanner | They moved into **Settings** — see the table above for which tab                                                |
+| "New tab" button doesn't appear                | It only shows once a story is selected — open or create a story first                                          |
+| Selected tools don't all open in new tabs      | Your browser blocked the popups after the first one — allow popups for this site and try again (see the callout above) |
+| Scanner tab says "Select a story to use the Scanner" | The Scanner is story-scoped — pick a story from the dashboard first, then come back to Settings → Scanner |
+
+---
+
+Settings' sub-nav position and your theme choice are stored locally on your device, same as the rest of your workspace preferences.

@@ -1,0 +1,60 @@
+# Locations & Maps
+
+Location entries in the Lorebook get their own guided setup script, a lightweight "place sheet" of structured details, an optional Story Map showing how places connect spatially, and — if you need it — the same versioned Codex tracking Character entries use.
+
+> [!NOTE]
+> None of this is required. A location entry works exactly like any other Lorebook entry if you never touch these features — they're opt-in layers on top.
+
+---
+
+## 1. Location Guided Setup
+
+World-Building chats opened on a **Location** template walk through a focused interview script — scale, biome, who/what controls the place, danger level, notable landmarks, exits, layout, and a one-line image brief — the same "Light / Standard / Grill-me" depth control every Guided Setup chat has.
+
+## 2. The Place Sheet
+
+Every location entry has a **Place sheet** section in its editor — *"A lightweight structured summary — not tracked Codex state. Fill in whatever's known; the rest can come from a World-Building chat later."* Fields: **Scale**, **Biome / climate**, **Holder**, **Danger level**, **Floor** (for nested locations, e.g. "2F"), **Landmarks**, **Exits summary**, **Layout** (markdown/ASCII), and **Image brief**.
+
+You can fill these in by hand, or a World-Building chat can propose them for you — they show up as a card you Accept or Reject before anything is saved, same as every other chat proposal in this app.
+
+> [!TIP]
+> The **Image brief** field feeds the **Map** image preset (alongside the usual **Mood** preset) when generating a location's image — it produces a top-down/reference-style image instead of a mood illustration.
+
+## 3. Story Map
+
+_Path: **Story Map** in the left sidebar_
+
+A spatial diagram of how your locations relate to each other — separate from the **Relations** graph, which tracks factual/social relationships between any entries. Story Map edges describe physical/spatial layout instead:
+
+| Edge type    | Meaning                          |
+| ------------ | --------------------------------- |
+| Contains     | One location is nested inside another (e.g. a room inside a building) |
+| Borders      | Two locations are adjacent        |
+| Road To      | A route connects two locations    |
+| Portal To    | A non-physical connection (magic, teleportation, etc.) |
+| Below / Above | Vertical relationship (e.g. floors in the same building) |
+| Other        | Anything that doesn't fit the above |
+
+Click a location node to open its side panel, then **Add map link** to connect it to another location — pick **From**, **To**, **Type**, and optionally a short **Label** and **Description**. Locations with a **Floor** value on their place sheet show a small floor badge on their node. Use **Focus on region** (or a node's own **Focus on this region** button) to walk a location's `Contains` tree instead of viewing the whole map at once.
+
+**Export as image** saves the current view as a PNG — an illustration only, it's never re-imported. Story Map data (locations, links, and their layout) round-trips through story export/import.
+
+> [!NOTE]
+> If Story Map is empty, add some location entries in the Lorebook tool first, then come back — nodes are created from your existing Lorebook location entries, not from the Story Map tool itself.
+
+## 4. Tracking Full Place-Codex State
+
+For locations that matter enough to need real edit history — the way Character entries already do — flip **Track Place State** on a location entry. This promotes its place sheet into the same versioned system Character Codex uses: full snapshot history, and any future chat-proposed place-sheet changes go through the normal Approve / Reject / Edit-First review instead of applying immediately.
+
+## 5. Troubleshooting
+
+| Problem                                        | What's happening                                                                          |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Story Map shows no locations                     | Add location-category entries in the Lorebook first — Story Map reads from existing Lorebook entries |
+| Place sheet changes didn't take effect right away | Check whether **Track Place State** is on — once it is, changes go through Approve/Reject like Character Codex, they don't apply instantly |
+| "Track Place State" switch seems to do nothing at first | It only affects future place-sheet edits (manual and chat-proposed) — existing values are carried over automatically |
+| Map export button seems stuck                    | Image export can occasionally hang in unusual browser configurations — it will time out and show an error rather than staying stuck forever; try again |
+
+---
+
+Place sheets, Track Place State, and Story Map links all save to your story like any other Lorebook/Codex data — no separate export step needed beyond the normal story export.
