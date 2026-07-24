@@ -1042,6 +1042,12 @@ export function ChatInterface({
     // Fetched fresh here and threaded straight into generate() as extraContext rather than via
     // React state, since a setState right before calling generate() wouldn't be visible in
     // createPromptConfig's closure until the next render — see useChatMessageGeneration.ts.
+    //
+    // P1.3 — same pattern for WB/Editor/Outline's RAG "search"-role results, which the mount-time
+    // effect seeds once from the chat's title and never refreshes as the conversation drifts topic
+    // (see DECISIONS.md's "Chat Context Anchoring" entry, where this was deliberately deferred).
+    // Filtered to role==="search" only — anchor/related content is already unconditional in the
+    // mount-time codexContext block, so re-including it here would just duplicate it.
     const doSend = async () => {
         let extraContext: string | undefined;
         if (isResearchChat && input.trim()) {
@@ -1049,6 +1055,20 @@ export function ChatInterface({
             const searchText = ctx.webSearchResults.map(r => `- [${r.title}](${r.url}): ${r.snippet}`).join("\n");
             const pagesText = ctx.fetchedPages.map(p => `[FETCHED PAGE: ${p.title}](${p.url})\n${p.text}`).join("\n\n");
             extraContext = [searchText && `[WEB SEARCH RESULTS]\n${searchText}`, pagesText].filter(Boolean).join("\n\n") || undefined;
+        } else if ((isWorldBuildingChat || isEditorChat || isOutlineChat) && input.trim() && storyId) {
+            const ctx = await chatsApi.getContext(selectedChat.id, input);
+            const searchEntries = ctx.relevantCodexEntries.filter(e => e.role === "search");
+            const searchChapters = ctx.relevantChapterPassages.filter(p => p.role === "search");
+            const entryText = searchEntries.map(e => `- ${e.name} (${e.category}): ${e.excerpt}`).join("\n");
+            const chapterText = searchChapters.map(p => `- ${p.title}: ${p.excerpt}`).join("\n");
+            extraContext =
+                [
+                    entryText && `[UPDATED CONTEXT FOR THIS MESSAGE — Codex entries relevant to what you're currently asking]\n${entryText}`,
+                    chapterText &&
+                        `[UPDATED CONTEXT FOR THIS MESSAGE — chapter passages relevant to what you're currently asking]\n${chapterText}`
+                ]
+                    .filter(Boolean)
+                    .join("\n\n") || undefined;
         }
         await generate(input, extraContext);
         setInput("");
