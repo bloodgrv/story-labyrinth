@@ -112,4 +112,20 @@ Light filters: `max_length`, `starts_with`.
 
 ---
 
-*Synced from Hermes plans v0.3 gap-close. v0.4 (2026-07-22): pre-implementation codebase check, three corrections — see top of doc.*
+## Region packs (post-v1 / NP*)
+
+**Locked 2026-07-23, shipped 2026-07-24** — see `docs/Name_Generator_Region_Packs_Design.md`.
+
+- 24 region packs vendored into `server/data/name-packs/` (+ `manifest.json`), browsable and
+  installable in-app via Name Generator → Import → **Browse packs** (quality badge, Install/
+  Uninstall per pack, defaults to global scope).
+- Idempotent install (`pack:{packId}:{slug}` deterministic pool ids, `source: "pack"`) — a repeat
+  install is a clean no-op, not a duplicate stack; `replace: true` or the trash-icon Uninstall both
+  work.
+- **Kept hybrid core** — installing packs is opt-in per pack, nothing is boot-seeded.
+- The old file-picker JSON import path still works unchanged for any pack outside the vendored 24.
+- **NP3 (bulk multi-pack install presets) not built** — optional, no signal it's needed yet.
+
+---
+
+*Synced from Hermes plans v0.3 gap-close. v0.4 (2026-07-22): pre-implementation codebase check, three corrections — see top of doc. v0.4+ region packs pointer 2026-07-23; region packs NP0/NP1/NP2/NP4/NP5 shipped 2026-07-24.*

@@ -1,14 +1,16 @@
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { ImportLevel, NamePoolGender, NamePoolKind } from "@/types/nameGenerator";
-import { useImportCsvMutation, useImportJsonMutation } from "../hooks/useNameGeneratorQuery";
+import type { ImportLevel, NamePackQuality, NamePoolGender, NamePoolKind } from "@/types/nameGenerator";
+import { useImportCsvMutation, useImportJsonMutation, useInstallPackMutation, usePacksQuery, useUninstallPackMutation } from "../hooks/useNameGeneratorQuery";
 
 interface ImportPoolDialogProps {
     open: boolean;
@@ -16,12 +18,95 @@ interface ImportPoolDialogProps {
     storyId: string;
 }
 
+const QUALITY_VARIANT: Record<NamePackQuality, "secondary" | "outline"> = { solid: "secondary", cleaned: "outline", thin: "outline" };
+
+// NP2 (docs/Name_Generator_Region_Packs_Design.md) — vendored pack catalog, browsable/installable
+// in-app instead of only via the file-picker. Its own scope select defaults to global (locked
+// decision #P3 — region libraries are usually meant to be reused across every story), kept
+// separate from the file-picker tabs' own `level` state so switching tabs never changes the
+// other's chosen scope out from under the user.
+function BrowsePacksTab({ storyId }: { storyId: string }) {
+    const [packLevel, setPackLevel] = useState<ImportLevel>("global");
+    const { data, isLoading } = usePacksQuery(storyId);
+    const installMutation = useInstallPackMutation();
+    const uninstallMutation = useUninstallPackMutation();
+    const isPending = installMutation.isPending || uninstallMutation.isPending;
+
+    const scope = { level: packLevel, storyId: packLevel === "story" ? storyId : undefined };
+
+    return (
+        <div className="space-y-3">
+            <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Install scope</Label>
+                <Select value={packLevel} onValueChange={value => setPackLevel(value as ImportLevel)}>
+                    <SelectTrigger>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="global">Global (every story)</SelectItem>
+                        <SelectItem value="story">This story only</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <ScrollArea className="h-72 rounded-md border">
+                <div className="divide-y">
+                    {isLoading && <p className="p-3 text-sm text-muted-foreground">Loading packs…</p>}
+                    {data?.packs.map(pack => {
+                        const installedHere = packLevel === "story" ? pack.installed?.story : pack.installed?.global;
+                        return (
+                            <div key={pack.packId} className="flex items-start justify-between gap-3 p-3">
+                                <div className="min-w-0 space-y-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">{pack.displayName}</span>
+                                        <Badge variant={QUALITY_VARIANT[pack.quality]} className="text-[10px]">
+                                            {pack.quality}
+                                        </Badge>
+                                        {installedHere && (
+                                            <Badge variant="default" className="text-[10px]">
+                                                Installed
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        {pack.poolCount} pools · {pack.nameCount} names
+                                        {pack.notes ? ` — ${pack.notes}` : ""}
+                                    </p>
+                                </div>
+                                {installedHere ? (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        disabled={isPending}
+                                        onClick={() => uninstallMutation.mutate({ packId: pack.packId, data: scope })}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        disabled={isPending}
+                                        onClick={() => installMutation.mutate({ packId: pack.packId, data: scope })}
+                                    >
+                                        Install
+                                    </Button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </ScrollArea>
+        </div>
+    );
+}
+
 // NG5 — JSON pack (one or more complete pool definitions) or CSV (a plain name/tier list,
 // needing pool metadata supplied here since the file itself doesn't carry it). Both formats
 // support global or story-scoped import (locked decision #7); series scope isn't offered, same
 // as the generate panel's own filters.
 export function ImportPoolDialog({ open, onOpenChange, storyId }: ImportPoolDialogProps) {
-    const [format, setFormat] = useState<"json" | "csv">("json");
+    const [format, setFormat] = useState<"json" | "csv" | "browse">("json");
     const [level, setLevel] = useState<ImportLevel>("story");
     const [poolName, setPoolName] = useState("");
     const [kind, setKind] = useState<NamePoolKind>("first_name");
@@ -86,37 +171,44 @@ export function ImportPoolDialog({ open, onOpenChange, storyId }: ImportPoolDial
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    <Tabs value={format} onValueChange={value => setFormat(value as "json" | "csv")}>
+                    <Tabs value={format} onValueChange={value => setFormat(value as "json" | "csv" | "browse")}>
                         <TabsList>
                             <TabsTrigger value="json">JSON pack</TabsTrigger>
                             <TabsTrigger value="csv">CSV</TabsTrigger>
+                            <TabsTrigger value="browse">Browse packs</TabsTrigger>
                         </TabsList>
                     </Tabs>
 
-                    <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">
-                            {format === "json" ? "JSON file (one pool, or an array of pools)" : "CSV file (name, tier columns)"}
-                        </Label>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept={format === "json" ? ".json,application/json" : ".csv,text/csv"}
-                            className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:text-secondary-foreground"
-                        />
-                    </div>
+                    {format === "browse" && <BrowsePacksTab storyId={storyId} />}
 
-                    <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Scope</Label>
-                        <Select value={level} onValueChange={value => setLevel(value as ImportLevel)}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="story">This story only</SelectItem>
-                                <SelectItem value="global">Global (every story)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {format !== "browse" && (
+                        <>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">
+                                    {format === "json" ? "JSON file (one pool, or an array of pools)" : "CSV file (name, tier columns)"}
+                                </Label>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept={format === "json" ? ".json,application/json" : ".csv,text/csv"}
+                                    className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:text-secondary-foreground"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Scope</Label>
+                                <Select value={level} onValueChange={value => setLevel(value as ImportLevel)}>
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="story">This story only</SelectItem>
+                                        <SelectItem value="global">Global (every story)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </>
+                    )}
 
                     {format === "csv" && (
                         <div className="space-y-3 rounded-md border p-3">
@@ -177,12 +269,14 @@ export function ImportPoolDialog({ open, onOpenChange, storyId }: ImportPoolDial
 
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
-                        Cancel
+                        {format === "browse" ? "Close" : "Cancel"}
                     </Button>
-                    <Button onClick={handleSubmit} disabled={isPending}>
-                        {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                        Import
-                    </Button>
+                    {format !== "browse" && (
+                        <Button onClick={handleSubmit} disabled={isPending}>
+                            {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                            Import
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

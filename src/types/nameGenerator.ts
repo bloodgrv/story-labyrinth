@@ -2,7 +2,7 @@
 
 export type NamePoolKind = "first_name" | "surname";
 export type NamePoolGender = "male" | "female" | "unisex";
-export type NamePoolSource = "core" | "import" | "generated";
+export type NamePoolSource = "core" | "import" | "generated" | "pack";
 export type NamePoolLevel = "global" | "series" | "story";
 export type NamePoolTier = "common" | "uncommon" | "rare";
 
@@ -121,6 +121,44 @@ export interface CsvImportMeta {
     region: string;
     eraStart?: number;
     eraEnd?: number;
+}
+
+// Region packs (NP0-NP5, docs/Name_Generator_Region_Packs_Design.md) — vendored catalog of
+// offline-built region packs, installable in-app instead of via the file-picker JSON import.
+// installedAt is present only when the pack list is fetched with a scope (storyId), so the
+// Browse-packs UI can show "Installed"/"Install" per row.
+export type NamePackQuality = "solid" | "cleaned" | "thin";
+
+export interface NamePackManifestEntry {
+    packId: string;
+    file: string;
+    region: string;
+    displayName: string;
+    poolCount: number;
+    nameCount: number;
+    quality: NamePackQuality;
+    notes: string;
+    sourceCountries: string[];
+    version: number;
+    installed?: { global: boolean; story: boolean };
+}
+
+export interface InstallPackRequest {
+    level: ImportLevel;
+    storyId?: string;
+    replace?: boolean;
+}
+
+export interface InstallPackResult {
+    packId: string;
+    pools: NamePool[];
+    namesImported: number;
+    duplicatesSkipped: number;
+}
+
+export interface UninstallPackRequest {
+    level: ImportLevel;
+    storyId?: string;
 }
 
 // Favorites — NG7 (locked decision #8's "favorites" half of "Search + filters + favorites/recent

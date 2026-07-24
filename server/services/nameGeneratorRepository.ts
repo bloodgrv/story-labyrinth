@@ -140,6 +140,25 @@ export const getPoolById = async (poolId: string): Promise<NamePool | null> => {
     return row ? rowToPool(row) : null;
 };
 
+// Region packs (NP1) — pool ids for an installed pack are deterministic (`pack:{packId}:{slug}`,
+// see nameGeneratorPackService.ts), scoped by level+scopeId same as any other pool. Used both to
+// check "is this pack already installed here" and to clear a prior install before a replace/
+// uninstall (namePoolNames cascade-deletes via the FK).
+export const listPoolIdsByPrefix = async (prefix: string, level: NamePoolLevel, scopeId: string | null): Promise<string[]> => {
+    const conditions = [sql`${schema.namePools.id} like ${prefix + "%"}`, eq(schema.namePools.level, level)];
+    conditions.push(scopeId === null ? isNull(schema.namePools.scopeId) : eq(schema.namePools.scopeId, scopeId));
+    const rows = await db
+        .select({ id: schema.namePools.id })
+        .from(schema.namePools)
+        .where(and(...conditions));
+    return rows.map(r => r.id);
+};
+
+export const deletePoolsByIds = async (poolIds: string[]): Promise<void> => {
+    if (poolIds.length === 0) return;
+    await db.delete(schema.namePools).where(inArray(schema.namePools.id, poolIds));
+};
+
 // ── Pool creation (NG5 import) ──────────────────────────────────────────────────────
 
 export type InsertPoolParams = {

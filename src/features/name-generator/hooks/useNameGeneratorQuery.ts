@@ -6,6 +6,7 @@ import type {
     CsvImportMeta,
     GenerateNamesRequest,
     ImportLevel,
+    InstallPackRequest,
     MarkNameUsedRequest,
     NamePoolGender,
     NamePoolKind,
@@ -20,7 +21,8 @@ export const nameGeneratorKeys = {
         [...nameGeneratorKeys.all, "pools", params ?? {}] as const,
     used: (storyId: string) => [...nameGeneratorKeys.all, "used", storyId] as const,
     favorites: (storyId: string) => [...nameGeneratorKeys.all, "favorites", storyId] as const,
-    defaults: (storyId: string) => [...nameGeneratorKeys.all, "defaults", storyId] as const
+    defaults: (storyId: string) => [...nameGeneratorKeys.all, "defaults", storyId] as const,
+    packs: (storyId?: string) => [...nameGeneratorKeys.all, "packs", storyId ?? null] as const
 };
 
 export const usePoolsQuery = (params: { storyId: string; kind?: NamePoolKind; gender?: NamePoolGender; region?: string }) =>
@@ -124,3 +126,41 @@ export const useStoryDefaultsQuery = (storyId: string) =>
 // No toast/invalidation — this fires silently after every generate (see NameGeneratorPanel), a
 // visible "saved!" toast for a background sticky-preference write would just be noise.
 export const useSaveStoryDefaultsMutation = () => useMutation({ mutationFn: (data: SaveStoryNameDefaultsRequest) => nameGeneratorApi.saveDefaults(data) });
+
+// ── Region packs (NP0-NP5) ───────────────────────────────────────────────────────────
+
+export const usePacksQuery = (storyId?: string) =>
+    useQuery({
+        queryKey: nameGeneratorKeys.packs(storyId),
+        queryFn: () => nameGeneratorApi.listPacks(storyId)
+    });
+
+export const useInstallPackMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ packId, data }: { packId: string; data: InstallPackRequest }) => nameGeneratorApi.installPack(packId, data),
+        onSuccess: result => {
+            queryClient.invalidateQueries({ queryKey: nameGeneratorKeys.all });
+            const dupeNote = result.duplicatesSkipped > 0 ? ` (${result.duplicatesSkipped} duplicate name(s) skipped)` : "";
+            toast.success(
+                result.pools.length > 0
+                    ? `Installed ${result.pools.length} pool(s), ${result.namesImported} name(s)${dupeNote}`
+                    : "Already installed — no new pools to add"
+            );
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to install pack")
+    });
+};
+
+export const useUninstallPackMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ packId, data }: { packId: string; data: { level: ImportLevel; storyId?: string } }) =>
+            nameGeneratorApi.uninstallPack(packId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: nameGeneratorKeys.all });
+            toast.success("Pack uninstalled");
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to uninstall pack")
+    });
+};

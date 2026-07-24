@@ -1,0 +1,6628 @@
+[
+  {
+    "name": "Japanese Female (1980-present)",
+    "kind": "first_name",
+    "region": "Japanese",
+    "names": [
+      {
+        "name": "Yuka",
+        "tier": "common"
+      },
+      {
+        "name": "Yuko",
+        "tier": "common"
+      },
+      {
+        "name": "Keiko",
+        "tier": "common"
+      },
+      {
+        "name": "Tomoko",
+        "tier": "common"
+      },
+      {
+        "name": "Kaori",
+        "tier": "common"
+      },
+      {
+        "name": "Akiko",
+        "tier": "common"
+      },
+      {
+        "name": "Yoko",
+        "tier": "common"
+      },
+      {
+        "name": "Miki",
+        "tier": "common"
+      },
+      {
+        "name": "Megumi",
+        "tier": "common"
+      },
+      {
+        "name": "Miho",
+        "tier": "common"
+      },
+      {
+        "name": "Yumi",
+        "tier": "common"
+      },
+      {
+        "name": "Ayumi",
+        "tier": "common"
+      },
+      {
+        "name": "Aya",
+        "tier": "common"
+      },
+      {
+        "name": "Mai",
+        "tier": "common"
+      },
+      {
+        "name": "Ayaka",
+        "tier": "common"
+      },
+      {
+        "name": "Noriko",
+        "tier": "common"
+      },
+      {
+        "name": "Haruka",
+        "tier": "common"
+      },
+      {
+        "name": "Hiroko",
+        "tier": "common"
+      },
+      {
+        "name": "Mayumi",
+        "tier": "common"
+      },
+      {
+        "name": "Hiromi",
+        "tier": "common"
+      },
+      {
+        "name": "Naoko",
+        "tier": "common"
+      },
+      {
+        "name": "Yukiko",
+        "tier": "common"
+      },
+      {
+        "name": "Mariko",
+        "tier": "common"
+      },
+      {
+        "name": "Mika",
+        "tier": "common"
+      },
+      {
+        "name": "Mari",
+        "tier": "common"
+      },
+      {
+        "name": "Miyuki",
+        "tier": "common"
+      },
+      {
+        "name": "Rie",
+        "tier": "common"
+      },
+      {
+        "name": "Kana",
+        "tier": "common"
+      },
+      {
+        "name": "Eri",
+        "tier": "common"
+      },
+      {
+        "name": "Junko",
+        "tier": "common"
+      },
+      {
+        "name": "Yuri",
+        "tier": "common"
+      },
+      {
+        "name": "Saki",
+        "tier": "common"
+      },
+      {
+        "name": "Hitomi",
+        "tier": "common"
+      },
+      {
+        "name": "Sayaka",
+        "tier": "common"
+      },
+      {
+        "name": "Ayako",
+        "tier": "common"
+      },
+      {
+        "name": "Emi",
+        "tier": "common"
+      },
+      {
+        "name": "Kyoko",
+        "tier": "common"
+      },
+      {
+        "name": "Maki",
+        "tier": "common"
+      },
+      {
+        "name": "Erika",
+        "tier": "common"
+      },
+      {
+        "name": "Naomi",
+        "tier": "common"
+      },
+      {
+        "name": "Saori",
+        "tier": "common"
+      },
+      {
+        "name": "Yumiko",
+        "tier": "common"
+      },
+      {
+        "name": "Kanako",
+        "tier": "common"
+      },
+      {
+        "name": "Tomomi",
+        "tier": "common"
+      },
+      {
+        "name": "Yukari",
+        "tier": "common"
+      },
+      {
+        "name": "Risa",
+        "tier": "common"
+      },
+      {
+        "name": "Rina",
+        "tier": "common"
+      },
+      {
+        "name": "Sayuri",
+        "tier": "common"
+      },
+      {
+        "name": "Natsumi",
+        "tier": "common"
+      },
+      {
+        "name": "Yui",
+        "tier": "common"
+      },
+      {
+        "name": "Mami",
+        "tier": "common"
+      },
+      {
+        "name": "Mayu",
+        "tier": "common"
+      },
+      {
+        "name": "Chihiro",
+        "tier": "common"
+      },
+      {
+        "name": "Marina",
+        "tier": "common"
+      },
+      {
+        "name": "Reiko",
+        "tier": "common"
+      },
+      {
+        "name": "Eriko",
+        "tier": "common"
+      },
+      {
+        "name": "Midori",
+        "tier": "common"
+      },
+      {
+        "name": "Shoko",
+        "tier": "common"
+      },
+      {
+        "name": "Sachiko",
+        "tier": "common"
+      },
+      {
+        "name": "Aki",
+        "tier": "common"
+      },
+      {
+        "name": "Nao",
+        "tier": "common"
+      },
+      {
+        "name": "Akemi",
+        "tier": "common"
+      },
+      {
+        "name": "Masako",
+        "tier": "common"
+      },
+      {
+        "name": "Yoshiko",
+        "tier": "common"
+      },
+      {
+        "name": "Chie",
+        "tier": "common"
+      },
+      {
+        "name": "Shiori",
+        "tier": "common"
+      },
+      {
+        "name": "Ayano",
+        "tier": "common"
+      },
+      {
+        "name": "Kumiko",
+        "tier": "common"
+      },
+      {
+        "name": "Takako",
+        "tier": "common"
+      },
+      {
+        "name": "Atsuko",
+        "tier": "common"
+      },
+      {
+        "name": "Makiko",
+        "tier": "common"
+      },
+      {
+        "name": "Akane",
+        "tier": "common"
+      },
+      {
+        "name": "Maiko",
+        "tier": "common"
+      },
+      {
+        "name": "Michiko",
+        "tier": "common"
+      },
+      {
+        "name": "Satomi",
+        "tier": "common"
+      },
+      {
+        "name": "Shiho",
+        "tier": "common"
+      },
+      {
+        "name": "Asami",
+        "tier": "common"
+      },
+      {
+        "name": "Rika",
+        "tier": "common"
+      },
+      {
+        "name": "Misaki",
+        "tier": "common"
+      },
+      {
+        "name": "Yasuko",
+        "tier": "common"
+      },
+      {
+        "name": "Yuriko",
+        "tier": "common"
+      },
+      {
+        "name": "Ryoko",
+        "tier": "common"
+      },
+      {
+        "name": "Chika",
+        "tier": "common"
+      },
+      {
+        "name": "Nozomi",
+        "tier": "common"
+      },
+      {
+        "name": "Haruna",
+        "tier": "common"
+      },
+      {
+        "name": "Manami",
+        "tier": "common"
+      },
+      {
+        "name": "Chiaki",
+        "tier": "common"
+      },
+      {
+        "name": "Aiko",
+        "tier": "common"
+      },
+      {
+        "name": "Marcia",
+        "tier": "common"
+      },
+      {
+        "name": "Mio",
+        "tier": "common"
+      },
+      {
+        "name": "Mizuki",
+        "tier": "common"
+      },
+      {
+        "name": "Momoko",
+        "tier": "common"
+      },
+      {
+        "name": "Satoko",
+        "tier": "common"
+      },
+      {
+        "name": "Mina",
+        "tier": "common"
+      },
+      {
+        "name": "Izumi",
+        "tier": "common"
+      },
+      {
+        "name": "Harumi",
+        "tier": "common"
+      },
+      {
+        "name": "Minami",
+        "tier": "common"
+      },
+      {
+        "name": "Arisa",
+        "tier": "common"
+      },
+      {
+        "name": "Sakura",
+        "tier": "common"
+      },
+      {
+        "name": "Asuka",
+        "tier": "common"
+      },
+      {
+        "name": "Natsuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mayuko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Akari",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Emiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ami",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Azusa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yukie",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Natsuko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Maya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Claudia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kayo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Vanessa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Misa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Cristina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Moe",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nami",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Eiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Maho",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Reina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miyu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshie",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Misato",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Aoi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miku",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Minako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yuna",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Asako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Elena",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazuko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miwa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mao",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chiharu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chikako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Juliana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Monica",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Karina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kayoko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Silvia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Adriana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mie",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hikari",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rosa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nanako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Etsuko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kaho",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nanami",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Erina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shizuka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chieko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sonia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Erica",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Natalia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Airi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Madoka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rieko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshimi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yurika",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Priscila",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Camila",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Momoka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chisato",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ikuko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kanae",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fumiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Katia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tomoe",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yayoi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Lucia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mikiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Olga",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mieko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fernanda",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Luciana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kasumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kiyomi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nobuko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rena",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Saya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kimiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Carmen",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Wakana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Minori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Riho",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Riko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sae",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Narumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Regina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sanae",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Seiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Aline",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Cecilia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tatiana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Misako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Diana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Karin",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yukako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Leticia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masayo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mizuho",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Taeko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yurie",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazue",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Michiyo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hanako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sakiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hinako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ikumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Naho",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ayana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Larissa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Honoka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Helena",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Simone",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tomoka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Andrea",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Carla",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hisako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mitsuko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Renata",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Bruna",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Carolina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fumie",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sachi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sueli",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Alessandra",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miriam",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tomoyo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Aika",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chiho",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Cristiane",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Daniela",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Edna",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kozue",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kiyoko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mihoko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miyako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ayane",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mamiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kaede",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Haruko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shino",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yukino",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yuuka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ayami",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Cris",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Juri",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Momo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Wakako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Jun",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sachie",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Machiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toshiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Celia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Gabriela",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chinatsu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fatima",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazuyo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Marta",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ritsuko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miwako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tamami",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hanae",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Lilian",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Beatriz",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mariana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chizuru",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Irina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Thais",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Victoria",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nagisa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rikako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Satsuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Cintia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Elisa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mutsumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Reika",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rino",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Elaine",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Risako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miyoko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ayu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masae",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mikako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Setsuko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Debora",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Raquel",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Bianca",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sawako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sumiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chiemi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sachiyo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Lina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rosana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tania",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yukina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Eliane",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fumika",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Motoko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rumiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Saeko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fabiana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Andreia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chisa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Eliana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hiroe",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kurumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Denise",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hazuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Isabel",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Terumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tiemi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kyoka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Angelica",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nanae",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rita",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sayo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yasuyo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Alexandra",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoriko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Marisa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Luana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Akina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Irene",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kuniko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yuuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yurina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chizuko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Flavia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Luiza",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rin",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mirian",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sayoko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Roberta",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tereza",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toshie",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Amelia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Moeko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kae",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Akiyo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Eliza",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hisae",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kotomi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Michele",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yume",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Caroline",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Lidia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sumire",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ana Paula",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Evelyn",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tatiane",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Vivian",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Emilia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mayuka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Paola",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Anita",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Dani",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Eva",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Jaqueline",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Susana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sabrina",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Vera",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Maika",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sumie",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Anri",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Veronica",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Milena",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mizue",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rosangela",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Aimi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Azumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Elza",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kanna",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sayumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Liliana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Lourdes",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Meire",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Misuzu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sofia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yuiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Alisa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Neusa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sakurako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kanami",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hideko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Joy",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Patty",
+        "tier": "rare"
+      },
+      {
+        "name": "Sheila",
+        "tier": "rare"
+      },
+      {
+        "name": "Valeria",
+        "tier": "rare"
+      },
+      {
+        "name": "Ekaterina",
+        "tier": "rare"
+      },
+      {
+        "name": "Marika",
+        "tier": "rare"
+      },
+      {
+        "name": "Anastasia",
+        "tier": "rare"
+      },
+      {
+        "name": "Jasmine",
+        "tier": "rare"
+      },
+      {
+        "name": "Marlene",
+        "tier": "rare"
+      },
+      {
+        "name": "Mayo",
+        "tier": "rare"
+      },
+      {
+        "name": "Mia",
+        "tier": "rare"
+      },
+      {
+        "name": "Miu",
+        "tier": "rare"
+      },
+      {
+        "name": "Miya",
+        "tier": "rare"
+      },
+      {
+        "name": "Suzuka",
+        "tier": "rare"
+      },
+      {
+        "name": "Viviane",
+        "tier": "rare"
+      },
+      {
+        "name": "Chinami",
+        "tier": "rare"
+      },
+      {
+        "name": "Danielle",
+        "tier": "rare"
+      },
+      {
+        "name": "Giovanna",
+        "tier": "rare"
+      },
+      {
+        "name": "Mitsue",
+        "tier": "rare"
+      },
+      {
+        "name": "Celina",
+        "tier": "rare"
+      },
+      {
+        "name": "Karla",
+        "tier": "rare"
+      },
+      {
+        "name": "Marcela",
+        "tier": "rare"
+      },
+      {
+        "name": "Nahoko",
+        "tier": "rare"
+      },
+      {
+        "name": "Norma",
+        "tier": "rare"
+      },
+      {
+        "name": "Hiro",
+        "tier": "rare"
+      },
+      {
+        "name": "Rosario",
+        "tier": "rare"
+      },
+      {
+        "name": "Sana",
+        "tier": "rare"
+      },
+      {
+        "name": "Asumi",
+        "tier": "rare"
+      },
+      {
+        "name": "Gladys",
+        "tier": "rare"
+      },
+      {
+        "name": "Moeka",
+        "tier": "rare"
+      },
+      {
+        "name": "Alicia",
+        "tier": "rare"
+      },
+      {
+        "name": "Kie",
+        "tier": "rare"
+      },
+      {
+        "name": "Konomi",
+        "tier": "rare"
+      },
+      {
+        "name": "Makoto",
+        "tier": "rare"
+      },
+      {
+        "name": "Miharu",
+        "tier": "rare"
+      },
+      {
+        "name": "Neide",
+        "tier": "rare"
+      },
+      {
+        "name": "Nodoka",
+        "tier": "rare"
+      },
+      {
+        "name": "Silvana",
+        "tier": "rare"
+      },
+      {
+        "name": "Sonoko",
+        "tier": "rare"
+      },
+      {
+        "name": "Cida",
+        "tier": "rare"
+      },
+      {
+        "name": "Meg",
+        "tier": "rare"
+      },
+      {
+        "name": "Ran",
+        "tier": "rare"
+      },
+      {
+        "name": "Remi",
+        "tier": "rare"
+      },
+      {
+        "name": "Clara",
+        "tier": "rare"
+      },
+      {
+        "name": "Esther",
+        "tier": "rare"
+      },
+      {
+        "name": "Runa",
+        "tier": "rare"
+      },
+      {
+        "name": "Yuumi",
+        "tier": "rare"
+      },
+      {
+        "name": "Ann",
+        "tier": "rare"
+      },
+      {
+        "name": "Marin",
+        "tier": "rare"
+      },
+      {
+        "name": "Mitsuyo",
+        "tier": "rare"
+      },
+      {
+        "name": "Momoe",
+        "tier": "rare"
+      },
+      {
+        "name": "Natsu",
+        "tier": "rare"
+      },
+      {
+        "name": "Norie",
+        "tier": "rare"
+      },
+      {
+        "name": "Youko",
+        "tier": "rare"
+      },
+      {
+        "name": "Akie",
+        "tier": "rare"
+      },
+      {
+        "name": "Angie",
+        "tier": "rare"
+      },
+      {
+        "name": "Isabella",
+        "tier": "rare"
+      },
+      {
+        "name": "Akiho",
+        "tier": "rare"
+      },
+      {
+        "name": "Kimie",
+        "tier": "rare"
+      },
+      {
+        "name": "Leila",
+        "tier": "rare"
+      },
+      {
+        "name": "Samantha",
+        "tier": "rare"
+      },
+      {
+        "name": "Seina",
+        "tier": "rare"
+      },
+      {
+        "name": "Bia",
+        "tier": "rare"
+      },
+      {
+        "name": "Ikue",
+        "tier": "rare"
+      },
+      {
+        "name": "Sophia",
+        "tier": "rare"
+      },
+      {
+        "name": "Yulia",
+        "tier": "rare"
+      },
+      {
+        "name": "Honami",
+        "tier": "rare"
+      },
+      {
+        "name": "Mirai",
+        "tier": "rare"
+      },
+      {
+        "name": "Ryo",
+        "tier": "rare"
+      },
+      {
+        "name": "Yoshino",
+        "tier": "rare"
+      },
+      {
+        "name": "Hanna",
+        "tier": "rare"
+      },
+      {
+        "name": "Lorena",
+        "tier": "rare"
+      },
+      {
+        "name": "Mitiko",
+        "tier": "rare"
+      },
+      {
+        "name": "Mitsuki",
+        "tier": "rare"
+      },
+      {
+        "name": "Roseli",
+        "tier": "rare"
+      },
+      {
+        "name": "Seika",
+        "tier": "rare"
+      },
+      {
+        "name": "Ako",
+        "tier": "rare"
+      },
+      {
+        "name": "Alina",
+        "tier": "rare"
+      },
+      {
+        "name": "Luna",
+        "tier": "rare"
+      },
+      {
+        "name": "Nadia",
+        "tier": "rare"
+      },
+      {
+        "name": "Sayako",
+        "tier": "rare"
+      },
+      {
+        "name": "Fuka",
+        "tier": "rare"
+      },
+      {
+        "name": "Nathalia",
+        "tier": "rare"
+      },
+      {
+        "name": "Sari",
+        "tier": "rare"
+      },
+      {
+        "name": "Suzana",
+        "tier": "rare"
+      },
+      {
+        "name": "Vivi",
+        "tier": "rare"
+      },
+      {
+        "name": "Ayame",
+        "tier": "rare"
+      },
+      {
+        "name": "Saaya",
+        "tier": "rare"
+      },
+      {
+        "name": "Yasmin",
+        "tier": "rare"
+      },
+      {
+        "name": "Cherry",
+        "tier": "rare"
+      },
+      {
+        "name": "Daniele",
+        "tier": "rare"
+      },
+      {
+        "name": "Ivone",
+        "tier": "rare"
+      },
+      {
+        "name": "Jacqueline",
+        "tier": "rare"
+      },
+      {
+        "name": "Katherine",
+        "tier": "rare"
+      },
+      {
+        "name": "Kimi",
+        "tier": "rare"
+      },
+      {
+        "name": "Roxana",
+        "tier": "rare"
+      },
+      {
+        "name": "Ruri",
+        "tier": "rare"
+      },
+      {
+        "name": "Shion",
+        "tier": "rare"
+      },
+      {
+        "name": "Solange",
+        "tier": "rare"
+      },
+      {
+        "name": "Yukimi",
+        "tier": "rare"
+      },
+      {
+        "name": "Aina",
+        "tier": "rare"
+      }
+    ],
+    "gender": "female",
+    "eraStart": 1980
+  },
+  {
+    "name": "Japanese Male (1980-present)",
+    "kind": "first_name",
+    "region": "Japanese",
+    "names": [
+      {
+        "name": "Takashi",
+        "tier": "common"
+      },
+      {
+        "name": "Hiroshi",
+        "tier": "common"
+      },
+      {
+        "name": "Yusuke",
+        "tier": "common"
+      },
+      {
+        "name": "Daisuke",
+        "tier": "common"
+      },
+      {
+        "name": "Kenji",
+        "tier": "common"
+      },
+      {
+        "name": "Akira",
+        "tier": "common"
+      },
+      {
+        "name": "Hiroyuki",
+        "tier": "common"
+      },
+      {
+        "name": "Takeshi",
+        "tier": "common"
+      },
+      {
+        "name": "Satoshi",
+        "tier": "common"
+      },
+      {
+        "name": "Hiroki",
+        "tier": "common"
+      },
+      {
+        "name": "Ryo",
+        "tier": "common"
+      },
+      {
+        "name": "Atsushi",
+        "tier": "common"
+      },
+      {
+        "name": "Makoto",
+        "tier": "common"
+      },
+      {
+        "name": "Koji",
+        "tier": "common"
+      },
+      {
+        "name": "Masahiro",
+        "tier": "common"
+      },
+      {
+        "name": "Takahiro",
+        "tier": "common"
+      },
+      {
+        "name": "Takuya",
+        "tier": "common"
+      },
+      {
+        "name": "Jun",
+        "tier": "common"
+      },
+      {
+        "name": "Naoki",
+        "tier": "common"
+      },
+      {
+        "name": "Keisuke",
+        "tier": "common"
+      },
+      {
+        "name": "Yuta",
+        "tier": "common"
+      },
+      {
+        "name": "Yuji",
+        "tier": "common"
+      },
+      {
+        "name": "Tatsuya",
+        "tier": "common"
+      },
+      {
+        "name": "Ricardo",
+        "tier": "common"
+      },
+      {
+        "name": "Masaki",
+        "tier": "common"
+      },
+      {
+        "name": "Carlos",
+        "tier": "common"
+      },
+      {
+        "name": "Takayuki",
+        "tier": "common"
+      },
+      {
+        "name": "Kazuki",
+        "tier": "common"
+      },
+      {
+        "name": "Hiroaki",
+        "tier": "common"
+      },
+      {
+        "name": "Kentaro",
+        "tier": "common"
+      },
+      {
+        "name": "Marcelo",
+        "tier": "common"
+      },
+      {
+        "name": "Kohei",
+        "tier": "common"
+      },
+      {
+        "name": "Hideki",
+        "tier": "common"
+      },
+      {
+        "name": "Koichi",
+        "tier": "common"
+      },
+      {
+        "name": "Masato",
+        "tier": "common"
+      },
+      {
+        "name": "Ryota",
+        "tier": "common"
+      },
+      {
+        "name": "Tomohiro",
+        "tier": "common"
+      },
+      {
+        "name": "Masayuki",
+        "tier": "common"
+      },
+      {
+        "name": "Kenta",
+        "tier": "common"
+      },
+      {
+        "name": "Marcos",
+        "tier": "common"
+      },
+      {
+        "name": "Roberto",
+        "tier": "common"
+      },
+      {
+        "name": "Paulo",
+        "tier": "common"
+      },
+      {
+        "name": "Yasuhiro",
+        "tier": "common"
+      },
+      {
+        "name": "Takumi",
+        "tier": "common"
+      },
+      {
+        "name": "Kenichi",
+        "tier": "common"
+      },
+      {
+        "name": "Kazuhiro",
+        "tier": "common"
+      },
+      {
+        "name": "Tetsuya",
+        "tier": "common"
+      },
+      {
+        "name": "Toru",
+        "tier": "common"
+      },
+      {
+        "name": "Yuya",
+        "tier": "common"
+      },
+      {
+        "name": "Kei",
+        "tier": "common"
+      },
+      {
+        "name": "Jorge",
+        "tier": "common"
+      },
+      {
+        "name": "Shinya",
+        "tier": "common"
+      },
+      {
+        "name": "Masashi",
+        "tier": "common"
+      },
+      {
+        "name": "Tsuyoshi",
+        "tier": "common"
+      },
+      {
+        "name": "Yuichi",
+        "tier": "common"
+      },
+      {
+        "name": "Ryosuke",
+        "tier": "common"
+      },
+      {
+        "name": "Shota",
+        "tier": "common"
+      },
+      {
+        "name": "Akihiro",
+        "tier": "common"
+      },
+      {
+        "name": "Hiro",
+        "tier": "common"
+      },
+      {
+        "name": "Sergio",
+        "tier": "common"
+      },
+      {
+        "name": "Fabio",
+        "tier": "common"
+      },
+      {
+        "name": "Kazuya",
+        "tier": "common"
+      },
+      {
+        "name": "Eduardo",
+        "tier": "common"
+      },
+      {
+        "name": "Daiki",
+        "tier": "common"
+      },
+      {
+        "name": "Shinji",
+        "tier": "common"
+      },
+      {
+        "name": "Shinichi",
+        "tier": "common"
+      },
+      {
+        "name": "Yutaka",
+        "tier": "common"
+      },
+      {
+        "name": "Mohamed",
+        "tier": "common"
+      },
+      {
+        "name": "Yoshihiro",
+        "tier": "common"
+      },
+      {
+        "name": "Shingo",
+        "tier": "common"
+      },
+      {
+        "name": "Yosuke",
+        "tier": "common"
+      },
+      {
+        "name": "Kosuke",
+        "tier": "common"
+      },
+      {
+        "name": "Fernando",
+        "tier": "common"
+      },
+      {
+        "name": "Jose",
+        "tier": "common"
+      },
+      {
+        "name": "Shunsuke",
+        "tier": "common"
+      },
+      {
+        "name": "Osamu",
+        "tier": "common"
+      },
+      {
+        "name": "Keita",
+        "tier": "common"
+      },
+      {
+        "name": "Luis",
+        "tier": "common"
+      },
+      {
+        "name": "Mario",
+        "tier": "common"
+      },
+      {
+        "name": "Marcio",
+        "tier": "common"
+      },
+      {
+        "name": "Satoru",
+        "tier": "common"
+      },
+      {
+        "name": "Minoru",
+        "tier": "common"
+      },
+      {
+        "name": "Hitoshi",
+        "tier": "common"
+      },
+      {
+        "name": "Eiji",
+        "tier": "common"
+      },
+      {
+        "name": "Sho",
+        "tier": "common"
+      },
+      {
+        "name": "Naoya",
+        "tier": "common"
+      },
+      {
+        "name": "Tomoyuki",
+        "tier": "common"
+      },
+      {
+        "name": "Edson",
+        "tier": "common"
+      },
+      {
+        "name": "Hideaki",
+        "tier": "common"
+      },
+      {
+        "name": "Wataru",
+        "tier": "common"
+      },
+      {
+        "name": "Rafael",
+        "tier": "common"
+      },
+      {
+        "name": "Shin",
+        "tier": "common"
+      },
+      {
+        "name": "Tomoya",
+        "tier": "common"
+      },
+      {
+        "name": "Kazuo",
+        "tier": "common"
+      },
+      {
+        "name": "Shohei",
+        "tier": "common"
+      },
+      {
+        "name": "Koki",
+        "tier": "common"
+      },
+      {
+        "name": "Naoto",
+        "tier": "common"
+      },
+      {
+        "name": "Bruno",
+        "tier": "common"
+      },
+      {
+        "name": "Shun",
+        "tier": "common"
+      },
+      {
+        "name": "Junichi",
+        "tier": "common"
+      },
+      {
+        "name": "Yohei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshiaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shogo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Taro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Alexandre",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tadashi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masanori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kiyoshi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hayato",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Seiji",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kota",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rodrigo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Andre",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toshiyuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshinori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kotaro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masaya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takuma",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shintaro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshiyuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masaru",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hideyuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Manabu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toshio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hajime",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masaaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Daichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Khan",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshiki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hideo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tomoki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Julio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takao",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yuto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takanori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Antonio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Thiago",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shigeru",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yasushi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Akio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kensuke",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yukio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tsutomu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshitaka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nobuyuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Anderson",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masahiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hirokazu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takaaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shuhei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Cesar",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Gabriel",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kento",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nelson",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Claudio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masatoshi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Taku",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yuichiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Taichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masao",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ryuji",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hirofumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazuma",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Luiz",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toshihiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yuuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yasuyuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Keiichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toshiaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Taiki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Isao",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hisashi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazunori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Felipe",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Junya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hirotaka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Gustavo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ryohei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masakazu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kengo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ichiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Renato",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Taka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hiroto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Juan",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Leandro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mauricio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Akihiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Junior",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shoji",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shuichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takafumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazuhiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Leonardo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toshiki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazuyuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Pedro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yasuo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Alberto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tomoaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mohammad",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Diego",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Keiji",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Naoyuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masayoshi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Abdul",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mitsuhiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rogerio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shinichiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Marco",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Noboru",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Susumu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masataka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ryuichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tsubasa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mitsuru",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Joao",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yuma",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miguel",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nobuhiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shinsuke",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shuji",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masafumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kyohei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yukihiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yutaro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takeo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tetsuo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shigeki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Milton",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshikazu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Helio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Katsuya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kaito",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Noriyuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazuaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hironori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ahmad",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mauro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Dai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Junji",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mamoru",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nobuo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Malik",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takuro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Guilherme",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toshi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toshiya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shoichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Koichiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Seiya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Wilson",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Keigo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ryu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ryuta",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tomonori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Anthony",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tiago",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toshihiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Celso",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Luciano",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yudai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Katsumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tatsuo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Jin",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shotaro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshihiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Akinori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nobuaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Henrique",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kenichiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hugo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazuyoshi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Christian",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takehiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Teppei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Flavio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tetsuro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Noriaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yasunori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Adriano",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Jay",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tsukasa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Vinicius",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Haruki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Norio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Suguru",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Aki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Jiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mitsuo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ryutaro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tomohiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kousuke",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kouji",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ryoji",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takeru",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hidenori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mikio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kaz",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shinnosuke",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazumasa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ryotaro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Akihito",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Naohiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Soichiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Motoki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshinobu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Emerson",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Riku",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ryoichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Gen",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshifumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fumio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Dinesh",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Isamu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Eiichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Max",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Walter",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Katsuhiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Issei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Jumpei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kouki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shunichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Silvio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tomokazu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fumiya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hidetoshi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kouichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hide",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nao",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yasuaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hiroya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Deepak",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masahito",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Katsuhiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takaya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshihisa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Erick",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kouhei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hiromi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masaharu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Singh",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takayoshi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toshikazu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Manuel",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Krishna",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shigeo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Willian",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Jaime",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazutaka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Robson",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ronaldo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Wagner",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hidekazu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Manoj",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nicolas",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tatsuro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Francisco",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Gaku",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hiromitsu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Javier",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yasutaka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Amir",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hideto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Matheus",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Taishi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takehiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Alessandro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mehmet",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ryusuke",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tatsuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Daigo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takahiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Taisuke",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yasuhiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazuto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takuto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tetsu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Alejandro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shimpei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ren",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hasan",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sota",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kodai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mizuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Prakash",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hiromichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kamal",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Danilo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Michio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Omar",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shigeyuki",
+        "tier": "rare"
+      },
+      {
+        "name": "Yuri",
+        "tier": "rare"
+      },
+      {
+        "name": "Genki",
+        "tier": "rare"
+      },
+      {
+        "name": "Ram",
+        "tier": "rare"
+      },
+      {
+        "name": "Seiichi",
+        "tier": "rare"
+      },
+      {
+        "name": "Yasu",
+        "tier": "rare"
+      },
+      {
+        "name": "Kazushi",
+        "tier": "rare"
+      },
+      {
+        "name": "Sandro",
+        "tier": "rare"
+      },
+      {
+        "name": "Taiga",
+        "tier": "rare"
+      },
+      {
+        "name": "Diogo",
+        "tier": "rare"
+      },
+      {
+        "name": "Katsunori",
+        "tier": "rare"
+      },
+      {
+        "name": "Denis",
+        "tier": "rare"
+      },
+      {
+        "name": "Yoichiro",
+        "tier": "rare"
+      },
+      {
+        "name": "Yusaku",
+        "tier": "rare"
+      },
+      {
+        "name": "Kunio",
+        "tier": "rare"
+      },
+      {
+        "name": "Masanobu",
+        "tier": "rare"
+      },
+      {
+        "name": "Shaikh",
+        "tier": "rare"
+      },
+      {
+        "name": "Shunji",
+        "tier": "rare"
+      },
+      {
+        "name": "Takahisa",
+        "tier": "rare"
+      },
+      {
+        "name": "Yoshiharu",
+        "tier": "rare"
+      },
+      {
+        "name": "Fumiaki",
+        "tier": "rare"
+      },
+      {
+        "name": "Haruo",
+        "tier": "rare"
+      },
+      {
+        "name": "Keiichiro",
+        "tier": "rare"
+      },
+      {
+        "name": "Yoshimasa",
+        "tier": "rare"
+      },
+      {
+        "name": "Yuhei",
+        "tier": "rare"
+      },
+      {
+        "name": "Akito",
+        "tier": "rare"
+      },
+      {
+        "name": "Junpei",
+        "tier": "rare"
+      },
+      {
+        "name": "Ippei",
+        "tier": "rare"
+      },
+      {
+        "name": "Kenzo",
+        "tier": "rare"
+      },
+      {
+        "name": "Raj",
+        "tier": "rare"
+      },
+      {
+        "name": "Ryoma",
+        "tier": "rare"
+      },
+      {
+        "name": "Yoshihito",
+        "tier": "rare"
+      },
+      {
+        "name": "Kunihiko",
+        "tier": "rare"
+      },
+      {
+        "name": "Kozo",
+        "tier": "rare"
+      },
+      {
+        "name": "Kyosuke",
+        "tier": "rare"
+      },
+      {
+        "name": "Rajesh",
+        "tier": "rare"
+      },
+      {
+        "name": "Yousuke",
+        "tier": "rare"
+      },
+      {
+        "name": "Renan",
+        "tier": "rare"
+      },
+      {
+        "name": "Fabiano",
+        "tier": "rare"
+      },
+      {
+        "name": "Hiroyasu",
+        "tier": "rare"
+      },
+      {
+        "name": "Katsuyuki",
+        "tier": "rare"
+      },
+      {
+        "name": "Suresh",
+        "tier": "rare"
+      },
+      {
+        "name": "Hassan",
+        "tier": "rare"
+      },
+      {
+        "name": "Igor",
+        "tier": "rare"
+      },
+      {
+        "name": "Lee",
+        "tier": "rare"
+      },
+      {
+        "name": "Kent",
+        "tier": "rare"
+      },
+      {
+        "name": "Ramesh",
+        "tier": "rare"
+      },
+      {
+        "name": "Toshiro",
+        "tier": "rare"
+      },
+      {
+        "name": "Felix",
+        "tier": "rare"
+      },
+      {
+        "name": "Roshan",
+        "tier": "rare"
+      },
+      {
+        "name": "Caio",
+        "tier": "rare"
+      },
+      {
+        "name": "Raul",
+        "tier": "rare"
+      },
+      {
+        "name": "Reo",
+        "tier": "rare"
+      },
+      {
+        "name": "Yuzo",
+        "tier": "rare"
+      },
+      {
+        "name": "Hiromasa",
+        "tier": "rare"
+      },
+      {
+        "name": "Kazuhisa",
+        "tier": "rare"
+      },
+      {
+        "name": "Yoji",
+        "tier": "rare"
+      },
+      {
+        "name": "Josh",
+        "tier": "rare"
+      },
+      {
+        "name": "Kazuhito",
+        "tier": "rare"
+      },
+      {
+        "name": "Kazunari",
+        "tier": "rare"
+      },
+      {
+        "name": "Mustafa",
+        "tier": "rare"
+      },
+      {
+        "name": "Shunya",
+        "tier": "rare"
+      },
+      {
+        "name": "Hironobu",
+        "tier": "rare"
+      },
+      {
+        "name": "Kunihiro",
+        "tier": "rare"
+      },
+      {
+        "name": "Michel",
+        "tier": "rare"
+      },
+      {
+        "name": "Nobuhiko",
+        "tier": "rare"
+      },
+      {
+        "name": "Norihiro",
+        "tier": "rare"
+      },
+      {
+        "name": "Yushi",
+        "tier": "rare"
+      },
+      {
+        "name": "Gilberto",
+        "tier": "rare"
+      },
+      {
+        "name": "Hiromu",
+        "tier": "rare"
+      },
+      {
+        "name": "Imran",
+        "tier": "rare"
+      },
+      {
+        "name": "Prince",
+        "tier": "rare"
+      },
+      {
+        "name": "Edgar",
+        "tier": "rare"
+      },
+      {
+        "name": "Abdullah",
+        "tier": "rare"
+      },
+      {
+        "name": "Amit",
+        "tier": "rare"
+      },
+      {
+        "name": "Hisao",
+        "tier": "rare"
+      },
+      {
+        "name": "Kiyotaka",
+        "tier": "rare"
+      },
+      {
+        "name": "Lahiru",
+        "tier": "rare"
+      },
+      {
+        "name": "Santosh",
+        "tier": "rare"
+      },
+      {
+        "name": "Takahito",
+        "tier": "rare"
+      },
+      {
+        "name": "Toshinori",
+        "tier": "rare"
+      },
+      {
+        "name": "Anil",
+        "tier": "rare"
+      },
+      {
+        "name": "Ikuo",
+        "tier": "rare"
+      },
+      {
+        "name": "Kazutoshi",
+        "tier": "rare"
+      },
+      {
+        "name": "Pablo",
+        "tier": "rare"
+      },
+      {
+        "name": "Raju",
+        "tier": "rare"
+      },
+      {
+        "name": "Armando",
+        "tier": "rare"
+      },
+      {
+        "name": "Chikara",
+        "tier": "rare"
+      },
+      {
+        "name": "Ibrahim",
+        "tier": "rare"
+      },
+      {
+        "name": "Junichiro",
+        "tier": "rare"
+      },
+      {
+        "name": "Mahesh",
+        "tier": "rare"
+      },
+      {
+        "name": "Nori",
+        "tier": "rare"
+      },
+      {
+        "name": "Nozomu",
+        "tier": "rare"
+      },
+      {
+        "name": "Ryunosuke",
+        "tier": "rare"
+      },
+      {
+        "name": "Syed",
+        "tier": "rare"
+      },
+      {
+        "name": "Yugo",
+        "tier": "rare"
+      },
+      {
+        "name": "Augusto",
+        "tier": "rare"
+      },
+      {
+        "name": "Cristiano",
+        "tier": "rare"
+      },
+      {
+        "name": "Jesus",
+        "tier": "rare"
+      },
+      {
+        "name": "Keizo",
+        "tier": "rare"
+      }
+    ],
+    "gender": "male",
+    "eraStart": 1980
+  },
+  {
+    "name": "Japanese Unisex (1980-present)",
+    "kind": "first_name",
+    "region": "Japanese",
+    "names": [
+      {
+        "name": "Yuki",
+        "tier": "common"
+      },
+      {
+        "name": "Kaoru",
+        "tier": "common"
+      },
+      {
+        "name": "Masami",
+        "tier": "common"
+      },
+      {
+        "name": "Hikaru",
+        "tier": "common"
+      },
+      {
+        "name": "Sato",
+        "tier": "common"
+      },
+      {
+        "name": "Rei",
+        "tier": "common"
+      },
+      {
+        "name": "Tomo",
+        "tier": "common"
+      },
+      {
+        "name": "Tanaka",
+        "tier": "common"
+      },
+      {
+        "name": "Shinobu",
+        "tier": "common"
+      },
+      {
+        "name": "Suzuki",
+        "tier": "common"
+      },
+      {
+        "name": "Takahashi",
+        "tier": "common"
+      },
+      {
+        "name": "Tomoko",
+        "tier": "common"
+      },
+      {
+        "name": "Yuko",
+        "tier": "common"
+      },
+      {
+        "name": "Watanabe",
+        "tier": "common"
+      },
+      {
+        "name": "Ito",
+        "tier": "common"
+      },
+      {
+        "name": "Nakamura",
+        "tier": "common"
+      },
+      {
+        "name": "Rui",
+        "tier": "common"
+      },
+      {
+        "name": "Yamamoto",
+        "tier": "common"
+      },
+      {
+        "name": "Yoko",
+        "tier": "common"
+      },
+      {
+        "name": "Akiko",
+        "tier": "common"
+      },
+      {
+        "name": "Keiko",
+        "tier": "common"
+      },
+      {
+        "name": "Saito",
+        "tier": "common"
+      },
+      {
+        "name": "Yuka",
+        "tier": "common"
+      },
+      {
+        "name": "Kaori",
+        "tier": "common"
+      },
+      {
+        "name": "Kobayashi",
+        "tier": "common"
+      },
+      {
+        "name": "Yamada",
+        "tier": "common"
+      },
+      {
+        "name": "Angel",
+        "tier": "common"
+      },
+      {
+        "name": "Yuu",
+        "tier": "common"
+      },
+      {
+        "name": "Kato",
+        "tier": "common"
+      },
+      {
+        "name": "Takashi",
+        "tier": "common"
+      },
+      {
+        "name": "Yoshida",
+        "tier": "common"
+      },
+      {
+        "name": "Hiroshi",
+        "tier": "common"
+      },
+      {
+        "name": "Kim",
+        "tier": "common"
+      },
+      {
+        "name": "Tamaki",
+        "tier": "common"
+      },
+      {
+        "name": "Miki",
+        "tier": "common"
+      },
+      {
+        "name": "Sasaki",
+        "tier": "common"
+      },
+      {
+        "name": "Mayumi",
+        "tier": "common"
+      },
+      {
+        "name": "Noriko",
+        "tier": "common"
+      },
+      {
+        "name": "Junko",
+        "tier": "common"
+      },
+      {
+        "name": "Haru",
+        "tier": "common"
+      },
+      {
+        "name": "Akira",
+        "tier": "common"
+      },
+      {
+        "name": "Aya",
+        "tier": "common"
+      },
+      {
+        "name": "Mika",
+        "tier": "common"
+      },
+      {
+        "name": "Yan",
+        "tier": "common"
+      },
+      {
+        "name": "Naoko",
+        "tier": "common"
+      },
+      {
+        "name": "Hidemi",
+        "tier": "common"
+      },
+      {
+        "name": "Yamaguchi",
+        "tier": "common"
+      },
+      {
+        "name": "Mari",
+        "tier": "common"
+      },
+      {
+        "name": "Shimizu",
+        "tier": "common"
+      },
+      {
+        "name": "Mori",
+        "tier": "common"
+      },
+      {
+        "name": "Abe",
+        "tier": "common"
+      },
+      {
+        "name": "Maki",
+        "tier": "common"
+      },
+      {
+        "name": "Chan",
+        "tier": "common"
+      },
+      {
+        "name": "Ayumi",
+        "tier": "common"
+      },
+      {
+        "name": "Takeshi",
+        "tier": "common"
+      },
+      {
+        "name": "Matsumoto",
+        "tier": "common"
+      },
+      {
+        "name": "Ayako",
+        "tier": "common"
+      },
+      {
+        "name": "Mai",
+        "tier": "common"
+      },
+      {
+        "name": "Kimura",
+        "tier": "common"
+      },
+      {
+        "name": "Megumi",
+        "tier": "common"
+      },
+      {
+        "name": "Naomi",
+        "tier": "common"
+      },
+      {
+        "name": "Daisuke",
+        "tier": "common"
+      },
+      {
+        "name": "Hiromi",
+        "tier": "common"
+      },
+      {
+        "name": "Yumi",
+        "tier": "common"
+      },
+      {
+        "name": "Hayashi",
+        "tier": "common"
+      },
+      {
+        "name": "Emi",
+        "tier": "common"
+      },
+      {
+        "name": "Jun",
+        "tier": "common"
+      },
+      {
+        "name": "Kana",
+        "tier": "common"
+      },
+      {
+        "name": "Rie",
+        "tier": "common"
+      },
+      {
+        "name": "Inoue",
+        "tier": "common"
+      },
+      {
+        "name": "Eri",
+        "tier": "common"
+      },
+      {
+        "name": "Ryo",
+        "tier": "common"
+      },
+      {
+        "name": "San",
+        "tier": "common"
+      },
+      {
+        "name": "Sora",
+        "tier": "common"
+      },
+      {
+        "name": "Yumiko",
+        "tier": "common"
+      },
+      {
+        "name": "Yuri",
+        "tier": "common"
+      },
+      {
+        "name": "Kenji",
+        "tier": "common"
+      },
+      {
+        "name": "Miyuki",
+        "tier": "common"
+      },
+      {
+        "name": "Satoshi",
+        "tier": "common"
+      },
+      {
+        "name": "Hitomi",
+        "tier": "common"
+      },
+      {
+        "name": "Takako",
+        "tier": "common"
+      },
+      {
+        "name": "Makoto",
+        "tier": "common"
+      },
+      {
+        "name": "Yoshiko",
+        "tier": "common"
+      },
+      {
+        "name": "Koji",
+        "tier": "common"
+      },
+      {
+        "name": "Reiko",
+        "tier": "common"
+      },
+      {
+        "name": "Tomomi",
+        "tier": "common"
+      },
+      {
+        "name": "Aki",
+        "tier": "common"
+      },
+      {
+        "name": "Eriko",
+        "tier": "common"
+      },
+      {
+        "name": "Maiko",
+        "tier": "common"
+      },
+      {
+        "name": "Yusuke",
+        "tier": "common"
+      },
+      {
+        "name": "Nao",
+        "tier": "common"
+      },
+      {
+        "name": "Erika",
+        "tier": "common"
+      },
+      {
+        "name": "Haruka",
+        "tier": "common"
+      },
+      {
+        "name": "Ayaka",
+        "tier": "common"
+      },
+      {
+        "name": "Masahiro",
+        "tier": "common"
+      },
+      {
+        "name": "Rika",
+        "tier": "common"
+      },
+      {
+        "name": "Shoko",
+        "tier": "common"
+      },
+      {
+        "name": "Yukari",
+        "tier": "common"
+      },
+      {
+        "name": "Ricardo",
+        "tier": "common"
+      },
+      {
+        "name": "Yuji",
+        "tier": "common"
+      },
+      {
+        "name": "Kumiko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Naoki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Carlos",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hiroki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Satomi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Midori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nami",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Marcelo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sayuri",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Jorge",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Luis",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yuta",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Akemi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sergio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshimi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Akihiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Asuka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Saki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takuya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yui",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Marcos",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Misaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Natsumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Asako",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chiaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chiharu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mayu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshihiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kazuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kohei",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yuichi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fabio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kayo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mayuko",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Paulo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rodrigo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yutaka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Andre",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fernando",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hideki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hitoshi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kentaro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Maya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nozomi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Roberto",
+        "tier": "uncommon"
+      }
+    ],
+    "gender": "unisex",
+    "eraStart": 1980
+  },
+  {
+    "name": "Japanese Surnames",
+    "kind": "surname",
+    "region": "Japanese",
+    "names": [
+      {
+        "name": "Suzuki",
+        "tier": "common"
+      },
+      {
+        "name": "Sato",
+        "tier": "common"
+      },
+      {
+        "name": "Tanaka",
+        "tier": "common"
+      },
+      {
+        "name": "Watanabe",
+        "tier": "common"
+      },
+      {
+        "name": "Takahashi",
+        "tier": "common"
+      },
+      {
+        "name": "Yamamoto",
+        "tier": "common"
+      },
+      {
+        "name": "Nakamura",
+        "tier": "common"
+      },
+      {
+        "name": "Ito",
+        "tier": "common"
+      },
+      {
+        "name": "Kobayashi",
+        "tier": "common"
+      },
+      {
+        "name": "Saito",
+        "tier": "common"
+      },
+      {
+        "name": "Yamada",
+        "tier": "common"
+      },
+      {
+        "name": "Kato",
+        "tier": "common"
+      },
+      {
+        "name": "Yoshida",
+        "tier": "common"
+      },
+      {
+        "name": "Inoue",
+        "tier": "common"
+      },
+      {
+        "name": "Matsumoto",
+        "tier": "common"
+      },
+      {
+        "name": "Hayashi",
+        "tier": "common"
+      },
+      {
+        "name": "Kimura",
+        "tier": "common"
+      },
+      {
+        "name": "Sasaki",
+        "tier": "common"
+      },
+      {
+        "name": "Yamaguchi",
+        "tier": "common"
+      },
+      {
+        "name": "Khan",
+        "tier": "common"
+      },
+      {
+        "name": "Shimizu",
+        "tier": "common"
+      },
+      {
+        "name": "Mori",
+        "tier": "common"
+      },
+      {
+        "name": "Abe",
+        "tier": "common"
+      },
+      {
+        "name": "Hashimoto",
+        "tier": "common"
+      },
+      {
+        "name": "Ikeda",
+        "tier": "common"
+      },
+      {
+        "name": "Yamashita",
+        "tier": "common"
+      },
+      {
+        "name": "Maeda",
+        "tier": "common"
+      },
+      {
+        "name": "Singh",
+        "tier": "common"
+      },
+      {
+        "name": "Sakamoto",
+        "tier": "common"
+      },
+      {
+        "name": "Okada",
+        "tier": "common"
+      },
+      {
+        "name": "Ono",
+        "tier": "common"
+      },
+      {
+        "name": "Ishikawa",
+        "tier": "common"
+      },
+      {
+        "name": "Aoki",
+        "tier": "common"
+      },
+      {
+        "name": "Ogawa",
+        "tier": "common"
+      },
+      {
+        "name": "Murakami",
+        "tier": "common"
+      },
+      {
+        "name": "Ishii",
+        "tier": "common"
+      },
+      {
+        "name": "Sakai",
+        "tier": "common"
+      },
+      {
+        "name": "Fujita",
+        "tier": "common"
+      },
+      {
+        "name": "Ueda",
+        "tier": "common"
+      },
+      {
+        "name": "Lee",
+        "tier": "common"
+      },
+      {
+        "name": "Hasegawa",
+        "tier": "common"
+      },
+      {
+        "name": "Nakagawa",
+        "tier": "common"
+      },
+      {
+        "name": "Nakano",
+        "tier": "common"
+      },
+      {
+        "name": "Fujii",
+        "tier": "common"
+      },
+      {
+        "name": "Kondo",
+        "tier": "common"
+      },
+      {
+        "name": "Okamoto",
+        "tier": "common"
+      },
+      {
+        "name": "Endo",
+        "tier": "common"
+      },
+      {
+        "name": "Nishimura",
+        "tier": "common"
+      },
+      {
+        "name": "Goto",
+        "tier": "common"
+      },
+      {
+        "name": "Takeda",
+        "tier": "common"
+      },
+      {
+        "name": "Matsuda",
+        "tier": "common"
+      },
+      {
+        "name": "Arai",
+        "tier": "common"
+      },
+      {
+        "name": "Takeuchi",
+        "tier": "common"
+      },
+      {
+        "name": "Yamazaki",
+        "tier": "common"
+      },
+      {
+        "name": "Miura",
+        "tier": "common"
+      },
+      {
+        "name": "Fukuda",
+        "tier": "common"
+      },
+      {
+        "name": "Silva",
+        "tier": "common"
+      },
+      {
+        "name": "Tamura",
+        "tier": "common"
+      },
+      {
+        "name": "Nakayama",
+        "tier": "common"
+      },
+      {
+        "name": "Nakajima",
+        "tier": "common"
+      },
+      {
+        "name": "Morita",
+        "tier": "common"
+      },
+      {
+        "name": "Harada",
+        "tier": "common"
+      },
+      {
+        "name": "Ota",
+        "tier": "common"
+      },
+      {
+        "name": "Kim",
+        "tier": "common"
+      },
+      {
+        "name": "Honda",
+        "tier": "common"
+      },
+      {
+        "name": "Wada",
+        "tier": "common"
+      },
+      {
+        "name": "Kikuchi",
+        "tier": "common"
+      },
+      {
+        "name": "Kaneko",
+        "tier": "common"
+      },
+      {
+        "name": "Miyamoto",
+        "tier": "common"
+      },
+      {
+        "name": "Hara",
+        "tier": "common"
+      },
+      {
+        "name": "Kojima",
+        "tier": "common"
+      },
+      {
+        "name": "Miyazaki",
+        "tier": "common"
+      },
+      {
+        "name": "Shimada",
+        "tier": "common"
+      },
+      {
+        "name": "Yokoyama",
+        "tier": "common"
+      },
+      {
+        "name": "Ishida",
+        "tier": "common"
+      },
+      {
+        "name": "Shibata",
+        "tier": "common"
+      },
+      {
+        "name": "Fujiwara",
+        "tier": "common"
+      },
+      {
+        "name": "Masuda",
+        "tier": "common"
+      },
+      {
+        "name": "Uchida",
+        "tier": "common"
+      },
+      {
+        "name": "Santos",
+        "tier": "common"
+      },
+      {
+        "name": "Ando",
+        "tier": "common"
+      },
+      {
+        "name": "Fujimoto",
+        "tier": "common"
+      },
+      {
+        "name": "Ali",
+        "tier": "common"
+      },
+      {
+        "name": "Hirano",
+        "tier": "common"
+      },
+      {
+        "name": "Higa",
+        "tier": "common"
+      },
+      {
+        "name": "Ueno",
+        "tier": "common"
+      },
+      {
+        "name": "Hirata",
+        "tier": "common"
+      },
+      {
+        "name": "Hamada",
+        "tier": "common"
+      },
+      {
+        "name": "Taniguchi",
+        "tier": "common"
+      },
+      {
+        "name": "Matsui",
+        "tier": "common"
+      },
+      {
+        "name": "Kawamura",
+        "tier": "common"
+      },
+      {
+        "name": "Maruyama",
+        "tier": "common"
+      },
+      {
+        "name": "Noguchi",
+        "tier": "common"
+      },
+      {
+        "name": "Murata",
+        "tier": "common"
+      },
+      {
+        "name": "Wang",
+        "tier": "common"
+      },
+      {
+        "name": "Mizuno",
+        "tier": "common"
+      },
+      {
+        "name": "Kinoshita",
+        "tier": "common"
+      },
+      {
+        "name": "Nagai",
+        "tier": "common"
+      },
+      {
+        "name": "Kawai",
+        "tier": "common"
+      },
+      {
+        "name": "Takagi",
+        "tier": "common"
+      },
+      {
+        "name": "Imai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chen",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Matsuo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kubota",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Koyama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sakurai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Iwasaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nagata",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takano",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yamanaka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yano",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kubo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fukushima",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takada",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kawasaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sano",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Uehara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Seki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sugiyama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nomura",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yasuda",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nishida",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sugimoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nakashima",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Koga",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshikawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kawakami",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nishikawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hattori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nakanishi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hirose",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kitamura",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Akiyama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Adachi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Thapa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chan",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shrestha",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshimura",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Oda",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tsuji",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Araki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Morimoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sharma",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Matsuoka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Komatsu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kudo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Onishi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chiba",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ishihara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kumar",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Iwata",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Furukawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Otsuka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ichikawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Noda",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Oliveira",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshioka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Asano",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Igarashi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kawashima",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Katayama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Oshiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hoshino",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Koike",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Matsuura",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tsuchiya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tanabe",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ogata",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ohashi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ozawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Baba",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Higuchi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Iida",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kawaguchi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yamasaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Iwamoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kawano",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nishi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tomita",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yamauchi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ahmed",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Minami",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Taguchi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shinohara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hayakawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kodama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Zhang",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Matsunaga",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Oshima",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sugawara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Matsushita",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nakata",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takayama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kitagawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nishiyama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Matsumura",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nakao",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Perera",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Liu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sawada",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Uemura",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kuroda",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miyata",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sakaguchi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sakata",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Okumura",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yokota",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ozaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Naito",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hirai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shiraishi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fernando",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mochizuki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Oyama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Konishi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nagano",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Oka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Wong",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ishibashi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Doi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Okuda",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Otani",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yagi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Makino",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miyake",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ogura",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Okamura",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Okazaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Okubo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Smith",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Souza",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshino",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kawamoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Garcia",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Imamura",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Narita",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Amano",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kurihara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Izumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kono",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Arakaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Koizumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tan",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kataoka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Matsubara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kumagai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rana",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nakai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tani",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nagao",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Uchiyama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yang",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Asai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Gurung",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Lin",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Muhammad",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sapkota",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Azuma",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Higashi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Omori",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sekiguchi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sakuma",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tsukamoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hirayama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Konno",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Bhandari",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nakazawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shoji",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kamiya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nguyen",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sonoda",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kanda",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Aoyama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Furuya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fukui",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Terada",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Inagaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tashiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nemoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kanno",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kawabata",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Morishita",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sugiura",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miyoshi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Oikawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rawat",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Murayama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Naka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nakahara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ohara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Okabe",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rodrigues",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kanashiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toda",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shah",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shibuya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yamakawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Lama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ohno",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tada",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Oishi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hayashida",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hirota",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kishimoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tajima",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yamane",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mizutani",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Okawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Enomoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Park",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tsuda",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miyashita",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sekine",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Da Silva",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Iwai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Matsuzaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shirai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hata",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kano",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shimabukuro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Uno",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Eguchi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fukumoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Lima",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Taira",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tsutsumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Moriyama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Murai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Osawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Usui",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Chang",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Iijima",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kanazawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kandel",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mohamed",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ide",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Muto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ahmad",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Moriya",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Rahman",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Maekawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Morikawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Satou",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Alves",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Toyama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Homma",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Horiuchi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Matsuyama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ogasawara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hagiwara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mikami",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Okuyama",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Muramatsu",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Oki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Shima",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Inaba",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Fujisawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kawahara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nagashima",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takemoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Akira",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Maki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Masaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nozaki",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Arakawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kishi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nishio",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yasui",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Itoh",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Mayumi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nishioka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nitta",
+        "tier": "uncommon"
+      },
+      {
+        "name": "San",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takata",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kasai",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kitano",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takashi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yamashiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Miyashiro",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Nakamoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hiroshi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Kita",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Takashima",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshihara",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Islam",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ohta",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Pereira",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ramos",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Tominaga",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Ferreira",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Hidaka",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshimoto",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Yoshizawa",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Gomes",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Sudo",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Wakabayashi",
+        "tier": "uncommon"
+      },
+      {
+        "name": "Huang",
+        "tier": "rare"
+      },
+      {
+        "name": "Hussain",
+        "tier": "rare"
+      },
+      {
+        "name": "Kenji",
+        "tier": "rare"
+      },
+      {
+        "name": "Taka",
+        "tier": "rare"
+      },
+      {
+        "name": "Machida",
+        "tier": "rare"
+      },
+      {
+        "name": "Miwa",
+        "tier": "rare"
+      },
+      {
+        "name": "Miyagi",
+        "tier": "rare"
+      },
+      {
+        "name": "Nishino",
+        "tier": "rare"
+      },
+      {
+        "name": "Suda",
+        "tier": "rare"
+      },
+      {
+        "name": "Takei",
+        "tier": "rare"
+      },
+      {
+        "name": "Umeda",
+        "tier": "rare"
+      },
+      {
+        "name": "Kanai",
+        "tier": "rare"
+      },
+      {
+        "name": "Lopez",
+        "tier": "rare"
+      },
+      {
+        "name": "Mukai",
+        "tier": "rare"
+      },
+      {
+        "name": "Ochiai",
+        "tier": "rare"
+      },
+      {
+        "name": "Sanchez",
+        "tier": "rare"
+      },
+      {
+        "name": "Takizawa",
+        "tier": "rare"
+      },
+      {
+        "name": "Hosokawa",
+        "tier": "rare"
+      },
+      {
+        "name": "Lim",
+        "tier": "rare"
+      },
+      {
+        "name": "Nakatani",
+        "tier": "rare"
+      },
+      {
+        "name": "Omura",
+        "tier": "rare"
+      },
+      {
+        "name": "Toyoda",
+        "tier": "rare"
+      },
+      {
+        "name": "Hoshi",
+        "tier": "rare"
+      },
+      {
+        "name": "Magar",
+        "tier": "rare"
+      },
+      {
+        "name": "Yoneda",
+        "tier": "rare"
+      },
+      {
+        "name": "Costa",
+        "tier": "rare"
+      },
+      {
+        "name": "Khadka",
+        "tier": "rare"
+      },
+      {
+        "name": "Rodriguez",
+        "tier": "rare"
+      },
+      {
+        "name": "Tamaki",
+        "tier": "rare"
+      },
+      {
+        "name": "Tamashiro",
+        "tier": "rare"
+      },
+      {
+        "name": "Tokunaga",
+        "tier": "rare"
+      },
+      {
+        "name": "Horie",
+        "tier": "rare"
+      },
+      {
+        "name": "Iizuka",
+        "tier": "rare"
+      },
+      {
+        "name": "Miyazawa",
+        "tier": "rare"
+      },
+      {
+        "name": "Nishimoto",
+        "tier": "rare"
+      },
+      {
+        "name": "Niwa",
+        "tier": "rare"
+      },
+      {
+        "name": "Okano",
+        "tier": "rare"
+      },
+      {
+        "name": "Sun",
+        "tier": "rare"
+      },
+      {
+        "name": "Takeshita",
+        "tier": "rare"
+      },
+      {
+        "name": "Asada",
+        "tier": "rare"
+      },
+      {
+        "name": "Ishizuka",
+        "tier": "rare"
+      },
+      {
+        "name": "Hossain",
+        "tier": "rare"
+      },
+      {
+        "name": "Kosaka",
+        "tier": "rare"
+      },
+      {
+        "name": "Oba",
+        "tier": "rare"
+      },
+      {
+        "name": "Tachibana",
+        "tier": "rare"
+      },
+      {
+        "name": "Takemura",
+        "tier": "rare"
+      },
+      {
+        "name": "Chinen",
+        "tier": "rare"
+      },
+      {
+        "name": "Hatakeyama",
+        "tier": "rare"
+      },
+      {
+        "name": "Hirakawa",
+        "tier": "rare"
+      },
+      {
+        "name": "Nozawa",
+        "tier": "rare"
+      },
+      {
+        "name": "Rai",
+        "tier": "rare"
+      },
+      {
+        "name": "Sugita",
+        "tier": "rare"
+      },
+      {
+        "name": "Yajima",
+        "tier": "rare"
+      },
+      {
+        "name": "Yamagishi",
+        "tier": "rare"
+      },
+      {
+        "name": "Malik",
+        "tier": "rare"
+      },
+      {
+        "name": "Nagasawa",
+        "tier": "rare"
+      },
+      {
+        "name": "Sakakibara",
+        "tier": "rare"
+      },
+      {
+        "name": "Adhikari",
+        "tier": "rare"
+      },
+      {
+        "name": "Aizawa",
+        "tier": "rare"
+      },
+      {
+        "name": "Choi",
+        "tier": "rare"
+      },
+      {
+        "name": "Kamada",
+        "tier": "rare"
+      },
+      {
+        "name": "Satoh",
+        "tier": "rare"
+      },
+      {
+        "name": "Cho",
+        "tier": "rare"
+      },
+      {
+        "name": "Fukuoka",
+        "tier": "rare"
+      },
+      {
+        "name": "Matsushima",
+        "tier": "rare"
+      },
+      {
+        "name": "Tamang",
+        "tier": "rare"
+      },
+      {
+        "name": "Fujioka",
+        "tier": "rare"
+      },
+      {
+        "name": "Hiro",
+        "tier": "rare"
+      },
+      {
+        "name": "Kurokawa",
+        "tier": "rare"
+      },
+      {
+        "name": "Nguyn",
+        "tier": "rare"
+      },
+      {
+        "name": "Okuno",
+        "tier": "rare"
+      },
+      {
+        "name": "Yanagisawa",
+        "tier": "rare"
+      },
+      {
+        "name": "Dias",
+        "tier": "rare"
+      },
+      {
+        "name": "Fujikawa",
+        "tier": "rare"
+      },
+      {
+        "name": "Nagase",
+        "tier": "rare"
+      },
+      {
+        "name": "Shin",
+        "tier": "rare"
+      },
+      {
+        "name": "Takase",
+        "tier": "rare"
+      },
+      {
+        "name": "Akimoto",
+        "tier": "rare"
+      },
+      {
+        "name": "Kitahara",
+        "tier": "rare"
+      },
+      {
+        "name": "Nakada",
+        "tier": "rare"
+      },
+      {
+        "name": "Eto",
+        "tier": "rare"
+      },
+      {
+        "name": "Hiramatsu",
+        "tier": "rare"
+      },
+      {
+        "name": "Kamimura",
+        "tier": "rare"
+      },
+      {
+        "name": "Kasahara",
+        "tier": "rare"
+      },
+      {
+        "name": "Ken",
+        "tier": "rare"
+      },
+      {
+        "name": "Kuwahara",
+        "tier": "rare"
+      },
+      {
+        "name": "Nagaoka",
+        "tier": "rare"
+      },
+      {
+        "name": "Tokuda",
+        "tier": "rare"
+      },
+      {
+        "name": "Yama",
+        "tier": "rare"
+      },
+      {
+        "name": "Furuta",
+        "tier": "rare"
+      },
+      {
+        "name": "Kaneda",
+        "tier": "rare"
+      },
+      {
+        "name": "Kuroki",
+        "tier": "rare"
+      },
+      {
+        "name": "Seto",
+        "tier": "rare"
+      },
+      {
+        "name": "Takamatsu",
+        "tier": "rare"
+      },
+      {
+        "name": "Bandara",
+        "tier": "rare"
+      },
+      {
+        "name": "Junior",
+        "tier": "rare"
+      },
+      {
+        "name": "Nishihara",
+        "tier": "rare"
+      },
+      {
+        "name": "Onodera",
+        "tier": "rare"
+      },
+      {
+        "name": "Takai",
+        "tier": "rare"
+      },
+      {
+        "name": "Takaki",
+        "tier": "rare"
+      }
+    ]
+  }
+]

@@ -11,8 +11,9 @@ import {
     saveStoryDefaults
 } from "../services/nameGeneratorRepository.js";
 import { generateNames, listUsedNamesForStory, markNameUsed } from "../services/nameGeneratorService.js";
+import { installPack, listPacks, uninstallPack } from "../services/nameGeneratorPackService.js";
 import { GENERATE_KINDS, NAME_POOL_GENDERS, NAME_POOL_KINDS, USED_NAME_SOURCES, USED_NAME_TYPES } from "../../src/types/nameGenerator.js";
-import type { GenerateKind, NamePoolGender, NamePoolKind, UsedNameSource, UsedNameType } from "../../src/types/nameGenerator.js";
+import type { GenerateKind, ImportLevel, NamePoolGender, NamePoolKind, UsedNameSource, UsedNameType } from "../../src/types/nameGenerator.js";
 
 const router = express.Router();
 // Same limits/config posture as lorebook.ts's own import upload — small text files (JSON/CSV
@@ -345,6 +346,74 @@ router.post("/import", upload.single("file"), async (req, res) => {
         return;
     }
     res.status(201).json({ pools: [result.pool], namesImported: result.namesImported, duplicatesSkipped: result.duplicatesSkipped });
+});
+
+// ── Region packs (NP0-NP5, docs/Name_Generator_Region_Packs_Design.md) ─────────────
+
+// GET /api/name-generator/packs?storyId= — vendored pack catalog, annotated with per-scope
+// install status (global always checked; story only when storyId is given).
+router.get("/packs", async (req, res) => {
+    const { storyId } = req.query as { storyId?: string };
+
+    const [error, packs] = await attemptPromise(() => listPacks(storyId));
+    if (error) {
+        res.status(500).json({ error: "Failed to load name packs", details: error.message });
+        return;
+    }
+    res.json({ packs });
+});
+
+// POST /api/name-generator/packs/:packId/install — body: { level, storyId?, replace? }.
+// Idempotent (deterministic pool ids): a plain re-install is a clean no-op per pool; replace:true
+// clears every pool this pack previously installed at this scope first.
+router.post("/packs/:packId/install", async (req, res) => {
+    const { level, storyId, replace } = req.body as { level?: unknown; storyId?: unknown; replace?: unknown };
+
+    if (level !== "global" && level !== "story") {
+        res.status(400).json({ error: 'level must be "global" or "story"' });
+        return;
+    }
+    if (level === "story" && (typeof storyId !== "string" || !storyId)) {
+        res.status(400).json({ error: "storyId is required when level is story" });
+        return;
+    }
+
+    const [error, result] = await attemptPromise(() =>
+        installPack(
+            req.params.packId,
+            { level: level as ImportLevel, scopeId: level === "story" ? (storyId as string) : null },
+            Boolean(replace)
+        )
+    );
+    if (error) {
+        res.status(400).json({ error: "Failed to install pack", details: error.message });
+        return;
+    }
+    res.status(201).json(result);
+});
+
+// POST /api/name-generator/packs/:packId/uninstall — body: { level, storyId? }. Deletes every
+// pool previously installed under this pack's id prefix at the given scope (cascade-deletes names).
+router.post("/packs/:packId/uninstall", async (req, res) => {
+    const { level, storyId } = req.body as { level?: unknown; storyId?: unknown };
+
+    if (level !== "global" && level !== "story") {
+        res.status(400).json({ error: 'level must be "global" or "story"' });
+        return;
+    }
+    if (level === "story" && (typeof storyId !== "string" || !storyId)) {
+        res.status(400).json({ error: "storyId is required when level is story" });
+        return;
+    }
+
+    const [error, poolsRemoved] = await attemptPromise(() =>
+        uninstallPack(req.params.packId, { level: level as ImportLevel, scopeId: level === "story" ? (storyId as string) : null })
+    );
+    if (error) {
+        res.status(500).json({ error: "Failed to uninstall pack", details: error.message });
+        return;
+    }
+    res.json({ poolsRemoved });
 });
 
 export default router;
