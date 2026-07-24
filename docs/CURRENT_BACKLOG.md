@@ -211,12 +211,17 @@ See `DECISIONS.md`'s "Lorebook Relationship Graph — G1.5+ (AI-Suggested Edges,
 
 Per-message RAG re-seeding, closing the gap explicitly deferred in the "Chat Context Anchoring" DECISIONS.md entry. **World-Building/Editor/Outline chats only** (user-confirmed scope) — Research already has its own query-driven search, Brainstorm uses manual context selection, Notes has its own always-on desk reads. On each send, `ChatInterface.tsx`'s `doSend` now fetches `chatsApi.getContext(selectedChat.id, input)` (current outgoing message only as the query — same precedent as Research's existing `explicitQuery`), filters the response to `role === "search"` entries (anchor/related content is already unconditional in the mount-time `codexContext` block, so re-including it would just duplicate it), and threads the result through as `extraContext` — merging with, not replacing, the mount-time title-seeded fetch, via the same `[codexContext, reworkContext, extraContext]` join Research's `extraContext` already established. Fires on every send, no throttle (`hybridSearch` is a local synchronous SQLite query, not a network scrape). Zero server-side changes needed — `GET /:chatId/context?query=...` already supported an arbitrary query and already merged anchor-first/search-tail. Live-verified in the Browser pane against the real dev DB (a session with a reachable AI provider, for once): sent an off-topic message in each of a WB, Editor, and Outline chat and confirmed via network inspection that the new `?query=...` request's `role: "search"` results correctly re-ranked to match the message's actual topic (e.g. asking about "Marcus Webb's assignment" surfaced Marcus Webb top-of-list instead of the stale title-seeded set), and that the real generated replies (Editor/Outline) reflected the fresh context. All test messages cleaned up from the demo chats afterward via direct API calls. See `DECISIONS.md`'s "P1.3 — Per-Message RAG Re-Seeding" entry.
 
-### P1.4 — Visible AI Reasoning (full product)
+### P1.4 — Visible AI Reasoning — ✅ Done at user-confirmed scope (2026-07-23)
 
-- Tag display exists (`parseThinking`, `ThinkingBlock`)
-- Full design (richer traces, per-pipeline visibility) still mostly aspirational — confirm **narrow display-only** vs expanded scope before building
+The locked design doc (`docs/2026-06-26_Visible_AI_Reasoning_Design.md`, added to the repo 2026-07-23) scoped this to **both** chat windows **and** scene/generation output ("Applied to regular chat and to generation features (scene writing, etc.)"). **User explicitly narrowed this to chat windows only** — scene/generation output display is declined, not deferred.
 
-**Refs:** Hermes `2026-06-26_Visible_AI_Reasoning_Design.md`; story-nexus skill scope note
+At chat-only scope, this was **already fully built**, nothing left to implement:
+- `<think>`/`<thinking>`/`<reasoning>` tags are parsed (`src/utils/parseThinking.ts`) and rendered only inside `ChatMessageList`/`AssistantMessageContent.tsx` — the shared message-rendering path every chat type imports through `ChatInterface.tsx` (WB, Editor, Outline, Research, Notes, Brainstorm). No other AI output surface (chapter prose, prose-proposal preview, RAG Scanner, Name Generator, image generation, Humanizer, TTS, or any Agent Framework background job) touches it, matching the requested scope exactly.
+- A global on/off toggle already exists — "Show Model Thinking" switch in the Dashboard's Preferences sidebar (`PreferencesSidebar.tsx`), backed by a cross-component localStorage flag (`src/lib/useShowModelThinking.ts`, defaults **off**). When off, thinking blocks don't render at all (not even collapsed); when on, each message with thinking content shows a collapsible "Model thinking" section (`ThinkingBlock.tsx`, collapsed by default, click to expand).
+
+**Explicitly declined, not just out of scope for this pass:** scene/generation-output display (the design doc's other half) and everything the doc itself already excluded (agentic reasoning traces, Codex/memory/state deltas, RAG Scanner integration, approval workflows, trace history/versioning, multi-step agent visibility).
+
+**Refs:** `docs/2026-06-26_Visible_AI_Reasoning_Design.md` (v1.1, "Narrow Scope"); `DECISIONS.md`'s "P1.4 — Visible AI Reasoning" entry
 
 ---
 
