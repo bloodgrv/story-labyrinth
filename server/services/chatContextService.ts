@@ -456,6 +456,8 @@ const buildSystemPrompt = (
             HANDOFF_PACKET_INSTRUCTIONS +
             "\n\n" +
             NOTE_PROPOSAL_INSTRUCTIONS +
+            "\n\n" +
+            NAME_PROPOSAL_INSTRUCTIONS +
             "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user " +
             "sees them, so don't reference the fenced blocks themselves in your prose; just talk about the proposal naturally."
         );

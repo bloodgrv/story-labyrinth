@@ -5,7 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useAISettingsQuery, useUpdateContextMeterSettingsMutation } from "@/features/ai/hooks/useAISettingsQuery";
+import {
+    useAISettingsQuery,
+    useUpdateContextMeterSettingsMutation,
+    useUpdateLocalMaxOutputTokensMutation
+} from "@/features/ai/hooks/useAISettingsQuery";
 
 // Context/Token Meter (T4, docs/Context_Token_Meter_Design.md) — M0. contextWindowOverride wins
 // over whatever AIModel.contextLength was fetched/guessed for the current default local model
@@ -14,16 +18,23 @@ import { useAISettingsQuery, useUpdateContextMeterSettingsMutation } from "@/fea
 export function ContextMeterSettingsCard() {
     const { data: settings } = useAISettingsQuery();
     const updateMutation = useUpdateContextMeterSettingsMutation();
+    const updateMaxOutputMutation = useUpdateLocalMaxOutputTokensMutation();
 
     const resolvedDefault = settings?.availableModels.find(m => m.id === settings?.defaultLocalModel)?.contextLength;
 
     const [overrideInput, setOverrideInput] = useState<string>(settings?.contextWindowOverride?.toString() ?? "");
     const [softWarnNearLimit, setSoftWarnNearLimit] = useState(settings?.softWarnNearLimit ?? false);
     const [thresholdPercent, setThresholdPercent] = useState(Math.round((settings?.softWarnThreshold ?? 0.9) * 100));
+    const [maxOutputInput, setMaxOutputInput] = useState<string>(settings?.localMaxOutputTokens?.toString() ?? "");
 
     const handleSaveOverride = () => {
         const parsed = overrideInput.trim() ? Number(overrideInput) : null;
         updateMutation.mutate({ contextWindowOverride: parsed && parsed > 0 ? parsed : null });
+    };
+
+    const handleSaveMaxOutput = () => {
+        const parsed = maxOutputInput.trim() ? Number(maxOutputInput) : null;
+        updateMaxOutputMutation.mutate(parsed && parsed > 0 ? parsed : null);
     };
 
     const handleToggleSoftWarn = (checked: boolean) => {
@@ -60,6 +71,28 @@ export function ContextMeterSettingsCard() {
                         {resolvedDefault
                             ? `Overrides the default local model's detected window (${resolvedDefault.toLocaleString()} tokens). Leave blank to use that value.`
                             : "Sets the window size used for the context meter on local chats. Leave blank to use the model's own reported value, when known."}
+                    </p>
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor="local-max-output-tokens">Max output tokens (Local)</Label>
+                    <div className="flex gap-2">
+                        <Input
+                            id="local-max-output-tokens"
+                            type="number"
+                            min={1}
+                            placeholder="4096"
+                            value={maxOutputInput}
+                            onChange={e => setMaxOutputInput(e.target.value)}
+                        />
+                        <Button onClick={handleSaveMaxOutput} disabled={updateMaxOutputMutation.isPending}>
+                            {updateMaxOutputMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                        </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        Generation budget for Local replies, shared between a reasoning model's own internal thinking and its
+                        visible reply. A long chat system prompt can eat this whole budget on reasoning alone and produce no
+                        visible reply — raise this if that happens. Leave blank to use the default (4096).
                     </p>
                 </div>
 

@@ -295,6 +295,11 @@ export const aiSettings = sqliteTable("aiSettings", {
     // softWarnThreshold. Never a hard block on the estimate alone (non-goal #2).
     softWarnNearLimit: integer("softWarnNearLimit", { mode: "boolean" }).notNull().default(false),
     softWarnThreshold: real("softWarnThreshold").notNull().default(0.9),
+    // Local generation output budget override (2026-07-27) — the app's hardcoded default
+    // (AIService.DEFAULT_MAX_TOKENS) is shared between reasoning and visible content on
+    // reasoning-capable local models; a long system prompt (WB/Editor chats especially) can burn
+    // the whole budget on reasoning and never reach content, silently. Null = use the default.
+    localMaxOutputTokens: integer("localMaxOutputTokens"),
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
 });
 

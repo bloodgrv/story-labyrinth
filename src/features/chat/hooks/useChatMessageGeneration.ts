@@ -154,7 +154,19 @@ export const useChatMessageGeneration = ({
                 }
 
                 const { text: fullResponse, usage } = await processStream(response);
-                if (!fullResponse) return;
+                if (!fullResponse) {
+                    // Silent before this fix — a reasoning-capable local model can spend its
+                    // entire generation budget on internal reasoning and never reach visible
+                    // content, especially with a long chat system prompt (WB/Editor chats
+                    // especially). The user message above is already persisted; only the reply
+                    // is missing, so surface that clearly instead of leaving it looking like
+                    // nothing happened.
+                    toast.error(
+                        "The model didn't return a reply. If you're on a local reasoning model, it may have used its " +
+                            "full token budget on internal reasoning — try raising \"Max output tokens\" in Settings → Local."
+                    );
+                    return;
+                }
 
                 const { cleanedContent: afterCodexStrip, proposals } = parseCodexProposals(fullResponse);
                 const { cleanedContent: afterProseStrip, proseProposal } = parseProseProposal(afterCodexStrip);

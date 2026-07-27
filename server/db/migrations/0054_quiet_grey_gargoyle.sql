@@ -1,0 +1,1 @@
+ALTER TABLE `aiSettings` ADD `localMaxOutputTokens` integer;

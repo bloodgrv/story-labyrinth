@@ -122,20 +122,34 @@ export class AIService {
         return result;
     }
 
+    // Raised from 2026-07-27's original 2048 (2026-07-27) — a reasoning-capable local model
+    // shares this budget between its own internal reasoning and visible content, and a long
+    // system prompt (WB/Editor's full Codex+proposal-instructions context) can burn the whole
+    // budget on reasoning alone, silently producing zero visible content. See
+    // localMaxOutputTokens below for a per-install override.
+    private static readonly DEFAULT_MAX_TOKENS = 4096;
+
     async generate(
         providerType: AIProvider,
         messages: PromptMessage[],
         modelId: string,
         temperature: number = 1.0,
-        maxTokens: number = 2048
+        maxTokens?: number
     ): Promise<Response> {
         this.abortController = new AbortController();
         const signal = this.abortController.signal;
 
+        // localMaxOutputTokens (Settings → Local) wins over the hardcoded default for local
+        // generations specifically, same "explicit override wins" posture as contextWindowOverride.
+        const effectiveMaxTokens =
+            maxTokens ??
+            (providerType === "local" ? this.settings?.localMaxOutputTokens ?? undefined : undefined) ??
+            AIService.DEFAULT_MAX_TOKENS;
+
         // Local and grok-session already return an OpenAI-style SSE stream, so no re-wrapping needed
         if (providerType === "local" || providerType === "grok-session") {
             const provider = this.providerFactory.getProvider(providerType);
-            return provider.generate(messages, modelId, temperature, maxTokens, signal);
+            return provider.generate(messages, modelId, temperature, effectiveMaxTokens, signal);
         }
 
         // Ensure provider is initialized with API key
@@ -143,7 +157,7 @@ export class AIService {
 
         const provider = this.providerFactory.getProvider(providerType);
         const [error, response] = await attemptPromise(() =>
-            provider.generate(messages, modelId, temperature, maxTokens, signal)
+            provider.generate(messages, modelId, temperature, effectiveMaxTokens, signal)
         );
 
         if (error) {
@@ -304,6 +318,13 @@ export class AIService {
         softWarnThreshold?: number;
     }): Promise<void> {
         await this.updateSettingsField(data);
+    }
+
+    // Local generation output budget override (2026-07-27) — separate from Context/Token Meter's
+    // input-side contextWindowOverride above; this is the output-side generation cap. Null clears
+    // the override, falling back to DEFAULT_MAX_TOKENS.
+    async updateLocalMaxOutputTokens(localMaxOutputTokens: number | null): Promise<void> {
+        await this.updateSettingsField({ localMaxOutputTokens });
     }
 
     getSettings(): AISettings | null {

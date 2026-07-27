@@ -200,6 +200,9 @@ export interface AISettings extends BaseEntity {
     contextWindowOverride?: number | null;
     softWarnNearLimit?: boolean;
     softWarnThreshold?: number;
+    // Local generation output budget override (2026-07-27) — see server/db/schema.ts's
+    // aiSettings comment. Null = use AIService's hardcoded default.
+    localMaxOutputTokens?: number | null;
 }
 
 // Chat Model Routing (docs/Chat_Model_Routing_And_Chrome_Design.md) — not a "current provider",

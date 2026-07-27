@@ -163,6 +163,23 @@ export const useUpdateContextMeterSettingsMutation = () => {
     });
 };
 
+// Local generation output budget override (2026-07-27) — Settings → Local. Separate mutation
+// from useUpdateContextMeterSettingsMutation above since this isn't a context/token-meter
+// concept — it's the output-side generation cap that was silently causing empty replies on
+// reasoning-heavy local models with long system prompts (see AIService.DEFAULT_MAX_TOKENS).
+export const useUpdateLocalMaxOutputTokensMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (localMaxOutputTokens: number | null) => aiService.updateLocalMaxOutputTokens(localMaxOutputTokens),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: aiSettingsKeys.settings() });
+            toast.success("Max output tokens saved");
+        },
+        onError: () => toast.error("Failed to save max output tokens")
+    });
+};
+
 // Chat Model Routing (MR0) — Settings → Providers "chat default routing" row.
 export const useUpdatePreferredModeMutation = () => {
     const queryClient = useQueryClient();

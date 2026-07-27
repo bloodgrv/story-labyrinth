@@ -125,5 +125,6 @@ export const aiSettingsSchema = baseEntitySchema.extend({
     preferredMode: z.enum(["cloud", "local"]).optional(),
     contextWindowOverride: z.number().nullable().optional(),
     softWarnNearLimit: z.boolean().optional(),
-    softWarnThreshold: z.number().optional()
+    softWarnThreshold: z.number().optional(),
+    localMaxOutputTokens: z.number().nullable().optional()
 });
