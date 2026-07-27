@@ -7,6 +7,7 @@ import type {
     GenerateNamesRequest,
     ImportLevel,
     InstallPackRequest,
+    InstallPackResult,
     MarkNameUsedRequest,
     NamePoolGender,
     NamePoolKind,
@@ -149,6 +150,39 @@ export const useInstallPackMutation = () => {
             );
         },
         onError: (error: Error) => toast.error(error.message || "Failed to install pack")
+    });
+};
+
+// NP3 — bulk install a preset (curated group of packIds, e.g. "European"). Reuses the same
+// idempotent single-pack install endpoint per pack (Promise.allSettled, not Promise.all, so one
+// pack failing doesn't lose the results of the others) rather than a new bulk server route —
+// installing N packs is just N calls to a primitive that already exists and already handles
+// idempotency/replace itself. One aggregate toast instead of N individual ones.
+export const useInstallPresetMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ packIds, data }: { packIds: string[]; data: InstallPackRequest }) => {
+            const settled = await Promise.allSettled(packIds.map(packId => nameGeneratorApi.installPack(packId, data)));
+            const succeeded = settled
+                .filter((r): r is PromiseFulfilledResult<InstallPackResult> => r.status === "fulfilled")
+                .map(r => r.value);
+            const failedCount = settled.length - succeeded.length;
+            return { succeeded, failedCount };
+        },
+        onSuccess: result => {
+            queryClient.invalidateQueries({ queryKey: nameGeneratorKeys.all });
+            const newPools = result.succeeded.reduce((sum, r) => sum + r.pools.length, 0);
+            const namesImported = result.succeeded.reduce((sum, r) => sum + r.namesImported, 0);
+            const alreadyInstalled = result.succeeded.filter(r => r.pools.length === 0).length;
+            const parts: string[] = [];
+            if (newPools > 0) parts.push(`${newPools} new pool(s), ${namesImported} name(s)`);
+            if (alreadyInstalled > 0) parts.push(`${alreadyInstalled} pack(s) already installed`);
+            if (result.failedCount > 0) parts.push(`${result.failedCount} pack(s) failed`);
+            const message = parts.join(" · ") || "Nothing to install";
+            if (result.failedCount > 0) toast.warning(message);
+            else toast.success(message);
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to install preset")
     });
 };
 

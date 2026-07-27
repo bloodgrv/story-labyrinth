@@ -10,7 +10,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ImportLevel, NamePackQuality, NamePoolGender, NamePoolKind } from "@/types/nameGenerator";
-import { useImportCsvMutation, useImportJsonMutation, useInstallPackMutation, usePacksQuery, useUninstallPackMutation } from "../hooks/useNameGeneratorQuery";
+import {
+    useImportCsvMutation,
+    useImportJsonMutation,
+    useInstallPackMutation,
+    useInstallPresetMutation,
+    usePacksQuery,
+    useUninstallPackMutation
+} from "../hooks/useNameGeneratorQuery";
 
 interface ImportPoolDialogProps {
     open: boolean;
@@ -19,6 +26,23 @@ interface ImportPoolDialogProps {
 }
 
 const QUALITY_VARIANT: Record<NamePackQuality, "secondary" | "outline"> = { solid: "secondary", cleaned: "outline", thin: "outline" };
+
+// NP3 (docs/Name_Generator_Region_Packs_Design.md) — bulk install presets, curated groupings of
+// the 24 vendored packIds from that doc's own pack catalog table. Every packId appears in exactly
+// one preset so the full catalog is reachable via presets alone, with no overlap to double-count
+// "installed" against. Presets are a client-side grouping only — the manifest itself has no
+// concept of groups, and adding one there would be a bigger change than this needs.
+const NAME_PACK_PRESETS: { key: string; label: string; packIds: string[] }[] = [
+    {
+        key: "european",
+        label: "European",
+        packIds: ["irish", "french", "german", "dutch", "italian", "spanish", "portuguese", "scandinavian", "greek", "polish", "slavic"]
+    },
+    { key: "mena", label: "MENA", packIds: ["arabic", "mena", "turkish", "israeli"] },
+    { key: "asian", label: "Asian", packIds: ["south-asian", "japanese", "chinese", "east-asian"] },
+    { key: "african", label: "African", packIds: ["west-african", "southern-african"] },
+    { key: "anglo", label: "Anglo / Americas", packIds: ["us", "uk", "canadian"] }
+];
 
 // NP2 (docs/Name_Generator_Region_Packs_Design.md) — vendored pack catalog, browsable/installable
 // in-app instead of only via the file-picker. Its own scope select defaults to global (locked
@@ -30,9 +54,15 @@ function BrowsePacksTab({ storyId }: { storyId: string }) {
     const { data, isLoading } = usePacksQuery(storyId);
     const installMutation = useInstallPackMutation();
     const uninstallMutation = useUninstallPackMutation();
-    const isPending = installMutation.isPending || uninstallMutation.isPending;
+    const presetMutation = useInstallPresetMutation();
+    const isPending = installMutation.isPending || uninstallMutation.isPending || presetMutation.isPending;
 
     const scope = { level: packLevel, storyId: packLevel === "story" ? storyId : undefined };
+
+    const isInstalledHere = (packId: string) => {
+        const pack = data?.packs.find(p => p.packId === packId);
+        return packLevel === "story" ? Boolean(pack?.installed?.story) : Boolean(pack?.installed?.global);
+    };
 
     return (
         <div className="space-y-3">
@@ -48,6 +78,28 @@ function BrowsePacksTab({ storyId }: { storyId: string }) {
                     </SelectContent>
                 </Select>
             </div>
+
+            {data && (
+                <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Bulk presets</Label>
+                    <div className="flex flex-wrap gap-2">
+                        {NAME_PACK_PRESETS.map(preset => {
+                            const allInstalled = preset.packIds.every(isInstalledHere);
+                            return (
+                                <Button
+                                    key={preset.key}
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isPending || allInstalled}
+                                    onClick={() => presetMutation.mutate({ packIds: preset.packIds, data: scope })}
+                                >
+                                    {allInstalled ? `${preset.label} — installed` : `${preset.label} (${preset.packIds.length})`}
+                                </Button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             <ScrollArea className="h-72 rounded-md border">
                 <div className="divide-y">

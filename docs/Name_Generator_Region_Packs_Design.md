@@ -1,8 +1,7 @@
 # Name Generator — Region Packs (post-NG0–NG7)
 
-**Status:** Design locked 2026-07-23 · **NP0, NP1, NP2, NP4, NP5 shipped 2026-07-24.** NP3 (bulk
-install presets) explicitly **not done** — optional/lag per this doc's own "Order" note below, no
-signal it's needed yet.  
+**Status:** Design locked 2026-07-23 · **NP0, NP1, NP2, NP4, NP5 shipped 2026-07-24. NP3 (bulk
+install presets) shipped 2026-07-27.** All slices now done.  
 **Parent:** `docs/Name_Generator_Design.md` v0.4 (NG0–NG7 **shipped**)  
 **Backlog:** `docs/CURRENT_BACKLOG.md` P3 · slices **NP0–NP5**  
 **Pack artifacts (local build):** `E:\NameGeneratorPacks\` (24 JSON packs + offline builder)
@@ -104,11 +103,11 @@ Tiers: **100 common / 300 uncommon / 100 rare** (some cleaned packs thinner on g
 | **NP0** | ✅ Vendor packs + manifest into `data/name-packs/` | **Shipped 2026-07-24, at `server/data/name-packs/`** (not repo-root `data/`, see "Load-bearing choices" below) — all 24 JSON packs copied from `E:\NameGeneratorPacks\`; `manifest.json` (`packId`, `file`, `region`, `displayName`, `poolCount`, `nameCount`, `quality`, `notes`, `sourceCountries`, `version`), quality/notes transcribed from that directory's own `PACKS.md`. `server/data/name-packs/README.md` added (import-now + rebuild pointer). Multi-GB Facebook dump never touched. |
 | **NP1** | ✅ Server: list + install pack APIs | `GET /api/name-generator/packs?storyId=` → manifest annotated with per-scope `installed: {global, story}`. `POST /api/name-generator/packs/:packId/install` body `{ level, storyId?, replace? }`; `POST /api/name-generator/packs/:packId/uninstall` body `{ level, storyId? }` (NP5, shipped together). New `server/services/nameGeneratorPackService.ts`. **Idempotent:** deterministic pool ids `pack:{packId}:{slug}` (`slug` = `${gender}-${eraStart}` or `surnames`, derived from each pool's own fields — every vendored pack pool is one of exactly those two shapes). `NamePoolSource` extended with a new `"pack"` value (plain text column, no migration needed). |
 | **NP2** | ✅ UI: Browse packs in Import dialog | Third `TabsTrigger` ("Browse packs") in `ImportPoolDialog.tsx`; quality `Badge` (solid/cleaned/thin) + inline notes text, Install (scope select defaults to **global**, per locked decision #P3) / trash-icon Uninstall per row, "Installed" badge when already present at the selected scope. Reuses the existing `nameGeneratorKeys.all` invalidation so the Region filter picks up new pools immediately (confirmed live — see verification below). |
-| **NP3** | ⬜ Bulk install presets (optional) | e.g. "European set", "MENA set" — multi-pack one click. **Not done** — genuinely optional per this doc's own "can lag" note, no signal it's needed yet. |
+| **NP3** | ✅ Bulk install presets | **Shipped 2026-07-27.** 5 curated presets (European/MENA/Asian/African/Anglo-Americas) covering all 24 packIds with no overlap, client-side grouping only (`NAME_PACK_PRESETS` in `ImportPoolDialog.tsx`) — no manifest/schema change. A new `useInstallPresetMutation` calls the existing per-pack install endpoint via `Promise.allSettled` (one pack failing doesn't lose the rest) and shows one aggregate toast instead of N individual ones. Preset button shows pack count, flips to "— installed" (disabled) once every pack in that preset is installed at the current scope. |
 | **NP4** | ✅ Docs + design sync | This status update + `Name_Generator_Design.md` § packs pointer + `CURRENT_BACKLOG.md`/`CLAUDE.md` kickoff lines. |
 | **NP5** | ✅ Replace / uninstall pack | Shipped together with NP1 (same route file/service) — dedicated `POST .../uninstall` route, plus install's own `replace: true` flag (clears every `pack:{id}:*` pool at that scope first, then reinserts). |
 
-**Order:** NP0 → NP1 → NP2 → NP4 (docs can ride with NP0) → NP5 → NP3 — followed as planned, NP3 deliberately skipped.
+**Order:** NP0 → NP1 → NP2 → NP4 (docs can ride with NP0) → NP5 → NP3 — followed as planned in full.
 
 ### Load-bearing choices (2026-07-24 implementation)
 
@@ -162,4 +161,4 @@ Builder + cleanup rules: `E:\NameGeneratorPacks\build_packs_from_dataset.py`, `P
 
 ---
 
-*Locked 2026-07-23. NP0/NP1/NP2/NP4/NP5 shipped 2026-07-24. NP3 (bulk presets) still open, optional.*
+*Locked 2026-07-23. NP0/NP1/NP2/NP4/NP5 shipped 2026-07-24. NP3 (bulk presets) shipped 2026-07-27 — all slices done.*
