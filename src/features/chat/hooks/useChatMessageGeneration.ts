@@ -181,10 +181,17 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterShuttleStrip, proposal: shuttleProposal } = parseShuttleProposal(afterPlaceSheetStrip);
                 const { cleanedContent, proposal: nameProposal } = parseNameProposal(afterShuttleStrip);
 
+                // A reply that's ENTIRELY a fenced block (no conversational wrapper at all) strips
+                // down to an empty string here — the server's message-append route rejects empty
+                // content outright, which previously crashed the whole turn and silently dropped
+                // whatever proposal had just been parsed. Any non-empty placeholder is fine; the
+                // proposal card itself carries the real content below this bubble.
+                const finalContent = cleanedContent.trim() || "Here's what I found:";
+
                 const afterAssistantMessage = await chatsApi.appendMessage(
                     selectedChat.id,
                     "assistant",
-                    cleanedContent,
+                    finalContent,
                     usage ?? undefined
                 );
                 onChatUpdate(afterAssistantMessage);
