@@ -19,6 +19,7 @@ import { db, schema } from "../db/client.js";
 import { parseJson } from "../lib/json.js";
 import { getChatCodexProposals } from "./chatCodexService.js";
 import { getChatById } from "./chatRepository.js";
+import { listPoolsForScope } from "./nameGeneratorRepository.js";
 import { resolvePlaybookPack as resolvePlaybookPackLadder } from "./playbookPackService.js";
 import { search } from "./ragIndexService.js";
 import { DEFAULT_SEARCH_ENTITY_TYPES, type RagEntityType, type SearchResult } from "./ragRepository.js";
@@ -190,6 +191,22 @@ const NAME_PROPOSAL_INSTRUCTIONS =
     'and paired up — use this when the user wants full names, not just one part). "gender" ("male"/"female"/"unisex", ' +
     'only meaningful for "first_name"/"full_name"), "region", "era" (a "YYYY-YYYY" range), and "count" are all ' +
     "optional — omit any you don't have a clear reason to set. Propose at most one name-proposal per reply.";
+
+// "region" is matched by exact, case-sensitive string equality against installed name-pool
+// regions (nameGeneratorRepository.ts's listPoolsForScope) — there is no fuzzy/synonym matching,
+// so a guessed value like "RU" or "russian" against an installed "Slavic" pool silently returns
+// zero names. Rather than build a fuzzy-matching layer (which pack region should "Iranian" or
+// "Uzbek" resolve to? — genuinely ambiguous for several of the 24 vendored combo packs), tell the
+// model the real installed values so it either uses one exactly or omits region entirely. Kept as
+// a short trailing addendum (not baked into NAME_PROPOSAL_INSTRUCTIONS itself) so a story with no
+// name pools installed at all — the empty-array case — doesn't pay for it in prompt length.
+const nameRegionsAddendum = (availableRegions: string[]): string =>
+    availableRegions.length === 0
+        ? ""
+        : `\n\n[Name Generator] This story's installed name-pool "region" values right now, exactly as written: ` +
+          `${availableRegions.join(", ")}. A name-proposal's "region" must match one of these exactly (case-sensitive) ` +
+          `— if none fit what the user asked for, omit "region" entirely rather than guessing, since an unmatched value ` +
+          `returns zero names.`;
 
 const OUTLINE_FRAMING =
     "You are a structure partner for this story's outline — chapter/scene sequencing and narrative arc. " +
@@ -440,10 +457,17 @@ const buildSystemPrompt = (
     templateSlug: string | null,
     style?: string,
     includeMemory?: boolean,
-    includePsychModule?: boolean
+    includePsychModule?: boolean,
+    availableNameRegions: string[] = []
 ): string => {
-    if (chatType === "editor") return PROSE_PROPOSAL_INSTRUCTIONS;
-    if (chatType === "outline") return OUTLINE_FRAMING + resolveStyleHint(OUTLINE_STYLE_HINTS, style);
+    // Only the four chat types whose framing/instructions above actually include
+    // NAME_PROPOSAL_INSTRUCTIONS (editor/outline/worldbuilding/brainstorm — never
+    // research/notes) get the addendum; computing it once here keeps that in sync automatically
+    // rather than needing to remember to add it at each of the 5 return sites below.
+    const regionsAddendum = nameRegionsAddendum(availableNameRegions);
+
+    if (chatType === "editor") return PROSE_PROPOSAL_INSTRUCTIONS + regionsAddendum;
+    if (chatType === "outline") return OUTLINE_FRAMING + resolveStyleHint(OUTLINE_STYLE_HINTS, style) + regionsAddendum;
     if (chatType === "research") return RESEARCH_FRAMING;
     if (chatType === "notes") return NOTES_FRAMING;
     if (chatType === "brainstorm") {
@@ -459,16 +483,25 @@ const buildSystemPrompt = (
             "\n\n" +
             NAME_PROPOSAL_INSTRUCTIONS +
             "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user " +
-            "sees them, so don't reference the fenced blocks themselves in your prose; just talk about the proposal naturally."
+            "sees them, so don't reference the fenced blocks themselves in your prose; just talk about the proposal naturally." +
+            regionsAddendum
         );
     }
 
     const template = templateSlug ? getTemplate(templateSlug as Parameters<typeof getTemplate>[0]) : undefined;
     const base = template?.systemPromptHint ? `${WORLDBUILDING_FRAMING}\n\n${template.systemPromptHint}` : WORLDBUILDING_FRAMING;
     const withStyle = base + resolveStyleHint(WB_STYLE_HINTS, style);
-    if (templateSlug === "character_codex" && includePsychModule) return `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}`;
-    if (templateSlug === "locations") return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}`;
-    return withStyle;
+    if (templateSlug === "character_codex" && includePsychModule) return `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}${regionsAddendum}`;
+    if (templateSlug === "locations") return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}${regionsAddendum}`;
+    return withStyle + regionsAddendum;
+};
+
+// Global ∪ story ∪ series name-pool regions currently installed (reuses the exact same scope
+// resolution generate() itself uses, nameGeneratorRepository.ts's listPoolsForScope) — so the
+// hint above always reflects what a name-proposal could actually match, not a stale/static list.
+const resolveAvailableNameRegions = async (storyId: string | null): Promise<string[]> => {
+    const pools = await listPoolsForScope(storyId ?? undefined, {});
+    return [...new Set(pools.map(p => p.region))].sort();
 };
 
 // `excludeIds` keeps anchor/related entries (resolveAnchorAndRelated, below) from being listed
@@ -982,7 +1015,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         allNotes,
         focusedNote,
         playbookPackConcrete,
-        playbookPackPsych
+        playbookPackPsych,
+        availableNameRegions
     ] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
         includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
@@ -997,11 +1031,16 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         isNotes && chat.storyId ? resolveAllStoryNotes(chat.storyId) : Promise.resolve([]),
         isNotes ? resolveFocusedNote(focusedNoteId ?? null) : Promise.resolve(null),
         usePlaybookPack && style ? resolvePlaybookPackContext(chat.storyId, "character_codex", style) : Promise.resolve(null),
-        usePlaybookPack && includePsychModule ? resolvePlaybookPackContext(chat.storyId, "character_psych", "any") : Promise.resolve(null)
+        usePlaybookPack && includePsychModule ? resolvePlaybookPackContext(chat.storyId, "character_psych", "any") : Promise.resolve(null),
+        // Only these 4 chat types' framing ever includes NAME_PROPOSAL_INSTRUCTIONS — skip the
+        // query for research/notes chats, which never propose names.
+        ["editor", "outline", "worldbuilding", "brainstorm"].includes(chatType)
+            ? resolveAvailableNameRegions(chat.storyId)
+            : Promise.resolve([])
     ]);
 
     return {
-        systemPrompt: buildSystemPrompt(chatType, chat.templateSlug, style, includeMemory, includePsychModule),
+        systemPrompt: buildSystemPrompt(chatType, chat.templateSlug, style, includeMemory, includePsychModule, availableNameRegions),
         pendingProposals,
         projectSynopsis: storyRows[0]?.synopsis ?? null,
         relevantCodexEntries: [...anchorEntries, ...searchCodexEntries],
