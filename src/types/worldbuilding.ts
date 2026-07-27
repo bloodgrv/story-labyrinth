@@ -166,6 +166,16 @@ export interface ChatContextMemoryExcerpt {
     role: "search" | "pinned";
 }
 
+// A ladder-resolved Playbook Pack, ready to inject into context — Character Guided Playbook
+// Packs (Hybrid D), docs/Character_Guided_Playbook_Packs_Design.md §5. `scope` reports which tier
+// of the ladder actually resolved (story/global/shipped), shown in the client's packet label.
+export interface ChatContextPlaybookPack {
+    playbookKey: string;
+    style: string;
+    scope: "shipped" | "global" | "story";
+    body: string;
+}
+
 // Assembled context for generating a chat response or proposal: the effective system
 // prompt (chat-type framing + template hint for World-Building), this chat's own unresolved
 // Codex proposals, and Codex entries / chapter passages relevant to the current topic.
@@ -214,4 +224,10 @@ export interface ChatContext {
     // currently open in the Notes tool (getChatContext's focusedNoteId param).
     allNotes: { id: string; title: string; type: string; updatedAt: Date }[];
     focusedNote: { id: string; title: string; content: string; type: string; pinned: boolean } | null;
+    // Character Guided Playbook Packs (Hybrid D) — populated only when this chat's usePlaybookPack
+    // toggle is on AND templateSlug is "character_codex" (v1 scope). concrete: the coverage pack
+    // for the chat's current wbStyle. psych: character_psych/"any", only when includePsychModule is
+    // also on. Either may be null (soft-success: no pack found anywhere on the ladder) — see
+    // chatContextService.ts's getChatContext / resolvePlaybookPack.
+    playbookPack: { concrete: ChatContextPlaybookPack | null; psych: ChatContextPlaybookPack | null };
 }

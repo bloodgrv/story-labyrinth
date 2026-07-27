@@ -14,6 +14,7 @@ import { ShuttleTray } from "@/features/chat/components/ShuttleTray";
 import { useChatsByStoryQuery, useChatTemplatesQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useStoryQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
 import { useNaturalEntryView } from "@/lib/useNaturalEntryView";
@@ -50,6 +51,21 @@ const WB_OPENING_LINES: Record<ChatStyle, string> = {
     grill: "Let's really dig in — grill me for the concrete details until you've got a full picture."
 };
 
+// User-authored psych-module prompt (replaces the old always-on "Psych module" toggle, which
+// the user found unreliable — see chat 2026-07-25). Clicking "Add psych prompt" now (a) arms
+// includePsychModule for this chat so the model still knows the psych-proposal fence format
+// (PSYCH_MODULE_INSTRUCTIONS in chatContextService.ts), and (b) seeds the composer with this
+// exact one-shot instruction, ready to send — a deliberate action instead of a standing toggle.
+const PSYCH_PROMPT_TEXT =
+    "Act as an expert narrative designer and character psychologist. Help me build a comprehensive character profile. " +
+    "Ask me 3 questions at a time to gather information about my character's role in the story, basic concept, and vibe. " +
+    "After I answer, synthesize the information into a structured profile containing:\n" +
+    "1. Core Identity & Logline\n" +
+    "2. MBTI & Enneagram Profile (with explanations of why they fit)\n" +
+    "3. Core Motivation vs. Core Lie (what they want vs. what they believe)\n" +
+    "4. Behavioral Quirks & Speech Patterns\n" +
+    "Continue iterating and expanding the profile as we chat.";
+
 export interface LorebookEntryEditorProps {
     storyId?: string;
     seriesId?: string;
@@ -84,6 +100,7 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
     // "Show/Hide Editor Chats" toggle.
     const [railCollapsed, setRailCollapsed] = useState(false);
     const createMutation = useCreateChatMutation();
+    const { setCurrentTool } = useStoryContext();
     const { data: templates = [] } = useChatTemplatesQuery();
     // Same query ChatList already runs internally — needed here too to resolve which WB chat a
     // pending "Rework in chat" request (from the description field / a Codex row) should bind to.
@@ -146,9 +163,27 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
         if (style === "grill" && isCharacterTemplate) data.includePsychModule = true;
         void chatsApi.update(selectedChat.id, data).then(setSelectedChat);
     };
-    const handleTogglePsychModule = (checked: boolean) => {
+    // Replaces the old persistent "Psych module" toggle (user feedback 2026-07-25: it wasn't
+    // working as intended as a standing switch). One click arms includePsychModule (still needed
+    // server-side so the model knows the psych-proposal fence format) and seeds the composer with
+    // an explicit, user-authored prompt — a deliberate one-shot action instead of an always-on mode.
+    const handleAddPsychPrompt = () => {
         if (!selectedChat) return;
-        void chatsApi.update(selectedChat.id, { includePsychModule: checked }).then(setSelectedChat);
+        setComposerSeedText(PSYCH_PROMPT_TEXT);
+        if (!selectedChat.includePsychModule) void chatsApi.update(selectedChat.id, { includePsychModule: true }).then(setSelectedChat);
+    };
+    // Character Guided Playbook Packs (Hybrid D) — arm toggle (design doc §3). Only ever offered
+    // for the Character template, same gate as psych module.
+    const handleTogglePlaybookPack = (checked: boolean) => {
+        if (!selectedChat) return;
+        void chatsApi.update(selectedChat.id, { usePlaybookPack: checked }).then(setSelectedChat);
+    };
+    // Guided setup arms the playbook pack unconditionally for Character chats (design doc §3's
+    // click sequence: "Set usePlaybookPack = true (arm)" — not just on Grill, unlike the psych
+    // nudge above which only fires for Grill).
+    const handleGuidedSetup = (style: ChatStyle) => {
+        setComposerSeedText(WB_OPENING_LINES[style]);
+        if (selectedChat && isCharacterTemplate) void chatsApi.update(selectedChat.id, { usePlaybookPack: true }).then(setSelectedChat);
     };
 
     const renderTemplatePicker = () => (
@@ -186,17 +221,46 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
                             initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
                             initialComposerText={composerSeedText}
                             guidedSetup={
-                                <GuidedSetupControl
-                                    style={(selectedChat.wbStyle as ChatStyle) ?? "standard"}
-                                    onStyleChange={handleStyleChange}
-                                    blurb={`Develop this ${getTemplate(selectedChat.templateSlug as WorldBuildingTemplateSlug)?.name ?? "entry"} together — or run Guided setup for a structured interview.`}
-                                    onGuidedSetup={style => setComposerSeedText(WB_OPENING_LINES[style])}
-                                    extraToggle={
-                                        isCharacterTemplate
-                                            ? { label: "Psych module", checked: selectedChat.includePsychModule ?? false, onChange: handleTogglePsychModule }
-                                            : undefined
-                                    }
-                                />
+                                <div className="space-y-2">
+                                    <GuidedSetupControl
+                                        style={(selectedChat.wbStyle as ChatStyle) ?? "standard"}
+                                        onStyleChange={handleStyleChange}
+                                        blurb={`Develop this ${getTemplate(selectedChat.templateSlug as WorldBuildingTemplateSlug)?.name ?? "entry"} together — or run Guided setup for a structured interview.`}
+                                        onGuidedSetup={handleGuidedSetup}
+                                        extraToggles={
+                                            isCharacterTemplate
+                                                ? [
+                                                      {
+                                                          key: "playbook-pack",
+                                                          label: "Use playbook pack",
+                                                          checked: selectedChat.usePlaybookPack ?? false,
+                                                          onChange: handleTogglePlaybookPack
+                                                      }
+                                                  ]
+                                                : undefined
+                                        }
+                                    />
+                                    {isCharacterTemplate && (
+                                        <div className="flex items-center gap-3">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-auto py-1 text-xs"
+                                                onClick={handleAddPsychPrompt}
+                                            >
+                                                Add psych prompt
+                                            </Button>
+                                            <Button
+                                                variant="link"
+                                                size="sm"
+                                                className="h-auto p-0 text-xs"
+                                                onClick={() => setCurrentTool("playbooks")}
+                                            >
+                                                Open Playbooks
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
                             }
                         />
                     </div>

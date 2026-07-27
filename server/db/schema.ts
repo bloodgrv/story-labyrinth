@@ -223,7 +223,12 @@ export const aiChats = sqliteTable(
         // question+crumb is pre-seeded into Research) — it never auto-sends/auto-generates a
         // Research answer and never force-switches the user's current tool, per the design doc's
         // decision #1 ("No silent full auto-shuttle of answers in v1").
-        autoShuttle: integer("autoShuttle", { mode: "boolean" }).notNull().default(false)
+        autoShuttle: integer("autoShuttle", { mode: "boolean" }).notNull().default(false),
+        // Character Guided Playbook Packs (Hybrid D, docs/Character_Guided_Playbook_Packs_Design.md)
+        // — arm toggle for injecting a resolved playbookPacks row into context (§3's "Arm toggle").
+        // Default false, mirrors includePsychModule's pattern exactly. Only ever offered/read when
+        // templateSlug is "character_codex" (v1 scope — see chatContextService.ts's getChatContext).
+        usePlaybookPack: integer("usePlaybookPack", { mode: "boolean" }).notNull().default(false)
     },
     table => ({
         storyIdIdx: index("chat_story_id_idx").on(table.storyId),
@@ -1261,5 +1266,47 @@ export const storyNameDefaults = sqliteTable(
     },
     table => ({
         storyIdUniqueIdx: uniqueIndex("storynamedefaults_story_id_unique_idx").on(table.storyId)
+    })
+);
+
+// Playbook Packs table — Character Guided Playbook Packs (Hybrid D), docs/
+// Character_Guided_Playbook_Packs_Design.md. A pack is a markdown "coverage curriculum" (sample
+// interview questions / must-hit fields) that can be armed onto a WB Character chat and injected
+// into context — separate from wbStyle (the intensity dial) and never canon (never default RAG,
+// never Codex). Deliberately its own table, NOT notes-backed as the design doc originally
+// assumed: notes.storyId is NOT NULL (no global-scope story), notes has no metadata/folderId
+// column, and the user's actual mental model is that packs are a distinct object, not a note
+// subtype — confirmed in conversation before implementation. storyId nullable here mirrors
+// agentMemories.storyId exactly (null = global/cross-story pack, same convention).
+export const playbookPacks = sqliteTable(
+    "playbookPacks",
+    {
+        id: text("id").primaryKey(),
+        // 'character_codex' | 'character_psych' today; extensible to other templates later
+        // (locations, ...) per the design doc's §9 "Location/other templates" note — not built v1.
+        playbookKey: text("playbookKey").notNull(),
+        // 'light' | 'standard' | 'grill' | 'any' — 'any' is used by the v1 single-tier psych pack
+        // (design doc §11: "Psych pack per style — single `any` pack v1").
+        style: text("style").notNull(),
+        // 'shipped' | 'global' | 'story' — resolve ladder order (design doc §3's resolve order):
+        // story exact match, else global exact match, else shipped exact match, else no pack.
+        packScope: text("packScope").notNull(),
+        // Nullable — null for 'global'/'shipped' scope, set only for 'story' scope. Same nullable-FK
+        // convention as agentMemories.storyId/prompts.storyId.
+        storyId: text("storyId").references(() => stories.id, { onDelete: "cascade" }),
+        title: text("title").notNull(),
+        body: text("body").notNull(), // markdown
+        // Set when this row was created via copy-on-edit from a shipped/global pack (design doc
+        // §11's "Edit shipped in place vs copy-on-edit" lean: copy-on-edit + reset to shipped). No
+        // FK — same loose-column convention as brainstormChecklist-adjacent trace-back columns;
+        // the source row may itself be deleted/reset independently.
+        sourcePackId: text("sourcePackId"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdIdx: index("playbookpack_story_id_idx").on(table.storyId),
+        scopeIdx: index("playbookpack_scope_idx").on(table.packScope),
+        keyStyleIdx: index("playbookpack_key_style_idx").on(table.playbookKey, table.style)
     })
 );

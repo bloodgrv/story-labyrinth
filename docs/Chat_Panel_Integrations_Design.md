@@ -62,6 +62,22 @@ Free chat always works without guided mode.
 
 **Location playbooks** (see `docs/Locations_And_Maps_Design.md`) use the same guided-start control; no MBTI module unless separately added.
 
+### Character Guided Playbook Packs — Hybrid D (mechanics locked 2026-07-19)
+
+**Canonical:** `docs/Character_Guided_Playbook_Packs_Design.md` (P3; not implemented).
+
+Extends Character Guided setup without replacing style hints:
+
+| Layer | Job |
+|-------|-----|
+| Code `wbStyle` / `WB_STYLE_HINTS` | Interview **intensity** (unchanged) |
+| Notes-backed **packs** in **Playbooks** folder | Sample questions / coverage **syllabus** |
+| **Arm toggle** | Pack in context only when ON; Guided setup arms + loads matching pack |
+
+Resolve: **story → user global → shipped default**. Separate **psych pack** only if psych module ON. Ship starter shells + **import/drop**; user can add. Packs = non-canon curriculum inject, not default RAG canon.
+
+**Starter pack document content:** still designing — mechanics locked; prose not locked.
+
 ---
 
 ## 2. Editor chat — locked

@@ -94,6 +94,10 @@ export interface AIChat extends BaseEntity {
     // Opt-in for the Character template's psych module (P0.4 B5) — only meaningful for
     // worldbuilding chats whose templateSlug is "character_codex". Defaults false server-side.
     includePsychModule?: boolean;
+    // Character Guided Playbook Packs (Hybrid D) — arm toggle for injecting a resolved
+    // playbookPacks row into context. Only meaningful for worldbuilding chats whose templateSlug
+    // is "character_codex". Defaults false server-side.
+    usePlaybookPack?: boolean;
     // Auto-insert/auto-accept toggles (P0.4 R6, docs/Chat_Panel_Integrations_Design.md doctrine
     // "no silent canon unless an explicit toggle is ON") — all default false server-side.
     // autoInsertProse only matters for Editor chats; autoAcceptCodex for Editor/WB/Outline;

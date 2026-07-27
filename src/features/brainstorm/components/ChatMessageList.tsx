@@ -34,10 +34,6 @@ interface ChatMessageListProps {
     // (stay canon-only) or global chats with no storyId (Research). Available on both
     // user and assistant messages since either might be worth capturing as working material.
     onSaveAsNote?: (message: ChatMessage) => void;
-    // P0.4 S5 — Research's "copy-friendly blocks." Self-contained (no callback threaded up, unlike
-    // onSaveAsNote which needs parent state) — just copies the message's raw markdown to the
-    // clipboard. Assistant messages only (the useful case for a research answer + citations).
-    enableCopy?: boolean;
     // Chat Shuttle H6 (docs/Chat_Shuttle_Design.md) — "chat bubble selection" span-level highlight
     // → Note, complementing onSaveAsNote's whole-message capture (N5). Both gated the same way
     // onSaveAsNote already is (hidden for Editor chats / storyId-less global chats) — see
@@ -59,7 +55,6 @@ export function ChatMessageList({
     editingTextareaRef,
     renderProposalsForMessage,
     onSaveAsNote,
-    enableCopy,
     onSaveSelectionAsNote,
     onSendSelectionToNotesChat
 }: ChatMessageListProps) {
@@ -174,25 +169,36 @@ export function ChatMessageList({
                                                     <StickyNote className="h-4 w-4" />
                                                 </Button>
                                             )}
-                                            {enableCopy && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    title="Copy"
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(message.content);
-                                                        toast.success("Copied to clipboard");
-                                                    }}
-                                                >
-                                                    <Copy className="h-4 w-4" />
-                                                </Button>
-                                            )}
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                title="Copy"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(message.content);
+                                                    toast.success("Copied to clipboard");
+                                                }}
+                                            >
+                                                <Copy className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     )}
-                                    {message.role === "user" && !streamingMessageId && onSaveAsNote && (
+                                    {message.role === "user" && !streamingMessageId && (
                                         <div className="absolute top-0 right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
-                                                <StickyNote className="h-4 w-4" />
+                                            {onSaveAsNote && (
+                                                <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
+                                                    <StickyNote className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                title="Copy"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(message.content);
+                                                    toast.success("Copied to clipboard");
+                                                }}
+                                            >
+                                                <Copy className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     )}
@@ -207,6 +213,18 @@ export function ChatMessageList({
                 <div className="sticky bottom-2 z-10 mx-4 flex items-center justify-between gap-2 rounded-lg border border-border bg-popover p-2 shadow-md">
                     <p className="truncate text-xs text-muted-foreground">"{selectedText}"</p>
                     <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            title="Copy selection"
+                            onClick={() => {
+                                navigator.clipboard.writeText(selectedText);
+                                toast.success("Copied to clipboard");
+                                setSelectedText(null);
+                            }}
+                        >
+                            <Copy className="h-4 w-4" />
+                        </Button>
                         {onSaveSelectionAsNote && (
                             <Button
                                 size="sm"

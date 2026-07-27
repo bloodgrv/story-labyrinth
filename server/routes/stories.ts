@@ -17,6 +17,7 @@ type ImportedOutlineItemCharacter = InferSelectModel<typeof schema.outlineItemCh
 type ImportedOrgFolder = InferSelectModel<typeof schema.orgFolders>;
 type ImportedStoryMapEdge = InferSelectModel<typeof schema.storyMapEdges>;
 type ImportedStoryMapLayout = InferSelectModel<typeof schema.storyMapLayout>;
+type ImportedPlaybookPack = InferSelectModel<typeof schema.playbookPacks>;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -52,27 +53,43 @@ export default createCrudRouter({
                             and(eq(schema.lorebookEntries.level, "story"), eq(schema.lorebookEntries.scopeId, storyId))
                         );
 
-                    const [chapters, aiChats, notes, outlineItems, outlineItemCharacters, orgFolders, storyMapEdges, storyMapLayout] =
-                        await Promise.all([
-                            db.select().from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
-                            db.select().from(schema.aiChats).where(eq(schema.aiChats.storyId, storyId)),
-                            db.select().from(schema.notes).where(eq(schema.notes.storyId, storyId)),
-                            db.select().from(schema.outlineItems).where(eq(schema.outlineItems.storyId, storyId)),
-                            db
-                                .select()
-                                .from(schema.outlineItemCharacters)
-                                .where(eq(schema.outlineItemCharacters.storyId, storyId)),
-                            // Folders (B9, docs/Folders_Org_Design.md) — both lorebook (level='story')
-                            // and chat folders are scoped by scopeId=storyId, so one query covers both
-                            // kinds; series-level lore folders are exported separately by series.ts.
-                            db.select().from(schema.orgFolders).where(eq(schema.orgFolders.scopeId, storyId)),
-                            // Story Map (L5b, docs/Locations_And_Maps_Design.md) — first graph-shaped
-                            // data to ever round-trip through story export; the Relationship Graph's
-                            // own storyGraphEdges stays out of export for now (separate, not-yet-asked-
-                            // for decision — this establishes the technique if that's wanted later).
-                            db.select().from(schema.storyMapEdges).where(eq(schema.storyMapEdges.storyId, storyId)),
-                            db.select().from(schema.storyMapLayout).where(eq(schema.storyMapLayout.storyId, storyId))
-                        ]);
+                    const [
+                        chapters,
+                        aiChats,
+                        notes,
+                        outlineItems,
+                        outlineItemCharacters,
+                        orgFolders,
+                        storyMapEdges,
+                        storyMapLayout,
+                        playbookPacks
+                    ] = await Promise.all([
+                        db.select().from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
+                        db.select().from(schema.aiChats).where(eq(schema.aiChats.storyId, storyId)),
+                        db.select().from(schema.notes).where(eq(schema.notes.storyId, storyId)),
+                        db.select().from(schema.outlineItems).where(eq(schema.outlineItems.storyId, storyId)),
+                        db
+                            .select()
+                            .from(schema.outlineItemCharacters)
+                            .where(eq(schema.outlineItemCharacters.storyId, storyId)),
+                        // Folders (B9, docs/Folders_Org_Design.md) — both lorebook (level='story')
+                        // and chat folders are scoped by scopeId=storyId, so one query covers both
+                        // kinds; series-level lore folders are exported separately by series.ts.
+                        db.select().from(schema.orgFolders).where(eq(schema.orgFolders.scopeId, storyId)),
+                        // Story Map (L5b, docs/Locations_And_Maps_Design.md) — first graph-shaped
+                        // data to ever round-trip through story export; the Relationship Graph's
+                        // own storyGraphEdges stays out of export for now (separate, not-yet-asked-
+                        // for decision — this establishes the technique if that's wanted later).
+                        db.select().from(schema.storyMapEdges).where(eq(schema.storyMapEdges.storyId, storyId)),
+                        db.select().from(schema.storyMapLayout).where(eq(schema.storyMapLayout.storyId, storyId)),
+                        // Playbook Packs (Character Guided Playbook Packs, PP5) — story-scoped rows
+                        // only; global/shipped packs deliberately excluded (same posture as global
+                        // lorebook entries), round-trip only via /api/playbook-packs/global/export|import.
+                        db
+                            .select()
+                            .from(schema.playbookPacks)
+                            .where(and(eq(schema.playbookPacks.packScope, "story"), eq(schema.playbookPacks.storyId, storyId)))
+                    ]);
 
                     return {
                         version: "1.0",
@@ -88,7 +105,8 @@ export default createCrudRouter({
                         outlineItemCharacters,
                         orgFolders,
                         storyMapEdges,
-                        storyMapLayout
+                        storyMapLayout,
+                        playbookPacks
                     };
                 });
 
@@ -316,6 +334,20 @@ export default createCrudRouter({
                         await db.insert(schema.notes).values(newNotes);
                     }
 
+                    // Playbook Packs (PP5) — story-scoped rows only (packScope='story' is all the
+                    // export ever ships, see the export route above); new id, reassigned storyId.
+                    // No RAG involvement — packs are never indexed for default search.
+                    if (storyData.playbookPacks?.length) {
+                        const newPacks = (storyData.playbookPacks as ImportedPlaybookPack[]).map(pack => ({
+                            ...pack,
+                            id: crypto.randomUUID(),
+                            storyId: newStoryId,
+                            createdAt: new Date(),
+                            updatedAt: new Date()
+                        }));
+                        await db.insert(schema.playbookPacks).values(newPacks);
+                    }
+
                     // Outline items (P0.3 N0) — needs a two-pass insert: parentId self-references
                     // another outline item's OLD id, and chapterId cross-references the chapters
                     // idMap already populated above. Pass 1 assigns every new id up front so pass 2
@@ -395,7 +427,8 @@ export default createCrudRouter({
                         outlineItemCharacters: storyData.outlineItemCharacters?.length || 0,
                         orgFolders: storyData.orgFolders?.length || 0,
                         storyMapEdges: storyData.storyMapEdges?.length || 0,
-                        storyMapLayout: storyData.storyMapLayout?.length || 0
+                        storyMapLayout: storyData.storyMapLayout?.length || 0,
+                        playbookPacks: storyData.playbookPacks?.length || 0
                     }
                 });
             })

@@ -7,6 +7,7 @@ import type {
     ChatContextNoteExcerpt,
     ChatContextOutlineExcerpt,
     ChatContextOutlineTreeItem,
+    ChatContextPlaybookPack,
     ChatContextWrittenChapter,
     ChatType
 } from "../../src/types/worldbuilding.js";
@@ -18,6 +19,7 @@ import { db, schema } from "../db/client.js";
 import { parseJson } from "../lib/json.js";
 import { getChatCodexProposals } from "./chatCodexService.js";
 import { getChatById } from "./chatRepository.js";
+import { resolvePlaybookPack as resolvePlaybookPackLadder } from "./playbookPackService.js";
 import { search } from "./ragIndexService.js";
 import { DEFAULT_SEARCH_ENTITY_TYPES, type RagEntityType, type SearchResult } from "./ragRepository.js";
 import { fetchPage, searchWeb, type FetchedPage } from "./webSearchService.js";
@@ -826,6 +828,19 @@ const resolveWebSearch = async (
     return { results, pages };
 };
 
+// Character Guided Playbook Packs (Hybrid D) — direct ladder resolve, NOT RAG-ranked (design doc
+// §5: "direct inject of resolved pack body while armed", explicitly not "hope hybrid search finds
+// the note"). Converts the service's PlaybookPack row into the leaner context shape (drops id/
+// title/timestamps the model doesn't need). Missing pack = null, not an error — soft success.
+const resolvePlaybookPackContext = async (
+    storyId: string | null,
+    playbookKey: string,
+    style: string
+): Promise<ChatContextPlaybookPack | null> => {
+    const pack = await resolvePlaybookPackLadder(storyId, playbookKey, style);
+    return pack ? { playbookKey: pack.playbookKey, style: pack.style, scope: pack.packScope as "shipped" | "global" | "story", body: pack.body } : null;
+};
+
 /**
  * Assemble everything a chat needs to generate a well-grounded response or proposal:
  *   - systemPrompt: chat-type framing (+ template hint for World-Building)
@@ -861,6 +876,10 @@ const resolveWebSearch = async (
  *     note's title/type (not gated by includeInAi, a "desk privilege") and the full body of
  *     whichever note is currently open in the Notes tool (the `focusedNoteId` param). Empty/null
  *     for every other chatType.
+ *   - playbookPack: Character Guided Playbook Packs (Hybrid D) — only populated when this chat's
+ *     own usePlaybookPack toggle is on AND templateSlug is "character_codex" (v1 scope). Direct
+ *     ladder resolve (story -> global -> shipped), not RAG-ranked. `psych` only resolves when
+ *     includePsychModule is also on.
  *
  * Degrades gracefully rather than failing: if the story has no indexed content, no embedding
  * endpoint is configured, or an anchor entry/chapter no longer exists, the relevant-* fields are
@@ -899,6 +918,10 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         : chatType === "outline" ? chat.outlineStyle
         : undefined;
     const includePsychModule = chat.includePsychModule === true && !!chat.anchorEntryId;
+    // Character Guided Playbook Packs — v1 scope is Character template only (design doc §9's
+    // "Location/other templates: reuse PP* patterns later"). Global chats (no storyId) still
+    // resolve fine — resolvePlaybookPackContext treats null storyId as "skip the story tier".
+    const usePlaybookPack = chat.usePlaybookPack === true && chat.templateSlug === "character_codex";
 
     // Only build a non-default entityTypes array when a bridge toggle is actually on — search()/
     // hybridSearch's own DEFAULT_SEARCH_ENTITY_TYPES stays the single source of truth for
@@ -955,7 +978,9 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         priorSetupSlots,
         handoffStatus,
         allNotes,
-        focusedNote
+        focusedNote,
+        playbookPackConcrete,
+        playbookPackPsych
     ] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
         includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
@@ -968,7 +993,9 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         isBrainstorm && chat.storyId ? getSlots(chat.storyId) : Promise.resolve([]),
         isBrainstorm ? resolveHandoffStatus(chatId) : Promise.resolve({ activeCount: 0, doneCount: 0 }),
         isNotes && chat.storyId ? resolveAllStoryNotes(chat.storyId) : Promise.resolve([]),
-        isNotes ? resolveFocusedNote(focusedNoteId ?? null) : Promise.resolve(null)
+        isNotes ? resolveFocusedNote(focusedNoteId ?? null) : Promise.resolve(null),
+        usePlaybookPack && style ? resolvePlaybookPackContext(chat.storyId, "character_codex", style) : Promise.resolve(null),
+        usePlaybookPack && includePsychModule ? resolvePlaybookPackContext(chat.storyId, "character_psych", "any") : Promise.resolve(null)
     ]);
 
     return {
@@ -988,6 +1015,7 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         webSearchResults: webSearch.results,
         fetchedPages: webSearch.pages,
         allNotes,
-        focusedNote
+        focusedNote,
+        playbookPack: { concrete: playbookPackConcrete, psych: playbookPackPsych }
     };
 };

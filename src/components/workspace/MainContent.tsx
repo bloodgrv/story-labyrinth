@@ -7,6 +7,7 @@ import { LorebookTool } from "./tools/LorebookTool";
 import { NameGeneratorTool } from "./tools/NameGeneratorTool";
 import { NotesTool } from "./tools/NotesTool";
 import { OutlineTool } from "./tools/OutlineTool";
+import { PlaybookPacksTool } from "./tools/PlaybookPacksTool";
 import { ProjectMemoryTool } from "./tools/ProjectMemoryTool";
 import { SeriesTool } from "./tools/SeriesTool";
 import { RagScannerTool } from "./tools/RagScannerTool";
@@ -52,6 +53,8 @@ export const MainContent = () => {
                 return <StoryMapTool />;
             case "scanner":
                 return <RagScannerTool />;
+            case "playbooks":
+                return <PlaybookPacksTool />;
             default:
                 return (
                     <div className="flex items-center justify-center h-full">

@@ -145,6 +145,7 @@ router.get(
 //   wbStyle: string                — Light|Standard|Grill-me, worldbuilding chats (P0.4 B5)
 //   outlineStyle: string           — Light|Standard|Grill-me, outline chats (P0.4 B5)
 //   includePsychModule: boolean    — Character template's opt-in psych module (P0.4 B5)
+//   usePlaybookPack: boolean       — Character template's playbook pack arm toggle (Hybrid D)
 //   autoInsertProse: boolean       — Editor-only auto-insert toggle (P0.4 R6)
 //   autoAcceptCodex: boolean       — Editor/WB/Outline auto-accept Codex toggle (P0.4 R6)
 //   autoAcceptOutline: boolean     — Outline-only auto-accept create/edit/reorder toggle, never delete (P0.4 R6)
@@ -174,6 +175,7 @@ router.patch(
             wbStyle,
             outlineStyle,
             includePsychModule,
+            usePlaybookPack,
             autoInsertProse,
             autoAcceptCodex,
             autoAcceptOutline,
@@ -194,6 +196,7 @@ router.patch(
             wbStyle?: string;
             outlineStyle?: string;
             includePsychModule?: boolean;
+            usePlaybookPack?: boolean;
             autoInsertProse?: boolean;
             autoAcceptCodex?: boolean;
             autoAcceptOutline?: boolean;
@@ -227,6 +230,7 @@ router.patch(
         if (wbStyle !== undefined) metaFields.wbStyle = wbStyle;
         if (outlineStyle !== undefined) metaFields.outlineStyle = outlineStyle;
         if (includePsychModule !== undefined) metaFields.includePsychModule = includePsychModule;
+        if (usePlaybookPack !== undefined) metaFields.usePlaybookPack = usePlaybookPack;
         if (autoInsertProse !== undefined) metaFields.autoInsertProse = autoInsertProse;
         if (autoAcceptCodex !== undefined) metaFields.autoAcceptCodex = autoAcceptCodex;
         if (autoAcceptOutline !== undefined) metaFields.autoAcceptOutline = autoAcceptOutline;
@@ -253,6 +257,7 @@ router.patch(
                         wbStyle?: string;
                         outlineStyle?: string;
                         includePsychModule?: boolean;
+                        usePlaybookPack?: boolean;
                         autoInsertProse?: boolean;
                         autoAcceptCodex?: boolean;
                         autoAcceptOutline?: boolean;

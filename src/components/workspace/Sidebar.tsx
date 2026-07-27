@@ -6,6 +6,7 @@ import {
     ChevronRight,
     ExternalLink,
     FileEdit,
+    GraduationCap,
     Layers,
     Library,
     List,
@@ -41,7 +42,8 @@ const tools = [
     { id: "name-generator" as WorkspaceTool, label: "Names", icon: Sparkles, requiresStory: true },
     { id: "memory" as WorkspaceTool, label: "Memory", icon: Brain, requiresStory: true },
     { id: "relationships" as WorkspaceTool, label: "Relations", icon: Network, requiresStory: true },
-    { id: "story-map" as WorkspaceTool, label: "Story Map", icon: Map, requiresStory: true }
+    { id: "story-map" as WorkspaceTool, label: "Story Map", icon: Map, requiresStory: true },
+    { id: "playbooks" as WorkspaceTool, label: "Playbooks", icon: GraduationCap, requiresStory: true }
 ];
 
 // Tools that make sense as a standalone browser tab (deep-linkable via /?story=&tool=,

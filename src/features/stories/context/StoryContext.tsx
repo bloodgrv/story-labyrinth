@@ -16,7 +16,8 @@ export type WorkspaceTool =
     | "relationships"
     | "story-map"
     | "scanner"
-    | "name-generator";
+    | "name-generator"
+    | "playbooks";
 
 interface StoryContextType {
     currentStoryId: string | null;

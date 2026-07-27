@@ -7,6 +7,7 @@ import { seedCoreNamePools } from "./db/seedNamePools.js";
 import { migrateSceneBeatPromptType, patchStaleSystemPrompts, seedSystemPrompts } from "./db/seedSystemPrompts.js";
 import { blockViewerMutations, requireAuth, requireOwner } from "./middleware/auth.js";
 import { start as startJobRunner, stop as stopJobRunner } from "./services/jobRunner.js";
+import { seedShippedPlaybookPacks } from "./services/playbookPackService.js";
 import adminRouter from "./routes/admin.js";
 import agentJobsRouter from "./routes/agentJobs.js";
 import agentMemoriesRouter from "./routes/agentMemories.js";
@@ -27,6 +28,7 @@ import notesRouter from "./routes/notes.js";
 import outlineRouter from "./routes/outline.js";
 import outlineCharactersRouter from "./routes/outlineCharacters.js";
 import outlineImportRouter from "./routes/outlineImport.js";
+import playbookPacksRouter from "./routes/playbookPacks.js";
 import promptsRouter from "./routes/prompts.js";
 import ragRouter from "./routes/rag.js";
 import seriesRouter from "./routes/series.js";
@@ -57,6 +59,9 @@ const initializeDatabase = async () => {
     // NG4 (docs/Name_Generator_Design.md v0.4) — baked-in core name pools, same insert-only,
     // idempotent-on-every-boot shape as seedSystemPrompts above.
     await seedCoreNamePools();
+    // Character Guided Playbook Packs (Hybrid D, PP1) — shipped shell packs, same insert-only,
+    // idempotent-on-every-boot shape as seedCoreNamePools above.
+    await seedShippedPlaybookPacks();
     await startJobRunner();
 };
 
@@ -132,6 +137,10 @@ app.use("/api/outline", outlineRouter);
 app.use("/api/outline-characters", outlineCharactersRouter);
 app.use("/api/outline-import", outlineImportRouter);
 app.use("/api/folders", foldersRouter);
+// Character Guided Playbook Packs (Hybrid D) — editor-level auth (requireAuth +
+// blockViewerMutations, already applied globally above), same posture as /api/notes: reading and
+// arming a pack is editorial, not system administration.
+app.use("/api/playbook-packs", playbookPacksRouter);
 app.use("/api/users", requireOwner, usersRouter);
 
 // Serve static files in production

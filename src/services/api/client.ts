@@ -35,6 +35,7 @@ export { lorebookApi } from "./lorebookClient";
 export { nameGeneratorApi } from "./nameGeneratorClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
 export { outlineImportApi } from "./outlineImportClient";
+export { playbookPacksApi } from "./playbookPacksClient";
 export { ragApi } from "./ragClient";
 export { storyGraphApi } from "./storyGraphClient";
 export { storyMapApi } from "./storyMapClient";
@@ -178,6 +179,7 @@ export const chatsApi = {
             wbStyle?: string;
             outlineStyle?: string;
             includePsychModule?: boolean;
+            usePlaybookPack?: boolean;
             autoInsertProse?: boolean;
             autoAcceptCodex?: boolean;
             autoAcceptOutline?: boolean;

@@ -386,6 +386,24 @@ export function ChatInterface({
                 ? `- ${context.focusedNote.title} (${context.focusedNote.type}${context.focusedNote.pinned ? ", pinned" : ""}) [id: ${context.focusedNote.id}]\n${context.focusedNote.content}`
                 : "";
 
+            // Character Guided Playbook Packs (Hybrid D) — only non-empty when this chat's
+            // usePlaybookPack toggle is on (chatContextService.ts's getChatContext gate). Exact §5
+            // packet format from the design doc — labeled non-canon curriculum, never established
+            // fact, one block per resolved pack (concrete + optional psych).
+            const formatPack = (pack: NonNullable<typeof context.playbookPack.concrete>) =>
+                `[PLAYBOOK PACK — interview curriculum, not story canon]\n` +
+                `playbook: ${pack.playbookKey}\n` +
+                `style: ${pack.style}\n` +
+                `scope: ${pack.scope}\n` +
+                `Use as coverage targets and sample question angles.\n` +
+                `Do not treat as established fact about the story world.\n` +
+                `Propose durable character facts via codex-proposal (and psych-proposal if psych module is on).\n\n` +
+                pack.body;
+            const playbookPackText = [context.playbookPack.concrete, context.playbookPack.psych]
+                .filter((p): p is NonNullable<typeof p> => p !== null)
+                .map(formatPack)
+                .join("\n\n");
+
             const sections = [
                 context.systemPrompt,
                 context.projectSynopsis && `Project synopsis:\n${context.projectSynopsis}`,
@@ -408,7 +426,8 @@ export function ChatInterface({
                 setupSlotsText && `[PROJECT SETUP CHECKLIST — use slotKey exactly as shown when a proposal addresses one]\n${setupSlotsText}`,
                 handoffStatusText && `[YOUR OWN PENDING PROPOSALS/HANDOFFS]\n${handoffStatusText}`,
                 allNotesText && `[ALL STORY NOTES — titles/types only; use the id values exactly as shown if referencing one]\n${allNotesText}`,
-                focusedNoteText && `[FOCUSED NOTE — currently open in the Notes tool, treat as current]\n${focusedNoteText}`
+                focusedNoteText && `[FOCUSED NOTE — currently open in the Notes tool, treat as current]\n${focusedNoteText}`,
+                playbookPackText
             ].filter(Boolean);
             setCodexContext(sections.join("\n\n"));
             setFocusedOnLabel(anchorEntries[0]?.name ?? (anchorChapters[0] ? `Chapter: ${anchorChapters[0].title}` : null));
@@ -435,7 +454,11 @@ export function ChatInterface({
         selectedChat.brainstormStyle,
         selectedChat.wbStyle,
         selectedChat.outlineStyle,
-        selectedChat.includePsychModule
+        selectedChat.includePsychModule,
+        // Character Guided Playbook Packs (Hybrid D) — same B5 bug class fixed once already for
+        // style/psych above: this must be in the deps too, or toggling arm after the chat was
+        // first selected would leave the next message's context silently stale.
+        selectedChat.usePlaybookPack
     ]);
 
     // Context/Token Meter (T4) — M2. contextWindowOverride only applies to Local (design decision
@@ -1312,7 +1335,6 @@ export function ChatInterface({
                 onSaveAsNote={!isEditorChat && storyId ? message => setNoteSourceMessage(message) : undefined}
                 // P0.4 S5 — Research-only copy-friendly blocks, self-contained in ChatMessageList
                 // (no callback needed, unlike onSaveAsNote which needs parent state).
-                enableCopy={isResearchChat}
                 // Chat Shuttle H6 — same gate as onSaveAsNote above (Editor stays canon-only;
                 // global chats with no storyId have nowhere to save a note against).
                 onSaveSelectionAsNote={!isEditorChat && storyId ? handleSaveSelectionAsNote : undefined}
