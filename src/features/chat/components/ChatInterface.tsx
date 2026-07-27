@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "react-toastify";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -986,6 +986,88 @@ export function ChatInterface({
         setNoteSourceMessage(null);
     };
 
+    // P1.5 — per-message action bar (Copy shipped as MB0; this is MB1-MB4). Messages live as a
+    // single JSON array on the aiChats row (no per-message table), and the generic
+    // `PATCH /:chatId {messages}` full-array-replace already exists (chatsApi.update) — so no new
+    // server routes were needed for delete/edit/regenerate, just client-side array mutation +
+    // that one existing endpoint.
+    const persistMessages = async (messages: ChatMessage[]) => {
+        const updated = await chatsApi.update(selectedChat.id, { messages });
+        onChatUpdate(updated);
+        return updated;
+    };
+
+    // MB3 — edit, both roles. Assistant edits rewrite content in place (they never fed back into
+    // the model's own context). User edits also truncate everything after them: once the user's
+    // own turn changes, whatever the model replied with next was responding to text that no
+    // longer exists, so keeping it around would be stale/misleading (LM Studio's own convention).
+    const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+    const [editingContent, setEditingContent] = useState("");
+    const editingTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const handleStartEdit = (message: ChatMessage) => {
+        setEditingMessageId(message.id);
+        setEditingContent(message.content);
+    };
+    const handleCancelEdit = () => {
+        setEditingMessageId(null);
+        setEditingContent("");
+    };
+    const handleSaveEdit = async (messageId: string) => {
+        const idx = selectedChat.messages.findIndex(m => m.id === messageId);
+        const trimmed = editingContent.trim();
+        if (idx === -1 || !trimmed) return;
+        const target = selectedChat.messages[idx];
+        const editedMessage: ChatMessage = {
+            ...target,
+            content: trimmed,
+            originalContent: target.originalContent ?? target.content,
+            editedAt: new Date().toISOString(),
+            editedBy: "user",
+            edited: true
+        };
+        const newMessages =
+            target.role === "user"
+                ? [...selectedChat.messages.slice(0, idx), editedMessage]
+                : selectedChat.messages.map((m, i) => (i === idx ? editedMessage : m));
+        await persistMessages(newMessages);
+        handleCancelEdit();
+    };
+
+    // MB2 — delete, both roles. Deleting a user message orphans nothing (no branching concept in
+    // this app), but stays confirm-gated since it's destructive and unrecoverable either way.
+    const [pendingDeleteMessage, setPendingDeleteMessage] = useState<ChatMessage | null>(null);
+    const handleConfirmDelete = async () => {
+        if (!pendingDeleteMessage) return;
+        const newMessages = selectedChat.messages.filter(m => m.id !== pendingDeleteMessage.id);
+        await persistMessages(newMessages);
+        setPendingDeleteMessage(null);
+    };
+
+    // MB4 — regenerate, assistant messages only. Deletes the target reply and everything after it
+    // (truncateMessagesAfter-equivalent, inline), then re-invokes generate() with the preceding
+    // user message's own text — same path a fresh send takes, so it picks up fresh RAG/web-search
+    // extraContext rather than replaying whatever was current at the original send time.
+    const handleRegenerateMessage = async (message: ChatMessage) => {
+        if (isGenerating) return;
+        const idx = selectedChat.messages.findIndex(m => m.id === message.id);
+        if (idx === -1) return;
+        let userIdx = -1;
+        for (let i = idx - 1; i >= 0; i--) {
+            if (selectedChat.messages[i].role === "user") {
+                userIdx = i;
+                break;
+            }
+        }
+        if (userIdx === -1) {
+            toast.error("No prior message to regenerate from");
+            return;
+        }
+        const userContent = selectedChat.messages[userIdx].content;
+        await persistMessages(selectedChat.messages.slice(0, userIdx));
+        const extraContext = await computeExtraContext(userContent);
+        await generate(userContent, extraContext);
+    };
+
     // Chat Shuttle H6 — the "chat bubble selection" half of highlight → Note (ChatMessageList.tsx's
     // window.getSelection()-based bar), a span-level sibling to N5's whole-message save above.
     // Same NoteFormDialog reuse; "Send to Notes chat" reuses the generic pendingChatComposerSeed
@@ -1071,28 +1153,34 @@ export function ChatInterface({
     // (see DECISIONS.md's "Chat Context Anchoring" entry, where this was deliberately deferred).
     // Filtered to role==="search" only — anchor/related content is already unconditional in the
     // mount-time codexContext block, so re-including it here would just duplicate it.
-    const doSend = async () => {
-        let extraContext: string | undefined;
-        if (isResearchChat && input.trim()) {
-            const ctx = await chatsApi.getContext(selectedChat.id, input);
+    const computeExtraContext = async (text: string): Promise<string | undefined> => {
+        if (isResearchChat && text.trim()) {
+            const ctx = await chatsApi.getContext(selectedChat.id, text);
             const searchText = ctx.webSearchResults.map(r => `- [${r.title}](${r.url}): ${r.snippet}`).join("\n");
             const pagesText = ctx.fetchedPages.map(p => `[FETCHED PAGE: ${p.title}](${p.url})\n${p.text}`).join("\n\n");
-            extraContext = [searchText && `[WEB SEARCH RESULTS]\n${searchText}`, pagesText].filter(Boolean).join("\n\n") || undefined;
-        } else if ((isWorldBuildingChat || isEditorChat || isOutlineChat) && input.trim() && storyId) {
-            const ctx = await chatsApi.getContext(selectedChat.id, input);
+            return [searchText && `[WEB SEARCH RESULTS]\n${searchText}`, pagesText].filter(Boolean).join("\n\n") || undefined;
+        }
+        if ((isWorldBuildingChat || isEditorChat || isOutlineChat) && text.trim() && storyId) {
+            const ctx = await chatsApi.getContext(selectedChat.id, text);
             const searchEntries = ctx.relevantCodexEntries.filter(e => e.role === "search");
             const searchChapters = ctx.relevantChapterPassages.filter(p => p.role === "search");
             const entryText = searchEntries.map(e => `- ${e.name} (${e.category}): ${e.excerpt}`).join("\n");
             const chapterText = searchChapters.map(p => `- ${p.title}: ${p.excerpt}`).join("\n");
-            extraContext =
+            return (
                 [
                     entryText && `[UPDATED CONTEXT FOR THIS MESSAGE — Codex entries relevant to what you're currently asking]\n${entryText}`,
                     chapterText &&
                         `[UPDATED CONTEXT FOR THIS MESSAGE — chapter passages relevant to what you're currently asking]\n${chapterText}`
                 ]
                     .filter(Boolean)
-                    .join("\n\n") || undefined;
+                    .join("\n\n") || undefined
+            );
         }
+        return undefined;
+    };
+
+    const doSend = async () => {
+        const extraContext = await computeExtraContext(input);
         await generate(input, extraContext);
         setInput("");
     };
@@ -1320,14 +1408,17 @@ export function ChatInterface({
 
             <ChatMessageList
                 messages={displayMessages}
-                editingMessageId={null}
-                editingContent=""
+                editingMessageId={editingMessageId}
+                editingContent={editingContent}
                 streamingMessageId={isGenerating ? "streaming" : null}
                 storyId={storyId ?? ""}
-                onSaveEdit={() => {}}
-                onCancelEdit={() => {}}
-                onEditContentChange={() => {}}
-                editingTextareaRef={{ current: null }}
+                onStartEdit={handleStartEdit}
+                onSaveEdit={handleSaveEdit}
+                onCancelEdit={handleCancelEdit}
+                onEditContentChange={setEditingContent}
+                editingTextareaRef={editingTextareaRef}
+                onDeleteMessage={setPendingDeleteMessage}
+                onRegenerateMessage={handleRegenerateMessage}
                 // N5 — hidden entirely for Editor chats (stay canon-only) and for global chats
                 // with no storyId (Research Global mode has none to save a note against; Story
                 // mode gets a real storyId from ResearchTool.tsx, so this starts working there
@@ -1457,6 +1548,17 @@ export function ChatInterface({
                     setPendingSendConfirm(false);
                     doSend();
                 }}
+            />
+
+            <ConfirmDialog
+                open={pendingDeleteMessage !== null}
+                onOpenChange={open => {
+                    if (!open) setPendingDeleteMessage(null);
+                }}
+                title="Delete message?"
+                description="This permanently removes the message from the chat. This can't be undone."
+                confirmLabel="Delete"
+                onConfirm={handleConfirmDelete}
             />
             <MessageInputArea
                 input={input}

@@ -1,4 +1,4 @@
-import { Copy, Edit, Loader2, Send, StickyNote, X } from "lucide-react";
+import { Copy, Edit, Loader2, RefreshCw, Send, StickyNote, Trash2, X } from "lucide-react";
 import type { ReactNode } from "react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -19,13 +19,19 @@ interface ChatMessageListProps {
     editingContent: string;
     streamingMessageId: string | null;
     storyId: string;
-    // Editing is optional — chats.ts-backed chats (World-Building/Research) don't support
-    // it yet, so onStartEdit is simply omitted there and the edit affordance is hidden.
+    // Editing is optional — omitted (button hidden) wherever a host doesn't wire it up.
     onStartEdit?: (message: ChatMessage) => void;
     onSaveEdit: (messageId: string) => void;
     onCancelEdit: () => void;
     onEditContentChange: (content: string) => void;
     editingTextareaRef: React.RefObject<HTMLTextAreaElement | null>;
+    // P1.5 MB2 — delete a single message (either role). Omitted (button hidden) wherever a host
+    // doesn't wire it up. Confirmation is the host's responsibility (ChatInterface.tsx uses
+    // ConfirmDialog), not this list's.
+    onDeleteMessage?: (message: ChatMessage) => void;
+    // P1.5 MB4 — regenerate an assistant reply (deletes it + everything after, re-sends the prior
+    // user message). Assistant messages only.
+    onRegenerateMessage?: (message: ChatMessage) => void;
     // Renders below an assistant message's content when that message produced Codex
     // proposals — see ChatInterface in features/chat for the chats.ts-backed usage.
     renderProposalsForMessage?: (messageId: string) => ReactNode;
@@ -56,7 +62,9 @@ export function ChatMessageList({
     renderProposalsForMessage,
     onSaveAsNote,
     onSaveSelectionAsNote,
-    onSendSelectionToNotesChat
+    onSendSelectionToNotesChat,
+    onDeleteMessage,
+    onRegenerateMessage
 }: ChatMessageListProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -110,7 +118,7 @@ export function ChatMessageList({
                                     : "bg-muted"
                             }`}
                         >
-                            {message.role === "assistant" && editingMessageId === message.id ? (
+                            {editingMessageId === message.id ? (
                                 <div className="space-y-2">
                                     <Textarea
                                         ref={editingTextareaRef}
@@ -159,8 +167,13 @@ export function ChatMessageList({
                                                 text={parseThinkingContent(message.content).response}
                                                 storyId={storyId}
                                             />
+                                            {onRegenerateMessage && (
+                                                <Button size="sm" variant="ghost" title="Regenerate" onClick={() => onRegenerateMessage(message)}>
+                                                    <RefreshCw className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                             {onStartEdit && (
-                                                <Button size="sm" variant="ghost" onClick={() => onStartEdit(message)}>
+                                                <Button size="sm" variant="ghost" title="Edit" onClick={() => onStartEdit(message)}>
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
                                             )}
@@ -180,10 +193,20 @@ export function ChatMessageList({
                                             >
                                                 <Copy className="h-4 w-4" />
                                             </Button>
+                                            {onDeleteMessage && (
+                                                <Button size="sm" variant="ghost" title="Delete" onClick={() => onDeleteMessage(message)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     )}
                                     {message.role === "user" && !streamingMessageId && (
                                         <div className="absolute top-0 right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {onStartEdit && (
+                                                <Button size="sm" variant="ghost" title="Edit" onClick={() => onStartEdit(message)}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                             {onSaveAsNote && (
                                                 <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
                                                     <StickyNote className="h-4 w-4" />
@@ -200,6 +223,11 @@ export function ChatMessageList({
                                             >
                                                 <Copy className="h-4 w-4" />
                                             </Button>
+                                            {onDeleteMessage && (
+                                                <Button size="sm" variant="ghost" title="Delete" onClick={() => onDeleteMessage(message)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
