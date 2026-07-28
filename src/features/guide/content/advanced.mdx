@@ -106,6 +106,16 @@ Access notes and outlines from within the chapter editor:
 
 Alongside bold/italic/underline, the chapter editor's toolbar supports bulleted, numbered, and checklist lists — select the list type from the toolbar (or the block-type menu) the same way you'd apply any other formatting. Lists carry through cleanly on export (Markdown/HTML/PDF).
 
+### Exporting for Kindle
+
+"Download as EPUB (Kindle)" (Stories page or a chapter's download menu) produces a Kindle-ready EPUB, not just a generic ebook file:
+
+- **Front matter:** a title page (title + author) and a generated copyright line, followed by an auto-generated table of contents. The story synopsis is **not** included in the book body — it stays on the story record.
+- **Chapter titles:** uses your chapter's title if it has one, otherwise falls back to "Chapter {number}".
+- **Scene breaks:** put an empty line, `***`, `* * *`, or `---` on its own line (or insert a horizontal rule from the toolbar) between scenes — it renders as a centered `* * *` break in the exported book, and the paragraph right after it won't get the usual first-line indent.
+- **Typography:** trade-style paragraph indent, minimal Kindle-native styling, no embedded fonts — your Kindle's own reading font is used.
+- **Before you export:** if something looks off (no chapters, everything empty, a missing title/author, or a very large embedded image), you'll see a dismissible warning — it's just a heads-up, never a hard block. Click "Export anyway" to continue.
+
 ### Story Management
 
 Manage story metadata and settings from the Stories page.

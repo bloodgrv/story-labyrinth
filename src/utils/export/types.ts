@@ -7,6 +7,8 @@ export interface SerializedLexicalNode {
     format?: number;
     listType?: "bullet" | "number" | "check";
     checked?: boolean;
+    src?: string;
+    altText?: string;
 }
 
 export interface LexicalEditorState {
