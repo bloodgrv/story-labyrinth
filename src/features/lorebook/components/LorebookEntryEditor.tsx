@@ -1,4 +1,5 @@
 import { attemptPromise } from "@jfdi/attempt";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Plus, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -25,7 +26,7 @@ import { randomUUID } from "@/utils/crypto";
 import { toastCRUD } from "@/utils/toastUtils";
 import type { ChatStyle, WorldBuildingTemplateSlug } from "@/types/worldbuilding";
 import { getTemplate } from "@/types/worldbuilding";
-import { useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
+import { lorebookKeys, useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
 import { PsychProfilePanel } from "./PsychProfilePanel";
 import {
     AdvancedSettings,
@@ -80,6 +81,11 @@ export interface LorebookEntryEditorProps {
     // Omitted entirely for tab usage — "Cancel" only makes sense when there's an overlay to
     // dismiss back to; an entry tab just stays open until closed via its tab control.
     onCancel?: () => void;
+    // Fires once, the first time a brand-new (no `entry` prop) editor lazily creates its stub
+    // entry (see ensureLiveEntry below) — lets the caller promote a "new" tab into a real
+    // "entry" tab so the rest of the Codex/chat machinery (already correctly id+updatedAt-keyed
+    // for existing entries) takes over instead of this component trying to duplicate it.
+    onEntryCreated?: (entry: LorebookEntry) => void;
 }
 
 // Docked World-Building chat alongside the entry form — the same chat/template-picker
@@ -87,9 +93,21 @@ export interface LorebookEntryEditorProps {
 // DECISIONS.md), reusing ChatList/ChatInterface rather than a new per-entry chat.
 // `entryId` (when editing an existing entry) anchors new chats created here to it — see
 // DECISIONS.md's chat-context-anchoring entry and chatContextService.ts's getChatContext.
-// Naturally undefined for a brand-new not-yet-saved entry, which just means new chats aren't
-// anchored, no special-casing needed.
-function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId?: string }) {
+// For a brand-new not-yet-saved entry, entryId starts undefined — onEnsureEntry lazily creates
+// a real (codex-enabled) stub entry the first time a WB chat is actually started, so the chat
+// anchors to it instead of running unanchored. An unanchored chat has no entryId to give the
+// model, so any Codex proposal it makes becomes a "new_entry" proposal that spawns a second,
+// orphaned entry on approval — see LorebookPage.tsx's onEntryCreated wiring for the other half
+// of this fix (promotes the "new" tab into a normal, already-correctly-synced "entry" tab).
+function WorldBuildingChatPanel({
+    storyId,
+    entryId,
+    onEnsureEntry
+}: {
+    storyId: string;
+    entryId?: string;
+    onEnsureEntry: () => Promise<LorebookEntry>;
+}) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
     const [composerSeedText, setComposerSeedText] = useState<string | null>(null);
@@ -145,9 +163,10 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
         setInitialRework({ chatId: mostRecent.id, payload });
     }, [pendingRework, storyId, chats, chatsLoading, createMutation]);
 
-    const handleCreateFromTemplate = (templateSlug: WorldBuildingTemplateSlug, templateName: string) => {
+    const handleCreateFromTemplate = async (templateSlug: WorldBuildingTemplateSlug, templateName: string) => {
+        const anchorEntryId = entryId ?? (await onEnsureEntry()).id;
         createMutation.mutate(
-            { storyId, chatType: "worldbuilding", templateSlug, title: templateName, anchorEntryId: entryId ?? null },
+            { storyId, chatType: "worldbuilding", templateSlug, title: templateName, anchorEntryId },
             { onSuccess: newChat => setSelectedChat(newChat) }
         );
     };
@@ -196,7 +215,10 @@ function WorldBuildingChatPanel({ storyId, entryId }: { storyId: string; entryId
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 {templates.map(template => (
-                    <DropdownMenuItem key={template.slug} onClick={() => handleCreateFromTemplate(template.slug, template.name)}>
+                    <DropdownMenuItem
+                        key={template.slug}
+                        onClick={() => void handleCreateFromTemplate(template.slug, template.name)}
+                    >
                         {template.name}
                     </DropdownMenuItem>
                 ))}
@@ -329,13 +351,22 @@ export function LorebookEntryEditor({
     defaultCategory,
     draftValues,
     onSaved,
-    onCancel
+    onCancel,
+    onEntryCreated
 }: LorebookEntryEditorProps) {
     const createMutation = useCreateLorebookMutation();
     const updateMutation = useUpdateLorebookMutation();
+    const queryClient = useQueryClient();
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [naturalView, setNaturalView] = useNaturalEntryView();
     const isDesktop = useIsDesktopViewport();
+
+    // Tracks the real backing entry once one exists — starts as `entry` (already-saved case),
+    // but for a brand-new entry (entry undefined) gets populated the first time the docked WB
+    // chat needs to anchor to something (see ensureLiveEntry). Reading this instead of the raw
+    // `entry` prop everywhere below is what lets a chat-created stub actually become "the" entry
+    // being edited, instead of an orphaned duplicate the open form never learns about.
+    const [liveEntry, setLiveEntry] = useState<LorebookEntry | undefined>(entry);
 
     const { data: story } = useStoryQuery(storyId || "");
     const { data: seriesList } = useSeriesQuery();
@@ -349,13 +380,43 @@ export function LorebookEntryEditor({
     const selectedCategory = form.watch("category");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Lazily creates a codex-enabled stub entry from whatever the form currently holds, so a WB
+    // chat started before the user has ever hit Create still has a real entryId to anchor to
+    // (an unanchored chat can only ever emit "new_entry" proposals, which silently spawn a
+    // second, disconnected entry on approval). Idempotent — later calls just return liveEntry.
+    const ensureLiveEntry = async (): Promise<LorebookEntry> => {
+        if (liveEntry) return liveEntry;
+
+        const values = form.getValues();
+        const dataToSubmit = buildSubmitData(values, undefined);
+        const newId = randomUUID();
+        const created = await createMutation.mutateAsync({
+            id: newId,
+            ...dataToSubmit,
+            name: dataToSubmit.name || "Untitled Character",
+            needsFleshingOut: true,
+            storyId: storyId || values.scopeId || ""
+        } as Omit<LorebookEntry, "createdAt">);
+
+        await codexApi.enable(created.id, { sourceType: "user" });
+        // Awaited (not fire-and-forget) so the entries list a caller's onEntryCreated relies on
+        // (e.g. LorebookPage promoting this tab to "entry") already includes this stub by the
+        // time it fires, instead of racing an in-flight refetch.
+        await queryClient.invalidateQueries({ queryKey: lorebookKeys.all });
+
+        const withCodex: LorebookEntry = { ...created, codexEnabled: true, needsFleshingOut: true };
+        setLiveEntry(withCodex);
+        onEntryCreated?.(withCodex);
+        return withCodex;
+    };
+
     const handleSubmit = async (data: CreateEntryForm) => {
         setIsSubmitting(true);
         const [error] = await attemptPromise(async () => {
-            const dataToSubmit = buildSubmitData(data, entry);
-            const entryId = entry?.id ?? randomUUID();
+            const dataToSubmit = buildSubmitData(data, liveEntry);
+            const entryId = liveEntry?.id ?? randomUUID();
 
-            if (entry) await updateMutation.mutateAsync({ id: entry.id, data: dataToSubmit });
+            if (liveEntry) await updateMutation.mutateAsync({ id: liveEntry.id, data: dataToSubmit });
             else
                 await createMutation.mutateAsync({
                     id: entryId,
@@ -366,10 +427,10 @@ export function LorebookEntryEditor({
             // Codex state is submitted separately (codexApi), not part of the base entry
             // payload above — see CodexStateEditor.tsx and CreateEntryForm's own doc comment.
             if (data.codexEnabled) {
-                if (!entry?.codexEnabled) await codexApi.enable(entryId, { sourceType: "user" });
+                if (!liveEntry?.codexEnabled) await codexApi.enable(entryId, { sourceType: "user" });
 
                 const codexStateChanged =
-                    JSON.stringify(data.codexState) !== JSON.stringify(entry?.codexState ?? EMPTY_CODEX_STATE);
+                    JSON.stringify(data.codexState) !== JSON.stringify(liveEntry?.codexState ?? EMPTY_CODEX_STATE);
                 if (codexStateChanged)
                     await codexApi.recordState(entryId, { changes: { codexState: data.codexState }, sourceType: "user" });
             }
@@ -408,28 +469,30 @@ export function LorebookEntryEditor({
                         <ImageUploadField
                             control={form.control}
                             setValue={form.setValue}
-                            entryId={entry?.id}
-                            hasExistingImage={!!entry?.imageFilename}
+                            entryId={liveEntry?.id}
+                            hasExistingImage={!!liveEntry?.imageFilename}
                             isLocation={selectedCategory === "location"}
                         />
 
                         {naturalView ? (
-                            <NaturalEntryView control={form.control} entryId={entry?.id} storyId={storyId} />
+                            <NaturalEntryView control={form.control} entryId={liveEntry?.id} storyId={storyId} />
                         ) : (
                             <RawEntryFields
                                 control={form.control}
                                 tagInput={tagInput}
                                 selectedCategory={selectedCategory}
-                                entryId={entry?.id}
+                                entryId={liveEntry?.id}
                                 storyId={storyId}
                             />
                         )}
 
-                        {entry?.codexEnabled && entry.id && <CodexPendingChangesPanel entryId={entry.id} storyId={storyId} />}
+                        {liveEntry?.codexEnabled && liveEntry.id && (
+                            <CodexPendingChangesPanel entryId={liveEntry.id} storyId={storyId} />
+                        )}
 
-                        {entry?.codexEnabled && entry.id && <CodexHistoryPanel entryId={entry.id} storyId={storyId} />}
+                        {liveEntry?.codexEnabled && liveEntry.id && <CodexHistoryPanel entryId={liveEntry.id} storyId={storyId} />}
 
-                        {entry?.category === "character" && entry.id && <PsychProfilePanel entry={entry} />}
+                        {liveEntry?.category === "character" && liveEntry.id && <PsychProfilePanel entry={liveEntry} />}
 
                         <AdvancedSettings
                             control={form.control}
@@ -446,7 +509,7 @@ export function LorebookEntryEditor({
                                 </Button>
                             )}
                             <Button type="submit" disabled={isPending}>
-                                {isPending ? "Saving..." : entry ? "Update" : "Create"}
+                                {isPending ? "Saving..." : liveEntry ? "Update" : "Create"}
                             </Button>
                         </div>
                     </form>
@@ -459,7 +522,7 @@ export function LorebookEntryEditor({
                 // ~120px for the interface itself once min-w-0 (below) stopped it from silently
                 // overflowing off-screen. Widened to give the interface real breathing room.
                 <div className="w-[680px] shrink-0 h-full">
-                    <WorldBuildingChatPanel storyId={storyId as string} entryId={entry?.id} />
+                    <WorldBuildingChatPanel storyId={storyId as string} entryId={liveEntry?.id} onEnsureEntry={ensureLiveEntry} />
                 </div>
             )}
         </div>

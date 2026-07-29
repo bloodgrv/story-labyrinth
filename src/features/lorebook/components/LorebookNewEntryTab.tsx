@@ -1,3 +1,4 @@
+import type { LorebookEntry } from "@/types/story";
 import type { LorebookCategory } from "./form";
 import { LorebookEntryEditor } from "./LorebookEntryEditor";
 
@@ -7,6 +8,10 @@ interface LorebookNewEntryTabProps {
     defaultCategory: LorebookCategory;
     onSaved: () => void;
     onCancel: () => void;
+    // Fires the first time the docked WB chat lazily creates this draft's backing stub entry —
+    // see LorebookEntryEditor.tsx's ensureLiveEntry. The parent (LorebookPage) uses this to
+    // promote the tab from "new" to a real "entry" tab.
+    onEntryCreated?: (entry: LorebookEntry) => void;
 }
 
 // Full-width tab content for a brand-new entry (the Browse tab's "New Entry" button) — same
@@ -14,7 +19,14 @@ interface LorebookNewEntryTabProps {
 // draft seed, only a starting category. Was previously a slide-in Sheet (CreateEntryDialog);
 // moved to a tab so "New Entry" matches the same open-as-tab pattern every other Lorebook entry
 // point already uses (click a card, open a document-import draft).
-export function LorebookNewEntryTab({ storyId, seriesId, defaultCategory, onSaved, onCancel }: LorebookNewEntryTabProps) {
+export function LorebookNewEntryTab({
+    storyId,
+    seriesId,
+    defaultCategory,
+    onSaved,
+    onCancel,
+    onEntryCreated
+}: LorebookNewEntryTabProps) {
     return (
         <div className="flex h-full flex-col">
             <div className="flex items-center gap-2 px-6 pt-4 pb-2">
@@ -27,6 +39,7 @@ export function LorebookNewEntryTab({ storyId, seriesId, defaultCategory, onSave
                     defaultCategory={defaultCategory}
                     onSaved={onSaved}
                     onCancel={onCancel}
+                    onEntryCreated={onEntryCreated}
                 />
             </div>
         </div>

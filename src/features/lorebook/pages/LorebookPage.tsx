@@ -268,6 +268,17 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                         defaultCategory={activeTab.defaultCategory}
                         onSaved={() => closeTab(activeTabIndex)}
                         onCancel={() => closeTab(activeTabIndex)}
+                        // A WB chat started before the user hit "Create" lazily creates a real
+                        // stub entry to anchor to (LorebookEntryEditor.tsx's ensureLiveEntry) —
+                        // once that happens, this draft tab needs to become a normal entry tab
+                        // so the rest of the Codex machinery (id+updatedAt-keyed LorebookEntryTab
+                        // below) picks it up instead of this component going stale.
+                        onEntryCreated={created => {
+                            const tabId = activeTab.tabId;
+                            setOpenTabs(prev =>
+                                prev.map(t => (t.kind === "new" && t.tabId === tabId ? { kind: "entry", entryId: created.id } : t))
+                            );
+                        }}
                     />
                 </div>
             ) : (
