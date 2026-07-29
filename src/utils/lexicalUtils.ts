@@ -108,10 +108,14 @@ export const extractPlainTextFromLexical = (
             return "\n";
         
 
-        // List items get their own line, separate from surrounding prose
+        // List items get their own line, separate from surrounding prose. Checklist items carry
+        // a `checked` boolean (set by CheckListPlugin) — plain-text has no interactive checkbox,
+        // so mirror convertLexicalToHtml.ts's own glyph convention rather than silently dropping
+        // the state, matching the HTML/Markdown converters' checklist fidelity.
         if (node.type === "listitem") {
+            const checkbox = node.checked !== undefined ? (node.checked ? "☑ " : "☐ ") : "";
             const childrenText = Array.isArray(node.children) ? node.children.map(extractText).join("") : "";
-            return `${childrenText}\n`;
+            return `${checkbox}${childrenText}\n`;
         }
 
         // Recursively extract text from children

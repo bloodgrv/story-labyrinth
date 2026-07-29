@@ -1,7 +1,7 @@
 # Lexical Editor (T2) — Design
 
-**Status:** **Plugin-add axis shipped 2026-07-22** (LE0-LE3, see `DECISIONS.md`'s "Lexical Editor Deepen — LE0-LE3" entry). **CodeHighlight/TreeView/collab-residue axis locked + shipped 2026-07-28** (see `DECISIONS.md`'s "Lexical Editor — CodeHighlight/TreeView/Collab-Residue (T2 quick decisions)" entry). Remaining open T2 axes: list "done" bar, toolbar/mobile/selection polish, upgrade breakage/compat matrix.  
-**Priority:** Plugin-add axis done; CodeHighlight/TreeView/collab-residue done; remaining T2 axes stay **P3** until separately locked  
+**Status:** **Plugin-add axis shipped 2026-07-22** (LE0-LE3, see `DECISIONS.md`'s "Lexical Editor Deepen — LE0-LE3" entry). **CodeHighlight/TreeView/collab-residue axis locked + shipped 2026-07-28** (see `DECISIONS.md`'s "Lexical Editor — CodeHighlight/TreeView/Collab-Residue (T2 quick decisions)" entry). **List "done" bar locked + shipped 2026-07-28** (see `DECISIONS.md`'s "Lexical Editor — List 'Done' Bar (T2)" entry). Remaining open T2 axes: toolbar/mobile/selection polish, upgrade breakage/compat matrix.  
+**Priority:** Plugin-add axis done; CodeHighlight/TreeView/collab-residue done; list done-bar done; remaining T2 axes stay **P3** until separately locked  
 **Talk list:** T2  
 **Related:** story editor home `src/components/story-editor/`; export paths under `src/utils/export/`; bugs B1 (word count), B2 (beat marks) are separate P2 debt
 
@@ -105,10 +105,22 @@ See `DECISIONS.md`'s "Lexical Editor — CodeHighlight/TreeView/Collab-Residue (
 
 ---
 
+## Locked decisions — list "done" bar (2026-07-28)
+
+| Item | Lock |
+|------|------|
+| Nested list creation | **Confirmed working, no build needed** — `ListPlugin` + `TabIndentationPlugin` are architecturally sufficient (Tab at true block-start indents into a real nested `<ul>`/`<li>` structure via `ListItemNode.setIndent()`'s `$handleIndent` override; mid-line Tab correctly inserts a literal tab character instead, matching Word/Docs convention — this is upstream Lexical's own `$indentOverTab` logic, not app code). Live-verified with real editor-created content. |
+| Markdown export nesting | **Fixed** — was producing syntactically invalid output (a nested list's items concatenated onto the parent item's line with no newline/indentation). `convertLexicalToMarkdown.ts` now recurses with depth-aware 2-space GFM indentation. |
+| PDF/plain-text checklist state | **Fixed** — `extractPlainTextFromLexical` (`lexicalUtils.ts`) never read a `listitem`'s `checked` field at all, silently dropping check state in PDF export. Now prefixes `☑ `/`☐ `, matching `convertLexicalToHtml.ts`'s existing glyph convention. |
+| Markdown chapter import | **Out of scope** — no Markdown-file-to-Lexical-content path exists anywhere in the app today (only live-typing shortcuts create lists as you type; `documentImportService.ts`'s `.md` handling is Lorebook-only and discards structure into prose). "MD round-trip guarantees" from this axis's original wording is moot without an import leg — not building one without a real requester. |
+
+See `DECISIONS.md`'s "Lexical Editor — List 'Done' Bar (T2)" entry for the full trail.
+
+---
+
 ## Not locked yet (other T2 axes)
 
 - Detailed upgrade breakage / custom-node serialization compat matrix  
-- Explicit list “done” bar (nested lists, MD round-trip guarantees, checklist export rules)  
 - Toolbar / mobile / selection / rework polish  
 - Amazon/KDP manuscript alignment → **T3**, separate talk item (already shipped, see `docs/Amazon_KDP_Export_Design.md`)  
 
@@ -134,3 +146,4 @@ See `DECISIONS.md`'s "Lexical Editor — CodeHighlight/TreeView/Collab-Residue (
 | 2026-07-21 | Note: non-Lexical dep majors parked on backlog as pack 3 todo later — out of LE scope. |
 | 2026-07-22 | Plugin-add axis (LE0–LE3) shipped: version bump, `ListPlugin`+`CheckListPlugin` mount, list/checklist smoke test, and an export-converter fix (list nodes were previously unhandled in HTML/Markdown/PDF export, latent since lists were never creatable before this pass). Two real Lexical-0.48 breaks found and fixed along the way (`ContextMenuPlugin` API removal, a `FloatingLinkEditor.tsx` update-listener crash). See `DECISIONS.md`. |
 | 2026-07-28 | CodeHighlight/TreeView/collab-residue axis grilled and shipped same session: CodeHighlight left as-is (load-compat only); dead `showTreeView` flag removed (was a cosmetic-only CSS toggle, no real debug panel ever mounted); `yjs`/`y-websocket` + `collaboration.ts` + the dead `CollaborationPlugin` branch in `ImageComponent.tsx` removed entirely (unreachable code, `isCollabActive` never set true anywhere in the app). `ImageComponent` production chunk shrank ~128 KB → ~8 KB as a result. See `DECISIONS.md`. |
+| 2026-07-28 | List "done" bar grilled and shipped, same session: nested-list creation confirmed working (no build needed, architecture already sufficient); a real Markdown-export nesting bug fixed (was emitting syntactically invalid output); a real PDF/plain-text checklist-state-drop bug fixed. Markdown chapter import declared out of scope (no consumer, no existing import leg to round-trip against). See `DECISIONS.md`. |

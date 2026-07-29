@@ -35,20 +35,34 @@ export function convertLexicalToMarkdown(jsonContent: string): string {
             const prefix = "#".repeat(level);
             const childrenText = node.children ? node.children.map(processNode).join("") : "";
             return `${prefix} ${childrenText}\n\n`;
-        } else if (node.type === "list") {
-            const isOrdered = node.listType === "number";
-            const items = node.children
-                ? node.children.map((child, index) => {
-                      const marker = isOrdered ? `${index + 1}.` : "-";
-                      const checkbox = child.checked !== undefined ? (child.checked ? "[x] " : "[ ] ") : "";
-                      const childrenText = child.children ? child.children.map(processNode).join("") : "";
-                      return `${marker} ${checkbox}${childrenText}`;
-                  })
-                : [];
-            return `${items.join("\n")}\n\n`;
-        } else if (node.children) return node.children.map(processNode).join("");
+        } else if (node.type === "list") return `${renderList(node, 0).trimEnd()}\n\n`;
+        else if (node.children) return node.children.map(processNode).join("");
 
         return "";
+    };
+
+    // GFM nested lists indent by 2 spaces per level under the parent item's marker, and a nested
+    // list's own items are rendered on their own lines rather than concatenated onto the parent
+    // item's line — walked directly (not through the generic processNode dispatcher above) so
+    // depth can be tracked across recursive calls without threading a depth param through every
+    // other node type that doesn't need one.
+    const renderList = (node: SerializedLexicalNode, depth: number): string => {
+        const isOrdered = node.listType === "number";
+        const indent = "  ".repeat(depth);
+        const lines: string[] = [];
+
+        (node.children ?? []).forEach((child, index) => {
+            const marker = isOrdered ? `${index + 1}.` : "-";
+            const checkbox = child.checked !== undefined ? (child.checked ? "[x] " : "[ ] ") : "";
+            const inlineChildren = (child.children ?? []).filter(c => c.type !== "list");
+            const nestedLists = (child.children ?? []).filter(c => c.type === "list");
+            const inlineText = inlineChildren.map(processNode).join("");
+
+            lines.push(`${indent}${marker} ${checkbox}${inlineText}`);
+            for (const nested of nestedLists) lines.push(renderList(nested, depth + 1).trimEnd());
+        });
+
+        return `${lines.join("\n")}\n`;
     };
 
     if (editorState.root?.children)
