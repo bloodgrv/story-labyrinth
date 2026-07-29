@@ -223,6 +223,8 @@ At chat-only scope, this was **already fully built**, nothing left to implement:
 
 **Explicitly declined, not just out of scope for this pass:** scene/generation-output display (the design doc's other half) and everything the doc itself already excluded (agentic reasoning traces, Codex/memory/state deltas, RAG Scanner integration, approval workflows, trace history/versioning, multi-step agent visibility).
 
+**Closed permanently, user-confirmed 2026-07-28** — with the chat-window half fully built and shipped, the design doc's other half (scene/generation-output display) does not remain open as a future candidate. Don't re-offer it as a "could reopen" item; treat P1.4 as fully resolved at its shipped scope.
+
 **Refs:** `docs/2026-06-26_Visible_AI_Reasoning_Design.md` (v1.1, "Narrow Scope"); `DECISIONS.md`'s "P1.4 — Visible AI Reasoning" entry
 
 ### P1.5 — Per-message action bar (Copy/Delete/Regenerate/Edit) — ✅ Done (2026-07-27)
@@ -315,8 +317,9 @@ Read CLAUDE.md and docs/CURRENT_BACKLOG.md.
 P0 (P0.1–P0.4) and P1 (Agent Framework Phase C / P1.1, Relationship Graph G1.5+ / P1.2) are all done.
 Chat Shuttle (H0–H7), Transfer Log + Settings IA (S0, T0–T3), and Context/Token Meter (M0–M5)
 are also all done (2026-07-21/22).
-Remaining P1: P1.3 (per-message RAG, explicitly deferred) and P1.4 (Visible AI Reasoning full
-product, needs a scope conversation before building).
+P1.3 (per-message RAG) shipped 2026-07-23. P1.4 (Visible AI Reasoning) is closed permanently at
+chat-window-only scope, user-confirmed 2026-07-28 — the design doc's other half (scene/generation
+output) is not a future candidate, don't re-offer it.
 Name Generator (NG0-NG7), Lexical Editor deepen plugin-add axis (LE0-LE3), stale design-doc
 headers (B6), and Locations & Maps L0-L5 in full (location playbook, place sheet, map image
 preset, Story Map tool, place-Codex versioning, multi-floor nesting, export) are also all done
