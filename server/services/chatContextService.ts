@@ -11,6 +11,7 @@ import type {
     ChatContextWrittenChapter,
     ChatType
 } from "../../src/types/worldbuilding.js";
+import type { CodexState } from "../../src/types/codex.js";
 import { getTemplate } from "../../src/types/worldbuilding.js";
 import { BRAINSTORM_SLOTS } from "../../src/types/brainstorm.js";
 import { getChecklistCounts } from "./brainstormChecklistService.js";
@@ -41,12 +42,31 @@ const CODEX_PROPOSAL_INSTRUCTIONS =
     "```codex-proposal\n" +
     '{"type": "new_entry", "level": "story", "name": "...", "description": "...", "category": "character", "tags": ["..."]}\n' +
     "```\n\n" +
-    "or, to modify an existing entry (use the entryId from the Codex context below):\n\n" +
+    "or, to modify an existing entry:\n\n" +
     "```codex-proposal\n" +
     '{"type": "modify_entry", "entryId": "...", "proposedDescription": "...", "proposedTags": ["..."]}\n' +
     "```\n\n" +
+    '"entryId" must be copied exactly from the "id: ..." shown after that entry\'s name in the Codex ' +
+    "context below — never the entry's name itself, and never invented. If you don't see an id for the " +
+    "entry you mean, don't propose modify_entry for it — say so, or propose new_entry instead.\n\n" +
     '"level" must be "global", "series", or "story" (use "story" unless told otherwise). ' +
-    '"category" must be one of: character, location, item, event, note, synopsis, starting scenario, timeline.';
+    '"category" must be one of: character, location, item, event, note, synopsis, starting scenario, timeline.\n\n' +
+    "If a concrete physical fact belongs in a structured field rather than free prose — an item of " +
+    'clothing, a physical trait, a wound, a possession — include it under "proposedState" (valid on ' +
+    "both new_entry and modify_entry) instead of only mentioning it in description:\n\n" +
+    "```codex-proposal\n" +
+    '{"type": "modify_entry", "entryId": "...", "proposedDescription": "...", ' +
+    '"proposedState": {"wardrobe": [{"value": "..."}], "appearance": [{"label": "Hair", "value": "..."}], ' +
+    '"wounds": [{"value": "..."}], "items": [{"value": "..."}]}}\n' +
+    "```\n\n" +
+    '"proposedState" has five possible keys: "wardrobe", "wounds", "items" (each a list of ' +
+    '{"value": "..."} — one line per item/wound/possession), and "appearance", "customFields" (each a ' +
+    'list of {"label": "...", "value": "..."} — e.g. {"label": "Hair", "value": "shoulder-length, black"}). ' +
+    "Only include a key you are adding to or changing — an omitted key is left completely alone. When " +
+    "you do include a key, send its full intended list for that key (every item that should exist there " +
+    "after this change, not just the new one), since it replaces that key's current list wholesale. Check " +
+    "the entry's current state (shown in the Codex context below, if this chat is anchored to an entry) " +
+    "before proposing, so you don't drop or duplicate existing items.";
 
 // N6 (Notes_Outline_Chat_Bridges_Design.md §4, "AI propose" write path) — Editor chats never get
 // this (PROSE_PROPOSAL_INSTRUCTIONS below doesn't include it), matching the doctrine that Editor
@@ -182,7 +202,9 @@ const SHUTTLE_PROPOSAL_INSTRUCTIONS =
 // anything on its own; the user picks a result via the same Use/Create-Codex actions the panel has.
 const NAME_PROPOSAL_INSTRUCTIONS =
     "If the user wants name ideas for a character (or you need to suggest one), don't just invent names inline " +
-    "— propose a name generation instead, so the suggestions come from the story's actual grounded name pools.\n\n" +
+    "— propose a name generation instead, so the suggestions come from the story's actual grounded name pools. " +
+    "Never write out a list of candidate names as plain prose — always use the fence below instead, so the user " +
+    "gets a real, clickable list to pick from rather than text they'd have to retype themselves.\n\n" +
     "To propose generating names, include a fenced block in this exact form:\n\n" +
     "```name-proposal\n" +
     '{"kind": "first_name", "gender": "female", "region": "US", "era": "1980-1999", "count": 5}\n' +
@@ -546,7 +568,8 @@ const resolveAnchorAndRelated = async (anchorEntryId: string | null): Promise<Ch
             name: schema.lorebookEntries.name,
             category: schema.lorebookEntries.category,
             description: schema.lorebookEntries.description,
-            metadata: schema.lorebookEntries.metadata
+            metadata: schema.lorebookEntries.metadata,
+            codexState: schema.lorebookEntries.codexState
         })
         .from(schema.lorebookEntries)
         .where(eq(schema.lorebookEntries.id, anchorEntryId));
@@ -558,7 +581,14 @@ const resolveAnchorAndRelated = async (anchorEntryId: string | null): Promise<Ch
     const relationships = metadata?.relationships ?? [];
 
     const entries: ChatContextCodexEntry[] = [
-        { entryId: anchorRow.id, name: anchorRow.name, category: anchorRow.category, excerpt: anchorRow.description, role: "anchor" }
+        {
+            entryId: anchorRow.id,
+            name: anchorRow.name,
+            category: anchorRow.category,
+            excerpt: anchorRow.description,
+            role: "anchor",
+            codexState: anchorRow.codexState as CodexState | null
+        }
     ];
 
     const targetIds = [...new Set(relationships.map(r => r.targetId))].filter(id => id !== anchorEntryId);

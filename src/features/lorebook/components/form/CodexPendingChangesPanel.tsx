@@ -43,13 +43,21 @@ function PendingChangeCard({ change, entryId, storyId }: PendingChangeCardProps)
                 {change.proposedDescription && <p className="text-sm whitespace-pre-wrap">{change.proposedDescription}</p>}
                 {change.proposedState && (
                     <div className="text-xs text-muted-foreground space-y-1">
-                        {change.proposedState.wardrobe.length > 0 && (
+                        {/* A chat-emitted proposedState may only include the section(s) actually
+                            changing (see CODEX_PROPOSAL_INSTRUCTIONS) — guard every key, not just
+                            the object itself. */}
+                        {(change.proposedState.wardrobe?.length ?? 0) > 0 && (
                             <p>Wardrobe: {change.proposedState.wardrobe.map(i => i.value).join(", ")}</p>
                         )}
-                        {change.proposedState.wounds.length > 0 && <p>Wounds: {change.proposedState.wounds.map(i => i.value).join(", ")}</p>}
-                        {change.proposedState.items.length > 0 && <p>Items: {change.proposedState.items.map(i => i.value).join(", ")}</p>}
-                        {change.proposedState.appearance.length > 0 && (
+                        {(change.proposedState.wounds?.length ?? 0) > 0 && (
+                            <p>Wounds: {change.proposedState.wounds.map(i => i.value).join(", ")}</p>
+                        )}
+                        {(change.proposedState.items?.length ?? 0) > 0 && <p>Items: {change.proposedState.items.map(i => i.value).join(", ")}</p>}
+                        {(change.proposedState.appearance?.length ?? 0) > 0 && (
                             <p>Appearance: {change.proposedState.appearance.map(f => `${f.label}: ${f.value}`).join("; ")}</p>
+                        )}
+                        {(change.proposedState.customFields?.length ?? 0) > 0 && (
+                            <p>Custom fields: {change.proposedState.customFields.map(f => `${f.label}: ${f.value}`).join("; ")}</p>
                         )}
                     </div>
                 )}

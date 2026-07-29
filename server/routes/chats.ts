@@ -19,6 +19,7 @@ import {
     proposeNewEntry,
     reviseChatProposal
 } from "../services/chatCodexService.js";
+import { getCodexEntry } from "../services/codexRepository.js";
 import { getChatContext } from "../services/chatContextService.js";
 import type { ChatType, WorldBuildingTemplateSlug } from "../../src/types/worldbuilding.js";
 import type { ChatMessage } from "../../src/types/story.js";
@@ -477,6 +478,20 @@ router.post(
 
             if (!entryId) {
                 res.status(400).json({ error: "entryId is required for modify_entry" });
+                return;
+            }
+
+            // A model reply occasionally grounds this on the entry's NAME instead of the real
+            // entryId from the Codex context (despite CODEX_PROPOSAL_INSTRUCTIONS telling it to
+            // use the id) — without this check that falls through to codexService's generic
+            // getOrThrow(), which throws a plain Error and previously surfaced as an opaque 500
+            // via the app's catch-all error handler instead of a clean, actionable failure.
+            const existingEntry = await getCodexEntry(entryId);
+            if (!existingEntry) {
+                res.status(404).json({
+                    error: `No Codex entry found with id "${entryId}" — this proposal wasn't recorded. ` +
+                        "The model may have used the entry's name instead of its id; try asking it to retry."
+                });
                 return;
             }
 

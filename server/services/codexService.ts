@@ -97,6 +97,8 @@ const toCodexState = (raw: unknown): CodexState | null => {
     return { ...state, appearance: normalizeAppearance(state.appearance) };
 };
 
+const EMPTY_CODEX_STATE: CodexState = { wardrobe: [], appearance: [], wounds: [], items: [], customFields: [] };
+
 // ── Service ────────────────────────────────────────────────────────────────────
 
 /**
@@ -232,7 +234,15 @@ export const approvePendingChange = async (
     // Build the set of fields to apply — only non-null proposed values
     const changes: UpdateCodexEntryFields = {};
     if (pending.proposedDescription !== null) changes.description = pending.proposedDescription;
-    if (pending.proposedState !== null) changes.codexState = pending.proposedState;
+    // Shallow merge, not a wholesale replace: proposedState from a chat proposal may only include
+    // the section(s) that actually changed (see CODEX_PROPOSAL_INSTRUCTIONS in
+    // chatContextService.ts) — replacing codexState outright would silently wipe every other
+    // section (wardrobe/appearance/wounds/items/customFields) the model didn't mention, the same
+    // class of data-loss bug already fixed once for entry metadata (see entryFormUtils.ts's
+    // buildSubmitData spread). Any key present in proposedState overwrites; any key absent is kept
+    // from the entry's current state.
+    if (pending.proposedState !== null)
+        changes.codexState = { ...(toCodexState(existing.codexState) ?? EMPTY_CODEX_STATE), ...pending.proposedState };
     if (pending.proposedTags !== null) changes.tags = pending.proposedTags;
     if (pending.proposedNeedsFleshingOut !== null) changes.needsFleshingOut = pending.proposedNeedsFleshingOut;
 

@@ -1,4 +1,4 @@
-import type { CodexPendingChange } from "./codex.js";
+import type { CodexPendingChange, CodexState } from "./codex.js";
 
 // Chat type discriminator — matches the chatType column on aiChats.
 // null / undefined → treat as 'general' at the application layer.
@@ -89,6 +89,11 @@ export interface ChatContextCodexEntry {
     category: string;
     excerpt: string;
     role: "anchor" | "related" | "search";
+    // Only ever populated for role: "anchor" — the entry's current structured Codex state, so the
+    // model can see what already exists before proposing wardrobe/appearance/wounds/items changes
+    // (see CODEX_PROPOSAL_INSTRUCTIONS in chatContextService.ts). Omitted for related/search rows
+    // to keep their context small.
+    codexState?: CodexState | null;
 }
 
 // A chapter passage surfaced as context for an Editor chat — only populated for

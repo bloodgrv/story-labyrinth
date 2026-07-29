@@ -311,7 +311,27 @@ export function ChatInterface({
             const anchorEntries = context.relevantCodexEntries.filter(e => e.role === "anchor");
             const relatedEntries = context.relevantCodexEntries.filter(e => e.role === "related");
             const searchEntries = context.relevantCodexEntries.filter(e => e.role === "search");
-            const formatEntry = (e: (typeof context.relevantCodexEntries)[number]) => `- ${e.name} (${e.category}): ${e.excerpt}`;
+            // Only the anchor entry ever carries codexState (server-side, chatContextService.ts's
+            // resolveAnchorAndRelated) — surfacing it here is what lets the model see what's
+            // already established before proposing wardrobe/appearance/wounds/items changes,
+            // rather than guessing blind (see CODEX_PROPOSAL_INSTRUCTIONS).
+            const formatCodexState = (state: (typeof context.relevantCodexEntries)[number]["codexState"]) => {
+                if (!state) return "";
+                const lines: string[] = [];
+                if (state.wardrobe?.length) lines.push(`  Wardrobe: ${state.wardrobe.map(i => i.value).join("; ")}`);
+                if (state.appearance?.length) lines.push(`  Appearance: ${state.appearance.map(f => `${f.label}: ${f.value}`).join("; ")}`);
+                if (state.wounds?.length) lines.push(`  Wounds: ${state.wounds.map(i => i.value).join("; ")}`);
+                if (state.items?.length) lines.push(`  Items: ${state.items.map(i => i.value).join("; ")}`);
+                if (state.customFields?.length) lines.push(`  Custom fields: ${state.customFields.map(f => `${f.label}: ${f.value}`).join("; ")}`);
+                return lines.length ? `\n${lines.join("\n")}` : "";
+            };
+            // entryId is included so "use the entryId from the Codex context below"
+            // (CODEX_PROPOSAL_INSTRUCTIONS) has an actual id to copy — without it the model has
+            // nothing to ground a modify_entry proposal on but the entry's name, which it would
+            // sometimes send as entryId itself (a real bug: the server has no entry named that,
+            // so the proposal 404s instead of ever reaching the pending-changes queue).
+            const formatEntry = (e: (typeof context.relevantCodexEntries)[number]) =>
+                `- ${e.name} (${e.category}, id: ${e.entryId}): ${e.excerpt}${formatCodexState(e.codexState)}`;
 
             const anchorChapters = context.relevantChapterPassages.filter(p => p.role === "anchor");
             const searchChapters = context.relevantChapterPassages.filter(p => p.role === "search");
@@ -1164,7 +1184,9 @@ export function ChatInterface({
             const ctx = await chatsApi.getContext(selectedChat.id, text);
             const searchEntries = ctx.relevantCodexEntries.filter(e => e.role === "search");
             const searchChapters = ctx.relevantChapterPassages.filter(p => p.role === "search");
-            const entryText = searchEntries.map(e => `- ${e.name} (${e.category}): ${e.excerpt}`).join("\n");
+            // id included for the same reason as the mount-time formatEntry above — a
+            // modify_entry codex-proposal needs a real entryId to copy, not just the name.
+            const entryText = searchEntries.map(e => `- ${e.name} (${e.category}, id: ${e.entryId}): ${e.excerpt}`).join("\n");
             const chapterText = searchChapters.map(p => `- ${p.title}: ${p.excerpt}`).join("\n");
             return (
                 [
@@ -1504,7 +1526,16 @@ export function ChatInterface({
                                     onReject={() => dismissPlaceSheetProposal(messageId)}
                                 />
                             )}
-                            {nameProposal && storyId && <NameProposalCard proposal={nameProposal} storyId={storyId} />}
+                            {nameProposal && storyId && (
+                                <NameProposalCard
+                                    proposal={nameProposal}
+                                    storyId={storyId}
+                                    anchorEntryId={selectedChat.anchorEntryId ?? undefined}
+                                    anchorEntryName={
+                                        selectedChat.anchorEntryId ? entryLookup.get(selectedChat.anchorEntryId)?.name : undefined
+                                    }
+                                />
+                            )}
                         </>
                     );
                 }}
