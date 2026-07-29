@@ -76,9 +76,25 @@ export function SaveChapterContentPlugin(): null {
         const detectBeats = detectBeatsRef.current;
         const reindex = reindexRef.current;
 
+        // Defense in depth against a real data-loss bug: an update could in principle fire
+        // (mount race, or — before PaneTabContentView.tsx's remount-on-chapterId-change key
+        // fix — a reused editor instance carrying a different chapter's stale/blank content)
+        // before LoadChapterContentPlugin has actually loaded this chapterId's real content
+        // into the editor. Refuse to save anything until we've observed that plugin's own
+        // "chapter-load" tagged update for THIS chapterId — see DECISIONS.md's "Editor
+        // MultiView — Cross-Chapter Content-Loss Bug" entry.
+        let hasSeenLoad = false;
+
         const removeUpdateListener = editor.registerUpdateListener(({ editorState, dirtyElements, dirtyLeaves, tags }) => {
             // Skip if no changes
             if (dirtyElements.size === 0 && dirtyLeaves.size === 0) return;
+
+            if (tags.has("chapter-load")) {
+                hasSeenLoad = true;
+                return;
+            }
+            if (!hasSeenLoad) return;
+
             // Live grammar-check marks and RAG-issue highlights are each re-applied via their own
             // tagged editor.update() (see GrammarCheckPlugin / RagIssueHighlightPlugin) — that's
             // a structural change but not new content, so it shouldn't debounce-trigger a save

@@ -23,7 +23,12 @@ interface PaneTabContentViewProps {
 export function PaneTabContentView({ content, storyId }: PaneTabContentViewProps) {
     if (content.kind === "chapter")
         return (
-            <EditorPaneProvider chapterId={content.chapterId} storyId={storyId}>
+            // Keyed by chapterId so switching a pane/tab's bound chapter forces a real remount
+            // of the whole editor tree (LexicalComposer, LoadChapterContentPlugin,
+            // SaveChapterContentPlugin, ...) instead of React reusing the same instance across
+            // two different chapters — see DECISIONS.md's "Editor MultiView — Cross-Chapter
+            // Content-Loss Bug" entry for the data-loss bug this prevents.
+            <EditorPaneProvider key={content.chapterId} chapterId={content.chapterId} storyId={storyId}>
                 <EmbeddedPlayground />
             </EditorPaneProvider>
         );
