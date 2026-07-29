@@ -577,6 +577,28 @@
     text-decoration-color: rgba(16, 185, 129, 0.8);
 }
 
+/* RAG Scanner inline highlights — a third, deliberately distinct style from the two above (flat
+   background block for Concrete Beats, wavy underline for Grammar) so all three inline-marking
+   systems stay visually unambiguous: a solid underline, severity-coded. */
+.PlaygroundEditorTheme__mark.rag-issue-mark {
+    background: transparent;
+    border-bottom: none;
+    cursor: pointer;
+    text-decoration-line: underline;
+    text-decoration-style: solid;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+}
+.PlaygroundEditorTheme__mark.rag-issue-mark--low {
+    text-decoration-color: rgba(245, 158, 11, 0.8);
+}
+.PlaygroundEditorTheme__mark.rag-issue-mark--medium {
+    text-decoration-color: rgba(249, 115, 22, 0.8);
+}
+.PlaygroundEditorTheme__mark.rag-issue-mark--high {
+    text-decoration-color: rgba(239, 68, 68, 0.8);
+}
+
 .PlaygroundEditorTheme__embedBlock {
     user-select: none;
 }

@@ -8,7 +8,7 @@ import { useEditorChapterId, useEditorStoryId } from "@/features/editor-multivie
 import { useAutoDetectBeats } from "@/lib/useAutoDetectBeats";
 import { ragApi } from "@/services/api/client";
 import { logger } from "@/utils/logger";
-import { stripGrammarMarks } from "../../nodes/stripGrammarMarks";
+import { stripEphemeralMarks } from "../../nodes/stripEphemeralMarks";
 
 export function SaveChapterContentPlugin(): null {
     const [editor] = useLexicalComposerContext();
@@ -79,16 +79,17 @@ export function SaveChapterContentPlugin(): null {
         const removeUpdateListener = editor.registerUpdateListener(({ editorState, dirtyElements, dirtyLeaves, tags }) => {
             // Skip if no changes
             if (dirtyElements.size === 0 && dirtyLeaves.size === 0) return;
-            // Live grammar-check marks are re-applied via their own tagged editor.update() (see
-            // GrammarCheckPlugin) — that's a structural change but not new content, so it
-            // shouldn't debounce-trigger a save (the content, once stripped below, is unchanged).
-            if (tags.has("grammar-check")) return;
+            // Live grammar-check marks and RAG-issue highlights are each re-applied via their own
+            // tagged editor.update() (see GrammarCheckPlugin / RagIssueHighlightPlugin) — that's
+            // a structural change but not new content, so it shouldn't debounce-trigger a save
+            // (the content, once stripped below, is unchanged).
+            if (tags.has("grammar-check") || tags.has("rag-issue-highlight")) return;
 
-            // Get the editor state as JSON, with any live (never-persisted) grammar-check marks
-            // stripped out — see stripGrammarMarks.ts for why this guard exists even though the
-            // check above already skips grammar-only updates.
+            // Get the editor state as JSON, with any live (never-persisted) ephemeral marks
+            // stripped out — see stripEphemeralMarks.ts for why this guard exists even though the
+            // check above already skips mark-only updates.
             const stateJSON = editorState.toJSON();
-            stripGrammarMarks(stateJSON.root);
+            stripEphemeralMarks(stateJSON.root);
             const content = JSON.stringify(stateJSON);
 
             // Save the content

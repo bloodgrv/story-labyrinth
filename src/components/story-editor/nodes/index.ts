@@ -18,6 +18,7 @@ import { InlineImageNode } from "./InlineImageNode/InlineImageNode";
 import { LayoutContainerNode } from "./LayoutContainerNode";
 import { LayoutItemNode } from "./LayoutItemNode";
 import { PageBreakNode } from "./PageBreakNode";
+import { RagIssueMarkNode } from "./RagIssueMarkNode";
 import { SpecialTextNode } from "./SpecialTextNode";
 
 const PlaygroundNodes: Array<Klass<LexicalNode>> = [
@@ -46,7 +47,8 @@ const PlaygroundNodes: Array<Klass<LexicalNode>> = [
     LayoutItemNode,
     SpecialTextNode,
     BeatMarkNode,
-    GrammarMarkNode
+    GrammarMarkNode,
+    RagIssueMarkNode
 ];
 
 export default PlaygroundNodes;

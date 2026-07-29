@@ -9,7 +9,7 @@ import type { GrammarIssueCategory } from "@/types/grammarSettings";
 //
 // Unlike BeatMarkNode, these are NEVER meant to be persisted: they're recomputed from scratch on
 // every debounced check (see GrammarCheckPlugin), not tied to any database row, and stripped out
-// of the JSON before it's saved (see stripGrammarMarks.ts) so a stale issue can never get baked
+// of the JSON before it's saved (see stripEphemeralMarks.ts) so a stale issue can never get baked
 // into a chapter's saved content. exportJSON/importJSON are still implemented correctly (not
 // just inherited as plain "mark") specifically so that stripping step can reliably recognize
 // this node type by its own `type` field if a save ever races a live check.

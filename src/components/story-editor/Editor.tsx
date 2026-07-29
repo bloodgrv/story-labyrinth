@@ -34,6 +34,7 @@ import { LoadChapterContentPlugin } from "./plugins/LoadChapterContent";
 import LorebookTagPlugin from "./plugins/LorebookTagPlugin";
 import MarkdownShortcutPlugin from "./plugins/MarkdownShortcutPlugin";
 import PageBreakPlugin from "./plugins/PageBreakPlugin";
+import RagIssueHighlightPlugin from "./plugins/RagIssueHighlightPlugin";
 import RegisterActiveEditorPlugin from "./plugins/RegisterActiveEditorPlugin";
 import { SaveChapterContentPlugin } from "./plugins/SaveChapterContent";
 import TabFocusPlugin from "./plugins/TabFocusPlugin";
@@ -132,6 +133,7 @@ export default function Editor(): JSX.Element {
                         <LayoutPlugin />
                         <BeatMarkSyncPlugin />
                         <GrammarCheckPlugin />
+                        <RagIssueHighlightPlugin />
                         {floatingAnchorElem && <FloatingTextFormatToolbarPlugin anchorElem={floatingAnchorElem} />}
                         {floatingAnchorElem && !isSmallWidthViewport && (
                             <>
