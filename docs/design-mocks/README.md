@@ -39,8 +39,10 @@
 
 ## Related talk-list
 
-- **T1** UI visual — **locked** (impl when promoted)
-- **T2** Lexical · **T3** KDP · **T4** local token meter — still discuss
+- **T1** UI visual — **locked + shipped** (chrome)
+- **T2** Lexical — plugin-add locked/shipped; other axes discuss
+- **T3** KDP — **design locked** (`docs/Amazon_KDP_Export_Design.md`), P3 not started
+- **T4** local token meter — **locked + shipped**
 
 ---
 

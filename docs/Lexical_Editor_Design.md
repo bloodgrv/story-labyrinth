@@ -11,7 +11,7 @@
 
 Deepen/polish the **existing** Lexical stack for long-form fiction — **not** a rip-and-replace, not full Lexical Playground parity.
 
-This document locks the **plugin-add** grill axis. Upgrade breakage plan, list “done” bar, toolbar/mobile/selection polish, and KDP export alignment (T3) are **out of this lock** until grilled.
+This document locks the **plugin-add** grill axis. Upgrade breakage plan, list “done” bar, toolbar/mobile/selection polish remain open T2 axes. **KDP export alignment (T3)** is separately **design-locked** — see `docs/Amazon_KDP_Export_Design.md` (not part of Lexical build scope; may touch shared export converters only).
 
 ---
 
