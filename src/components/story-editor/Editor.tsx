@@ -45,21 +45,10 @@ import ContentEditable from "./ui/ContentEditable";
 export default function Editor(): JSX.Element {
     const { historyState } = useSharedHistoryContext();
     const {
-        settings: {
-            isCollab,
-            hasLinkAttributes,
-            isRichText,
-            showTreeView,
-            shouldUseLexicalContextMenu,
-            selectionAlwaysOnDisplay
-        }
+        settings: { hasLinkAttributes, isRichText, shouldUseLexicalContextMenu, selectionAlwaysOnDisplay }
     } = useSettings();
     const isEditable = useLexicalEditable();
-    const placeholder = isCollab
-        ? "Enter some collaborative rich text..."
-        : isRichText
-          ? "Enter some rich text..."
-          : "Enter some plain text...";
+    const placeholder = isRichText ? "Enter some rich text..." : "Enter some plain text...";
     const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null);
     const [isSmallWidthViewport, setIsSmallWidthViewport] = useState<boolean>(false);
     const [editor] = useLexicalComposerContext();
@@ -94,7 +83,7 @@ export default function Editor(): JSX.Element {
                     setIsLinkEditMode={setIsLinkEditMode}
                 />
             )}
-            <div className={`editor-container ${showTreeView ? "tree-view" : ""} ${!isRichText ? "plain-text" : ""}`}>
+            <div className={`editor-container ${!isRichText ? "plain-text" : ""}`}>
                 <LoadChapterContentPlugin />
                 <SaveChapterContentPlugin />
                 <RegisterActiveEditorPlugin />

@@ -1,7 +1,7 @@
 # Lexical Editor (T2) — Design
 
-**Status:** **Plugin-add axis shipped 2026-07-22** (LE0-LE3, see `DECISIONS.md`'s "Lexical Editor Deepen — LE0-LE3" entry). Other T2 axes (list "done" bar, toolbar/mobile/selection polish, CodeHighlight/TreeView/collab-residue decisions) still open/unlocked.  
-**Priority:** Plugin-add axis done; other T2 axes stay **P3** until separately locked  
+**Status:** **Plugin-add axis shipped 2026-07-22** (LE0-LE3, see `DECISIONS.md`'s "Lexical Editor Deepen — LE0-LE3" entry). **CodeHighlight/TreeView/collab-residue axis locked + shipped 2026-07-28** (see `DECISIONS.md`'s "Lexical Editor — CodeHighlight/TreeView/Collab-Residue (T2 quick decisions)" entry). Remaining open T2 axes: list "done" bar, toolbar/mobile/selection polish, upgrade breakage/compat matrix.  
+**Priority:** Plugin-add axis done; CodeHighlight/TreeView/collab-residue done; remaining T2 axes stay **P3** until separately locked  
 **Talk list:** T2  
 **Related:** story editor home `src/components/story-editor/`; export paths under `src/utils/export/`; bugs B1 (word count), B2 (beat marks) are separate P2 debt
 
@@ -93,15 +93,24 @@ Do **not** add `TablePlugin` under lock C. Do **not** mix Lexical package versio
 
 ---
 
+## Locked decisions — CodeHighlight/TreeView/collab-residue (2026-07-28)
+
+| Axis | Lock |
+|------|------|
+| CodeHighlight | **Leave as-is** — nodes stay registered for load-compat only (same posture as Tables lock C); no insert UX, no highlighting polish |
+| TreeView | **Removed** — was fully dead residue (`showTreeView` setting only ever toggled a cosmetic CSS class, no actual `<TreeViewPlugin>` was ever mounted anywhere in this fork) |
+| Collab residue | **Removed entirely** — `yjs`/`y-websocket` deps, `collaboration.ts`, and the dead `CollaborationPlugin`/`isCollabActive` branch in `ImageComponent.tsx` (unreachable: nothing in the app ever set `isCollabActive` true). Real-time multiplayer collab was already SKIP'd on the plugin-add axis; this just finishes removing its vestigial scaffolding |
+
+See `DECISIONS.md`'s "Lexical Editor — CodeHighlight/TreeView/Collab-Residue (T2 quick decisions)" entry for the full trail.
+
+---
+
 ## Not locked yet (other T2 axes)
 
 - Detailed upgrade breakage / custom-node serialization compat matrix  
 - Explicit list “done” bar (nested lists, MD round-trip guarantees, checklist export rules)  
 - Toolbar / mobile / selection / rework polish  
-- CodeHighlight product decision  
-- TreeView as dev-only vs hidden  
-- Collab residue cleanup (keep vs delete dead collab paths)  
-- Amazon/KDP manuscript alignment → **T3**, separate talk item  
+- Amazon/KDP manuscript alignment → **T3**, separate talk item (already shipped, see `docs/Amazon_KDP_Export_Design.md`)  
 
 ---
 
@@ -124,3 +133,4 @@ Do **not** add `TablePlugin` under lock C. Do **not** mix Lexical package versio
 | 2026-07-21 | Plugin-add axis Lean-locked in grill; fork doc written on user **lock**. ADD List+CheckList; tables C; skip/defer as above; upgrade pairing 0.39→0.48. |
 | 2026-07-21 | Note: non-Lexical dep majors parked on backlog as pack 3 todo later — out of LE scope. |
 | 2026-07-22 | Plugin-add axis (LE0–LE3) shipped: version bump, `ListPlugin`+`CheckListPlugin` mount, list/checklist smoke test, and an export-converter fix (list nodes were previously unhandled in HTML/Markdown/PDF export, latent since lists were never creatable before this pass). Two real Lexical-0.48 breaks found and fixed along the way (`ContextMenuPlugin` API removal, a `FloatingLinkEditor.tsx` update-listener crash). See `DECISIONS.md`. |
+| 2026-07-28 | CodeHighlight/TreeView/collab-residue axis grilled and shipped same session: CodeHighlight left as-is (load-compat only); dead `showTreeView` flag removed (was a cosmetic-only CSS toggle, no real debug panel ever mounted); `yjs`/`y-websocket` + `collaboration.ts` + the dead `CollaborationPlugin` branch in `ImageComponent.tsx` removed entirely (unreachable code, `isCollabActive` never set true anywhere in the app). `ImageComponent` production chunk shrank ~128 KB → ~8 KB as a result. See `DECISIONS.md`. |

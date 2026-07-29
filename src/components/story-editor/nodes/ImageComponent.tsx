@@ -1,8 +1,6 @@
 import { HashtagNode } from "@lexical/hashtag";
 import { LinkNode } from "@lexical/link";
 import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
-import { useCollaborationContext } from "@lexical/react/LexicalCollaborationContext";
-import { CollaborationPlugin } from "@lexical/react/LexicalCollaborationPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HashtagPlugin } from "@lexical/react/LexicalHashtagPlugin";
@@ -15,7 +13,6 @@ import type { LexicalEditor, NodeKey } from "lexical";
 import { $getNodeByKey, $isNodeSelection, LineBreakNode, ParagraphNode, RootNode, TextNode } from "lexical";
 import type { JSX } from "react";
 import { Suspense, useRef, useState } from "react";
-import { createWebsocketProvider } from "../collaboration";
 import { useSharedHistoryContext } from "../context/SharedHistoryContext";
 import LinkPlugin from "../plugins/LinkPlugin";
 import ContentEditable from "../ui/ContentEditable";
@@ -56,7 +53,6 @@ export default function ImageComponent({
     const buttonRef = useRef<HTMLButtonElement | null>(null);
     const [isSelected, setSelected, clearSelection] = useLexicalNodeSelection(nodeKey);
     const [isResizing, setIsResizing] = useState<boolean>(false);
-    const { isCollabActive } = useCollaborationContext();
     const [editor] = useLexicalComposerContext();
     const [isLoadError, setIsLoadError] = useState<boolean>(false);
     const isEditable = useLexicalEditable();
@@ -116,11 +112,7 @@ export default function ImageComponent({
                         <AutoFocusPlugin />
                         <LinkPlugin />
                         <HashtagPlugin />
-                        {isCollabActive ? (
-                            <CollaborationPlugin id={caption.getKey()} providerFactory={createWebsocketProvider} shouldBootstrap={true} />
-                        ) : (
-                            <HistoryPlugin externalHistoryState={historyState} />
-                        )}
+                        <HistoryPlugin externalHistoryState={historyState} />
                         <RichTextPlugin
                             contentEditable={
                                 <ContentEditable

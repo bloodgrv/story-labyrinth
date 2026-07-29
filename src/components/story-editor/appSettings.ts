@@ -1,10 +1,8 @@
 export const DEFAULT_SETTINGS = {
     hasLinkAttributes: false,
-    isCollab: false,
     isRichText: true,
     selectionAlwaysOnDisplay: false,
-    shouldUseLexicalContextMenu: false,
-    showTreeView: true
+    shouldUseLexicalContextMenu: false
 } as const;
 
 export const INITIAL_SETTINGS: Record<SettingName, boolean> = {
