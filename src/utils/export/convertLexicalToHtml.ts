@@ -6,12 +6,20 @@ import type { LexicalEditorState, SerializedLexicalNode } from "./types";
  * @returns HTML string representation of the content
  */
 
+// True for a leaf node (no children array) that carries its own text — covers `text` plus any
+// TextNode subclass with a different `type` (e.g. `hashtag`, this app's `special-text`) whose
+// text would otherwise be silently dropped, since it never matches `node.type === "text"` but
+// also has no `children` array for the generic fallback branch to recurse into. Same fix as
+// convertLexicalToEpubHtml.ts's `isTextLeaf` (KDP export) — this converter never got it.
+const isTextLeaf = (node: SerializedLexicalNode): boolean =>
+    typeof node.text === "string" && !Array.isArray(node.children);
+
 export async function convertLexicalToHtml(jsonContent: string): Promise<string> {
     const editorState: LexicalEditorState = JSON.parse(jsonContent);
     const container = document.createElement("div");
 
     const processNode = (node: SerializedLexicalNode, parentElement: HTMLElement): void => {
-        if (node.type === "text" && node.text) {
+        if (isTextLeaf(node) && node.text) {
             const textNode = document.createTextNode(node.text);
             parentElement.appendChild(textNode);
         } else if (node.type === "paragraph") {

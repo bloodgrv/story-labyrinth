@@ -5,12 +5,20 @@ import type { LexicalEditorState, SerializedLexicalNode } from "./types";
  * @param jsonContent The Lexical JSON content string
  * @returns Markdown string representation of the content
  */
+
+// True for a leaf node (no children array) that carries its own text — covers `text` plus any
+// TextNode subclass with a different `type` (e.g. `hashtag`, this app's `special-text`) whose
+// text would otherwise be silently dropped. Same fix as convertLexicalToEpubHtml.ts's
+// `isTextLeaf` (KDP export) — this converter never got it.
+const isTextLeaf = (node: SerializedLexicalNode): boolean =>
+    typeof node.text === "string" && !Array.isArray(node.children);
+
 export function convertLexicalToMarkdown(jsonContent: string): string {
     const editorState: LexicalEditorState = JSON.parse(jsonContent);
     const lines: string[] = [];
 
     const processNode = (node: SerializedLexicalNode): string => {
-        if (node.type === "text" && node.text) {
+        if (isTextLeaf(node) && node.text) {
             const text = node.text;
             if (node.format) {
                 const isBold = (node.format & 1) !== 0;

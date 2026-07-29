@@ -98,10 +98,15 @@ export const extractPlainTextFromLexical = (
             return "";
         
 
-        // Handle text nodes
-        if (node.type === "text") 
+        // Handle text nodes — checks for a leaf shape (has `text`, no `children`) rather than
+        // `node.type === "text"` exactly, so a TextNode subclass with a different `type` (e.g.
+        // `hashtag`, this app's `special-text`) doesn't silently lose its text: it wouldn't match
+        // "text" but also has no `children` array for the generic fallback below to recurse into.
+        // Same fix as convertLexicalToEpubHtml.ts's `isTextLeaf` (KDP export) — this extractor
+        // never got it.
+        if (typeof node.text === "string" && !Array.isArray(node.children))
             return node.text || "";
-        
+
 
         // Handle linebreak nodes
         if (node.type === "linebreak") 
