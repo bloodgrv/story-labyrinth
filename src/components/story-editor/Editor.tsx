@@ -15,6 +15,7 @@ import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
 import { CAN_USE_DOM } from "@/components/story-editor/shared/canUseDOM";
+import { EDITOR_NARROW_VIEWPORT_PX } from "@/components/story-editor/shared/environment";
 import { useSettings } from "./context/SettingsContext";
 import { useSharedHistoryContext } from "./context/SharedHistoryContext";
 import AutoLinkPlugin from "./plugins/AutoLinkPlugin";
@@ -61,7 +62,8 @@ export default function Editor(): JSX.Element {
 
     useEffect(() => {
         const updateViewPortWidth = () => {
-            const isNextSmallWidthViewport = CAN_USE_DOM && window.matchMedia("(max-width: 1025px)").matches;
+            const isNextSmallWidthViewport =
+                CAN_USE_DOM && window.matchMedia(`(max-width: ${EDITOR_NARROW_VIEWPORT_PX}px)`).matches;
 
             if (isNextSmallWidthViewport !== isSmallWidthViewport) setIsSmallWidthViewport(isNextSmallWidthViewport);
         };
@@ -81,6 +83,7 @@ export default function Editor(): JSX.Element {
                     activeEditor={activeEditor}
                     setActiveEditor={setActiveEditor}
                     setIsLinkEditMode={setIsLinkEditMode}
+                    isSmallWidthViewport={isSmallWidthViewport}
                 />
             )}
             <div className={`editor-container ${!isRichText ? "plain-text" : ""}`}>

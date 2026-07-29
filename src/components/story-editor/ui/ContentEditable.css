@@ -7,6 +7,7 @@
     padding: 8px 28px 40px;
     min-height: calc(100vh - 105px);
 }
+/* 1025px matches EDITOR_NARROW_VIEWPORT_PX (shared/environment.ts) — see that constant's comment. */
 @media (max-width: 1025px) {
     .ContentEditable__root {
         padding-left: 8px;
@@ -28,6 +29,7 @@
     display: inline-block;
     pointer-events: none;
 }
+/* 1025px matches EDITOR_NARROW_VIEWPORT_PX (shared/environment.ts) — see that constant's comment. */
 @media (max-width: 1025px) {
     .ContentEditable__placeholder {
         left: 8px;

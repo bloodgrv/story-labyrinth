@@ -45,7 +45,10 @@ export const FloatingLinkEditor = ({
     const editorRef = useRef<HTMLDivElement | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const [linkUrl, setLinkUrl] = useState("");
-    const [editedLinkUrl, setEditedLinkUrl] = useState("https://");
+    // Empty, not a pre-filled "https://" — a bare-scheme default reads as a real URL but isn't
+    // one, and could previously be submitted as-is if the user hit Enter/confirm without editing
+    // it, inserting a dead link. See handleLinkSubmission's guard below.
+    const [editedLinkUrl, setEditedLinkUrl] = useState("");
     const [lastSelection, setLastSelection] = useState<BaseSelection | null>(null);
 
     const $updateLinkEditor = useCallback(() => {
@@ -152,6 +155,7 @@ export const FloatingLinkEditor = ({
 
     const handleLinkSubmission = (event: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent<HTMLElement>) => {
         event.preventDefault();
+        if (editedLinkUrl.trim() === "") return;
         if (lastSelection !== null) {
             if (linkUrl !== "")
                 editor.update(() => {
@@ -170,7 +174,7 @@ export const FloatingLinkEditor = ({
                     }
                 });
 
-            setEditedLinkUrl("https://");
+            setEditedLinkUrl("");
             setIsLinkEditMode(false);
         }
     };
@@ -182,6 +186,7 @@ export const FloatingLinkEditor = ({
                     <Input
                         ref={inputRef}
                         className="h-8 min-w-[200px]"
+                        placeholder="https://example.com"
                         value={editedLinkUrl}
                         onChange={event => setEditedLinkUrl(event.target.value)}
                         onKeyDown={event => monitorInputInteraction(event)}

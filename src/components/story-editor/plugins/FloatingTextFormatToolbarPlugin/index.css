@@ -164,7 +164,10 @@
     letter-spacing: -0.01em;
 }
 
-@media (max-width: 1024px) {
+/* 1025px, not 1024 — matches EDITOR_NARROW_VIEWPORT_PX (shared/environment.ts) and every other
+   editor-mobile media query (ContentEditable.css, Editor.tsx's isSmallWidthViewport) so "mobile
+   mode" means the same width everywhere in the editor, not five independently-chosen numbers. */
+@media (max-width: 1025px) {
     .floating-text-format-popup button.insert-comment {
         display: none;
     }

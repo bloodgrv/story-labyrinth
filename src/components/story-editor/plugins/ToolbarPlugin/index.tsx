@@ -33,12 +33,14 @@ const Divider = (): JSX.Element => <div className="divider" />;
 export default function ToolbarPlugin({
     editor,
     activeEditor,
-    setActiveEditor
+    setActiveEditor,
+    isSmallWidthViewport
 }: {
     editor: LexicalEditor;
     activeEditor: LexicalEditor;
     setActiveEditor: Dispatch<LexicalEditor>;
     setIsLinkEditMode: Dispatch<boolean>;
+    isSmallWidthViewport: boolean;
 }): JSX.Element {
     const [isEditable, setIsEditable] = useState(() => editor.isEditable());
     const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
@@ -205,10 +207,13 @@ export default function ToolbarPlugin({
                     isRTL={toolbarState.isRTL}
                 />
             </div>
-            <div className="ml-auto flex items-center gap-1">
-                <span className="hidden sm:inline text-xs text-muted-foreground px-2">
-                    Words: {toolbarState.wordCount}
-                </span>
+            {/* Sticky-pinned to the scrollable toolbar's right edge so these actions (Maximize
+                above all) can never scroll out of reach on narrow viewports — the exact bug
+                docs/plan-mobile-styling-issue-58.md diagnosed but never actually fixed. */}
+            <div className="ml-auto flex items-center gap-1 sticky right-0 bg-muted pl-1 flex-shrink-0">
+                {!isSmallWidthViewport && (
+                    <span className="text-xs text-muted-foreground px-2">Words: {toolbarState.wordCount}</span>
+                )}
                 {!sessionActive && (
                     <Button
                         variant="ghost"

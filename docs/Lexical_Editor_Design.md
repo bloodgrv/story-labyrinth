@@ -1,7 +1,7 @@
 # Lexical Editor (T2) — Design
 
-**Status:** **Plugin-add axis shipped 2026-07-22** (LE0-LE3, see `DECISIONS.md`'s "Lexical Editor Deepen — LE0-LE3" entry). **CodeHighlight/TreeView/collab-residue axis locked + shipped 2026-07-28** (see `DECISIONS.md`'s "Lexical Editor — CodeHighlight/TreeView/Collab-Residue (T2 quick decisions)" entry). **List "done" bar locked + shipped 2026-07-28** (see `DECISIONS.md`'s "Lexical Editor — List 'Done' Bar (T2)" entry). Remaining open T2 axes: toolbar/mobile/selection polish, upgrade breakage/compat matrix.  
-**Priority:** Plugin-add axis done; CodeHighlight/TreeView/collab-residue done; list done-bar done; remaining T2 axes stay **P3** until separately locked  
+**Status:** **Plugin-add axis shipped 2026-07-22** (LE0-LE3, see `DECISIONS.md`'s "Lexical Editor Deepen — LE0-LE3" entry). **CodeHighlight/TreeView/collab-residue axis locked + shipped 2026-07-28** (see `DECISIONS.md`'s "Lexical Editor — CodeHighlight/TreeView/Collab-Residue (T2 quick decisions)" entry). **List "done" bar locked + shipped 2026-07-28** (see `DECISIONS.md`'s "Lexical Editor — List 'Done' Bar (T2)" entry). **Toolbar/mobile/selection/rework polish axis shipped 2026-07-28, at scoped subset** (see `DECISIONS.md`'s "Lexical Editor — Toolbar/Mobile/Selection/Rework Polish (T2)" entry). Remaining open T2 axis: upgrade breakage/compat matrix.  
+**Priority:** Plugin-add axis done; CodeHighlight/TreeView/collab-residue done; list done-bar done; toolbar/mobile/selection/rework polish done at scoped subset; remaining T2 axis stays **P3** until separately locked  
 **Talk list:** T2  
 **Related:** story editor home `src/components/story-editor/`; export paths under `src/utils/export/`; bugs B1 (word count), B2 (beat marks) are separate P2 debt
 
@@ -118,10 +118,25 @@ See `DECISIONS.md`'s "Lexical Editor — List 'Done' Bar (T2)" entry for the ful
 
 ---
 
+## Locked decisions — toolbar/mobile/selection/rework polish (2026-07-28)
+
+Scoped down from the full "toolbar / mobile / selection / rework polish" axis to a concrete, real subset identified via investigation (touch support and the upgrade-breakage matrix stayed out — see below).
+
+| Item | Lock |
+|------|------|
+| Toolbar overflow on narrow viewports | **Fixed** — `docs/plan-mobile-styling-issue-58.md` diagnosed this (word count, Maximize button scrollable out of reach) but it was never actually implemented. The trailing action cluster (word count/Focus/Maximize) in `ToolbarPlugin/index.tsx` is now `sticky right-0`, so it can never scroll out of reach regardless of toolbar overflow. |
+| Link-insert invalid-URL default | **Fixed** — a standing `TODO` in `utils/url.ts` (`FloatingLinkEditor.tsx`'s edit input defaulted to `"https://"`, submittable as-is). Default changed to empty + placeholder, submission guarded against empty/whitespace-only values, and the now-unneeded `"https://"` special-case removed from `validateUrl`. |
+| Breakpoint consolidation | **Partial, targeted** — `EDITOR_NARROW_VIEWPORT_PX = 1025` extracted (`shared/environment.ts`) and used in `Editor.tsx`; `isSmallWidthViewport` wired into `ToolbarPlugin` to gate the word-count label (replacing a mismatched 640px Tailwind breakpoint); `FloatingTextFormatToolbarPlugin/index.css`'s stray `1024px` aligned to `1025px`. The floating toolbar's own `640px` breakpoint (a real, distinct "phone-only, shrink further" concern, already matching Tailwind's `sm`) was deliberately left alone — not every breakpoint in the editor is the same "mobile mode" concept. |
+| Touch support (floating toolbar drag-fade, rework selection capture) | **Out of scope** — no evidence of it being a real pain point; bigger lift with no current requester. |
+| Live rework Accept E2E verification | **Partially closed** — the core previously-blocking gap (no reachable AI provider, "zero content tokens" documented since P0.4 R0-R3) is confirmed resolved this session: a live message send to a chapter-anchored Editor rework chat produced a real, fresh LLM response. The full `prose-proposal` fence → Accept → replace-selection path was **not** cleanly reproduced in this session — the one live attempt landed in a pre-existing, message-history-polluted chat from an earlier session and the model didn't emit the fenced format that turn (model-behavior variability, not a code defect). Worth a clean re-attempt (fresh chat, no stale history) next time this comes up, but not chased further this pass. |
+
+See `DECISIONS.md`'s "Lexical Editor — Toolbar/Mobile/Selection/Rework Polish (T2)" entry for the full trail.
+
+---
+
 ## Not locked yet (other T2 axes)
 
 - Detailed upgrade breakage / custom-node serialization compat matrix  
-- Toolbar / mobile / selection / rework polish  
 - Amazon/KDP manuscript alignment → **T3**, separate talk item (already shipped, see `docs/Amazon_KDP_Export_Design.md`)  
 
 ---
@@ -147,3 +162,4 @@ See `DECISIONS.md`'s "Lexical Editor — List 'Done' Bar (T2)" entry for the ful
 | 2026-07-22 | Plugin-add axis (LE0–LE3) shipped: version bump, `ListPlugin`+`CheckListPlugin` mount, list/checklist smoke test, and an export-converter fix (list nodes were previously unhandled in HTML/Markdown/PDF export, latent since lists were never creatable before this pass). Two real Lexical-0.48 breaks found and fixed along the way (`ContextMenuPlugin` API removal, a `FloatingLinkEditor.tsx` update-listener crash). See `DECISIONS.md`. |
 | 2026-07-28 | CodeHighlight/TreeView/collab-residue axis grilled and shipped same session: CodeHighlight left as-is (load-compat only); dead `showTreeView` flag removed (was a cosmetic-only CSS toggle, no real debug panel ever mounted); `yjs`/`y-websocket` + `collaboration.ts` + the dead `CollaborationPlugin` branch in `ImageComponent.tsx` removed entirely (unreachable code, `isCollabActive` never set true anywhere in the app). `ImageComponent` production chunk shrank ~128 KB → ~8 KB as a result. See `DECISIONS.md`. |
 | 2026-07-28 | List "done" bar grilled and shipped, same session: nested-list creation confirmed working (no build needed, architecture already sufficient); a real Markdown-export nesting bug fixed (was emitting syntactically invalid output); a real PDF/plain-text checklist-state-drop bug fixed. Markdown chapter import declared out of scope (no consumer, no existing import leg to round-trip against). See `DECISIONS.md`. |
+| 2026-07-28 | Toolbar/mobile/selection/rework polish axis grilled and shipped at a scoped subset, same session: fixed the previously-diagnosed-but-unimplemented toolbar overflow bug (issue #58) by pinning the trailing action cluster; fixed a standing TODO'd link-insert bug (invalid `"https://"` default, now guarded); consolidated a 1024/1025px breakpoint mismatch and wired `isSmallWidthViewport` into the toolbar. Touch support and the upgrade-breakage matrix stayed explicitly out of scope. Confirmed the live rework Accept path's core blocker (unreachable AI provider) is resolved this session, though a clean fence→Accept round-trip wasn't reproduced due to a stale test chat's polluted history. See `DECISIONS.md`. |
