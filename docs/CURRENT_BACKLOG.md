@@ -1,6 +1,6 @@
 # Story Nexus Fork — Current Backlog
 
-**Last updated:** 2026-07-28 (T3 Amazon/KDP export **shipped in full**, KDP0–KDP4 — `docs/Amazon_KDP_Export_Design.md`; prior: dep pack 3 ROI freeze 2026-07-27; P1.5 MB1-MB4; Name Gen NP3; OI0-OI8; PP0-PP5)  
+**Last updated:** 2026-07-28 (P0.1 RAG Scanner **inline highlighting** shipped, closing the last unbuilt piece of the original scanner design; prior same day: T3 Amazon/KDP export **shipped in full**, KDP0–KDP4 — `docs/Amazon_KDP_Export_Design.md`; prior: dep pack 3 ROI freeze 2026-07-27; P1.5 MB1-MB4; Name Gen NP3; OI0-OI8; PP0-PP5)  
 **Purpose:** Single source of truth for **what’s left**, after implementation order got scrambled relative to the original Phase 0 list.  
 **Canonical live status also mirrored in:** `CLAUDE.md` (architecture + high-level “done” notes) and `DECISIONS.md` (load-bearing how/why).  
 **This file wins** when those conflict on *priority of remaining work*.
@@ -70,7 +70,9 @@ Design docs that still say “not implemented” in their headers may be stale f
 
 ### P0.1 — RAG Scanner frontend — ✅ Done (2026-07-18)
 
-Editor right-rail drawer (`EditorToolsPanel.tsx`'s `"ragScanner"` drawer, chapter-scoped) and a story-wide "Scanner" sidebar tool (`RagScannerPanel.tsx`) both shipped — trigger via `POST /api/agent/jobs` (owner-only, per user decision), progress via job polling, issues list with Open/Resolved/Dismissed tabs bound to `ragScanIssues`. Not built this pass, still open if revisited: inline highlights in chapter text, full dual-write retirement of `ragScans`, auto-chaining `distill_memory`. See `DECISIONS.md` "RAG Scanner Frontend (P0.1) — Load-Bearing Decisions".
+Editor right-rail drawer (`EditorToolsPanel.tsx`'s `"ragScanner"` drawer, chapter-scoped) and a story-wide "Scanner" sidebar tool (`RagScannerPanel.tsx`) both shipped — trigger via `POST /api/agent/jobs` (owner-only, per user decision), progress via job polling, issues list with Open/Resolved/Dismissed tabs bound to `ragScanIssues`. See `DECISIONS.md` "RAG Scanner Frontend (P0.1) — Load-Bearing Decisions".
+
+**Inline highlighting of flagged spans — done (2026-07-28).** The one piece of the original `docs/2026-06-26_RAG_Scanner_Integration.md` design that never shipped in the P0.1 pass above. New ephemeral `RagIssueMarkNode` (`src/components/story-editor/nodes/RagIssueMarkNode.ts`, mirrors `GrammarMarkNode`'s never-persisted pattern) wraps `open`-issue evidence excerpts on demand (chapter mount / issue-list change, not per-keystroke) via exact substring match (`$findTextNodeRange`, reused unchanged from `beatTextSearch.ts`) — a paraphrased or since-edited excerpt just silently doesn't highlight, no fuzzy matching, no stale indicator (confirmed with user). Click opens `RagIssuePopover.tsx` (mirrors `GrammarIssuePopover.tsx`) with severity/description/suggested fix/evidence + Resolve/Dismiss, unwrapping the mark immediately client-side rather than waiting on the query-invalidation round-trip. Strip-before-save generalized from `stripGrammarMarks.ts` into `stripEphemeralMarks.ts` (now handles both `grammar-mark` and `rag-issue-mark` types). Still open if revisited: full dual-write retirement of `ragScans` (unrelated, tracked separately under P1.1 below), auto-chaining `distill_memory`. Live-verified in the Browser pane against the real dev DB (seeded via a disposable script, cleaned up after): exact-match excerpt highlighted with severity-colored underline, paraphrased excerpt correctly produced no highlight, click→popover→Resolve unwrapped the highlight immediately and persisted server-side, mark survived an unrelated edit elsewhere in the chapter, saved chapter JSON confirmed free of `rag-issue-mark` nodes. `npm run build` clean.
 
 ---
 
