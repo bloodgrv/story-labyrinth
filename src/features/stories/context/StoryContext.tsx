@@ -52,6 +52,13 @@ interface StoryContextType {
     // unchanged (decision #4: "Brainstorm keeps existing handoff model").
     pendingShuttleSeed: { originChatId: string; shuttleItemId: string; text: string } | null;
     setPendingShuttleSeed: (seed: { originChatId: string; shuttleItemId: string; text: string } | null) => void;
+    // In-progress (unsent) chat composer text, keyed by chat id. Lives here rather than in
+    // ChatInterface's own state because switching workspace tools (e.g. Editor -> Lorebook and
+    // back) unmounts/remounts ChatInterface — a plain useState there loses whatever the user was
+    // mid-typing. This provider sits above MainContent's tool switch, so it survives. Session-only
+    // (not localStorage-persisted) — it only needs to outlive a tool switch, not a page reload.
+    chatDrafts: Record<string, string>;
+    setChatDraft: (chatId: string, text: string) => void;
     // Bumped whenever a chapter's content changes from OUTSIDE the live editor's own autosave
     // loop (currently: History drawer restore, P0.2b) — LoadChapterContentPlugin's own "only
     // load once per chapterId" gate has no other way to learn the DB content changed out from
@@ -85,6 +92,9 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     const [pendingLorebookSeed, setPendingLorebookSeed] = useState<StoryContextType["pendingLorebookSeed"]>(null);
     const [pendingChatComposerSeed, setPendingChatComposerSeed] = useState<StoryContextType["pendingChatComposerSeed"]>(null);
     const [pendingShuttleSeed, setPendingShuttleSeed] = useState<StoryContextType["pendingShuttleSeed"]>(null);
+    const [chatDrafts, setChatDrafts] = useState<Record<string, string>>({});
+    const setChatDraft = (chatId: string, text: string) =>
+        setChatDrafts(prev => (text ? { ...prev, [chatId]: text } : Object.fromEntries(Object.entries(prev).filter(([id]) => id !== chatId))));
     const [chapterContentRefreshToken, setChapterContentRefreshToken] = useState(0);
     const refreshChapterContent = () => setChapterContentRefreshToken(token => token + 1);
 
@@ -158,6 +168,8 @@ export function StoryProvider({ children }: { children: ReactNode }) {
                 setPendingChatComposerSeed,
                 pendingShuttleSeed,
                 setPendingShuttleSeed,
+                chatDrafts,
+                setChatDraft,
                 chapterContentRefreshToken,
                 refreshChapterContent
             }}

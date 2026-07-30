@@ -124,7 +124,16 @@ export function ChatInterface({
     focusedNoteId,
     guidedSetup
 }: ChatInterfaceProps) {
-    const [input, setInput] = useState("");
+    const { currentChapterId, setPendingChatComposerSeed, setCurrentTool, setPendingShuttleSeed, chatDrafts, setChatDraft } =
+        useStoryContext();
+    const [input, setInputState] = useState(() => chatDrafts[selectedChat.id] ?? "");
+    // Mirrors every keystroke into StoryContext so an in-progress, unsent message survives a
+    // workspace tool switch (which unmounts this component) instead of just this useState — see
+    // StoryContext's chatDrafts comment.
+    const setInput = (value: string) => {
+        setInputState(value);
+        setChatDraft(selectedChat.id, value);
+    };
     // Only meaningful when `guidedSetup` is provided — resets to expanded on remount (chat
     // switch), same as GuidedSetupControl's own collapse used to before it moved here.
     const [headerExpanded, setHeaderExpanded] = useState(true);
@@ -158,7 +167,6 @@ export function ChatInterface({
 
     const { entries: lorebookEntries } = useLorebookContext();
     const { data: chapters = [] } = useChaptersByStoryQuery(storyId ?? "");
-    const { currentChapterId, setPendingChatComposerSeed, setCurrentTool, setPendingShuttleSeed } = useStoryContext();
 
     // Selection Rework Bridge (docs/Chat_Panel_Integrations_Design.md §2.1/§3) — EditorChatRail
     // hands down a fresh `initialRework` object each time a NEW rework request resolves to this
