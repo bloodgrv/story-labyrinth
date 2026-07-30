@@ -55,8 +55,11 @@ interface StoryContextType {
     // In-progress (unsent) chat composer text, keyed by chat id. Lives here rather than in
     // ChatInterface's own state because switching workspace tools (e.g. Editor -> Lorebook and
     // back) unmounts/remounts ChatInterface — a plain useState there loses whatever the user was
-    // mid-typing. This provider sits above MainContent's tool switch, so it survives. Session-only
-    // (not localStorage-persisted) — it only needs to outlive a tool switch, not a page reload.
+    // mid-typing. Also localStorage-persisted (STORAGE_KEY_CHAT_DRAFTS below) so it survives a
+    // page reload or the dev server restarting, same as currentStoryId/currentChapterId/
+    // currentTool above. This is purely a composer-input safety net — it has nothing to do with
+    // chapter content itself, which already autosaves to the DB via SaveChapterContentPlugin/
+    // chapterSnapshots independent of this.
     chatDrafts: Record<string, string>;
     setChatDraft: (chatId: string, text: string) => void;
     // Bumped whenever a chapter's content changes from OUTSIDE the live editor's own autosave
@@ -73,7 +76,17 @@ const StoryContext = createContext<StoryContextType | undefined>(undefined);
 
 const STORAGE_KEY_STORY_ID = "workspace-last-story-id";
 const STORAGE_KEY_TOOL = "workspace-current-tool";
+const STORAGE_KEY_CHAT_DRAFTS = "workspace-chat-drafts";
 const CHAPTER_KEY = (storyId: string) => `workspace-chapter-id-${storyId}`;
+
+const loadPersistedChatDrafts = (): Record<string, string> => {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY_CHAT_DRAFTS);
+        return stored ? JSON.parse(stored) : {};
+    } catch {
+        return {};
+    }
+};
 
 export function StoryProvider({ children }: { children: ReactNode }) {
     // Initialize from localStorage
@@ -92,7 +105,7 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     const [pendingLorebookSeed, setPendingLorebookSeed] = useState<StoryContextType["pendingLorebookSeed"]>(null);
     const [pendingChatComposerSeed, setPendingChatComposerSeed] = useState<StoryContextType["pendingChatComposerSeed"]>(null);
     const [pendingShuttleSeed, setPendingShuttleSeed] = useState<StoryContextType["pendingShuttleSeed"]>(null);
-    const [chatDrafts, setChatDrafts] = useState<Record<string, string>>({});
+    const [chatDrafts, setChatDrafts] = useState<Record<string, string>>(loadPersistedChatDrafts);
     const setChatDraft = (chatId: string, text: string) =>
         setChatDrafts(prev => (text ? { ...prev, [chatId]: text } : Object.fromEntries(Object.entries(prev).filter(([id]) => id !== chatId))));
     const [chapterContentRefreshToken, setChapterContentRefreshToken] = useState(0);
@@ -124,6 +137,11 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY_TOOL, currentTool);
     }, [currentTool]);
+
+    // Persist chatDrafts to localStorage
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY_CHAT_DRAFTS, JSON.stringify(chatDrafts));
+    }, [chatDrafts]);
 
     const setCurrentChapterId = (chapterId: string | null) => {
         setCurrentChapterIdState(chapterId);
