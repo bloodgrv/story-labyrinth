@@ -22,9 +22,15 @@ export function LoadChapterContentPlugin(): null {
         if (currentChapterId) setHasLoaded(false);
     }, [currentChapterId, chapterContentRefreshToken]);
 
-    // Set editor content when chapter data is available
+    // Set editor content when chapter data is available. Checks `currentChapter` itself (not
+    // currentChapter.content) — a brand-new chapter's content is "" (falsy), and gating on
+    // content truthiness meant this effect, and therefore the "chapter-load" tag below, never
+    // fired for it at all. Since SaveChapterContentPlugin refuses to save anything until it has
+    // seen that tag, a freshly created chapter could never be saved no matter how much was typed
+    // into it — a real data-loss bug (see DECISIONS.md). An empty/invalid `content` still falls
+    // through to the recovery branch below, which builds a blank doc and tags it correctly.
     useEffect(() => {
-        if (!hasLoaded && currentChapter?.content && currentChapter.id === currentChapterId)
+        if (!hasLoaded && currentChapter && currentChapter.id === currentChapterId)
             // Defer to microtask to avoid flushSync warning
             queueMicrotask(() => {
                 const [error] = attempt(() => {

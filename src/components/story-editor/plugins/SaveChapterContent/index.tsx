@@ -117,7 +117,15 @@ export function SaveChapterContentPlugin(): null {
 
         return () => {
             removeUpdateListener();
-            saveContent.cancel();
+            // Flush, don't cancel: this plugin unmounts on every tab/pane switch and every
+            // workspace-tool switch (PaneTabContentView keys the whole editor tree by chapterId,
+            // and MainContent unmounts the Editor tool entirely for other tools). If a save was
+            // still sitting in its 1s debounce window at that moment — e.g. the user pastes/types
+            // a big chunk and immediately switches away — `.cancel()` silently threw the content
+            // away instead of persisting it, a real data-loss bug. `.flush()` fires it immediately
+            // instead. detectBeats/reindex stay cancelled — they're background bookkeeping, not
+            // user content, and firing them after unmount serves no purpose.
+            saveContent.flush();
             detectBeats.cancel();
             reindex.cancel();
         };
