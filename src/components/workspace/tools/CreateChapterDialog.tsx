@@ -28,9 +28,19 @@ interface CreateChapterDialogProps {
     onOpenChange: (open: boolean) => void;
     characterEntries: LorebookEntry[];
     onSubmit: (data: CreateChapterForm) => void;
+    // Some callers (e.g. ChapterSwitcher) open this dialog from their own trigger — a
+    // DropdownMenuItem, not a Button — and just drive `open` directly, so they skip rendering
+    // this component's own default trigger.
+    showTrigger?: boolean;
 }
 
-export const CreateChapterDialog = ({ open, onOpenChange, characterEntries, onSubmit }: CreateChapterDialogProps) => {
+export const CreateChapterDialog = ({
+    open,
+    onOpenChange,
+    characterEntries,
+    onSubmit,
+    showTrigger = true
+}: CreateChapterDialogProps) => {
     const form = useForm<CreateChapterForm>({
         defaultValues: {
             povType: "Third Person Omniscient"
@@ -55,12 +65,14 @@ export const CreateChapterDialog = ({ open, onOpenChange, characterEntries, onSu
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogTrigger asChild>
-                <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Chapter
-                </Button>
-            </DialogTrigger>
+            {showTrigger && (
+                <DialogTrigger asChild>
+                    <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        New Chapter
+                    </Button>
+                </DialogTrigger>
+            )}
             <DialogContent>
                 <form onSubmit={form.handleSubmit(handleSubmit)}>
                     <DialogHeader>

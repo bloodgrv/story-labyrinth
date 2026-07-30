@@ -1,10 +1,13 @@
-import { Fragment } from "react";
+import { Fragment, useEffect } from "react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { cn } from "@/lib/utils";
 import { EditorLayoutProvider, useEditorLayout } from "../context/EditorLayoutContext";
 import { FloatingPanelsProvider } from "../context/FloatingPanelsContext";
 import { useEditorMultiViewShortcuts } from "../hooks/useEditorMultiViewShortcuts";
 import type { EditorLayoutNode } from "../types";
+import { findPaneById } from "../utils/layoutTree";
+import { findTabByContent, getTabChapterId } from "../utils/paneTabs";
 import { EditorPane } from "./EditorPane";
 import { FloatingPanelsLayer } from "./FloatingPanelsLayer";
 
@@ -56,8 +59,27 @@ export function EditorMultiView({ storyId, initialChapterId, isMaximised }: Edit
 }
 
 function EditorMultiViewRoot({ storyId, isMaximised }: { storyId: string; isMaximised: boolean }) {
-    const { root, paneCount } = useEditorLayout();
+    const { root, paneCount, activePaneId, addTab, setActiveTab } = useEditorLayout();
+    const { currentChapterId } = useStoryContext();
     useEditorMultiViewShortcuts();
+
+    // Keep the active pane showing whichever chapter the TopBar's ChapterSwitcher (or any other
+    // consumer of StoryContext.currentChapterId) just picked. EditorPane's focusPane already
+    // pushes a pane's own chapter into currentChapterId on focus — this effect is a no-op
+    // whenever currentChapterId already matches the active pane's active tab, so that reverse
+    // sync never bounces back into a loop here.
+    useEffect(() => {
+        if (!currentChapterId) return;
+        const activePane = findPaneById(root, activePaneId);
+        if (!activePane) return;
+        const activeTab = activePane.tabs.find(tab => tab.id === activePane.activeTabId) ?? activePane.tabs[0];
+        if (getTabChapterId(activeTab.content) === currentChapterId) return;
+
+        const existingTab = findTabByContent(activePane, { kind: "chapter", chapterId: currentChapterId });
+        if (existingTab) setActiveTab(activePaneId, existingTab.id);
+        else addTab(activePaneId, { kind: "chapter", chapterId: currentChapterId });
+    }, [currentChapterId, activePaneId, root, addTab, setActiveTab]);
+
     // A capped, centered reading column only makes sense for a single pane — the moment there's
     // more than one, splitting the already-capped width further would waste most of the screen.
     const capWidth = !isMaximised && paneCount === 1;

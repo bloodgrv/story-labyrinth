@@ -39,12 +39,13 @@ interface EditorLayoutProviderProps {
 // stories fully remounts (loading THAT story's saved layout, or a fresh single pane if it never
 // had one) rather than needing a reset effect here.
 //
-// Deliberately does NOT react to `initialChapterId` changing after mount (e.g. picking a
-// different chapter from the TopBar's ChapterSwitcher while a layout already exists) — panes
-// push their own chapter into the global selection on focus (see EditorPane), so continuously
-// syncing the other direction too would create a feedback loop between "last-focused pane" and
-// "last global pick." The per-pane chapter picker is the supported way to change what an
-// existing pane shows.
+// This provider itself does NOT react to `initialChapterId` changing after mount — it's only
+// the seed for a fresh tree. Keeping the active pane in sync with later picks from the TopBar's
+// ChapterSwitcher (or anything else driving StoryContext.currentChapterId) is handled one level
+// up, in EditorMultiViewRoot's effect, which activates/opens a tab for the new chapter in
+// whichever pane is currently active. That effect is a no-op whenever currentChapterId already
+// matches the active pane (which is the case right after a pane's own focus-driven sync — see
+// EditorPane), so the two directions don't feed back into each other.
 export const EditorLayoutProvider = ({ storyId, initialChapterId, children }: EditorLayoutProviderProps) => {
     const [root, setRoot] = useState<EditorLayoutNode>(() => {
         const persisted = loadPersistedLayout(storyId);
