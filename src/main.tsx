@@ -33,7 +33,7 @@ if (!rootElement) throw new Error("Root element not found");
 ReactDOM.createRoot(rootElement).render(
     <ErrorBoundary>
         <QueryProvider>
-            <ThemeProvider defaultTheme="dark" storageKey="app-theme">
+            <ThemeProvider defaultTheme="midnight" storageKey="app-theme">
                 <AuthGate>
                     <BrowserRouter>
                         <StoryProvider>
