@@ -32,7 +32,11 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
             <div className="flex h-14 items-center px-2 sm:px-4 gap-2 sm:gap-4">
                 {/* App Title - hidden on mobile */}
                 <div className="hidden sm:flex items-center whitespace-nowrap">
-                    <img src={wordmarkSrc} alt="Story Labyrinth" className="h-6 w-auto" />
+                    <img
+                        src={wordmarkSrc}
+                        alt="Story Labyrinth"
+                        className="h-6 w-auto transition-[filter] duration-300 hover:[filter:drop-shadow(0_0_6px_hsl(var(--brand-ember)/0.55))]"
+                    />
                 </div>
 
                 {/* Story Selector */}

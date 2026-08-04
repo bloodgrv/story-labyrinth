@@ -108,6 +108,15 @@
         --sidebar-accent-foreground: 240 5.9% 10%;
         --sidebar-border: 220 13% 70%;
         --sidebar-ring: 217.2 91.2% 59.8%;
+
+        /*
+         * Story Labyrinth brand accents (docs/SL_Brand_Type_Implement_Design.md T13, BT3).
+         * Logo/wordmark-aligned — for the wordmark's own rare emphasis (hover glow) and future
+         * sparse brand moments, not a theme repaint. Defined once here (true :root, not scoped to
+         * a specific theme class) so they stay constant across every theme pack.
+         */
+        --brand-crimson: 350 55% 45%;
+        --brand-ember: 32 90% 55%;
     }
     .dark {
         --background: 193 100% 7%;

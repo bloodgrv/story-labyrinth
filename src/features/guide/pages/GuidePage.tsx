@@ -23,6 +23,10 @@ export default function GuidePage() {
                     <CardDescription>
                         Your comprehensive guide to using this AI-powered story writing application
                     </CardDescription>
+                    <p className="text-xs text-muted-foreground pt-1">
+                        A personal, freeware fork — evolving toward{" "}
+                        <span className="font-display font-semibold">Story Labyrinth</span>.
+                    </p>
                 </CardHeader>
                 <CardContent>
                     <GuideTabs />
