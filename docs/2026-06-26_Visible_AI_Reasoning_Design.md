@@ -1,4 +1,4 @@
-# Visible AI Reasoning Design — Thinking Tags (Story Nexus)
+# Visible AI Reasoning Design — Thinking Tags (Story Labyrinth)
 
 **Version:** 1.1 (Narrow Scope)  
 **Date:** July 2026  

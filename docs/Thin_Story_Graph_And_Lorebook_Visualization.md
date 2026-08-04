@@ -1,6 +1,6 @@
 # Thin Story Graph + Lorebook Relationship Visualization
 
-**Project:** Story Nexus Fork  
+**Project:** Story Labyrinth  
 **Status:** Phase G1 + G1.5+ implemented (pending-edge review, AI-suggested edges, persisted layout, RAG reindex-on-edge-change) — see `CLAUDE.md` "Lorebook Relationship Graph" and `docs/CURRENT_BACKLOG.md` P1.2; this doc is the original design record, may be stale on specifics  
 **Date:** 2026-07-16  
 **Audience:** Claude Code + Hermes  
@@ -13,7 +13,7 @@
 
 Writers of long novels need to **see and edit** how lorebook entities connect (who holds what, who is where, who knows whom, what caused what) — not only store freeform prose and hope RAG surfaces it.
 
-Story Nexus already has a **partial** relationship model:
+Story Labyrinth already has a **partial** relationship model:
 
 - `lorebookEntries.metadata.relationships?: Array<{ targetId, type, description? }>`
 - Used today for **one-hop** context when a World-Building chat is anchored to an entry (`chatContextService` resolves related targets)

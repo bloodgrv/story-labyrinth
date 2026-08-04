@@ -2,7 +2,7 @@
 
 ## Overview
 
-Convert The Story Nexus from desktop-only to mobile-first responsive design using existing Tailwind CSS and Shadcn UI components. Current state: app unusable on mobile with fixed sidebars, small touch targets, and desktop-only interaction patterns.
+Convert Story Labyrinth from desktop-only to mobile-first responsive design using existing Tailwind CSS and Shadcn UI components. Current state: app unusable on mobile with fixed sidebars, small touch targets, and desktop-only interaction patterns.
 
 ## Strategy
 

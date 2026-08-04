@@ -2,7 +2,7 @@
 
 ## Core Concept
 
-The Story Nexus should feel like a **writing studio** where all tools are within easy reach, not a website where you navigate between separate pages. Opening a story enters a persistent workspace where you can fluidly switch between tools without losing context or feeling like you've "gone somewhere else".
+Story Labyrinth should feel like a **writing studio** where all tools are within easy reach, not a website where you navigate between separate pages. Opening a story enters a persistent workspace where you can fluidly switch between tools without losing context or feeling like you've "gone somewhere else".
 
 ---
 

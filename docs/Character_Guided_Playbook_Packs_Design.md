@@ -1,6 +1,6 @@
 # Character Guided Playbook Packs (Hybrid D) — Design
 
-**Project:** Story Nexus Fork (`E:\StoryNexus-Fork`)  
+**Project:** Story Labyrinth (`E:\StoryNexus-Fork`)  
 **Status:** **Mechanics locked 2026-07-19 (grill)** — **not implemented**  
 **Starter pack document *content*:** **still designing** (not locked; ship placeholders or empty shells until content lock)  
 **Priority:** **P3** until promoted  

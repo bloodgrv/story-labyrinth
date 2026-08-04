@@ -14,18 +14,30 @@ export default function GuidePage() {
                     <ArrowLeft className="h-4 w-4" />
                     Back
                 </Button>
-                <h1 className="text-3xl font-bold ml-4">The Story Nexus Guide</h1>
+                <h1 className="text-3xl font-bold ml-4">
+                    <span className="font-display font-semibold">Story Labyrinth</span> Guide
+                </h1>
             </div>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Welcome to The Story Nexus</CardTitle>
+                    <CardTitle>
+                        Welcome to <span className="font-display font-semibold">Story Labyrinth</span>
+                    </CardTitle>
                     <CardDescription>
                         Your comprehensive guide to using this AI-powered story writing application
                     </CardDescription>
                     <p className="text-xs text-muted-foreground pt-1">
-                        A personal, freeware fork — evolving toward{" "}
-                        <span className="font-display font-semibold">Story Labyrinth</span>.
+                        A personal, freeware fork of{" "}
+                        <a
+                            href="https://github.com/JonSilver/TheStoryNexus"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline underline-offset-2"
+                        >
+                            The Story Nexus
+                        </a>
+                        .
                     </p>
                 </CardHeader>
                 <CardContent>

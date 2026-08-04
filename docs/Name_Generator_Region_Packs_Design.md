@@ -10,7 +10,7 @@ install presets) shipped 2026-07-27.** All slices now done.
 
 ## Goal
 
-Make the **24 region packs** (US/UK full + European / Slavic / MENA / Asia / Africa combos) first-class for Story Nexus writers — without bloating the **baked-in core** or breaking the hybrid model (locked decision #1: small core + packs/script).
+Make the **24 region packs** (US/UK full + European / Slavic / MENA / Asia / Africa combos) first-class for Story Labyrinth writers — without bloating the **baked-in core** or breaking the hybrid model (locked decision #1: small core + packs/script).
 
 ---
 

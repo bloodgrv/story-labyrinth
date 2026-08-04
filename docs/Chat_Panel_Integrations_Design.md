@@ -1,6 +1,6 @@
 # Chat ↔ Panel Integrations — Design
 
-**Project:** Story Nexus Fork (`E:\StoryNexus-Fork`)  
+**Project:** Story Labyrinth (`E:\StoryNexus-Fork`)  
 **Status:** Design locked (2026-07-18) — implemented (R0-R8, B0-B5, S0-S5, K0-K5 all shipped; see `CLAUDE.md` "Chat System" and `docs/CURRENT_BACKLOG.md` P0.4); this doc is the original design record, may be stale on specifics  
 **Audience:** Claude Code (implementation) + Hermes (architecture)  
 **Related:** `docs/Notes_Outline_Chat_Bridges_Design.md`; `docs/CURRENT_BACKLOG.md` P0.3 / P1; floating toolbar `FloatingTextFormatToolbarPlugin`

@@ -1,6 +1,6 @@
 # Locations, Place Sheets & Story Maps — Design
 
-**Project:** Story Nexus Fork  
+**Project:** Story Labyrinth  
 **Status:** Locked 2026-07-19 — **L0-L5 implemented (2026-07-22/23)**. L5 scoped to multi-floor/sub-POI nesting + export (travel-time cut, per user decision — no existing precedent, lowest value of the three L5 ideas). See `docs/CURRENT_BACKLOG.md`'s "Locations & maps" row and `DECISIONS.md`'s "Locations & Maps — L0-L3" and "Locations & Maps — L4-L5" entries for the full trail; this doc is the original design record.  
 **Related:** `docs/Chat_Panel_Integrations_Design.md` (WB chat, playbooks), lorebook images, relationship graph  
 

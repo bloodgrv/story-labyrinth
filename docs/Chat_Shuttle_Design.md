@@ -1,6 +1,6 @@
 # Cross-Desk Chat Shuttle (“Agent Chat Shuffle”) — Design
 
-**Project:** Story Nexus Fork  
+**Project:** Story Labyrinth  
 **Status:** Locked 2026-07-20 — ready when promoted; **build after Research S0–S2**  
 **Backlog:** `docs/CURRENT_BACKLOG.md` P3 (+ pairs with P0.4 **S** / **K**)  
 **Related:** `docs/Chat_Panel_Integrations_Design.md` (desks, Brainstorm handoffs, Research §6, Notes §7); `docs/Outline_Import_Design.md` (work-tray / B4 morals); Notes N5 save-as-note  

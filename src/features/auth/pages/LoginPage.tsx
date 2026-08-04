@@ -50,7 +50,7 @@ export function LoginPage({ setupComplete }: LoginPageProps) {
                     <CardTitle>{setupComplete ? "Log In" : "Create Your Account"}</CardTitle>
                     <CardDescription>
                         {setupComplete
-                            ? "Story Nexus is password-protected."
+                            ? "Story Labyrinth is password-protected."
                             : "This is a one-time setup — the first account created is the only account."}
                     </CardDescription>
                 </CardHeader>

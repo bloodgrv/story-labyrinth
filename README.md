@@ -1,10 +1,12 @@
-# The Story Nexus
+# Story Labyrinth
+
+*A personal, freeware fork of [The Story Nexus](https://github.com/JonSilver/TheStoryNexus) by Jon Silver — renamed Story Labyrinth, still evolving.*
 
 A powerful AI-driven story writing web application built with Express, React, and TypeScript.
 
 ## Overview
 
-The Story Nexus is a local-first web application designed for writers who want to leverage AI to enhance their creative writing process. It provides a comprehensive environment for creating, organizing, and developing stories with the assistance of AI-powered tools. Run it on your local machine or deploy it via Docker to access from any device on your network.
+Story Labyrinth is a local-first web application designed for writers who want to leverage AI to enhance their creative writing process. It provides a comprehensive environment for creating, organizing, and developing stories with the assistance of AI-powered tools. Run it on your local machine or deploy it via Docker to access from any device on your network.
 
 ## The Road to Here
 

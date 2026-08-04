@@ -1,6 +1,6 @@
-# CLAUDE.md — Story Nexus Fork
+# CLAUDE.md — Story Labyrinth (fork of The Story Nexus)
 
-**Project:** The Story Nexus Fork  
+**Project:** Story Labyrinth — a fork of The Story Nexus  
 **Owner:** Reuben  
 **Date:** 2026-06-29  
 **Supervisor:** Hermes Agent

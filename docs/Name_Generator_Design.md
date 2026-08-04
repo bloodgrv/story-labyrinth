@@ -1,4 +1,4 @@
-# Story Nexus – Name Generator Design Document
+# Story Labyrinth – Name Generator Design Document
 
 **Version:** 0.4  
 **Date:** 2026-07-22  

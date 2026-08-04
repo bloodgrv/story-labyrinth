@@ -1,6 +1,6 @@
 # Import to Outline — Design
 
-**Project:** Story Nexus Fork  
+**Project:** Story Labyrinth  
 **Status:** Locked 2026-07-20 — ready for implementation when promoted off P3  
 **Backlog:** `docs/CURRENT_BACKLOG.md` P3  
 **Related:** lorebook multi-format import (`documentImportService.ts`); Outline chat / `outline-proposal`; Brainstorm handoff tray; `docs/Notes_Outline_Chat_Bridges_Design.md`; `docs/Chat_Panel_Integrations_Design.md`
