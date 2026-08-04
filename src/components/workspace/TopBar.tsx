@@ -11,6 +11,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useStoriesQuery } from "@/features/stories/hooks/useStoriesQuery";
+import { isDarkThemeId, useTheme } from "@/lib/theme-provider";
 import { ChapterSwitcher } from "./ChapterSwitcher";
 
 interface TopBarProps {
@@ -21,15 +22,17 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
     const { currentStoryId, setCurrentStoryId } = useStoryContext();
     const { data: stories } = useStoriesQuery();
     const navigate = useNavigate();
+    const { theme } = useTheme();
 
     const currentStory = stories?.find(s => s.id === currentStoryId);
+    const wordmarkSrc = isDarkThemeId(theme) ? "/brand/wordmark-dark.png" : "/brand/wordmark-light.png";
 
     return (
         <header className="border-b raycast-hairline bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 sticky top-0 z-40 safe-area-inset-top">
             <div className="flex h-14 items-center px-2 sm:px-4 gap-2 sm:gap-4">
                 {/* App Title - hidden on mobile */}
-                <div className="hidden sm:flex items-center gap-2 font-semibold text-lg whitespace-nowrap">
-                    Story Nexus
+                <div className="hidden sm:flex items-center whitespace-nowrap">
+                    <img src={wordmarkSrc} alt="Story Labyrinth" className="h-6 w-auto" />
                 </div>
 
                 {/* Story Selector */}

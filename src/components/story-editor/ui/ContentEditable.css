@@ -1,5 +1,8 @@
 .ContentEditable__root {
     border: 0;
+    /* Manuscript prose keeps the system-UI stack regardless of the app shell's
+       Inter chrome font (docs/SL_Brand_Type_Implement_Design.md T4) — writer's choice, not ours. */
+    font-family: ui-sans-serif, system-ui, sans-serif;
     font-size: 15px;
     display: block;
     position: relative;
@@ -16,6 +19,7 @@
 }
 
 .ContentEditable__placeholder {
+    font-family: ui-sans-serif, system-ui, sans-serif;
     font-size: 15px;
     color: #999;
     overflow: hidden;

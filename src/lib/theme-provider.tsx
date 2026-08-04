@@ -45,6 +45,25 @@ export const THEME_OPTIONS: { id: Theme; label: string }[] = [
 
 const THEME_CLASSES = THEME_OPTIONS.map(o => o.id).filter(id => id !== "system");
 
+// Dark-family themes (--background lightness < 50%, per src/index.css) vs light-family
+// (>= 50%) — used to pick theme-aware brand assets (e.g. TopBar wordmark) since this app
+// has many custom palettes beyond a plain light/dark binary.
+const DARK_THEME_IDS = new Set<Theme>([
+    "dark",
+    "midnight",
+    "midnight-graphite",
+    "sand",
+    "graphite",
+    "forest",
+    "dark-parchment",
+    "abyss",
+    "matrix",
+    "ember"
+]);
+
+export const isDarkThemeId = (theme: Theme): boolean =>
+    theme === "system" ? getSystemTheme() === "dark" : DARK_THEME_IDS.has(theme);
+
 type ThemeProviderProps = {
     children: React.ReactNode;
     defaultTheme?: Theme;

@@ -1,0 +1,28 @@
+{
+  "name": "SL_wordmark_live",
+  "maze_source": "G:/comfy/grok-image-03a5d5a6-6941-47a7-8acd-2a34debd9f3b.jpg",
+  "maze_master": "SL_maze_mark_master.png",
+  "type": {
+    "Story": "Inter Medium",
+    "Labyrinth": "Cormorant Garamond SemiBold",
+    "font_files": "docs/design-mocks/brand/fonts/"
+  },
+  "colors": {
+    "story_dark": [
+      200,
+      202,
+      208
+    ],
+    "story_light": [
+      40,
+      42,
+      48
+    ],
+    "labyrinth": [
+      156,
+      40,
+      62
+    ],
+    "ember": "from maze mark"
+  }
+}

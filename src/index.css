@@ -1,6 +1,64 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Story Labyrinth brand & type (docs/SL_Brand_Type_Implement_Design.md, BT0).
+ * Self-hosted so the app has zero webfont-CDN dependency (offline Docker / LAN use).
+ * Inter = UI chrome (font-sans); JetBrains Mono = kbd/code chips (font-mono);
+ * Cormorant Garamond = sparse brand display moments only (font-display) — never
+ * applied to the Lexical manuscript editor, which keeps its own system-font stack.
+ */
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/inter/Inter-Regular.woff2") format("woff2");
+}
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("/fonts/inter/Inter-Medium.woff2") format("woff2");
+}
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/inter/Inter-SemiBold.woff2") format("woff2");
+}
+@font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/jetbrains-mono/JetBrainsMono-Regular.woff2") format("woff2");
+}
+@font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("/fonts/jetbrains-mono/JetBrainsMono-Medium.woff2") format("woff2");
+}
+@font-face {
+    font-family: "Cormorant Garamond";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/cormorant-garamond/CormorantGaramond-SemiBold.woff2") format("woff2");
+}
+@font-face {
+    font-family: "Cormorant Garamond";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/fonts/cormorant-garamond/CormorantGaramond-Bold.woff2") format("woff2");
+}
+
 @layer base {
     /*
      * Linear + Raycast chrome tokens (V0, docs/UI_Visual_Direction.md).
@@ -605,7 +663,7 @@
         @apply border-border;
     }
     body {
-        @apply bg-background text-foreground;
+        @apply bg-background text-foreground font-sans;
         overflow-x: hidden;
     }
 }
