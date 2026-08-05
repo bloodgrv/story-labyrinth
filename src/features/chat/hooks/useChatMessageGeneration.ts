@@ -6,6 +6,8 @@ import { useStreamingGeneration } from "@/features/ai/hooks/useStreamingGenerati
 import { chatsApi } from "@/services/api/client";
 import type { AIChat, AllowedModel, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { logger } from "@/utils/logger";
+import { useUpdateChatMutation } from "./useChatQuery";
+import { generateChatTitle } from "../services/generateChatTitle";
 import { parseCodexProposals } from "../services/parseCodexProposals";
 import { parseHandoffPackets } from "../services/parseHandoffPackets";
 import type { ParsedLoreSuggestion } from "../services/parseLoreSuggestions";
@@ -99,6 +101,12 @@ interface UseChatMessageGenerationReturn {
     streamingContent: string;
 }
 
+// Chat organization pass — self-naming chats. WB already gets descriptive template-derived
+// titles (createWorldBuildingChat) and Research has no manual "new chat" list at all, so both are
+// left alone; Editor/Outline/Notes/Brainstorm all default new chats to a generic
+// "New Chat <timestamp>" title today, which is the one this auto-titles over.
+const AUTO_TITLE_CHAT_TYPES = new Set(["editor", "outline", "notes", "brainstorm"]);
+
 // Generation for chats.ts-backed chats (World-Building, Research, Editor) — distinct from
 // features/brainstorm's useMessageGeneration because these chats always already exist (created
 // via a template picker or get-or-create, never inline-created from the first message) and
@@ -129,6 +137,7 @@ export const useChatMessageGeneration = ({
     const { isStreaming, streamedText, processStream, abort: abortStream, reset } = useStreamingGeneration();
     const createProposalMutation = useCreateProposalMutation();
     const approveProposalMutation = useApproveProposalMutation(selectedChat.id);
+    const updateChatMutation = useUpdateChatMutation();
 
     const abort = useCallback(() => {
         abortStream();
@@ -138,6 +147,12 @@ export const useChatMessageGeneration = ({
     const generate = useCallback(
         async (input: string, extraContext?: string) => {
             if (!input.trim() || !selectedPrompt || !selectedModel || isStreaming || !selectedChat.id) return;
+
+            // Captured before anything is appended below — true only on a chat's genuine first
+            // exchange (never on a resumed chat, a regenerate, or a branch, which always starts
+            // with an inherited, non-empty message list already). Used below to fire the one-time
+            // auto-title call without any "is this title still the default" guesswork.
+            const isFirstExchange = selectedChat.messages.length === 0;
 
             setIsSending(true);
             const [error] = await attemptPromise(async () => {
@@ -195,6 +210,25 @@ export const useChatMessageGeneration = ({
                     usage ?? undefined
                 );
                 onChatUpdate(afterAssistantMessage);
+
+                // Self-naming chats — fire-and-forget, one small extra completion call after a
+                // chat's genuine first exchange (see isFirstExchange/AUTO_TITLE_CHAT_TYPES above).
+                // Never awaited by the main turn and never surfaces an error toast on failure — a
+                // missed rename just leaves the generic default title in place.
+                if (isFirstExchange && selectedChat.storyId && selectedChat.chatType && AUTO_TITLE_CHAT_TYPES.has(selectedChat.chatType)) {
+                    void (async () => {
+                        const title = await generateChatTitle(selectedModel.provider, selectedModel.id, input.trim(), finalContent);
+                        if (!title) return;
+                        const [titleError, updated] = await attemptPromise(() =>
+                            updateChatMutation.mutateAsync({ id: selectedChat.id, data: { title } })
+                        );
+                        if (titleError) {
+                            logger.warn("Failed to persist generated chat title:", titleError);
+                            return;
+                        }
+                        onChatUpdate(updated);
+                    })();
+                }
 
                 const assistantMessage: ChatMessage | undefined =
                     afterAssistantMessage.messages[afterAssistantMessage.messages.length - 1];

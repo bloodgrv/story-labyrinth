@@ -45,6 +45,11 @@ interface ChatListProps {
     // collapse toggle's position/chevron direction accordingly. Defaults to "left" (list first,
     // interface after); pass "right" when the list is the trailing column instead.
     side?: "left" | "right";
+    // Narrows the list to a subset of this story's chats of this chatType — applied before the
+    // folder/unfiled split, so folders transparently reflect the filtered set too. Generic rather
+    // than Editor-specific so any other rail can scope its own list the same way later (see
+    // EditorChatRail.tsx's chapter-scoping use).
+    filterPredicate?: (chat: AIChat) => boolean;
 }
 
 export function ChatList({
@@ -55,10 +60,12 @@ export function ChatList({
     selectedChat,
     onSelectChat,
     renderNewChatAction,
-    side = "left"
+    side = "left",
+    filterPredicate
 }: ChatListProps) {
     const isLeftSide = side === "left";
-    const { data: chats = [], isLoading } = useChatsByStoryQuery(storyId, chatType);
+    const { data: fetchedChats = [], isLoading } = useChatsByStoryQuery(storyId, chatType);
+    const chats = filterPredicate ? fetchedChats.filter(filterPredicate) : fetchedChats;
     const { data: folders = [] } = useFoldersQuery({ kind: "chat", scopeId: storyId, chatType });
     const createMutation = useCreateChatMutation();
     const updateMutation = useUpdateChatMutation();

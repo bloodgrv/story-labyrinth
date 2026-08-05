@@ -15,20 +15,6 @@ interface ChatListItemProps {
     onDeleteClick: (chatId: string) => void;
 }
 
-// Short, muted timestamp (CL0, docs/Chat_Model_Routing_And_Chrome_Design.md L2) — time-of-day for
-// today, "Mon D" for this year, "Mon D, YYYY" otherwise. Deliberately not a full date+time stack
-// (that's what made the old row tall) and not a relative "3h ago" ticker (no live re-render loop
-// to keep it fresh).
-function formatShortTimestamp(date: Date): string {
-    const now = new Date();
-    const isToday =
-        date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
-    if (isToday) return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-    const dateOptions: Intl.DateTimeFormatOptions =
-        date.getFullYear() === now.getFullYear() ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" };
-    return date.toLocaleDateString([], dateOptions);
-}
 
 // Single chat row — extracted out of ChatList.tsx (B9, docs/Folders_Org_Design.md F3) so the same
 // row renders identically whether a chat is Unfiled or nested inside a ChatFolderNode. Draggable
@@ -70,13 +56,12 @@ export function ChatListItem({ chat, isSelected, onSelect, onEditClick, onDelete
                         </TooltipTrigger>
                         <TooltipContent>
                             <p className="max-w-xs break-words">{chat.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {new Date(chat.updatedAt || chat.createdAt).toLocaleString()}
+                            </p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
-
-                <span className="text-xs text-muted-foreground shrink-0">
-                    {formatShortTimestamp(new Date(chat.updatedAt || chat.createdAt))}
-                </span>
 
                 <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                     <Button

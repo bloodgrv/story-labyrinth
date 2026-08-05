@@ -5,6 +5,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
+import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import type { AIChat } from "@/types/story";
 import { ChatInterface } from "./ChatInterface";
 import { ChatList } from "./ChatList";
@@ -69,6 +70,9 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
     // to resolve which chat a pending rework request should bind to.
     const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(storyId, "editor");
     const pendingRework = usePendingRework();
+    // Cache hit, not a new request — StoryEditor.tsx already fetches this same chapter for its own
+    // header/toolbar use. Only consumed here to label the chapter-scoped chat list below.
+    const { data: anchorChapter } = useChapterQuery(anchorChapterId ?? "");
 
     // Bridges a "Rework in chat" click (floating toolbar, inside the Lexical composer tree) into
     // this rail (a sibling panel, outside it) via pendingReworkStore — see that file's doc
@@ -158,11 +162,15 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
                     <ChatList
                         storyId={storyId}
                         chatType="editor"
-                        title="Editor Chats"
+                        title={anchorChapter ? `Editor Chats — ${anchorChapter.title}` : "Editor Chats"}
                         emptyLabel="No editor chats yet"
                         selectedChat={selectedChat}
                         onSelectChat={setSelectedChat}
                         renderNewChatAction={renderNewChatButton}
+                        // Strict chapter scoping — only this chapter's chats show, so the list
+                        // doesn't mix every chapter's chats together. Falls back to unfiltered only
+                        // when no chapter is focused yet (nothing to scope to).
+                        filterPredicate={chat => !anchorChapterId || chat.anchorChapterId === anchorChapterId}
                         side="right"
                     />
                     {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
