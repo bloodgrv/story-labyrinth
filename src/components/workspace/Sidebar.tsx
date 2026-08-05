@@ -173,7 +173,7 @@ export const Sidebar = () => {
                                         onClick={openSelectedInNewTabs}
                                     >
                                         <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                                        Open{selectedForNewTab.size > 0 ? ` (${selectedForNewTab.size})` : ""}
+                                        Open
                                     </Button>
                                     <Button
                                         size="sm"
