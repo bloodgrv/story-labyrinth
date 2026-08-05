@@ -98,7 +98,7 @@ export const Sidebar = () => {
             <aside
                 className={cn(
                     "hidden md:flex flex-col border-r bg-muted/30 transition-all duration-200",
-                    collapsed ? "w-12" : "w-32"
+                    collapsed ? "w-12" : "w-[136px]"
                 )}
             >
                 <div className="flex justify-center pt-3 pb-1">
