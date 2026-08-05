@@ -2,6 +2,7 @@ import { attemptPromise } from "@jfdi/attempt";
 import { Edit, FolderUp, Trash2 } from "lucide-react";
 import type { MouseEvent } from "react";
 import { useState } from "react";
+import { BrandMark } from "@/components/BrandMark";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -137,6 +138,10 @@ export const SeriesTool = () => {
                     open={editDialogOpen}
                     onOpenChange={setEditDialogOpen}
                 />
+
+                <div className="flex justify-center pt-8">
+                    <BrandMark className="h-[4.5rem] opacity-40" />
+                </div>
             </div>
         </div>
     );

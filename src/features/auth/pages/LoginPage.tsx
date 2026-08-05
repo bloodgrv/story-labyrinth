@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { KeyRound, Loader2, UserPlus } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,8 @@ export function LoginPage({ setupComplete }: LoginPageProps) {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 gap-6">
+            <BrandMark className="h-[6.75rem]" />
             <Card className="w-full max-w-sm">
                 <CardHeader className="text-center space-y-2">
                     <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">

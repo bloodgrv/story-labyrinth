@@ -1697,3 +1697,17 @@ Two real bugs surfaced once the reworked Sepia palette (previous entry) made the
 **Fix:** both call sites now explicitly set `text-primary` alongside the existing `bg-primary/10`, so the chip's text and background are always derived from the same token pair regardless of what `--secondary-foreground` happens to be in any theme — `className="bg-primary/10 text-primary ..."`. Checked for the same `variant="secondary"` + custom `bg-*` override pattern elsewhere in the codebase (grep) — these two were the only instances.
 
 **Verification:** `npm run build` (tsc client+server+vite) clean. Live-verified in the Browser pane against the real dev DB: compiled CSS confirmed exactly one `.theme-sepia{...}` rule (our tokens) and zero remaining bare `.sepia{filter:...}` rule; `getComputedStyle` confirmed `filter: none` on `<html>`, `<body>`, the TopBar wordmark `<img>`, and every Lorebook entry portrait `<img>` while Sepia was active; simulating a stale `localStorage` value of the old literal `"sepia"` and reloading confirmed the migration correctly re-resolves to `"theme-sepia"` with no filter reapplied; a real Lorebook entry's "supporting character" tag chip confirmed rendering as `rgb(114, 76, 49)` text (dark brown, matches `--primary`) on a `rgba(114, 76, 49, 0.1)` background — legible, not the previous near-white-on-near-transparent.
+
+---
+
+## Brand Mark on Login/Stories/Series Pages, Load-Bearing Decisions
+
+User request: add Story Labyrinth branding to the login screen (top) and the Stories/Series pages (bottom, an otherwise-empty area below the story/series grid).
+
+New shared `src/components/BrandMark.tsx` — a thin wrapper reusing the exact theme-aware wordmark selection `TopBar.tsx` already established (`isDarkThemeId(theme)` picking `/brand/wordmark-{dark,light}.png`), rather than duplicating that logic a third time. Takes only a `className` prop so each call site controls its own size/opacity.
+
+**LoginPage.tsx** — wordmark placed above the login/signup `Card` as a masthead, inside a new `flex-col` wrapper around the existing centered layout. The functional KeyRound/UserPlus icon inside the card (distinguishing login vs. first-run signup) was left untouched — that's state iconography, not brand. Initial size (`h-9`) read as too small/lost on a full browser window per direct user feedback — sized up 3x to `h-[6.75rem]` (108px).
+
+**StoriesTool.tsx / SeriesTool.tsx** — wordmark placed at the bottom of the content column, below the existing grid/empty-state and edit dialogs, in a small `flex justify-center pt-8` wrapper. Kept at 40% opacity throughout (a footer watermark, not a second headline — consistent with the brand kit's "sparse brand moments" doctrine, `docs/SL_Brand_And_Type.md` §4). Same undersizing feedback applied here too — `h-6` (24px) sized up 3x to `h-[4.5rem]` (72px).
+
+**Verification:** `npm run build` (tsc client+server+vite) clean. Live-verified in the Browser pane against the real dev DB: wordmark confirmed present and positioned above the login card (`y=242`, card starts at `y=302`) on the actual login screen (via a real log-out/log-in round trip); confirmed present at 40% opacity below the grid on both the Stories and Series pages.

@@ -1,5 +1,6 @@
 import { Wand2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SearchFilter } from "@/components/ui/SearchFilter";
@@ -123,6 +124,10 @@ export const StoriesTool = () => {
                     open={editDialogOpen}
                     onOpenChange={setEditDialogOpen}
                 />
+
+                <div className="flex justify-center pt-8">
+                    <BrandMark className="h-[4.5rem] opacity-40" />
+                </div>
             </div>
         </div>
     );
