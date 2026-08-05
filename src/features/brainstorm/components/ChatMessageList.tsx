@@ -1,4 +1,4 @@
-import { Copy, Edit, Loader2, RefreshCw, Send, StickyNote, Trash2, X } from "lucide-react";
+import { Copy, Edit, GitBranch, Loader2, RefreshCw, Send, StickyNote, Trash2, X } from "lucide-react";
 import type { ReactNode } from "react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -46,6 +46,10 @@ interface ChatMessageListProps {
     // ChatInterface.tsx.
     onSaveSelectionAsNote?: (text: string) => void;
     onSendSelectionToNotesChat?: (text: string) => void;
+    // Fork the conversation into a new sibling chat containing everything up to and including
+    // this message — omitted (button hidden) for global chats with no chat list to branch into
+    // (see ChatInterface.tsx's storyId gate).
+    onBranchMessage?: (message: ChatMessage) => void;
 }
 
 export function ChatMessageList({
@@ -64,7 +68,8 @@ export function ChatMessageList({
     onSaveSelectionAsNote,
     onSendSelectionToNotesChat,
     onDeleteMessage,
-    onRegenerateMessage
+    onRegenerateMessage,
+    onBranchMessage
 }: ChatMessageListProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -165,70 +170,84 @@ export function ChatMessageList({
                             )}
                         </div>
                         {editingMessageId !== message.id && message.role === "assistant" && !streamingMessageId && (
-                            <div className="mt-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="mt-1 flex items-center gap-0 opacity-0 transition-opacity group-hover:opacity-100">
                                 <TtsPlayButton
                                     text={parseThinkingContent(message.content).response}
                                     storyId={storyId}
+                                    className="h-6 w-6"
+                                    iconClassName="h-3.5 w-3.5"
                                 />
                                 {onRegenerateMessage && (
-                                    <Button size="sm" variant="ghost" title="Regenerate" onClick={() => onRegenerateMessage(message)}>
-                                        <RefreshCw className="h-4 w-4" />
+                                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Regenerate" onClick={() => onRegenerateMessage(message)}>
+                                        <RefreshCw className="h-3.5 w-3.5" />
                                     </Button>
                                 )}
                                 {onStartEdit && (
-                                    <Button size="sm" variant="ghost" title="Edit" onClick={() => onStartEdit(message)}>
-                                        <Edit className="h-4 w-4" />
+                                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Edit" onClick={() => onStartEdit(message)}>
+                                        <Edit className="h-3.5 w-3.5" />
                                     </Button>
                                 )}
                                 {onSaveAsNote && (
-                                    <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
-                                        <StickyNote className="h-4 w-4" />
+                                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Save as note" onClick={() => onSaveAsNote(message)}>
+                                        <StickyNote className="h-3.5 w-3.5" />
+                                    </Button>
+                                )}
+                                {onBranchMessage && (
+                                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Branch from here" onClick={() => onBranchMessage(message)}>
+                                        <GitBranch className="h-3.5 w-3.5" />
                                     </Button>
                                 )}
                                 <Button
-                                    size="sm"
+                                    size="icon"
                                     variant="ghost"
+                                    className="h-6 w-6"
                                     title="Copy"
                                     onClick={() => {
                                         navigator.clipboard.writeText(message.content);
                                         toast.success("Copied to clipboard");
                                     }}
                                 >
-                                    <Copy className="h-4 w-4" />
+                                    <Copy className="h-3.5 w-3.5" />
                                 </Button>
                                 {onDeleteMessage && (
-                                    <Button size="sm" variant="ghost" title="Delete" onClick={() => onDeleteMessage(message)}>
-                                        <Trash2 className="h-4 w-4" />
+                                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Delete" onClick={() => onDeleteMessage(message)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                 )}
                             </div>
                         )}
                         {editingMessageId !== message.id && message.role === "user" && !streamingMessageId && (
-                            <div className="mt-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="mt-1 flex items-center gap-0 opacity-0 transition-opacity group-hover:opacity-100">
                                 {onStartEdit && (
-                                    <Button size="sm" variant="ghost" title="Edit" onClick={() => onStartEdit(message)}>
-                                        <Edit className="h-4 w-4" />
+                                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Edit" onClick={() => onStartEdit(message)}>
+                                        <Edit className="h-3.5 w-3.5" />
                                     </Button>
                                 )}
                                 {onSaveAsNote && (
-                                    <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
-                                        <StickyNote className="h-4 w-4" />
+                                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Save as note" onClick={() => onSaveAsNote(message)}>
+                                        <StickyNote className="h-3.5 w-3.5" />
+                                    </Button>
+                                )}
+                                {onBranchMessage && (
+                                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Branch from here" onClick={() => onBranchMessage(message)}>
+                                        <GitBranch className="h-3.5 w-3.5" />
                                     </Button>
                                 )}
                                 <Button
-                                    size="sm"
+                                    size="icon"
                                     variant="ghost"
+                                    className="h-6 w-6"
                                     title="Copy"
                                     onClick={() => {
                                         navigator.clipboard.writeText(message.content);
                                         toast.success("Copied to clipboard");
                                     }}
                                 >
-                                    <Copy className="h-4 w-4" />
+                                    <Copy className="h-3.5 w-3.5" />
                                 </Button>
                                 {onDeleteMessage && (
-                                    <Button size="sm" variant="ghost" title="Delete" onClick={() => onDeleteMessage(message)}>
-                                        <Trash2 className="h-4 w-4" />
+                                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Delete" onClick={() => onDeleteMessage(message)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                 )}
                             </div>

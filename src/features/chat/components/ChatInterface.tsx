@@ -46,6 +46,7 @@ import { ProposalCard } from "./ProposalCard";
 import { ProseProposalCard } from "./ProseProposalCard";
 import { PsychProposalCard } from "./PsychProposalCard";
 import { PlaceSheetProposalCard } from "./PlaceSheetProposalCard";
+import { useCreateChatMutation, useUpdateChatMutation } from "../hooks/useChatQuery";
 import { useChatMessageGeneration } from "../hooks/useChatMessageGeneration";
 import { useChatSystemPrompt } from "../hooks/useChatSystemPrompt";
 import { groupProposalsByMessage, useChatProposalsQuery, useCreateProposalMutation } from "../hooks/useCodexProposalsQuery";
@@ -1096,6 +1097,30 @@ export function ChatInterface({
         await generate(userContent, extraContext);
     };
 
+    // Branch — forks the conversation into a new sibling chat carrying everything up to and
+    // including the chosen message, so two directions can be explored from the same point without
+    // losing either. Only wired up when storyId is present (global chats, e.g. Research's Global
+    // mode, have no chat list to branch into — see the ChatMessageList prop gate below).
+    const createChatMutation = useCreateChatMutation();
+    const updateChatMutation = useUpdateChatMutation();
+    const handleBranchMessage = async (message: ChatMessage) => {
+        if (!storyId) return;
+        const idx = selectedChat.messages.findIndex(m => m.id === message.id);
+        if (idx === -1) return;
+        const branchedMessages = selectedChat.messages.slice(0, idx + 1);
+        const newChat = await createChatMutation.mutateAsync({
+            storyId,
+            chatType: selectedChat.chatType ?? undefined,
+            templateSlug: selectedChat.templateSlug ?? undefined,
+            title: `${selectedChat.title} (branch)`,
+            anchorEntryId: selectedChat.anchorEntryId ?? null,
+            anchorChapterId: selectedChat.anchorChapterId ?? null
+        });
+        const updatedChat = await updateChatMutation.mutateAsync({ id: newChat.id, data: { messages: branchedMessages } });
+        onChatUpdate(updatedChat);
+        toast.success(`Branched into "${updatedChat.title}"`);
+    };
+
     // Chat Shuttle H6 — the "chat bubble selection" half of highlight → Note (ChatMessageList.tsx's
     // window.getSelection()-based bar), a span-level sibling to N5's whole-message save above.
     // Same NoteFormDialog reuse; "Send to Notes chat" reuses the generic pendingChatComposerSeed
@@ -1449,6 +1474,7 @@ export function ChatInterface({
                 editingTextareaRef={editingTextareaRef}
                 onDeleteMessage={setPendingDeleteMessage}
                 onRegenerateMessage={handleRegenerateMessage}
+                onBranchMessage={storyId ? handleBranchMessage : undefined}
                 // N5 — hidden entirely for Editor chats (stay canon-only) and for global chats
                 // with no storyId (Research Global mode has none to save a note against; Story
                 // mode gets a real storyId from ResearchTool.tsx, so this starts working there

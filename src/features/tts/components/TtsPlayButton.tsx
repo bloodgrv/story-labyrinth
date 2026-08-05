@@ -11,6 +11,7 @@ interface TtsPlayButtonProps {
     // global default voice for whichever provider is active.
     storyId?: string;
     className?: string;
+    iconClassName?: string;
 }
 
 /**
@@ -19,7 +20,7 @@ interface TtsPlayButtonProps {
  * /api/tts/generate, so adding a provider server-side never touches this component.
  * Renders nothing when TTS is disabled in global settings.
  */
-export function TtsPlayButton({ text, storyId, className }: TtsPlayButtonProps) {
+export function TtsPlayButton({ text, storyId, className, iconClassName = "h-4 w-4" }: TtsPlayButtonProps) {
     const { data: settings } = useTtsSettingsQuery();
     const { data: storyVoice } = useStoryTtsVoiceQuery(storyId ?? "");
     const { isGenerating, isPlaying, isPaused, speak, pause, resume } = useTtsPlayback();
@@ -51,11 +52,11 @@ export function TtsPlayButton({ text, storyId, className }: TtsPlayButtonProps) 
             title={isPlaying ? "Pause" : isPaused ? "Resume" : "Read aloud"}
         >
             {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className={cn(iconClassName, "animate-spin")} />
             ) : isPlaying ? (
-                <Pause className="h-4 w-4" />
+                <Pause className={iconClassName} />
             ) : (
-                <Play className="h-4 w-4" />
+                <Play className={iconClassName} />
             )}
         </Button>
     );
