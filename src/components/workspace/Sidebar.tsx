@@ -98,6 +98,14 @@ export const Sidebar = () => {
                     collapsed ? "w-12" : "w-32"
                 )}
             >
+                <div className="flex justify-center pt-3 pb-1">
+                    <img
+                        src="/brand/sl-monogram.png"
+                        alt="Story Labyrinth"
+                        className={cn("w-auto", collapsed ? "h-7" : "h-10")}
+                    />
+                </div>
+
                 <nav className="flex-1 p-2 space-y-1">
                     {visibleTools.map(tool => {
                         const Icon = tool.icon;
