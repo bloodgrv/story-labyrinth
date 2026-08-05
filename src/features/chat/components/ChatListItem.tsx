@@ -55,10 +55,14 @@ export function ChatListItem({ chat, isSelected, onSelect, onEditClick, onDelete
                             <span className="text-sm truncate text-foreground flex-1 min-w-0">{chat.title}</span>
                         </TooltipTrigger>
                         <TooltipContent>
-                            <p className="max-w-xs break-words">{chat.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {new Date(chat.updatedAt || chat.createdAt).toLocaleString()}
-                            </p>
+                            {/* Both lines stay at full text-primary-foreground (the tooltip's own
+                                bg-primary/text-primary-foreground pairing, guaranteed readable in
+                                every theme) — an earlier version dimmed the timestamp to /70
+                                opacity for visual hierarchy, but blending near-black text down
+                                toward a bright bg-primary (e.g. Midnight's violet) drops well
+                                below WCAG AA contrast. Font-weight carries the hierarchy instead. */}
+                            <p className="max-w-xs break-words font-medium">{chat.title}</p>
+                            <p>{new Date(chat.updatedAt || chat.createdAt).toLocaleString()}</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
