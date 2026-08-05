@@ -25,6 +25,7 @@ import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
 import { useStoryContext, type WorkspaceTool } from "@/features/stories/context/StoryContext";
+import { isDarkThemeId, useTheme } from "@/lib/theme-provider";
 import { cn } from "@/lib/utils";
 import { version } from "../../../package.json";
 import { useWorkspace } from "./context/WorkspaceContext";
@@ -53,7 +54,9 @@ const NEW_TAB_ELIGIBLE_TOOLS: readonly WorkspaceTool[] = ["editor", "lorebook", 
 export const Sidebar = () => {
     const { currentTool, setCurrentTool, currentStoryId } = useStoryContext();
     const { leftSidebar, toggleLeftSidebar } = useWorkspace();
+    const { theme } = useTheme();
     const collapsed = leftSidebar.collapsed;
+    const monogramSrc = isDarkThemeId(theme) ? "/brand/sl-monogram.png" : "/brand/sl-monogram-light.png";
     const visibleTools = tools;
     const navigate = useNavigate();
     const [newTabSelectMode, setNewTabSelectMode] = useState(false);
@@ -100,7 +103,7 @@ export const Sidebar = () => {
             >
                 <div className="flex justify-center pt-3 pb-1">
                     <img
-                        src="/brand/sl-monogram.png"
+                        src={monogramSrc}
                         alt="Story Labyrinth"
                         className={cn("w-auto", collapsed ? "h-7" : "h-10")}
                     />
