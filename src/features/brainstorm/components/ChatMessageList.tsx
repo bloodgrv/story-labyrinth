@@ -109,7 +109,7 @@ export function ChatMessageList({
                 {messages.map(message => (
                     <div
                         key={message.id}
-                        className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                        className={`group flex flex-col ${message.role === "user" ? "items-end" : "items-start"}`}
                     >
                         <div
                             className={`max-w-[85%] rounded-lg px-4 py-3 ${
@@ -136,7 +136,7 @@ export function ChatMessageList({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="relative group">
+                                <div>
                                     {message.role === "assistant" && streamingMessageId === message.id ? (
                                         <div className="flex items-center gap-2">
                                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -161,78 +161,78 @@ export function ChatMessageList({
                                     ) : (
                                         <MarkdownRenderer content={message.content} />
                                     )}
-                                    {message.role === "assistant" && !streamingMessageId && (
-                                        <div className="absolute top-0 right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <TtsPlayButton
-                                                text={parseThinkingContent(message.content).response}
-                                                storyId={storyId}
-                                            />
-                                            {onRegenerateMessage && (
-                                                <Button size="sm" variant="ghost" title="Regenerate" onClick={() => onRegenerateMessage(message)}>
-                                                    <RefreshCw className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                            {onStartEdit && (
-                                                <Button size="sm" variant="ghost" title="Edit" onClick={() => onStartEdit(message)}>
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                            {onSaveAsNote && (
-                                                <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
-                                                    <StickyNote className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                title="Copy"
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(message.content);
-                                                    toast.success("Copied to clipboard");
-                                                }}
-                                            >
-                                                <Copy className="h-4 w-4" />
-                                            </Button>
-                                            {onDeleteMessage && (
-                                                <Button size="sm" variant="ghost" title="Delete" onClick={() => onDeleteMessage(message)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    )}
-                                    {message.role === "user" && !streamingMessageId && (
-                                        <div className="absolute top-0 right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {onStartEdit && (
-                                                <Button size="sm" variant="ghost" title="Edit" onClick={() => onStartEdit(message)}>
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                            {onSaveAsNote && (
-                                                <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
-                                                    <StickyNote className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                title="Copy"
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(message.content);
-                                                    toast.success("Copied to clipboard");
-                                                }}
-                                            >
-                                                <Copy className="h-4 w-4" />
-                                            </Button>
-                                            {onDeleteMessage && (
-                                                <Button size="sm" variant="ghost" title="Delete" onClick={() => onDeleteMessage(message)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
                             )}
                         </div>
+                        {editingMessageId !== message.id && message.role === "assistant" && !streamingMessageId && (
+                            <div className="mt-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                                <TtsPlayButton
+                                    text={parseThinkingContent(message.content).response}
+                                    storyId={storyId}
+                                />
+                                {onRegenerateMessage && (
+                                    <Button size="sm" variant="ghost" title="Regenerate" onClick={() => onRegenerateMessage(message)}>
+                                        <RefreshCw className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                {onStartEdit && (
+                                    <Button size="sm" variant="ghost" title="Edit" onClick={() => onStartEdit(message)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                {onSaveAsNote && (
+                                    <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
+                                        <StickyNote className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    title="Copy"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(message.content);
+                                        toast.success("Copied to clipboard");
+                                    }}
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                                {onDeleteMessage && (
+                                    <Button size="sm" variant="ghost" title="Delete" onClick={() => onDeleteMessage(message)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                        {editingMessageId !== message.id && message.role === "user" && !streamingMessageId && (
+                            <div className="mt-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                                {onStartEdit && (
+                                    <Button size="sm" variant="ghost" title="Edit" onClick={() => onStartEdit(message)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                {onSaveAsNote && (
+                                    <Button size="sm" variant="ghost" title="Save as note" onClick={() => onSaveAsNote(message)}>
+                                        <StickyNote className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    title="Copy"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(message.content);
+                                        toast.success("Copied to clipboard");
+                                    }}
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                                {onDeleteMessage && (
+                                    <Button size="sm" variant="ghost" title="Delete" onClick={() => onDeleteMessage(message)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 ))}
                 <div ref={messagesEndRef} />
