@@ -157,3 +157,9 @@ Existing **Graphite** remains another mid-brightness black-text option (~L40, da
 - 2026-07-21 — **V2 chat/AI accents shipped**: user bubble ring+glow, Research Story/Global pill gradient underline; stopped before manuscript prose  
 
 *Chrome pass (V0/V1/V2) complete as of 2026-07-21. Open items above (default theme, exact glow dial, Light's button hue) are follow-ups, not blockers.*
+
+---
+
+## Brand type (fork identity — separate doc)
+
+Product naming / logo / menu font stack for a possible **Story Labyrinth** identity lives in **`docs/SL_Brand_And_Type.md`** (2026-07-31). That kit does **not** change Linear+Raycast chrome locks. Summary: **Inter** for UI menus; optional **Cormorant Garamond** for brand display only; **JetBrains Mono** for mono chips (matches these mocks). Full rename of the app is **not** locked until explicitly promoted.
