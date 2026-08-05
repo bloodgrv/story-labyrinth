@@ -72,7 +72,7 @@ export function LorebookEntryRow({
             )}
             <div className="flex min-w-0 flex-1 flex-wrap gap-1 justify-end">
                 {visibleTags.map(tag => (
-                    <Badge key={tag} variant="secondary" className="bg-primary/10 text-xs px-2 py-0.5 shrink-0">
+                    <Badge key={tag} variant="secondary" className="bg-primary/10 text-primary text-xs px-2 py-0.5 shrink-0">
                         {tag}
                     </Badge>
                 ))}

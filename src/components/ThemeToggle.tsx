@@ -33,7 +33,7 @@ interface ThemeToggleProps {
 const THEME_ICONS: Record<Theme, typeof Sun> = {
     light: Sun,
     bone: Cloud,
-    sepia: ScrollText,
+    "theme-sepia": ScrollText,
     "mid-stone": Layers,
     "mid-slate": Mountain,
     "mid-sage": Trees,

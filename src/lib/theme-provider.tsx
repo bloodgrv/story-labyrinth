@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 export type Theme =
     | "light"
     | "system"
-    | "sepia"
+    | "theme-sepia"
     | "midnight"
     | "midnight-graphite"
     | "forest"
@@ -23,10 +23,14 @@ export type Theme =
 // and Graphite dropped outright, "Dark" felt redundant next to Midnight/Abyss/etc). "system"'s
 // dark-preference branch now resolves to "midnight" instead of the removed "dark" id — see
 // getSystemTheme() below.
+// Sepia's id is "theme-sepia", not "sepia" — Tailwind ships a built-in `sepia` filter utility
+// (`filter: sepia(100%)`) that would otherwise collide with our own class name of the same name,
+// applying a real photographic sepia filter over the whole page (images/logo included) any time
+// the theme was active. Found 2026-08-04 after the Sepia rework made this newly visible.
 export const THEME_OPTIONS: { id: Theme; label: string }[] = [
     { id: "light", label: "Light" },
     { id: "bone", label: "Bone" },
-    { id: "sepia", label: "Sepia" },
+    { id: "theme-sepia", label: "Sepia" },
     { id: "mid-stone", label: "Mid Stone" },
     { id: "mid-slate", label: "Mid Slate" },
     { id: "mid-sage", label: "Mid Sage" },
@@ -84,12 +88,14 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 // (removed 2026-08-04) as the OS dark-preference target.
 const getSystemTheme = (): Theme => (window.matchMedia("(prefers-color-scheme: dark)").matches ? "midnight" : "light");
 
-// One-time migration for anyone with a removed theme id (dark/mist/graphite) still in
-// localStorage from before 2026-08-04 — otherwise it'd silently apply no matching CSS block.
+// One-time migration for anyone with a removed/renamed theme id still in localStorage from
+// before 2026-08-04 — otherwise "dark"/"mist"/"graphite" would silently apply no matching CSS
+// block, and "sepia" would collide with Tailwind's own `sepia` filter utility (see above).
 const REMOVED_THEME_MIGRATIONS: Record<string, Theme> = {
     dark: "midnight",
     graphite: "midnight",
-    mist: "light"
+    mist: "light",
+    sepia: "theme-sepia"
 };
 
 function resolveStoredTheme(raw: string | null, fallback: Theme): Theme {

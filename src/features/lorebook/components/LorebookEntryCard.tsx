@@ -83,7 +83,7 @@ export function LorebookEntryCard({
                 </div>
                 <div className="flex flex-wrap gap-1 mb-2">
                     {entry.tags?.map(tag => (
-                        <Badge key={tag} variant="secondary" className="bg-primary/10 text-xs px-2 py-0.5">
+                        <Badge key={tag} variant="secondary" className="bg-primary/10 text-primary text-xs px-2 py-0.5">
                             {tag}
                         </Badge>
                     ))}
