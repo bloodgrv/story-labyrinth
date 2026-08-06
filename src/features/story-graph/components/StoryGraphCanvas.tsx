@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { isDarkThemeId, useTheme } from "@/lib/theme-provider";
 import type { StoryGraphEdge, StoryGraphNode } from "@/types/storyGraph";
 import {
     useGraphLayoutQuery,
@@ -48,6 +49,7 @@ type ConnectDraft = { from: string; to?: string };
 
 function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
     const { setPendingLorebookEntryId, setCurrentTool } = useStoryContext();
+    const { theme } = useTheme();
     const isOwner = useIsOwner();
     const suggestEdgesMutation = useSuggestGraphEdgesMutation();
     const layoutQuery = useGraphLayoutQuery(storyId);
@@ -272,10 +274,16 @@ function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
                             edgeTypes={edgeTypes}
                             fitView
                             proOptions={{ hideAttribution: true }}
+                            // React Flow ships its own light/dark palette via CSS vars, keyed off
+                            // a literal "dark" class on the <ReactFlow> root itself (not just an
+                            // ancestor) — without this the Controls/MiniMap always rendered in
+                            // React Flow's default light theme regardless of the app's own theme,
+                            // looking like unstyled/broken UI against a dark background.
+                            className={isDarkThemeId(theme) ? "dark" : undefined}
                         >
                             <Background />
                             <Controls />
-                            <MiniMap pannable zoomable className="!bg-background" />
+                            <MiniMap pannable zoomable />
                         </ReactFlow>
 
                         {selectedNode && (

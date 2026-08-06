@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { isDarkThemeId, useTheme } from "@/lib/theme-provider";
 import type { StoryMapEdge, StoryMapNode } from "@/types/storyMap";
 import {
     useMapLayoutQuery,
@@ -106,6 +107,7 @@ const sortNodesForDisplay = (nodes: StoryMapNode[], rootId: string | null): Stor
 
 function StoryMapCanvasInner({ storyId }: StoryMapCanvasProps) {
     const { setPendingLorebookEntryId, setCurrentTool } = useStoryContext();
+    const { theme } = useTheme();
     const isOwner = useIsOwner();
     const mapQuery = useStoryMapQuery(storyId);
     const layoutQuery = useMapLayoutQuery(storyId);
@@ -333,10 +335,14 @@ function StoryMapCanvasInner({ storyId }: StoryMapCanvasProps) {
                     edgeTypes={edgeTypes}
                     fitView
                     proOptions={{ hideAttribution: true }}
+                    // See StoryGraphCanvas.tsx's identical fix — React Flow's Controls/MiniMap
+                    // otherwise always render in its default light theme regardless of the app's
+                    // own theme.
+                    className={isDarkThemeId(theme) ? "dark" : undefined}
                 >
                     <Background />
                     <Controls />
-                    <MiniMap pannable zoomable className="!bg-background" />
+                    <MiniMap pannable zoomable />
                 </ReactFlow>
 
                 {selectedNode && (
