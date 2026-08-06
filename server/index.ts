@@ -6,7 +6,8 @@ import { runMigrations } from "./db/migrate.js";
 import { seedCoreNamePools } from "./db/seedNamePools.js";
 import { migrateSceneBeatPromptType, patchStaleSystemPrompts, seedSystemPrompts } from "./db/seedSystemPrompts.js";
 import { blockViewerMutations, requireAuth, requireOwner } from "./middleware/auth.js";
-import { start as startJobRunner, stop as stopJobRunner } from "./services/jobRunner.js";
+import { renderStatusPage } from "./routes/statusPage.js";
+import { getCurrentJobId, start as startJobRunner, stop as stopJobRunner } from "./services/jobRunner.js";
 import { seedShippedPlaybookPacks } from "./services/playbookPackService.js";
 import adminRouter from "./routes/admin.js";
 import agentJobsRouter from "./routes/agentJobs.js";
@@ -46,6 +47,20 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || "development";
+const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "storynexus.db");
+
+// Assigned once app.listen() runs below; the /_status routes only read this at request time
+// (after startup has finished), so the forward reference is safe.
+let server: ReturnType<typeof app.listen>;
+let jobRunnerStarted = false;
+
+// No graceful shutdown handling existed anywhere in this codebase before this — needed now so
+// stopJobRunner() gets a chance to let an in-flight job finish before the process exits. Shared
+// by SIGTERM/SIGINT and the /_status restart & shutdown actions below.
+const shutdown = async () => {
+    await stopJobRunner();
+    server.close(() => process.exit(0));
+};
 
 // Run migrations, seed system prompts, and start the background job runner on startup.
 // jobRunner starts last so the agentJobs table (and everything it references) definitely
@@ -63,6 +78,7 @@ const initializeDatabase = async () => {
     // idempotent-on-every-boot shape as seedCoreNamePools above.
     await seedShippedPlaybookPacks();
     await startJobRunner();
+    jobRunnerStarted = true;
 };
 
 initializeDatabase().catch(error => {
@@ -143,6 +159,28 @@ app.use("/api/folders", foldersRouter);
 app.use("/api/playbook-packs", playbookPacksRouter);
 app.use("/api/users", requireOwner, usersRouter);
 
+// Server status/control page — owner-only (same posture as /api/admin). Registered before the
+// production static/SPA-fallback block below so that catch-all doesn't swallow it.
+app.get("/_status", requireAuth, requireOwner, (_req, res) => {
+    res.send(
+        renderStatusPage({
+            nodeEnv: NODE_ENV,
+            port: PORT,
+            dbPath: DB_PATH,
+            jobRunnerStarted,
+            currentJobId: getCurrentJobId()
+        })
+    );
+});
+app.post("/_status/shutdown", requireAuth, requireOwner, (_req, res) => {
+    res.json({ ok: true });
+    setTimeout(() => void shutdown(), 100);
+});
+app.post("/_status/restart", requireAuth, requireOwner, (_req, res) => {
+    res.json({ ok: true });
+    setTimeout(() => void shutdown(), 100);
+});
+
 // Serve static files in production
 if (NODE_ENV === "production") {
     const staticPath = path.join(__dirname, "../../client");
@@ -160,15 +198,9 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
     res.status(500).json({ error: err.message || "Internal server error" });
 });
 
-const server = app.listen(PORT, () => {
+server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT} in ${NODE_ENV} mode`);
 });
 
-// No graceful shutdown handling existed anywhere in this codebase before this — needed now so
-// stopJobRunner() gets a chance to let an in-flight job finish before the process exits.
-const shutdown = async () => {
-    await stopJobRunner();
-    server.close(() => process.exit(0));
-};
 process.on("SIGTERM", () => void shutdown());
 process.on("SIGINT", () => void shutdown());
