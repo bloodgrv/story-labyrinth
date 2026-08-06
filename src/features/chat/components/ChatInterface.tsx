@@ -1097,6 +1097,20 @@ export function ChatInterface({
         await generate(userContent, extraContext);
     };
 
+    // Resend — user messages only. Same shape as regenerate above, just anchored at the user
+    // message itself rather than the one before it: deletes this message and everything after,
+    // then re-sends its own text through generate() so it (and whatever follows) is redone with
+    // fresh RAG/web-search extraContext.
+    const handleResendMessage = async (message: ChatMessage) => {
+        if (isGenerating) return;
+        const idx = selectedChat.messages.findIndex(m => m.id === message.id);
+        if (idx === -1) return;
+        const userContent = message.content;
+        await persistMessages(selectedChat.messages.slice(0, idx));
+        const extraContext = await computeExtraContext(userContent);
+        await generate(userContent, extraContext);
+    };
+
     // Branch — forks the conversation into a new sibling chat carrying everything up to and
     // including the chosen message, so two directions can be explored from the same point without
     // losing either. Only wired up when storyId is present (global chats, e.g. Research's Global
@@ -1474,6 +1488,7 @@ export function ChatInterface({
                 editingTextareaRef={editingTextareaRef}
                 onDeleteMessage={setPendingDeleteMessage}
                 onRegenerateMessage={handleRegenerateMessage}
+                onResendMessage={handleResendMessage}
                 onBranchMessage={storyId ? handleBranchMessage : undefined}
                 // N5 — hidden entirely for Editor chats (stay canon-only) and for global chats
                 // with no storyId (Research Global mode has none to save a note against; Story

@@ -32,6 +32,9 @@ interface ChatMessageListProps {
     // P1.5 MB4 — regenerate an assistant reply (deletes it + everything after, re-sends the prior
     // user message). Assistant messages only.
     onRegenerateMessage?: (message: ChatMessage) => void;
+    // Resend a user message (deletes it + everything after, re-sends its own text). User messages
+    // only — the mirror of onRegenerateMessage above.
+    onResendMessage?: (message: ChatMessage) => void;
     // Renders below an assistant message's content when that message produced Codex
     // proposals — see ChatInterface in features/chat for the chats.ts-backed usage.
     renderProposalsForMessage?: (messageId: string) => ReactNode;
@@ -69,6 +72,7 @@ export function ChatMessageList({
     onSendSelectionToNotesChat,
     onDeleteMessage,
     onRegenerateMessage,
+    onResendMessage,
     onBranchMessage
 }: ChatMessageListProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -218,6 +222,11 @@ export function ChatMessageList({
                         )}
                         {editingMessageId !== message.id && message.role === "user" && !streamingMessageId && (
                             <div className="mt-1 flex items-center gap-0 opacity-0 transition-opacity group-hover:opacity-100">
+                                {onResendMessage && (
+                                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Resend" onClick={() => onResendMessage(message)}>
+                                        <RefreshCw className="h-3.5 w-3.5" />
+                                    </Button>
+                                )}
                                 {onStartEdit && (
                                     <Button size="icon" variant="ghost" className="h-6 w-6" title="Edit" onClick={() => onStartEdit(message)}>
                                         <Edit className="h-3.5 w-3.5" />
