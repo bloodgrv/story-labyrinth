@@ -136,7 +136,16 @@ function StoryMapCanvasInner({ storyId }: StoryMapCanvasProps) {
         () => sortNodesForDisplay(focusedIds ? allNodes.filter(n => focusedIds.has(n.id)) : allNodes, focusNodeId),
         [allNodes, focusedIds, focusNodeId]
     );
-    const displayedEdges = focusedIds ? allEdges.filter(e => focusedIds.has(e.fromId) && focusedIds.has(e.toId)) : allEdges;
+    // Must be memoized like displayedNodes above — unmemoized, .filter() below produced a fresh
+    // array every render whenever focus mode was active (focusedIds truthy), and since this feeds
+    // the effect below as a dependency, that new-array-every-render fed straight back into another
+    // setFlowEdges call, infinite-looping into a "Maximum update depth exceeded" crash the moment
+    // "Focus on this region" was clicked (the "All locations" default view never hit this, since
+    // there displayedEdges just aliased the already-memoized allEdges instead of re-filtering).
+    const displayedEdges = useMemo(
+        () => (focusedIds ? allEdges.filter(e => focusedIds.has(e.fromId) && focusedIds.has(e.toId)) : allEdges),
+        [allEdges, focusedIds]
+    );
 
     const handleOpenEntry = (id: string) => {
         setPendingLorebookEntryId(id);
