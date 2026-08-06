@@ -28,7 +28,7 @@ export function LorebookEntryTab({ entry, storyId, seriesId, onRefresh, isRefres
                     size="icon"
                     onClick={onRefresh}
                     disabled={isRefreshing}
-                    className="h-8 w-8 ml-auto"
+                    className="h-8 w-8"
                     title="Refresh"
                 >
                     <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />

@@ -12,6 +12,11 @@ interface ImageUploadFieldProps {
     setValue: UseFormSetValue<CreateEntryForm>;
     entryId?: string;
     hasExistingImage: boolean;
+    // The entry's current server-side image filename (a fresh random UUID every
+    // upload/generate/replace, see lorebookImageStorage.ts) — used purely as a cache-busting
+    // query param. GET /:id/image is a stable URL regardless of which file backs it, so without
+    // this the browser can keep serving the previous image's cached bytes after a regenerate.
+    imageFilename?: string | null;
     // L2, docs/Locations_And_Maps_Design.md — only location entries get the Mood|Map preset
     // toggle; every other category stays on the original description-driven "mood" generation.
     isLocation?: boolean;
@@ -21,7 +26,7 @@ interface ImageUploadFieldProps {
 // local form state here (`imageFile`, `generateImageOnSave`); the actual upload/delete/generate
 // call happens in LorebookEntryEditor's handleSubmit after the base entry create/update succeeds,
 // since a brand-new entry has no id (and therefore nowhere to upload to) until that point.
-export function ImageUploadField({ control, setValue, entryId, hasExistingImage, isLocation }: ImageUploadFieldProps) {
+export function ImageUploadField({ control, setValue, entryId, hasExistingImage, imageFilename, isLocation }: ImageUploadFieldProps) {
     const imageFile = useWatch({ control, name: "imageFile" });
     const generateImageOnSave = useWatch({ control, name: "generateImageOnSave" });
     const description = useWatch({ control, name: "description" });
@@ -40,7 +45,8 @@ export function ImageUploadField({ control, setValue, entryId, hasExistingImage,
 
     const isRemoved = imageFile === null;
     const showExisting = hasExistingImage && imageFile === undefined && !!entryId;
-    const previewSrc = objectUrl ?? (showExisting ? lorebookApi.imageUrl(entryId as string) : null);
+    const previewSrc =
+        objectUrl ?? (showExisting ? `${lorebookApi.imageUrl(entryId as string)}?v=${imageFilename ?? ""}` : null);
     const canRemove = !isRemoved && (previewSrc !== null || imageFile instanceof File);
 
     const pickFile = (file: File) => {

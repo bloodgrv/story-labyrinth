@@ -436,10 +436,21 @@ export function LorebookEntryEditor({
             }
 
             // Image is submitted separately too, same reasoning — see ImageUploadField.tsx and
-            // CreateEntryForm's imageFile/generateImageOnSave doc comments.
-            if (data.imageFile instanceof File) await lorebookApi.uploadImage(entryId, data.imageFile);
-            else if (data.imageFile === null) await lorebookApi.removeImage(entryId);
-            else if (data.generateImageOnSave) await lorebookApi.generateImage(entryId, data.generateImagePreset);
+            // CreateEntryForm's imageFile/generateImageOnSave doc comments. Each of these returns
+            // the updated entry (new imageFilename) — apply it to liveEntry so the preview picks
+            // up the new/removed image immediately, without needing a manual page reload.
+            if (data.imageFile instanceof File) setLiveEntry(await lorebookApi.uploadImage(entryId, data.imageFile));
+            else if (data.imageFile === null) setLiveEntry(await lorebookApi.removeImage(entryId));
+            else if (data.generateImageOnSave)
+                setLiveEntry(await lorebookApi.generateImage(entryId, data.generateImagePreset));
+
+            // Clear the deferred image fields now that they've been applied — otherwise
+            // ImageUploadField keeps showing "Will generate a new image..." (or a stale File
+            // preview) after a successful save.
+            if (data.imageFile !== undefined || data.generateImageOnSave) {
+                form.setValue("imageFile", undefined, { shouldDirty: false });
+                form.setValue("generateImageOnSave", false, { shouldDirty: false });
+            }
 
             onSaved?.();
         });
@@ -471,6 +482,7 @@ export function LorebookEntryEditor({
                             setValue={form.setValue}
                             entryId={liveEntry?.id}
                             hasExistingImage={!!liveEntry?.imageFilename}
+                            imageFilename={liveEntry?.imageFilename}
                             isLocation={selectedCategory === "location"}
                         />
 
