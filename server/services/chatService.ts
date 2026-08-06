@@ -7,11 +7,14 @@ import {
     type WorldBuildingTemplateSlug
 } from "../../src/types/worldbuilding.js";
 import {
+    archiveChat as repoArchiveChat,
     createChat as repoCreateChat,
     deleteChat,
+    getArchivedChats,
     getChatById,
     getChatsForStory,
-    getGlobalChat,
+    getGlobalChats,
+    unarchiveChat as repoUnarchiveChat,
     updateChatMessages,
     updateChatMeta,
     type ChatRow,
@@ -95,17 +98,32 @@ export const createGenericChat = async (
 };
 
 /**
- * Get the single global chat of a type (e.g. Research — see CLAUDE.md's "Global Info/Research
- * Chat"), creating it if it doesn't exist yet. Server-side get-or-create avoids two concurrent
- * clients racing to each create their own copy.
+ * Create a new Global (storyId-less) chat — e.g. Research's Global rail. Unlike the old
+ * single-get-or-create-chat model, this always creates a new row; the rail's own
+ * auto-select-most-recent-or-create effect decides when to call it. Restricted to Research for
+ * now — the only desk with a Global identity (see CLAUDE.md's Research desk section).
  */
-export const getOrCreateGlobalChat = async (chatType: ChatType, title: string): Promise<ChatRow> => {
-    if (chatType === "worldbuilding") throw new Error("World-Building chats are always story-scoped");
+export const createGlobalChat = async (params: { chatType: ChatType; title: string }): Promise<ChatRow> => {
+    if (params.chatType !== "research") throw new Error("Only research chats can be global");
+    if (!params.title.trim()) throw new Error("title is required");
 
-    const existing = await getGlobalChat(chatType);
-    if (existing) return existing;
+    return repoCreateChat({ storyId: null, title: params.title.trim(), chatType: params.chatType, templateSlug: null });
+};
 
-    return repoCreateChat({ storyId: null, title, chatType, templateSlug: null });
+export const listGlobalChats = async (chatType: ChatType): Promise<ChatRow[]> => getGlobalChats(chatType);
+
+export const listArchivedChats = () => getArchivedChats();
+
+export const archiveChat = async (chatId: string): Promise<ChatRow> => {
+    const updated = await repoArchiveChat(chatId);
+    if (!updated) throw new Error(`Chat not found: ${chatId}`);
+    return updated;
+};
+
+export const unarchiveChat = async (chatId: string): Promise<ChatRow> => {
+    const updated = await repoUnarchiveChat(chatId);
+    if (!updated) throw new Error(`Chat not found: ${chatId}`);
+    return updated;
 };
 
 // ── Message management ─────────────────────────────────────────────────────────

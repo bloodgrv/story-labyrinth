@@ -16,7 +16,7 @@ interface ChatFolderNodeProps {
     selectedChat: AIChat | null;
     onSelectChat: (chat: AIChat) => void;
     onEditClick: (chat: AIChat, e: MouseEvent) => void;
-    onDeleteChat: (chatId: string) => void;
+    onArchiveChat: (chatId: string) => void;
     onNewSubfolder: (parentId: string) => void;
     onRename: (folderId: string) => void;
     onMoveTo: (folderId: string) => void;
@@ -33,7 +33,7 @@ export function ChatFolderNode({
     selectedChat,
     onSelectChat,
     onEditClick,
-    onDeleteChat,
+    onArchiveChat,
     onNewSubfolder,
     onRename,
     onMoveTo,
@@ -85,7 +85,7 @@ export function ChatFolderNode({
                             isSelected={selectedChat?.id === chat.id}
                             onSelect={onSelectChat}
                             onEditClick={onEditClick}
-                            onDeleteClick={onDeleteChat}
+                            onArchiveClick={onArchiveChat}
                         />
                     ))}
                     {node.children.map(child => (
@@ -97,7 +97,7 @@ export function ChatFolderNode({
                             selectedChat={selectedChat}
                             onSelectChat={onSelectChat}
                             onEditClick={onEditClick}
-                            onDeleteChat={onDeleteChat}
+                            onArchiveChat={onArchiveChat}
                             onNewSubfolder={onNewSubfolder}
                             onRename={onRename}
                             onMoveTo={onMoveTo}

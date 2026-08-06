@@ -135,6 +135,11 @@ export const aiChats = sqliteTable(
         messages: text("messages", { mode: "json" }).notNull(), // JSON: ChatMessage[]
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
         updatedAt: integer("updatedAt", { mode: "timestamp" }),
+        // Archive/soft-delete (app-wide, all chat types) — null = active, set = archived and hidden
+        // from the normal chat-list rails (getChatsForStory/getGlobalChats both filter it out).
+        // Chats are never hard-deleted from a rail anymore; the DELETE route is only reachable from
+        // the Settings "Archived Chats" review panel now, for a genuinely irreversible removal.
+        archivedAt: integer("archivedAt", { mode: "timestamp" }),
         lastUsedPromptId: text("lastUsedPromptId"),
         lastUsedModelId: text("lastUsedModelId"),
         isDemo: integer("isDemo", { mode: "boolean" }),

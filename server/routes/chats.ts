@@ -2,14 +2,18 @@ import { attemptPromise } from "@jfdi/attempt";
 import { type Request, type Response, Router } from "express";
 import {
     appendMessage,
+    archiveChat,
     createGenericChat,
+    createGlobalChat,
     createWorldBuildingChat,
     deleteChat,
     getChatById,
     getChatsForStory,
-    getOrCreateGlobalChat,
     getTemplates,
+    listArchivedChats,
+    listGlobalChats,
     replaceMessages,
+    unarchiveChat,
     updateMeta
 } from "../services/chatService.js";
 import {
@@ -47,25 +51,35 @@ router.get(
     })
 );
 
-// ── GET /api/chats/global/:chatType ──────────────────────────────────────────
-// Get-or-create the single global chat of a type (e.g. Research — no storyId).
-// Must be defined before /:chatId to avoid "global" being matched as a param.
+// ── GET /api/chats/archived ───────────────────────────────────────────────────
+// List every archived chat (any story, any type) for the Settings review panel.
+// Must be defined before /:chatId to avoid "archived" being matched as a param.
 router.get(
-    "/global/:chatType",
-    asyncHandler(async (req, res) => {
-        const chatType = req.params.chatType as ChatType;
-        const title = (req.query.title as string | undefined) ?? "Research";
-        const chat = await getOrCreateGlobalChat(chatType, title);
-        res.json(chat);
+    "/archived",
+    asyncHandler(async (_req, res) => {
+        const chats = await listArchivedChats();
+        res.json(chats);
     })
 );
 
 // ── GET /api/chats ────────────────────────────────────────────────────────────
-// List chats for a story. Query params: storyId (required), type (optional).
+// List chats. Either a story's chats (storyId required, type optional) or a Global rail's chats
+// (global=true, type required — e.g. Research's Global mode).
 router.get(
     "/",
     asyncHandler(async (req, res) => {
-        const { storyId, type } = req.query as { storyId?: string; type?: string };
+        const { storyId, type, global } = req.query as { storyId?: string; type?: string; global?: string };
+
+        if (global === "true") {
+            if (!type) {
+                res.status(400).json({ error: "type query parameter is required when global=true" });
+                return;
+            }
+            const chats = await listGlobalChats(type as ChatType);
+            res.json(chats);
+            return;
+        }
+
         if (!storyId) {
             res.status(400).json({ error: "storyId query parameter is required" });
             return;
@@ -76,21 +90,37 @@ router.get(
 );
 
 // ── POST /api/chats ───────────────────────────────────────────────────────────
-// Create a new chat.
-// Body: { storyId, chatType, title?, templateSlug?, anchorEntryId?, anchorChapterId? }
-// chatType 'worldbuilding' → createWorldBuildingChat (templateSlug, anchorEntryId optional)
-// Other chatTypes → createGenericChat (title required; anchorChapterId optional for 'editor')
+// Create a new chat. Either a story-scoped chat or a Global (storyId-less) chat.
+// Story-scoped body: { storyId, chatType, title?, templateSlug?, anchorEntryId?, anchorChapterId? }
+//   chatType 'worldbuilding' → createWorldBuildingChat (templateSlug, anchorEntryId optional)
+//   Other chatTypes → createGenericChat (title required; anchorChapterId optional for 'editor')
+// Global body: { global: true, chatType: 'research', title } — only 'research' is global-eligible.
 router.post(
     "/",
     asyncHandler(async (req, res) => {
-        const { storyId, chatType, title, templateSlug, anchorEntryId, anchorChapterId } = req.body as {
+        const { storyId, chatType, title, templateSlug, anchorEntryId, anchorChapterId, global } = req.body as {
             storyId?: string;
             chatType?: ChatType;
             title?: string;
             templateSlug?: string;
             anchorEntryId?: string | null;
             anchorChapterId?: string | null;
+            global?: boolean;
         };
+
+        if (global === true) {
+            if (chatType !== "research") {
+                res.status(400).json({ error: "Only research chats can be global" });
+                return;
+            }
+            if (!title?.trim()) {
+                res.status(400).json({ error: "title is required for global chats" });
+                return;
+            }
+            const chat = await createGlobalChat({ chatType, title });
+            res.status(201).json(chat);
+            return;
+        }
 
         if (!storyId) {
             res.status(400).json({ error: "storyId is required" });
@@ -513,8 +543,39 @@ router.post(
     })
 );
 
+// ── POST /api/chats/:chatId/archive ───────────────────────────────────────────
+// Archive a chat (soft-delete) — hides it from its rail's normal list without deleting it.
+router.post(
+    "/:chatId/archive",
+    asyncHandler(async (req, res) => {
+        const existing = await getChatById(req.params.chatId);
+        if (!existing) {
+            res.status(404).json({ error: "Chat not found" });
+            return;
+        }
+        const chat = await archiveChat(req.params.chatId);
+        res.json(chat);
+    })
+);
+
+// ── POST /api/chats/:chatId/unarchive ─────────────────────────────────────────
+// Restore an archived chat back into its rail's normal list.
+router.post(
+    "/:chatId/unarchive",
+    asyncHandler(async (req, res) => {
+        const existing = await getChatById(req.params.chatId);
+        if (!existing) {
+            res.status(404).json({ error: "Chat not found" });
+            return;
+        }
+        const chat = await unarchiveChat(req.params.chatId);
+        res.json(chat);
+    })
+);
+
 // ── DELETE /api/chats/:chatId ─────────────────────────────────────────────────
-// Delete a chat and all its messages.
+// Permanently delete a chat and all its messages. Only reachable from the Settings "Archived
+// Chats" panel now — the normal rails' delete action was replaced by archive above.
 router.delete(
     "/:chatId",
     asyncHandler(async (req, res) => {

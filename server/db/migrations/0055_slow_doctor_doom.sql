@@ -1,0 +1,1 @@
+ALTER TABLE `aiChats` ADD `archivedAt` integer;

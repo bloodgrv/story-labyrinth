@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { parseJson } from "../lib/json.js";
 import type { ChatMessage } from "../../src/types/story.js";
@@ -62,7 +62,7 @@ export const getChatsForStory = async (
     storyId: string,
     chatType?: ChatType
 ): Promise<ChatRow[]> => {
-    const conditions = [eq(schema.aiChats.storyId, storyId)];
+    const conditions = [eq(schema.aiChats.storyId, storyId), isNull(schema.aiChats.archivedAt)];
     if (chatType) conditions.push(eq(schema.aiChats.chatType, chatType));
 
     const rows = await db
@@ -74,15 +74,33 @@ export const getChatsForStory = async (
     return rows.map(toChat);
 };
 
-// The single global chat of a given type (storyId IS NULL) — e.g. the one Research chat.
-export const getGlobalChat = async (chatType: ChatType): Promise<ChatRow | null> => {
-    const [row] = await db
+// All (non-archived) global chats of a given type (storyId IS NULL) — e.g. the Research Global
+// rail. Replaces the old single-get-or-create-chat getGlobalChat now that Global is a real list.
+export const getGlobalChats = async (chatType: ChatType): Promise<ChatRow[]> => {
+    const rows = await db
         .select()
         .from(schema.aiChats)
-        .where(and(isNull(schema.aiChats.storyId), eq(schema.aiChats.chatType, chatType)))
-        .orderBy(desc(schema.aiChats.createdAt))
-        .limit(1);
-    return row ? toChat(row) : null;
+        .where(
+            and(
+                isNull(schema.aiChats.storyId),
+                eq(schema.aiChats.chatType, chatType),
+                isNull(schema.aiChats.archivedAt)
+            )
+        )
+        .orderBy(desc(schema.aiChats.updatedAt), desc(schema.aiChats.createdAt));
+    return rows.map(toChat);
+};
+
+// Every archived chat (any story, any type), newest-archived first — for the Settings review
+// panel only. Left-joined to stories for a display title (null for Global chats).
+export const getArchivedChats = async (): Promise<Array<ChatRow & { storyTitle: string | null }>> => {
+    const rows = await db
+        .select({ chat: schema.aiChats, storyTitle: schema.stories.title })
+        .from(schema.aiChats)
+        .leftJoin(schema.stories, eq(schema.aiChats.storyId, schema.stories.id))
+        .where(isNotNull(schema.aiChats.archivedAt))
+        .orderBy(desc(schema.aiChats.archivedAt));
+    return rows.map(({ chat, storyTitle }) => ({ ...toChat(chat), storyTitle: storyTitle ?? null }));
 };
 
 export const getChatById = async (id: string): Promise<ChatRow | null> => {
@@ -156,6 +174,24 @@ export const updateChatMeta = async (
     const [row] = await db
         .update(schema.aiChats)
         .set(updates)
+        .where(eq(schema.aiChats.id, id))
+        .returning();
+    return row ? toChat(row) : null;
+};
+
+export const archiveChat = async (id: string): Promise<ChatRow | null> => {
+    const [row] = await db
+        .update(schema.aiChats)
+        .set({ archivedAt: new Date() })
+        .where(eq(schema.aiChats.id, id))
+        .returning();
+    return row ? toChat(row) : null;
+};
+
+export const unarchiveChat = async (id: string): Promise<ChatRow | null> => {
+    const [row] = await db
+        .update(schema.aiChats)
+        .set({ archivedAt: null })
         .where(eq(schema.aiChats.id, id))
         .returning();
     return row ? toChat(row) : null;

@@ -9,7 +9,7 @@ import { buildFolderTree } from "@/features/folders/lib/folderTree";
 import { cn } from "@/lib/utils";
 import type { AIChat } from "@/types/story";
 import type { ChatType } from "@/types/worldbuilding";
-import { useChatsByStoryQuery, useCreateChatMutation, useDeleteChatMutation, useUpdateChatMutation } from "../hooks/useChatQuery";
+import { useArchiveChatMutation, useChatsByStoryQuery, useCreateChatMutation, useUpdateChatMutation } from "../hooks/useChatQuery";
 import { ChatFolderDialogs } from "./ChatFolderDialogs";
 import { ChatFolderNode } from "./ChatFolderNode";
 import { ChatListItem } from "./ChatListItem";
@@ -69,7 +69,7 @@ export function ChatList({
     const { data: folders = [] } = useFoldersQuery({ kind: "chat", scopeId: storyId, chatType });
     const createMutation = useCreateChatMutation();
     const updateMutation = useUpdateChatMutation();
-    const deleteMutation = useDeleteChatMutation();
+    const archiveMutation = useArchiveChatMutation();
 
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -97,8 +97,8 @@ export function ChatList({
         );
     };
 
-    const handleDeleteChat = (chatId: string) => {
-        deleteMutation.mutate(chatId, { onSuccess: () => selectedChat?.id === chatId && onSelectChat(null) });
+    const handleArchiveChat = (chatId: string) => {
+        archiveMutation.mutate(chatId, { onSuccess: () => selectedChat?.id === chatId && onSelectChat(null) });
     };
 
     const handleEditClick = (chat: AIChat, e: MouseEvent) => {
@@ -214,7 +214,7 @@ export function ChatList({
                                             isSelected={selectedChat?.id === chat.id}
                                             onSelect={onSelectChat}
                                             onEditClick={handleEditClick}
-                                            onDeleteClick={handleDeleteChat}
+                                            onArchiveClick={handleArchiveChat}
                                         />
                                     ))}
                                 </UnfiledChatSection>
@@ -227,7 +227,7 @@ export function ChatList({
                                         selectedChat={selectedChat}
                                         onSelectChat={onSelectChat}
                                         onEditClick={handleEditClick}
-                                        onDeleteChat={handleDeleteChat}
+                                        onArchiveChat={handleArchiveChat}
                                         onNewSubfolder={parentId => setCreatingUnder(parentId)}
                                         onRename={setRenamingId}
                                         onMoveTo={setMovingId}

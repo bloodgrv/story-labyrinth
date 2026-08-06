@@ -56,6 +56,8 @@ export interface AIChat extends BaseEntity {
     title: string;
     messages: ChatMessage[];
     updatedAt?: Date;
+    // Archive/soft-delete (app-wide) — set = hidden from its normal rail, restorable from Settings.
+    archivedAt?: Date | null;
     lastUsedPromptId?: string;
     lastUsedModelId?: string;
     // Chat context type — null/undefined treated as 'general'

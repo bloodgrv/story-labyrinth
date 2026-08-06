@@ -151,10 +151,10 @@ export const chatsApi = {
     },
     getById: (id: string) => fetchJSON<AIChat>(`/chats/${id}`),
     getTemplates: () => fetchJSON<WorldBuildingTemplate[]>("/chats/templates"),
-    getOrCreateGlobal: (chatType: string, title?: string) => {
-        const q = title ? `?${new URLSearchParams({ title })}` : "";
-        return fetchJSON<AIChat>(`/chats/global/${chatType}${q}`);
-    },
+    // Global (storyId-less) chat rail — e.g. Research's Global mode.
+    getGlobalList: (chatType: string) => fetchJSON<AIChat[]>(`/chats?${new URLSearchParams({ global: "true", type: chatType })}`),
+    createGlobal: (data: { chatType: string; title: string }) =>
+        fetchJSON<AIChat>("/chats", { method: "POST", body: JSON.stringify({ ...data, global: true }) }),
     create: (data: {
         storyId: string;
         chatType?: string;
@@ -191,6 +191,9 @@ export const chatsApi = {
     appendMessage: (id: string, role: "user" | "assistant", content: string, usage?: ChatMessage["usage"]) =>
         fetchJSON<AIChat>(`/chats/${id}/messages`, { method: "POST", body: JSON.stringify({ role, content, usage }) }),
     delete: (id: string) => fetchJSON<void>(`/chats/${id}`, { method: "DELETE" }),
+    archive: (id: string) => fetchJSON<AIChat>(`/chats/${id}/archive`, { method: "POST" }),
+    unarchive: (id: string) => fetchJSON<AIChat>(`/chats/${id}/unarchive`, { method: "POST" }),
+    getArchived: () => fetchJSON<Array<AIChat & { storyTitle: string | null }>>("/chats/archived"),
 
     // Context for generating a response/proposal: system prompt, this chat's own pending
     // proposals, and Codex entries relevant to `query` (via the RAG hybrid index).

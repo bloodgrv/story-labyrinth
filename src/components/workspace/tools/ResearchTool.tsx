@@ -1,4 +1,3 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Loader2, RefreshCcw, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
@@ -7,7 +6,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
-import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
+import { ChatList } from "@/features/chat/components/ChatList";
+import { GlobalResearchChatList } from "@/features/chat/components/GlobalResearchChatList";
+import {
+    useChatsByStoryQuery,
+    useCreateChatMutation,
+    useCreateGlobalChatMutation,
+    useGlobalChatsQuery
+} from "@/features/chat/hooks/useChatQuery";
 import { extractMarkdownLinks } from "@/features/chat/services/extractMarkdownLinks";
 import { LorebookProvider } from "@/features/lorebook/context/LorebookContext";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
@@ -40,15 +46,14 @@ const mostRecentChat = (candidates: AIChat[]): AIChat =>
 
 type ResearchMode = "story" | "global";
 
-// Web research desk (P0.4 S0/S6, docs/Chat_Panel_Integrations_Design.md §6) — Story mode (default,
-// light story seasoning via title+synopsis, opt-in Notes/Lorebook) vs. Global mode (pure web, not
-// story-bound), never a chat list — each mode is just one single-chat identity, same "the one
-// chat" posture the pre-S0 version always had for Global. Story mode reuses the exact
-// most-recent-or-create pattern OutlineChatRail.tsx established (useChatsByStoryQuery +
-// useCreateChatMutation) rather than a new server route — createGenericChat already accepts
-// chatType="research" with a real storyId.
+// Web research desk (P0.4 S0/S6, docs/Chat_Panel_Integrations_Design.md §6, chat-list rail added
+// later) — Story mode (default, light story seasoning via title+synopsis, opt-in Notes/Lorebook)
+// vs. Global mode (pure web, not story-bound), each its own chat-list rail rather than a single
+// permanently-growing chat — storyId is baked into a chat row's identity (nullable, not a per-turn
+// context toggle), so Story and Global are genuinely separate rails, not one chat with a flag.
+// Both rails share the exact most-recent-or-create auto-select pattern OutlineChatRail.tsx
+// established.
 export const ResearchTool = () => {
-    const queryClient = useQueryClient();
     const { currentStoryId, pendingChatComposerSeed, setPendingChatComposerSeed, pendingShuttleSeed, setPendingShuttleSeed } =
         useStoryContext();
     const [mode, setMode] = useState<ResearchMode>(currentStoryId ? "story" : "global");
@@ -88,13 +93,26 @@ export const ResearchTool = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode, currentStoryId, storyChats, storyChatsLoading, selectedStoryChat]);
 
-    const { data: globalChat } = useQuery({
-        queryKey: ["chats", "global", "research"],
-        queryFn: () => chatsApi.getOrCreateGlobal("research", "Research"),
-        enabled: mode === "global"
-    });
+    // Global rail — same auto-select-most-recent-or-create shape as Story mode above, just backed
+    // by the storyId-less list/create endpoints instead.
+    const [selectedGlobalChat, setSelectedGlobalChat] = useState<AIChat | null>(null);
+    const createGlobalMutation = useCreateGlobalChatMutation();
+    const { data: globalChats = [], isLoading: globalChatsLoading } = useGlobalChatsQuery("research");
 
-    const chat = mode === "story" ? selectedStoryChat : (globalChat ?? null);
+    useEffect(() => {
+        if (mode !== "global" || selectedGlobalChat || globalChatsLoading) return;
+        if (globalChats.length > 0) {
+            setSelectedGlobalChat(mostRecentChat(globalChats));
+            return;
+        }
+        createGlobalMutation.mutate(
+            { chatType: "research", title: "Research" },
+            { onSuccess: newChat => setSelectedGlobalChat(newChat) }
+        );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mode, globalChats, globalChatsLoading, selectedGlobalChat]);
+
+    const chat = mode === "story" ? selectedStoryChat : selectedGlobalChat;
 
     // Brainstorm's "Handoff → Research" tray action (P0.4 B0-B4) — same one-shot consumption
     // posture as OutlineChatRail's, generalized via StoryContext.pendingChatComposerSeed.
@@ -166,7 +184,7 @@ export const ResearchTool = () => {
 
     const handleChatUpdate = (updated: AIChat) => {
         if (mode === "story") setSelectedStoryChat(updated);
-        else queryClient.setQueryData(["chats", "global", "research"], updated);
+        else setSelectedGlobalChat(updated);
     };
 
     return (
@@ -187,32 +205,50 @@ export const ResearchTool = () => {
                     </TabsList>
                 </Tabs>
             </div>
-            {activeShuttleContext && chat && (
-                <div className="mx-4 mt-2 flex items-center justify-between gap-2 rounded-lg border border-border p-2">
-                    <p className="text-xs text-muted-foreground">Shuttled in from another chat.</p>
-                    <Button size="sm" variant="outline" onClick={handleSendBriefBack} className="flex items-center gap-1">
-                        <Send className="h-3 w-3" />
-                        Send brief to origin
-                    </Button>
+            <div className="flex-1 min-h-0 flex">
+                <div className="flex-1 min-h-0 flex flex-col">
+                    {activeShuttleContext && chat && (
+                        <div className="mx-4 mt-2 flex items-center justify-between gap-2 rounded-lg border border-border p-2">
+                            <p className="text-xs text-muted-foreground">Shuttled in from another chat.</p>
+                            <Button size="sm" variant="outline" onClick={handleSendBriefBack} className="flex items-center gap-1">
+                                <Send className="h-3 w-3" />
+                                Send brief to origin
+                            </Button>
+                        </div>
+                    )}
+                    {!chat ? (
+                        <div className="h-full flex items-center justify-center">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : (
+                        <LorebookProvider storyId={mode === "story" ? (currentStoryId ?? "") : ""}>
+                            <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[chat.id]}>
+                                <ChatInterface
+                                    promptType="research"
+                                    storyId={mode === "story" ? (currentStoryId ?? undefined) : undefined}
+                                    selectedChat={chat}
+                                    onChatUpdate={handleChatUpdate}
+                                    initialComposerText={composerSeedText}
+                                />
+                            </ErrorBoundary>
+                        </LorebookProvider>
+                    )}
                 </div>
-            )}
-            {!chat ? (
-                <div className="h-full flex items-center justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-            ) : (
-                <LorebookProvider storyId={mode === "story" ? (currentStoryId ?? "") : ""}>
-                    <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[chat.id]}>
-                        <ChatInterface
-                            promptType="research"
-                            storyId={mode === "story" ? (currentStoryId ?? undefined) : undefined}
-                            selectedChat={chat}
-                            onChatUpdate={handleChatUpdate}
-                            initialComposerText={composerSeedText}
-                        />
-                    </ErrorBoundary>
-                </LorebookProvider>
-            )}
+
+                {mode === "story" && currentStoryId ? (
+                    <ChatList
+                        storyId={currentStoryId}
+                        chatType="research"
+                        title="Research Chats"
+                        emptyLabel="No research chats yet"
+                        selectedChat={selectedStoryChat}
+                        onSelectChat={setSelectedStoryChat}
+                        side="right"
+                    />
+                ) : mode === "global" ? (
+                    <GlobalResearchChatList selectedChat={selectedGlobalChat} onSelectChat={setSelectedGlobalChat} />
+                ) : null}
+            </div>
         </div>
     );
 };

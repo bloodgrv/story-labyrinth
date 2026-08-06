@@ -1,6 +1,6 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Edit2, Trash2 } from "lucide-react";
+import { Archive, Edit2 } from "lucide-react";
 import type { MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,7 +12,9 @@ interface ChatListItemProps {
     isSelected: boolean;
     onSelect: (chat: AIChat) => void;
     onEditClick: (chat: AIChat, e: MouseEvent) => void;
-    onDeleteClick: (chatId: string) => void;
+    // Archives (soft-deletes) the chat — reversible from Settings > Archived Chats, so this fires
+    // directly on click with no confirm dialog, same low-friction UX the old hard-delete had.
+    onArchiveClick: (chatId: string) => void;
 }
 
 
@@ -20,7 +22,7 @@ interface ChatListItemProps {
 // row renders identically whether a chat is Unfiled or nested inside a ChatFolderNode. Draggable
 // so it can be filed by dropping onto a folder row — drag props apply directly to the <li> (not a
 // DraggableLeaf wrapper div, which would be invalid HTML nested directly under this list's <ul>).
-export function ChatListItem({ chat, isSelected, onSelect, onEditClick, onDeleteClick }: ChatListItemProps) {
+export function ChatListItem({ chat, isSelected, onSelect, onEditClick, onArchiveClick }: ChatListItemProps) {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: `leaf:${chat.id}`,
         data: { type: "chat", leafId: chat.id }
@@ -84,11 +86,12 @@ export function ChatListItem({ chat, isSelected, onSelect, onEditClick, onDelete
                         size="icon"
                         onClick={e => {
                             e.stopPropagation();
-                            onDeleteClick(chat.id);
+                            onArchiveClick(chat.id);
                         }}
                         className="h-6 w-6 hover:text-destructive"
+                        title="Archive chat"
                     >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Archive className="h-3.5 w-3.5" />
                     </Button>
                 </div>
             </div>

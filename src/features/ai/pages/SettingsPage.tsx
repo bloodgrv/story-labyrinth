@@ -11,6 +11,7 @@ import { RagScannerTool } from "@/components/workspace/tools/RagScannerTool";
 import { UsersTool } from "@/components/workspace/tools/UsersTool";
 import { WriterPrefsCard } from "@/features/agent-memory/components/WriterPrefsCard";
 import { PlaybookPacksPanel } from "@/features/playbooks/components/PlaybookPacksPanel";
+import { ArchivedChatsCard } from "@/features/ai/components/ArchivedChatsCard";
 import { ContextMeterSettingsCard } from "@/features/ai/components/ContextMeterSettingsCard";
 import { FeatureEndpointsCard } from "@/features/ai/components/FeatureEndpointsCard";
 import { GrokOAuthCard } from "@/features/ai/components/GrokOAuthCard";
@@ -303,6 +304,7 @@ export default function SettingsPage() {
                                         </div>
                                     </CardContent>
                                 </Card>
+                                <ArchivedChatsCard />
                             </TabsContent>
 
                             <TabsContent value="guide" className="mt-0">
