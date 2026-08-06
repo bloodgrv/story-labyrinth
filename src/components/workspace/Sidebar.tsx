@@ -15,6 +15,7 @@ import {
     MessageSquare,
     Network,
     Search,
+    Server,
     Settings,
     Sparkles,
     StickyNote
@@ -61,6 +62,15 @@ export const Sidebar = () => {
     const navigate = useNavigate();
     const [newTabSelectMode, setNewTabSelectMode] = useState(false);
     const [selectedForNewTab, setSelectedForNewTab] = useState<Set<WorkspaceTool>>(new Set());
+
+    // Server status page (/_status) lives on the Express backend, not the Vite dev server this
+    // client is served from — in dev they're different ports (5173 vs 3001, matching vite.config.ts's
+    // own proxy target), so a plain relative link would 404 against Vite instead. In production the
+    // backend serves the client too, so the relative path is correct there.
+    const openServerStatus = () => {
+        const url = import.meta.env.DEV ? `${window.location.protocol}//${window.location.hostname}:3001/_status` : "/_status";
+        window.open(url, "_blank", "noopener,noreferrer");
+    };
 
     const handleToolClick = (toolId: WorkspaceTool, requiresStory: boolean) => {
         if (requiresStory && !currentStoryId) return;
@@ -215,6 +225,16 @@ export const Sidebar = () => {
                     <div className="text-xs text-muted-foreground text-center">
                         {collapsed ? `v${version}` : `Version ${version}`}
                     </div>
+                    <Button
+                        variant="ghost"
+                        size={collapsed ? "icon" : "default"}
+                        className={collapsed ? "w-full" : "w-full justify-start gap-2"}
+                        onClick={openServerStatus}
+                        title="Server status"
+                    >
+                        <Server className="h-4 w-4 shrink-0" />
+                        {!collapsed && <span className="text-sm">Server status</span>}
+                    </Button>
                     <LogoutButton collapsed={collapsed} className="w-full" />
                     <Button
                         variant="ghost"
