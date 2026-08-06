@@ -233,7 +233,7 @@ export const Sidebar = () => {
                         title="Server status"
                     >
                         <Server className="h-4 w-4 shrink-0" />
-                        {!collapsed && <span className="text-sm">Server status</span>}
+                        {!collapsed && <span className="text-sm">Server</span>}
                     </Button>
                     <LogoutButton collapsed={collapsed} className="w-full" />
                     <Button
