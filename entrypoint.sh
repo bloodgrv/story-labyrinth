@@ -2,7 +2,7 @@
 set -eu
 
 DATA_DIR="/app/data"
-DB_PATH="${DATABASE_PATH:-/app/data/storynexus.db}"
+DB_PATH="${DATABASE_PATH:-/app/data/story-labyrinth.db}"
 
 # Normalise path
 if REAL_DB_PATH=$(readlink -f -- "$DB_PATH" 2>/dev/null); then

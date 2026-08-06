@@ -98,7 +98,7 @@ EXPOSE 3000
 
 # Set environment
 ENV NODE_ENV=production
-ENV DATABASE_PATH=/app/data/storynexus.db
+ENV DATABASE_PATH=/app/data/story-labyrinth.db
 
 # User set via docker-compose (PUID/PGID env vars, defaults to 1000:1000)
 ENTRYPOINT ["entrypoint"]

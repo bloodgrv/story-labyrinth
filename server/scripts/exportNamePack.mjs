@@ -32,7 +32,7 @@ const scope = args.scope ?? "global";
 if (!["global", "story", "all"].includes(scope)) fail(`--scope must be "global", "story", or "all" (got: ${scope})`);
 if (scope === "story" && !args.storyId) fail('--storyId is required when --scope=story');
 
-const dbPath = process.env.DATABASE_PATH || "./data/storynexus.db";
+const dbPath = process.env.DATABASE_PATH || "./data/story-labyrinth.db";
 if (!fs.existsSync(dbPath)) fail(`Database not found at ${dbPath} (set DATABASE_PATH if it's elsewhere)`);
 
 const db = new Database(dbPath, { readonly: true });

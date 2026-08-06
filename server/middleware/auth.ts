@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { validateSession } from "../services/authService.js";
 import type { UserRole } from "../services/authService.js";
 
-export const SESSION_COOKIE_NAME = "storynexus_session";
+export const SESSION_COOKIE_NAME = "story_labyrinth_session";
 
 // Express only populates req.cookies when the `cookie-parser` middleware is installed.
 // Rather than add that dependency for one header, parse the (single) cookie we care

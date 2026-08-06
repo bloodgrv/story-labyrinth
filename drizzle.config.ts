@@ -5,6 +5,6 @@ export default {
     out: "./server/db/migrations",
     dialect: "sqlite",
     dbCredentials: {
-        url: process.env.DATABASE_PATH || "./data/storynexus.db"
+        url: process.env.DATABASE_PATH || "./data/story-labyrinth.db"
     }
 } satisfies Config;

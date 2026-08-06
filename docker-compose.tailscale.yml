@@ -1,8 +1,8 @@
 services:
     tailscale:
         image: tailscale/tailscale:latest
-        container_name: storynexus-tailscale
-        hostname: ${TS_HOSTNAME:-storynexus}
+        container_name: story-labyrinth-tailscale
+        hostname: ${TS_HOSTNAME:-story-labyrinth}
         environment:
             - TS_AUTHKEY=${TS_AUTHKEY}
             - TS_STATE_DIR=/var/lib/tailscale
@@ -17,9 +17,9 @@ services:
             - NET_RAW
         restart: unless-stopped
 
-    storynexus:
-        image: ${DOCKER_IMAGE:-jonsilver/storynexus}:${IMAGE_TAG:-latest}
-        container_name: storynexus-app
+    story-labyrinth:
+        image: ${DOCKER_IMAGE:-bloodgrv/story-labyrinth}:${IMAGE_TAG:-latest}
+        container_name: story-labyrinth-app
         pull_policy: always
         user: "${PUID:-1000}:${PGID:-1000}"
         # Shares the tailscale container's network namespace instead of publishing ports - the app is
@@ -30,7 +30,7 @@ services:
         environment:
             - NODE_ENV=production
             - PORT=${APP_PORT:-3000}
-            - DATABASE_PATH=/app/data/storynexus.db
+            - DATABASE_PATH=/app/data/story-labyrinth.db
         volumes:
             - ${DATA_PATH:-./data}:/app/data
         restart: unless-stopped

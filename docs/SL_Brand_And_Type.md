@@ -1,10 +1,10 @@
 # Story Labyrinth — Brand & Type Kit
 
-**Status:** **Guidance + asset kit ready** — logo/wordmarks pinned 2026-08-04; type stack implemented. **Product rename SL0–SL3 shipped 2026-08-04** (user-promoted) — package.json/README/app title/manifest/Guide strings/doc headers now say Story Labyrinth; SL4 (Hermes)/SL5 (DB/Docker/publish)/SL6 (GitHub remote) remain separate, not done.  
+**Status:** **Guidance + asset kit ready** — logo/wordmarks pinned 2026-08-04; type stack implemented. **Product rename SL0–SL3 shipped 2026-08-04** (user-promoted) — package.json/README/app title/manifest/Guide strings/doc headers now say Story Labyrinth. **SL5 (DB filename/Docker/publish) shipped 2026-08-05** — see `DECISIONS.md`. SL4 (Hermes)/SL6 (GitHub remote) remain separate, not done.  
 **Implementation plan (Claude):** `docs/SL_Brand_Type_Implement_Design.md` — **locked 2026-08-04**, slices **BT0–BT4 all shipped 2026-08-04**.  
 **Posture:** Personal / household **freeware** fork identity (upstream The Story Nexus was freeware). Market uniqueness is secondary to a name and look you want to live in.  
 **Related:** `docs/UI_Visual_Direction.md` (Linear A + Raycast chrome — **unchanged**); design mocks under `docs/design-mocks/`.  
-**Out of scope here:** Full app rebrand string rename, DB rename, Docker/publish names, trademark search (see SL0–SL6 + implement doc non-goals).
+**Out of scope here:** Trademark search, SL4 (Hermes-side), SL6 (own GitHub remote) — see SL0–SL6 + implement doc non-goals. DB rename and Docker/publish names shipped separately as SL5.
 
 ---
 
@@ -180,7 +180,7 @@ From identity sketch:
 | **SL2** | ✅ Guide / welcome / About strings (LoginPage, document-title hook, 5 Guide `.mdx` files) |
 | **SL3** | ✅ docs headers / backlog title (CLAUDE.md, DECISIONS.md, CURRENT_BACKLOG.md, 9 individual design docs) |
 | **SL4** | Hermes skill display / memory SN→SL — **not done**, outside this repo's own scope |
-| **SL5** | DB filename / Docker / publish — **not done**, separate day (real data-continuity/deployment risk, see `DECISIONS.md`'s "Story Labyrinth Rename — SL0-SL3" entry) |
+| **SL5** | DB filename / Docker / publish — ✅ **Done 2026-08-05.** DB filename renamed with boot-time auto-migrate; Docker image renamed to `bloodgrv/story-labyrinth`; Tailscale hostname default; session cookie + localStorage prefixes. See `DECISIONS.md`'s "Story Labyrinth Rename — SL5" entry |
 | **SL6** | Own GitHub remote — **not done**, user's own infra decision |
 
 Freeware-friendly minimum when renaming: **SL0–SL3** — shipped. Type stack (Inter) shipped earlier same day as BT0.

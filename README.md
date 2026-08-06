@@ -103,7 +103,7 @@ npm run db:migrate   # Apply migrations to database
 
 #### Production (from Docker Hub)
 
-Pull and run the latest published image from [Docker Hub](https://hub.docker.com/r/jonsilver/storynexus):
+Pull and run the latest published image from [Docker Hub](https://hub.docker.com/r/bloodgrv/story-labyrinth):
 
 ```bash
 docker-compose up -d
@@ -113,17 +113,17 @@ Supports linux/amd64, linux/arm64, and linux/arm/v7 architectures.
 
 Access on `http://localhost:3000` or from any device on your network using your machine's IP address.
 
-Database persists in `./data/storynexus.db` (mounted volume).
+Database persists in `./data/story-labyrinth.db` (mounted volume).
 
 **Version pinning**:
 
 ```yaml
 # docker-compose.yml
 services:
-    storynexus:
-        image: jonsilver/storynexus:0.6.0 # Pin to specific version
-        # or: jonsilver/storynexus:0.6      # Auto-update patches
-        # or: jonsilver/storynexus:latest   # Latest release
+    story-labyrinth:
+        image: bloodgrv/story-labyrinth:0.6.0 # Pin to specific version
+        # or: bloodgrv/story-labyrinth:0.6      # Auto-update patches
+        # or: bloodgrv/story-labyrinth:latest   # Latest release
 ```
 
 #### Development (local build)
@@ -152,12 +152,12 @@ Rather than exposing the container to your LAN or the public internet, you can m
    ```bash
    docker-compose -f docker-compose.tailscale.yml up -d
    ```
-4. From any device on your tailnet, visit `http://<TS_HOSTNAME>:<APP_PORT>` (defaults to `http://storynexus:3000`).
+4. From any device on your tailnet, visit `http://<TS_HOSTNAME>:<APP_PORT>` (defaults to `http://story-labyrinth:3000`).
 
 **Optional - proper HTTPS**: by default this serves plain HTTP (the WireGuard tunnel itself is already encrypted, so this is not sending anything in the clear - it's just a browser padlock/UX nicety). To get a real `https://` URL with a valid cert via Tailscale's own TLS, run once after the stack is up:
 
 ```bash
-docker exec storynexus-tailscale tailscale serve --bg https / http://localhost:3000
+docker exec story-labyrinth-tailscale tailscale serve --bg https / http://localhost:3000
 ```
 
 This persists in the state volume (`./tailscale-state`), so it survives container restarts.
@@ -194,11 +194,11 @@ The script automatically bumps the version, pushes to GitHub, and opens the rele
 
 **Result** - Workflow automatically builds and pushes Docker images with tags:
 
-- `jonsilver/storynexus:0.7.0` (specific version)
-- `jonsilver/storynexus:0.7` (minor version)
-- `jonsilver/storynexus:0` (major version)
-- `jonsilver/storynexus:latest`
-- `jonsilver/storynexus:sha-abc1234` (commit hash)
+- `bloodgrv/story-labyrinth:0.7.0` (specific version)
+- `bloodgrv/story-labyrinth:0.7` (minor version)
+- `bloodgrv/story-labyrinth:0` (major version)
+- `bloodgrv/story-labyrinth:latest`
+- `bloodgrv/story-labyrinth:sha-abc1234` (commit hash)
 
 **Note**: Docker images are only built on releases, not on every commit to main.
 

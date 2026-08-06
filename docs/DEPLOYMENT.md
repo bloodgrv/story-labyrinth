@@ -55,24 +55,24 @@ Application will be available at: http://localhost:3000
 
 ```bash
 # Build image
-docker build -t storynexus .
+docker build -t story-labyrinth .
 
 # Run container
 docker run -d \
   -p 3000:3000 \
   -v $(pwd)/data:/app/data \
-  --name storynexus \
-  storynexus
+  --name story-labyrinth \
+  story-labyrinth
 ```
 
 ### Data Persistence
 
-SQLite database is stored in `./data/storynexus.db` (mounted as volume).
+SQLite database is stored in `./data/story-labyrinth.db` (mounted as volume).
 
 To backup:
 
 ```bash
-cp data/storynexus.db data/storynexus.db.backup
+cp data/story-labyrinth.db data/story-labyrinth.db.backup
 ```
 
 ## Migration from Tauri App
@@ -92,7 +92,7 @@ cp data/storynexus.db data/storynexus.db.backup
 
 - `PORT` - Server port (default: 3000 in prod, 3001 in dev)
 - `NODE_ENV` - Environment (development/production)
-- `DATABASE_PATH` - SQLite database file path (default: ./data/storynexus.db)
+- `DATABASE_PATH` - SQLite database file path (default: ./data/story-labyrinth.db)
 
 ## Accessing from Other Devices
 

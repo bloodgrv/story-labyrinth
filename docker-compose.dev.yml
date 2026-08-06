@@ -1,15 +1,15 @@
 services:
-    storynexus:
+    story-labyrinth:
         build:
             context: .
             dockerfile: Dockerfile
-        container_name: storynexus-app
+        container_name: story-labyrinth-app
         ports:
             - "${APP_PORT:-3000}:${APP_PORT:-3000}"
         environment:
             - NODE_ENV=production
             - PORT=${APP_PORT:-3000}
-            - DATABASE_PATH=/app/data/storynexus.db
+            - DATABASE_PATH=/app/data/story-labyrinth.db
         volumes:
             - ${DATA_PATH:-./data}:/app/data
         restart: unless-stopped
@@ -21,11 +21,11 @@ services:
             start_period: 40s
 
     # Self-hosted spelling/grammar/style checker (Grammar Checker feature). Reachable from the
-    # storynexus container at http://languagetool:8010 via compose's default network — set that
+    # story-labyrinth container at http://languagetool:8010 via compose's default network — set that
     # as the Server URL in Settings > Grammar Checker to enable it.
     languagetool:
         image: erikvl87/languagetool:latest
-        container_name: storynexus-languagetool
+        container_name: story-labyrinth-languagetool
         ports:
             - "${LANGUAGETOOL_PORT:-8010}:8010"
         restart: unless-stopped

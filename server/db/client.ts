@@ -1,11 +1,29 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
+import fs from "node:fs";
 import path from "node:path";
 import * as sqliteVec from "sqlite-vec";
 import * as schema from "./schema.js";
 
-// Database path - default to ./data/storynexus.db, overridable via environment variable
-const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "storynexus.db");
+// Database path - default to ./data/story-labyrinth.db, overridable via environment variable
+const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "story-labyrinth.db");
+
+// One-time migration from the pre-rebrand default filename (storynexus.db) so existing
+// deployments don't appear to lose their data when the default filename changes underneath
+// them. Checked by directory rather than gated on DATABASE_PATH being unset, since Docker's
+// own image sets DATABASE_PATH explicitly to the new default — an unset env var isn't a
+// reliable signal of "first run with the old default" in that environment.
+if (!fs.existsSync(DB_PATH)) {
+    const legacyPath = path.join(path.dirname(DB_PATH), "storynexus.db");
+    if (fs.existsSync(legacyPath)) {
+        console.log(`Migrating database file: ${legacyPath} -> ${DB_PATH}`);
+        for (const suffix of ["", "-wal", "-shm", "-journal"]) {
+            const from = legacyPath + suffix;
+            const to = DB_PATH + suffix;
+            if (fs.existsSync(from)) fs.renameSync(from, to);
+        }
+    }
+}
 
 // Create SQLite connection
 const sqlite = new Database(DB_PATH);

@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 
-const STORAGE_KEY_PREFIX = "storyNexus.sidebar";
+const STORAGE_KEY_PREFIX = "storyLabyrinth.sidebar";
 const STORAGE_KEY_LEFT = `${STORAGE_KEY_PREFIX}.left.collapsed`;
 const STORAGE_KEY_RIGHT = `${STORAGE_KEY_PREFIX}.right.collapsed`;
 

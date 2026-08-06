@@ -5,7 +5,7 @@ on:
         types: [published]
 
 env:
-    DOCKER_IMAGE: jonsilver/storynexus
+    DOCKER_IMAGE: bloodgrv/story-labyrinth
 
 jobs:
     build-and-push:

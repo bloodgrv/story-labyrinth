@@ -47,7 +47,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || "development";
-const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "storynexus.db");
+const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "story-labyrinth.db");
 
 // Assigned once app.listen() runs below; the /_status routes only read this at request time
 // (after startup has finished), so the forward reference is safe.

@@ -1,7 +1,7 @@
 import type { PreferredLayout, SessionTab, StorySession } from "./types";
 
-const SESSION_KEY = (storyId: string) => `storyNexus.session.${storyId}`;
-const LAYOUT_KEY = (storyId: string) => `storyNexus.preferredLayout.${storyId}`;
+const SESSION_KEY = (storyId: string) => `storyLabyrinth.session.${storyId}`;
+const LAYOUT_KEY = (storyId: string) => `storyLabyrinth.preferredLayout.${storyId}`;
 const MAX_TABS = 12;
 
 function readItem<T>(key: string): T | null {
