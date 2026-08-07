@@ -26,6 +26,8 @@ import { parsePsychProposal } from "../services/parsePsychProposal";
 import { parsePlaceSheetProposal } from "../services/parsePlaceSheetProposal";
 import { parseMapSketchProposal } from "../services/parseMapSketchProposal";
 import { parseShuttleProposal } from "../services/parseShuttleProposal";
+import type { ParsedTimelinePinProposalItem } from "../services/parseTimelinePinProposal";
+import { parseTimelinePinProposal } from "../services/parseTimelinePinProposal";
 import type { PlaceState } from "@/types/story";
 import type { MapSketchProposal } from "@/types/storyMaps";
 import { useApproveProposalMutation, useCreateProposalMutation } from "./useCodexProposalsQuery";
@@ -76,6 +78,10 @@ interface UseChatMessageGenerationParams {
     // only, MV5 — see chatContextService.ts's MAP_SKETCH_INSTRUCTIONS). Not persisted server-side
     // — ephemeral until Accept resolves/creates the anchor location's map and applies it.
     onMapSketchProposal?: (messageId: string, proposal: MapSketchProposal) => void;
+    // Called when a reply contains a ```timeline-pin-proposal block (WB "timeline"-template chats
+    // only, TL7 — see chatContextService.ts's TIMELINE_PIN_INSTRUCTIONS). Not persisted server-side
+    // — ephemeral until each item is individually accepted (creates a real pin) or rejected.
+    onTimelinePinProposal?: (messageId: string, items: ParsedTimelinePinProposalItem[]) => void;
     // Called when a reply contains a ```note-split-proposal block (Notes chats only, P0.4 K2 —
     // see chatContextService.ts's NOTE_SPLIT_PROPOSAL_INSTRUCTIONS). Same "persist immediately as
     // a durable brainstormChecklist row" posture as onOverviewProposal/onHandoffPackets above.
@@ -136,6 +142,7 @@ export const useChatMessageGeneration = ({
     onNoteSplitProposal,
     onShuttleProposal,
     onNameProposal,
+    onTimelinePinProposal,
     autoAcceptCodex,
     onUsage
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
@@ -202,7 +209,8 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterPlaceSheetStrip, placeSheetProposal } = parsePlaceSheetProposal(afterPsychStrip);
                 const { cleanedContent: afterMapSketchStrip, mapSketchProposal } = parseMapSketchProposal(afterPlaceSheetStrip);
                 const { cleanedContent: afterShuttleStrip, proposal: shuttleProposal } = parseShuttleProposal(afterMapSketchStrip);
-                const { cleanedContent, proposal: nameProposal } = parseNameProposal(afterShuttleStrip);
+                const { cleanedContent: afterNameStrip, proposal: nameProposal } = parseNameProposal(afterShuttleStrip);
+                const { cleanedContent, timelinePinProposals } = parseTimelinePinProposal(afterNameStrip);
 
                 // A reply that's ENTIRELY a fenced block (no conversational wrapper at all) strips
                 // down to an empty string here — the server's message-append route rejects empty
@@ -269,6 +277,8 @@ export const useChatMessageGeneration = ({
                 if (mapSketchProposal && assistantMessage) onMapSketchProposal?.(assistantMessage.id, mapSketchProposal);
                 if (shuttleProposal && assistantMessage) onShuttleProposal?.(assistantMessage.id, shuttleProposal);
                 if (nameProposal && assistantMessage) onNameProposal?.(assistantMessage.id, nameProposal);
+                if (timelinePinProposals && timelinePinProposals.length > 0 && assistantMessage)
+                    onTimelinePinProposal?.(assistantMessage.id, timelinePinProposals);
             });
 
             if (error) {
@@ -301,6 +311,7 @@ export const useChatMessageGeneration = ({
             onNoteSplitProposal,
             onShuttleProposal,
             onNameProposal,
+            onTimelinePinProposal,
             autoAcceptCodex,
             onUsage
         ]

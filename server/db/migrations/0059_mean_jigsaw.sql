@@ -1,0 +1,1 @@
+ALTER TABLE `aiChats` ADD `includeTimeline` integer DEFAULT false NOT NULL;

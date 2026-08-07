@@ -177,6 +177,10 @@ export const aiChats = sqliteTable(
         // already index-eligible (Phase B's own approve step is the gate), so this chat-level flag
         // is the only opt-in needed.
         includeMemory: integer("includeMemory", { mode: "boolean" }).notNull().default(false),
+        // TL8, docs/Story_Timeline_Design.md — opt-in compact chronology block (Spine pins, order +
+        // titles + blurbs, not full linked bodies). Same posture as includeMemory above: read
+        // directly as chat.includeTimeline in chatContextService.ts, no separate per-item gate.
+        includeTimeline: integer("includeTimeline", { mode: "boolean" }).notNull().default(false),
         // Brainstorm-only opt-in gates (P0.4 B0-B4, docs/Chat_Panel_Integrations_Design.md §5) —
         // unlike every other chat type, lorebook search is OFF by default for Brainstorm (it's an
         // intake hub, not grounded in established Codex state the way WB/Editor/Outline are); see

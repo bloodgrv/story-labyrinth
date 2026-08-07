@@ -175,6 +175,7 @@ export const chatsApi = {
             includeNotes?: boolean;
             includeOutline?: boolean;
             includeMemory?: boolean;
+            includeTimeline?: boolean;
             includeLorebook?: boolean;
             includeChapterSummaries?: boolean;
             brainstormStyle?: string;

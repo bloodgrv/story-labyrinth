@@ -48,6 +48,8 @@ import { PsychProposalCard } from "./PsychProposalCard";
 import { PlaceSheetProposalCard } from "./PlaceSheetProposalCard";
 import { MapSketchProposalCard } from "./MapSketchProposalCard";
 import { useResolveOrCreateMapForLocationMutation } from "@/features/story-maps/hooks/useStoryMapsQuery";
+import { TimelinePinProposalCard } from "@/features/story-timeline/components/TimelinePinProposalCard";
+import { useCreatePinMutation } from "@/features/story-timeline/hooks/useStoryTimelineQuery";
 import { useCreateChatMutation, useUpdateChatMutation } from "../hooks/useChatQuery";
 import { useChatMessageGeneration } from "../hooks/useChatMessageGeneration";
 import { useChatSystemPrompt } from "../hooks/useChatSystemPrompt";
@@ -64,6 +66,7 @@ import type {
     ParsedOutlineReorderProposal
 } from "../services/parseOutlineProposals";
 import type { ParsedPsychProposal } from "../services/parsePsychProposal";
+import type { ParsedTimelinePinProposalItem } from "../services/parseTimelinePinProposal";
 import type { PlaceState } from "@/types/story";
 import type { MapSketchProposal } from "@/types/storyMaps";
 
@@ -238,6 +241,9 @@ export function ChatInterface({
     // Project Memory chat-level gate (C1, Agent_Framework_And_Project_Memory_Design.md §4.5) —
     // same local-state-persisted-after-PATCH pattern as includeNotes/includeOutline above.
     const [includeMemory, setIncludeMemory] = useState(selectedChat.includeMemory);
+    // TL8, docs/Story_Timeline_Design.md — opt-in compact Spine chronology block. Same local-
+    // state-persisted-after-PATCH pattern as includeMemory above.
+    const [includeTimeline, setIncludeTimeline] = useState(selectedChat.includeTimeline);
     // Brainstorm-only opt-in gates (P0.4 B0-B4) — same local-state-persisted-after-PATCH pattern.
     // Lorebook search is ON by default for every other chat type; Brainstorm is the one exception
     // (see chatContextService.ts's entityTypes computation).
@@ -264,6 +270,8 @@ export function ChatInterface({
         chatsApi.update(selectedChat.id, { includeOutline: value }).then(() => setIncludeOutline(value));
     const toggleIncludeMemory = (value: boolean) =>
         chatsApi.update(selectedChat.id, { includeMemory: value }).then(() => setIncludeMemory(value));
+    const toggleIncludeTimeline = (value: boolean) =>
+        chatsApi.update(selectedChat.id, { includeTimeline: value }).then(() => setIncludeTimeline(value));
     const toggleIncludeLorebook = (value: boolean) =>
         chatsApi.update(selectedChat.id, { includeLorebook: value }).then(() => setIncludeLorebook(value));
     const toggleIncludeChapterSummaries = (value: boolean) =>
@@ -287,6 +295,7 @@ export function ChatInterface({
         !isNotesChat && includeNotes && "Notes",
         !isOutlineChat && !isResearchChat && includeOutline && "Outline",
         !isResearchChat && !isNotesChat && includeMemory && "Memory",
+        !isResearchChat && !isNotesChat && includeTimeline && "Timeline",
         (isBrainstormChat || isResearchChat || isNotesChat) && includeLorebook && "Lorebook",
         isResearchChat && webSearchEnabled && "Web search",
         isBrainstormChat && includeChapterSummaries && "Chapter summaries",
@@ -371,6 +380,11 @@ export function ChatInterface({
             const memoriesText = context.relevantMemories
                 .map(m => `- ${m.title} (${m.category}${m.role === "pinned" ? ", pinned" : ""}): ${m.excerpt}`)
                 .join("\n");
+            // Story Timeline (TL8) — only non-empty when includeTimeline is on. Framed as
+            // established fact, same posture as Project Memory above, since pins are the writer's
+            // own confirmed chronology, not loose working notes. Compact: order + title + blurb,
+            // never the full linked-entry body (design doc's own "not full linked bodies" line).
+            const timelineText = context.relevantTimelinePins.map(p => `- ${p.title} (${p.when})${p.blurb ? `: ${p.blurb}` : ""}`).join("\n");
 
             // Outline chat's own always-on structured reads (P0.4 R5) — only ever non-empty for
             // chatType="outline" (chatContextService.ts only populates these two for that type).
@@ -451,6 +465,8 @@ export function ChatInterface({
                     `[OUTLINE — planning intent, not canon]\nOnly use as ideas/constraints if relevant; do not treat as established fact unless it also appears in Codex/lorebook.\n${outlineText}`,
                 memoriesText &&
                     `[PROJECT MEMORY — approved facts]\nApproved project facts/notes relevant to this conversation. Treat as established unless it conflicts with the Codex, in which case the Codex wins.\n${memoriesText}`,
+                timelineText &&
+                    `[STORY TIMELINE — established chronology]\nOrdered pins from the story's Spine timeline. Treat as established unless it conflicts with the Codex, in which case the Codex wins.\n${timelineText}`,
                 outlineTreeText &&
                     `[OUTLINE TREE — full story structure; use the id values exactly as shown when proposing edits/reorders/deletes]\n${outlineTreeText}`,
                 writtenChaptersText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${writtenChaptersText}`,
@@ -472,6 +488,7 @@ export function ChatInterface({
         includeNotes,
         includeOutline,
         includeMemory,
+        includeTimeline,
         includeLorebook,
         includeChapterSummaries,
         isBrainstormChat,
@@ -642,6 +659,12 @@ export function ChatInterface({
     // NG6 — same ephemeral-state posture as psychProposals above. No accept/reject dismissal to
     // track: NameProposalCard itself runs the real generate call and owns its own results state.
     const [nameProposals, setNameProposals] = useState<Record<string, ParsedNameProposal>>({});
+
+    // TL7, docs/Story_Timeline_Design.md — WB "timeline"-template chats' own fence. Unlike
+    // psych/place-sheet (single object per message), this is an ARRAY per message — accepting or
+    // rejecting one item removes it from that message's array; the card auto-hides once empty.
+    const [timelinePinProposals, setTimelinePinProposals] = useState<Record<string, ParsedTimelinePinProposalItem[]>>({});
+    const createTimelinePinMutation = useCreatePinMutation(storyId ?? "");
 
     // Outline chats only (P0.4 R5) — "create" proposals are persisted immediately (same mechanism
     // the retired bulk-Generate button used, see handleOutlineProposals below); edit/reorder/
@@ -823,6 +846,7 @@ export function ChatInterface({
         onPlaceSheetProposal: (messageId, proposal) => setPlaceSheetProposals(prev => ({ ...prev, [messageId]: proposal })),
         onMapSketchProposal: (messageId, proposal) => setMapSketchProposals(prev => ({ ...prev, [messageId]: proposal })),
         onNameProposal: (messageId, proposal) => setNameProposals(prev => ({ ...prev, [messageId]: proposal })),
+        onTimelinePinProposal: (messageId, items) => setTimelinePinProposals(prev => ({ ...prev, [messageId]: items })),
         // Notes chats only (P0.4 K2/K4) — same "persist immediately as a durable checklist row"
         // posture as onOverviewProposal/onHandoffPackets above; NotesChecklistTray.tsx handles the
         // "Accept all" write.
@@ -907,6 +931,40 @@ export function ChatInterface({
         }
 
         dismissOutlineProposal(messageId, index);
+    };
+
+    // TL7 — same per-message-array + remove-one-item posture as dismissOutlineProposal above,
+    // keyed by object identity (parsed items have no id of their own until accepted) rather than
+    // index, so a reject after an accept elsewhere in the same array doesn't shift indices.
+    const dismissTimelinePinProposal = (messageId: string, item: ParsedTimelinePinProposalItem) =>
+        setTimelinePinProposals(prev => {
+            const next = (prev[messageId] ?? []).filter(existing => existing !== item);
+            if (next.length === 0) {
+                const { [messageId]: _removed, ...rest } = prev;
+                return rest;
+            }
+            return { ...prev, [messageId]: next };
+        });
+
+    // Reuses the same createPin mutation PlaceOnTimelineButton.tsx uses — no timelineId means it
+    // defaults to the story's Spine timeline server-side (ensureSpineTimeline).
+    const handleAcceptTimelinePin = (messageId: string, item: ParsedTimelinePinProposalItem) => {
+        createTimelinePinMutation.mutate(
+            {
+                title: item.title,
+                blurb: item.blurb ?? null,
+                whenKind: item.whenKind,
+                relativeOffsetYears: item.relativeOffsetYears ?? null,
+                fuzzyPhrase: item.fuzzyPhrase ?? null,
+                civilDate: item.civilDate ?? null
+            },
+            { onSuccess: () => dismissTimelinePinProposal(messageId, item) }
+        );
+    };
+
+    const handleAcceptAllTimelinePins = (messageId: string) => {
+        const items = timelinePinProposals[messageId] ?? [];
+        items.forEach(item => handleAcceptTimelinePin(messageId, item));
     };
 
     const dismissNoteProposal = (messageId: string) =>
@@ -1404,6 +1462,18 @@ export function ChatInterface({
                                 </Label>
                             </div>
                         )}
+                        {!isResearchChat && !isNotesChat && (
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id={`${selectedChat.id}-include-timeline`}
+                                    checked={includeTimeline}
+                                    onCheckedChange={toggleIncludeTimeline}
+                                />
+                                <Label htmlFor={`${selectedChat.id}-include-timeline`} className="text-sm font-normal">
+                                    Include Story Timeline (Spine chronology)
+                                </Label>
+                            </div>
+                        )}
                         {/* Lorebook is Brainstorm/Research/Notes-only opt-in — every other chat type's
                             lorebook search stays always-on (see chatContextService.ts's entityTypes computation). */}
                         {(isBrainstormChat || isResearchChat || isNotesChat) && (
@@ -1560,6 +1630,7 @@ export function ChatInterface({
                     const placeSheetProposal = placeSheetProposals[messageId];
                     const mapSketchProposal = mapSketchProposals[messageId];
                     const nameProposal = storyId ? nameProposals[messageId] : undefined;
+                    const timelinePinProposalsForMessage = storyId ? timelinePinProposals[messageId] : undefined;
                     if (
                         !proposals?.length &&
                         !proseProposal &&
@@ -1568,7 +1639,8 @@ export function ChatInterface({
                         !psychProposal &&
                         !placeSheetProposal &&
                         !mapSketchProposal &&
-                        !nameProposal
+                        !nameProposal &&
+                        !timelinePinProposalsForMessage?.length
                     )
                         return null;
                     return (
@@ -1638,6 +1710,15 @@ export function ChatInterface({
                                     anchorEntryName={
                                         selectedChat.anchorEntryId ? entryLookup.get(selectedChat.anchorEntryId)?.name : undefined
                                     }
+                                />
+                            )}
+                            {isWorldBuildingChat && timelinePinProposalsForMessage && timelinePinProposalsForMessage.length > 0 && (
+                                <TimelinePinProposalCard
+                                    items={timelinePinProposalsForMessage}
+                                    onAccept={item => handleAcceptTimelinePin(messageId, item)}
+                                    onReject={item => dismissTimelinePinProposal(messageId, item)}
+                                    onAcceptAll={() => handleAcceptAllTimelinePins(messageId)}
+                                    isSubmitting={createTimelinePinMutation.isPending}
                                 />
                             )}
                         </>

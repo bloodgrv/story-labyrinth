@@ -181,6 +181,18 @@ export interface ChatContextPlaybookPack {
     body: string;
 }
 
+// TL8, docs/Story_Timeline_Design.md — a Spine timeline pin surfaced as compact chronology
+// context, gated on this chat's own includeTimeline toggle. "when" is a resolved display label
+// (e.g. "6y before start", "that winter", "1890"), not the raw whenKind/offset fields — the model
+// only needs order + a human label, not the full structured pin. No linked-entry body is ever
+// included (design doc: "not full linked bodies") — see chatContextService.ts's resolveTimelinePins.
+export interface ChatContextTimelinePinExcerpt {
+    id: string;
+    title: string;
+    blurb: string | null;
+    when: string;
+}
+
 // Assembled context for generating a chat response or proposal: the effective system
 // prompt (chat-type framing + template hint for World-Building), this chat's own unresolved
 // Codex proposals, and Codex entries / chapter passages relevant to the current topic.
@@ -235,4 +247,6 @@ export interface ChatContext {
     // also on. Either may be null (soft-success: no pack found anywhere on the ladder) — see
     // chatContextService.ts's getChatContext / resolvePlaybookPack.
     playbookPack: { concrete: ChatContextPlaybookPack | null; psych: ChatContextPlaybookPack | null };
+    // Empty unless the chat's includeTimeline toggle is on (TL8) — see getChatContext.
+    relevantTimelinePins: ChatContextTimelinePinExcerpt[];
 }

@@ -8,6 +8,7 @@ import type {
     ChatContextOutlineExcerpt,
     ChatContextOutlineTreeItem,
     ChatContextPlaybookPack,
+    ChatContextTimelinePinExcerpt,
     ChatContextWrittenChapter,
     ChatType
 } from "../../src/types/worldbuilding.js";
@@ -25,6 +26,7 @@ import { resolvePlaybookPack as resolvePlaybookPackLadder } from "./playbookPack
 import { search } from "./ragIndexService.js";
 import { DEFAULT_SEARCH_ENTITY_TYPES, type RagEntityType, type SearchResult } from "./ragRepository.js";
 import { fetchPage, searchWeb, type FetchedPage } from "./webSearchService.js";
+import { ensureSpineTimeline, listPinsForStory } from "./storyTimelineService.js";
 
 const RELEVANT_ENTRIES_LIMIT = 8;
 const SEARCH_POOL_SIZE = RELEVANT_ENTRIES_LIMIT * 2;
@@ -501,6 +503,33 @@ const MAP_SKETCH_INSTRUCTIONS =
     '"line" elements use "points" (an array of [x, y] pairs relative to their own x/y) instead of ' +
     "width/height. Propose at most one map-sketch-proposal per reply, with at least 2 elements.";
 
+// TL7, docs/Story_Timeline_Design.md — the "timeline" WB template's own propose/accept fence.
+// Always on for that template (its whole point), like PLACE_SHEET_INSTRUCTIONS above. Unlike the
+// per-entry templates (character_codex/locations), the timeline template isn't anchored to a
+// specific entry — so proposed pins are deliberately NATIVE ONLY (no linkType/linkId): the model
+// has no reliable way to know internal chapter/lorebook/note ids from a planning conversation,
+// and fuzzy name-matching would be fragile. A pin created this way can still be placed on a
+// source later via the existing PlaceOnTimelineButton. Parsed client-side
+// (parseTimelinePinProposal.ts) into ephemeral per-item accept/reject rows
+// (TimelinePinProposalCard.tsx); Accept creates a real pin via the existing, unchanged
+// createPin/storyTimelineApi.createPin (no timelineId -> defaults to Spine server-side, same as
+// PlaceOnTimelineButton's own default) — no new server route needed.
+const TIMELINE_PIN_INSTRUCTIONS =
+    "You can propose pins for the Story Timeline board — beats, prior events, or milestones discussed in this " +
+    "conversation. Derive them from what's actually been discussed, not assumptions — never propose pins in " +
+    "your very first reply before any real conversation about the story's chronology has happened.\n\n" +
+    "To propose one or more pins, include a fenced block in this exact form (a JSON ARRAY, even for a single pin):\n\n" +
+    "```timeline-pin-proposal\n" +
+    '[{"title": "short pin title", "blurb": "a sentence or two of context (optional)", ' +
+    '"whenKind": "relative", "relativeOffsetYears": -6}]\n' +
+    "```\n\n" +
+    '"whenKind" is one of "relative" (with "relativeOffsetYears": a number, negative = years before ' +
+    "Story-start, positive = after, 0 = at Story-start), \"fuzzy\" (with \"fuzzyPhrase\": a rough phrase like " +
+    '"that winter"), or "civil" (with "civilDate": a free-form date like "1890" or "2019-03-14") — include ' +
+    "only the field matching the chosen kind. Never invent chapter, lorebook, or note links — these pins are " +
+    "native only; the writer can link one to a source later from the Timeline board itself. " +
+    "Propose at most one timeline-pin-proposal block per reply.";
+
 // Assemble the effective system prompt for a chat: chat-type framing + template hint (World-
 // Building only). Extend the framing constants above — not the template catalogue — when
 // adding further global system instructions.
@@ -545,6 +574,7 @@ const buildSystemPrompt = (
     const withStyle = base + resolveStyleHint(WB_STYLE_HINTS, style);
     if (templateSlug === "character_codex" && includePsychModule) return `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}${regionsAddendum}`;
     if (templateSlug === "locations") return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}\n\n${MAP_SKETCH_INSTRUCTIONS}${regionsAddendum}`;
+    if (templateSlug === "timeline") return `${withStyle}\n\n${TIMELINE_PIN_INSTRUCTIONS}${regionsAddendum}`;
     return withStyle + regionsAddendum;
 };
 
@@ -889,6 +919,41 @@ const resolveMemories = async (results: SearchResult[], storyId: string | null):
     return [...pinnedExcerpts, ...searchExcerpts];
 };
 
+// TL8, docs/Story_Timeline_Design.md — compact chronology context, gated on this chat's own
+// includeTimeline toggle. Spine only (design doc's own AI/RAG table: "selected timeline(s) or
+// spine" — spine alone is a valid, simplest choice; named-timeline selection is a fast-follow).
+// "when" is a resolved display label; the tiered sort here is a deliberately small, server-owned
+// duplicate of src/features/story-timeline/lib/sortPins.ts's civil -> relative -> fuzzy pipeline
+// (not imported directly, to avoid a server file depending on a client feature module for three
+// lines of logic) — keep both in sync if the sort pipeline itself ever changes.
+const resolveTimelinePins = async (storyId: string): Promise<ChatContextTimelinePinExcerpt[]> => {
+    const spine = await ensureSpineTimeline(storyId);
+    const allPins = await listPinsForStory(storyId);
+    const pins = allPins.filter(pin => pin.memberships.some(m => m.timelineId === spine.id));
+
+    const tier = (pin: (typeof pins)[number]) => (pin.civilDate ? 0 : pin.relativeOffsetYears != null ? 1 : 2);
+    const sorted = [...pins].sort((a, b) => {
+        const tierDiff = tier(a) - tier(b);
+        if (tierDiff !== 0) return tierDiff;
+        if (tier(a) === 0) return (a.civilDate ?? "").localeCompare(b.civilDate ?? "");
+        if (tier(a) === 1) return (a.relativeOffsetYears ?? 0) - (b.relativeOffsetYears ?? 0);
+        return a.manualOrder - b.manualOrder;
+    });
+
+    const whenLabel = (pin: (typeof pins)[number]): string => {
+        if (pin.civilDate) return pin.civilDate;
+        if (pin.relativeOffsetYears != null) {
+            if (pin.relativeOffsetYears === 0) return "Story-start";
+            const years = Math.abs(pin.relativeOffsetYears);
+            return `${years}y ${pin.relativeOffsetYears < 0 ? "before" : "after"} start`;
+        }
+        if (pin.fuzzyPhrase) return pin.fuzzyPhrase;
+        return "Unordered";
+    };
+
+    return sorted.map(pin => ({ id: pin.id, title: pin.title, blurb: pin.blurb, when: whenLabel(pin) }));
+};
+
 // Lets the model see whether prior proposals/handoffs from this same Brainstorm chat are still
 // sitting unresolved (status pending/opened) before proposing more (P0.4 B4).
 const resolveHandoffStatus = async (chatId: string) => {
@@ -997,6 +1062,9 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
     const includeNotes = chat.includeNotes === true;
     const includeOutline = chat.includeOutline === true;
     const includeMemory = chat.includeMemory === true;
+    // TL8 — read directly as a plain column, same posture as includeMemory (no separate per-pin
+    // gate; a pin's presence on Spine is itself the "should this be visible" decision).
+    const includeTimeline = chat.includeTimeline === true;
     const isBrainstorm = chatType === "brainstorm";
     const isResearch = chatType === "research";
     const isNotes = chatType === "notes";
@@ -1076,7 +1144,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         focusedNote,
         playbookPackConcrete,
         playbookPackPsych,
-        availableNameRegions
+        availableNameRegions,
+        timelinePins
     ] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
         includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
@@ -1096,7 +1165,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         // query for research/notes chats, which never propose names.
         ["editor", "outline", "worldbuilding", "brainstorm"].includes(chatType)
             ? resolveAvailableNameRegions(chat.storyId)
-            : Promise.resolve([])
+            : Promise.resolve([]),
+        includeTimeline && chat.storyId ? resolveTimelinePins(chat.storyId) : Promise.resolve([])
     ]);
 
     return {
@@ -1117,6 +1187,7 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         fetchedPages: webSearch.pages,
         allNotes,
         focusedNote,
-        playbookPack: { concrete: playbookPackConcrete, psych: playbookPackPsych }
+        playbookPack: { concrete: playbookPackConcrete, psych: playbookPackPsych },
+        relevantTimelinePins: timelinePins
     };
 };

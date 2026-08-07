@@ -81,6 +81,9 @@ export interface AIChat extends BaseEntity {
     // Phase B / Agent_Framework_And_Project_Memory_Design.md §4.5's "Include project memory", C1).
     // Defaults false server-side; optional here for the same reason as the two fields above.
     includeMemory?: boolean;
+    // TL8, docs/Story_Timeline_Design.md — opt-in gate for the compact Spine chronology block.
+    // Same posture as includeMemory above. Defaults false server-side.
+    includeTimeline?: boolean;
     // Brainstorm-only opt-in gates (P0.4 B0-B4, docs/Chat_Panel_Integrations_Design.md §5) —
     // lorebook search and chapter titles+summaries are OFF by default for Brainstorm, unlike
     // every other chat type. Ignored for any other chatType. Defaults false server-side.
