@@ -275,7 +275,9 @@ export interface LorebookEntry extends BaseEntity {
         // scale/climate/holder/danger/landmarks/exits/layout/image-brief. Same posture as
         // psychProfile: not Codex state, editable directly on the entry form (PlaceSheetFields.tsx)
         // AND propose→accept via WB chat (ChatInterface.tsx's handleAcceptPlaceSheet). layoutMd is
-        // the map fallback source-of-truth when no Story Map graph exists yet for this location.
+        // export/legacy-only once a Maps v2 sketch exists for this location (StoryMapDocument.
+        // sceneJson is the real SoT, see src/types/storyMaps.ts) — MapDetailPanel.tsx's Export/
+        // Convert-to-sketch bridge both directions between the two.
         placeState?: PlaceState;
     };
     isDisabled?: boolean;

@@ -478,7 +478,13 @@ export const storyGraphLayout = sqliteTable(
 );
 
 // Story Map Edges table — spatial links between location lorebook entries (L3, docs/
-// Locations_And_Maps_Design.md). Deliberately a separate table from storyGraphEdges rather than
+// Locations_And_Maps_Design.md). SOFT-DEPRECATED as of Maps v2 MV1/MV7 (docs/
+// Maps_V2_Sketch_Design.md, decision #8) — the UI that read/wrote this table (the React Flow
+// spatial graph) was fully retired from the sidebar; no live component imports it anymore
+// (confirmed via a Vite build module-count drop when the UI was unwired). Rows are left in place
+// rather than migrated away — an explicit "optional DB drop later" per the design doc, not done
+// this pass. New code should not read/write this table; see storyMaps (Maps v2's real sketch
+// documents) instead. Deliberately a separate table from storyGraphEdges rather than
 // widening that one: the design doc treats maps as complementary to the Relationship Graph, not a
 // replacement, and CLAUDE.md's Relationship Graph section locks storyGraphEdges to its own
 // 15-value concrete/factual allowlist — spatial types (contains/borders/road_to/...) don't belong
@@ -513,8 +519,10 @@ export const storyMapEdges = sqliteTable(
 );
 
 // Story Map Layout table — persisted node positions for the Story Map tool's single canvas view
-// (L3). Identical shape to storyGraphLayout, kept as its own table since it's keyed to a
-// different edge/node set (locations only) with its own lifecycle.
+// (L3). SOFT-DEPRECATED alongside storyMapEdges above — same MV1/MV7 status, same "left in place,
+// no new reads/writes, optional drop later" posture. Identical shape to storyGraphLayout, kept as
+// its own table since it's keyed to a different edge/node set (locations only) with its own
+// lifecycle.
 export const storyMapLayout = sqliteTable(
     "storyMapLayout",
     {
@@ -530,6 +538,40 @@ export const storyMapLayout = sqliteTable(
     table => ({
         storyIdIdx: index("storymaplayout_story_id_idx").on(table.storyId),
         uniqueNodeIdx: uniqueIndex("storymaplayout_unique_node_idx").on(table.storyId, table.nodeId)
+    })
+);
+
+// Story Maps table — Maps v2 sketch documents (docs/Maps_V2_Sketch_Design.md). Deliberately a
+// new table rather than widening storyMapEdges/storyMapLayout above: those are the L3 spatial
+// relationship *graph* between location entries (React Flow, boxes-and-lines), which the v2 design
+// deprecates in the UI but leaves in the DB untouched (decision #8) — this table is the actual
+// drawable sketch-canvas document (Excalidraw scene), a different job entirely.
+export const storyMaps = sqliteTable(
+    "storyMaps",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        title: text("title").notNull(),
+        // Optional link to a location lorebook entry (hybrid ownership, decision #6). NO real FK —
+        // same loose-column convention as storyMapEdges.fromId/toId (an entry can be global/series
+        // scoped, outside this story's own rows). Null = free story map. On location delete, the
+        // map itself is preserved and this is nulled out (see storyMapsService.unlinkMapsForLocation)
+        // rather than the map being deleted — sketch content shouldn't vanish because its label did.
+        locationId: text("locationId"),
+        // Excalidraw scene JSON (elements + appState) — the source of truth for the sketch
+        // (decision #7). layoutMd/images stay export-only/illustration, never re-imported as SoT.
+        sceneJson: text("sceneJson", { mode: "json" }).notNull(),
+        // Disk-stored (data/uploads/story-maps/), same filename-reference convention as
+        // lorebookEntries.imageFilename — never inline base64 in this column.
+        thumbnailFilename: text("thumbnailFilename"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdIdx: index("storymaps_story_id_idx").on(table.storyId),
+        locationIdIdx: index("storymaps_location_id_idx").on(table.locationId)
     })
 );
 

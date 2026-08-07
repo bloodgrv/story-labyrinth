@@ -37,6 +37,7 @@ import seriesRouter from "./routes/series.js";
 import storiesRouter from "./routes/stories.js";
 import storyGraphRouter from "./routes/storyGraph.js";
 import storyMapRouter from "./routes/storyMap.js";
+import storyMapsRouter from "./routes/storyMaps.js";
 import ttsRouter from "./routes/tts.js";
 import usersRouter from "./routes/users.js";
 
@@ -138,6 +139,10 @@ app.use("/api", storyGraphRouter);
 // storyGraphRouter directly above (its routes span /stories/:storyId/map/... and
 // /map/edges/:id). Same editor-level auth.
 app.use("/api", storyMapRouter);
+// Maps v2 (MV0, docs/Maps_V2_Sketch_Design.md) — sketch-canvas documents, separate router from
+// storyMapRouter directly above (that one stays as the L3 spatial graph, deprecated in the UI only
+// per decision #8). Same bare-/api mounting reasoning, same editor-level auth.
+app.use("/api", storyMapsRouter);
 // Transfer Log (docs/Transfer_Log_And_Settings_IA_Design.md) — mounted at bare /api for the same
 // reason storyGraphRouter is: its routes are /stories/:storyId/transfers, a story sub-resource
 // rather than its own top-level prefix. Editor-level auth (requireAuth + blockViewerMutations,

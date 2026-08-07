@@ -44,7 +44,10 @@ const tools = [
     { id: "name-generator" as WorkspaceTool, label: "Names", icon: Sparkles, requiresStory: true },
     { id: "memory" as WorkspaceTool, label: "Memory", icon: Brain, requiresStory: true },
     { id: "relationships" as WorkspaceTool, label: "Relations", icon: Network, requiresStory: true },
-    { id: "story-map" as WorkspaceTool, label: "Story Map", icon: Map, requiresStory: true },
+    // Maps v2 (MV1, docs/Maps_V2_Sketch_Design.md) — same "story-map" id as the old L3 spatial
+    // graph tool (decision #4 / implementation clarification d: keep the id, swap the component
+    // and label only, to avoid nav-reference churn). See MainContent.tsx's switch case.
+    { id: "story-map" as WorkspaceTool, label: "Maps", icon: Map, requiresStory: true },
     { id: "playbooks" as WorkspaceTool, label: "Playbooks", icon: GraduationCap, requiresStory: true }
 ];
 

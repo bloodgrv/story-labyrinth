@@ -122,7 +122,7 @@ export function PlaceSheetFields({ control }: PlaceSheetFieldsProps) {
                     <FormItem>
                         <FormLabel>Exits summary</FormLabel>
                         <FormControl>
-                            <Textarea {...field} rows={2} placeholder="free text, until a Story Map graph exists for this place" />
+                            <Textarea {...field} rows={2} placeholder="free text — e.g. north gate to the courtyard, service tunnel below" />
                         </FormControl>
                     </FormItem>
                 )}

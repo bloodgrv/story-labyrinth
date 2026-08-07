@@ -11,6 +11,14 @@ import {
     updateMapEdge
 } from "../services/storyMapService.js";
 
+// SOFT-DEPRECATED (Maps v2 MV1/MV7, docs/Maps_V2_Sketch_Design.md decision #8) — the sidebar UI
+// that called these routes (the L3 spatial relationship graph) was fully retired; no live
+// component imports features/story-map/ anymore. Routes are left live rather than removed — story
+// export/import still round-trips this data for old exports (server/routes/stories.ts), and a
+// future revival or the design doc's own "optional DB drop later" step can still reach it. New
+// features should build against storyMaps (server/routes/storyMaps.ts, Maps v2's real sketch
+// documents) instead.
+//
 // Mounted at bare /api, same reasoning as storyGraph.ts (two path shapes: story-scoped list/
 // create, and flat id-addressed update/delete for edges — edge id is a global UUID). See
 // server/index.ts's mount line.

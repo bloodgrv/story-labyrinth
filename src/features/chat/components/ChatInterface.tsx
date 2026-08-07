@@ -46,6 +46,8 @@ import { ProposalCard } from "./ProposalCard";
 import { ProseProposalCard } from "./ProseProposalCard";
 import { PsychProposalCard } from "./PsychProposalCard";
 import { PlaceSheetProposalCard } from "./PlaceSheetProposalCard";
+import { MapSketchProposalCard } from "./MapSketchProposalCard";
+import { useResolveOrCreateMapForLocationMutation } from "@/features/story-maps/hooks/useStoryMapsQuery";
 import { useCreateChatMutation, useUpdateChatMutation } from "../hooks/useChatQuery";
 import { useChatMessageGeneration } from "../hooks/useChatMessageGeneration";
 import { useChatSystemPrompt } from "../hooks/useChatSystemPrompt";
@@ -63,6 +65,7 @@ import type {
 } from "../services/parseOutlineProposals";
 import type { ParsedPsychProposal } from "../services/parsePsychProposal";
 import type { PlaceState } from "@/types/story";
+import type { MapSketchProposal } from "@/types/storyMaps";
 
 type NonCreateOutlineProposal = ParsedOutlineEditProposal | ParsedOutlineReorderProposal | ParsedOutlineDeleteProposal;
 
@@ -125,7 +128,7 @@ export function ChatInterface({
     focusedNoteId,
     guidedSetup
 }: ChatInterfaceProps) {
-    const { currentChapterId, setPendingChatComposerSeed, setCurrentTool, setPendingShuttleSeed, chatDrafts, setChatDraft } =
+    const { currentChapterId, setPendingChatComposerSeed, setCurrentTool, setPendingShuttleSeed, setPendingMapSketch, chatDrafts, setChatDraft } =
         useStoryContext();
     const [input, setInputState] = useState(() => chatDrafts[selectedChat.id] ?? "");
     // Mirrors every keystroke into StoryContext so an in-progress, unsent message survives a
@@ -626,6 +629,16 @@ export function ChatInterface({
     // fence pathway already uses, see useChatMessageGeneration.ts).
     const createCodexProposalMutation = useCreateProposalMutation();
 
+    // MV5, docs/Maps_V2_Sketch_Design.md — Locations template's sketch-canvas proposal. Same
+    // ephemeral-state posture as placeSheetProposals above; only ever populated for WB chats since
+    // chatContextService.ts's MAP_SKETCH_INSTRUCTIONS is only ever included when
+    // templateSlug === "locations". Accept doesn't merge locally like psych/place-sheet — it
+    // resolves/creates the anchor entry's map (a real async round-trip, unlike the synchronous
+    // metadata merges above) and hands the raw skeleton off via StoryContext, then navigates to
+    // the Maps tool — see handleAcceptMapSketch below.
+    const [mapSketchProposals, setMapSketchProposals] = useState<Record<string, MapSketchProposal>>({});
+    const resolveOrCreateMapMutation = useResolveOrCreateMapForLocationMutation(storyId ?? "");
+
     // NG6 — same ephemeral-state posture as psychProposals above. No accept/reject dismissal to
     // track: NameProposalCard itself runs the real generate call and owns its own results state.
     const [nameProposals, setNameProposals] = useState<Record<string, ParsedNameProposal>>({});
@@ -808,6 +821,7 @@ export function ChatInterface({
         },
         onPsychProposal: (messageId, proposal) => setPsychProposals(prev => ({ ...prev, [messageId]: proposal })),
         onPlaceSheetProposal: (messageId, proposal) => setPlaceSheetProposals(prev => ({ ...prev, [messageId]: proposal })),
+        onMapSketchProposal: (messageId, proposal) => setMapSketchProposals(prev => ({ ...prev, [messageId]: proposal })),
         onNameProposal: (messageId, proposal) => setNameProposals(prev => ({ ...prev, [messageId]: proposal })),
         // Notes chats only (P0.4 K2/K4) — same "persist immediately as a durable checklist row"
         // posture as onOverviewProposal/onHandoffPackets above; NotesChecklistTray.tsx handles the
@@ -1002,6 +1016,38 @@ export function ChatInterface({
             });
         }
         dismissPlaceSheetProposal(messageId);
+    };
+
+    const dismissMapSketchProposal = (messageId: string) =>
+        setMapSketchProposals(prev => {
+            const next = { ...prev };
+            delete next[messageId];
+            return next;
+        });
+
+    // MV5 — unlike handleAcceptPsych/handleAcceptPlaceSheet above (synchronous metadata merges),
+    // this needs a real round-trip first: find-or-create the anchor location's map (same logic
+    // OpenMapButton.tsx's MV3 flow already established, just as an awaitable mutation), THEN hand
+    // the raw element skeleton off via a one-shot StoryContext pointer and switch tools —
+    // MapsTool.tsx picks it up and MapCanvas.tsx (inside its own lazy chunk) is the only place
+    // `convertToExcalidrawElements` ever actually runs. The proposal card's Accept button stays
+    // disabled while this is in flight (see the render gate below) so a slow connection can't
+    // produce a double-create.
+    const handleAcceptMapSketch = (messageId: string) => {
+        const proposal = mapSketchProposals[messageId];
+        const entryId = selectedChat.anchorEntryId;
+        if (!proposal || !entryId || !storyId) return;
+        const entry = entryLookup.get(entryId);
+        resolveOrCreateMapMutation.mutate(
+            { locationId: entryId, title: proposal.title || entry?.name || "Untitled location" },
+            {
+                onSuccess: map => {
+                    setPendingMapSketch({ mapId: map.id, elements: proposal.elements });
+                    setCurrentTool("story-map");
+                }
+            }
+        );
+        dismissMapSketchProposal(messageId);
     };
 
     // N5 (Notes_Outline_Chat_Bridges_Design.md §4) — manual "Save message as note". Reuses
@@ -1512,6 +1558,7 @@ export function ChatInterface({
                     const outlineProposalsForMessage = outlineProposals[messageId];
                     const psychProposal = psychProposals[messageId];
                     const placeSheetProposal = placeSheetProposals[messageId];
+                    const mapSketchProposal = mapSketchProposals[messageId];
                     const nameProposal = storyId ? nameProposals[messageId] : undefined;
                     if (
                         !proposals?.length &&
@@ -1520,6 +1567,7 @@ export function ChatInterface({
                         !outlineProposalsForMessage?.length &&
                         !psychProposal &&
                         !placeSheetProposal &&
+                        !mapSketchProposal &&
                         !nameProposal
                     )
                         return null;
@@ -1573,6 +1621,13 @@ export function ChatInterface({
                                     proposal={placeSheetProposal}
                                     onAccept={() => handleAcceptPlaceSheet(messageId)}
                                     onReject={() => dismissPlaceSheetProposal(messageId)}
+                                />
+                            )}
+                            {isWorldBuildingChat && mapSketchProposal && (
+                                <MapSketchProposalCard
+                                    proposal={mapSketchProposal}
+                                    onAccept={() => handleAcceptMapSketch(messageId)}
+                                    onReject={() => dismissMapSketchProposal(messageId)}
                                 />
                             )}
                             {nameProposal && storyId && (

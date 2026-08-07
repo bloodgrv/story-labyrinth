@@ -471,6 +471,36 @@ const PLACE_SHEET_INSTRUCTIONS =
     "```\n\n" +
     "Propose at most one place-sheet-proposal per reply.";
 
+// MV5, docs/Maps_V2_Sketch_Design.md — sketch-canvas proposals for the Locations template's linked
+// map (a boxes-and-labels Excalidraw scene, distinct from the place sheet above). Always on for
+// the locations template like PLACE_SHEET_INSTRUCTIONS, but only ever fires on explicit request
+// (see the instruction text) since unlike a place sheet, accepting a sketch replaces the whole
+// existing canvas — an unsolicited proposal would risk clobbering real drawing work. The model
+// emits an Excalidraw Element Skeleton directly (implementation clarification c,
+// docs/Maps_V2_Sketch_Design.md) — parsed client-side (parseMapSketchProposal.ts) into an
+// ephemeral accept/reject card; Accept resolves/creates the anchor entry's map and hands the raw
+// skeleton to MapCanvas.tsx, which is the only place `convertToExcalidrawElements` ever actually
+// runs (keeps Excalidraw's runtime out of the chat's own eager bundle).
+const MAP_SKETCH_INSTRUCTIONS =
+    "This location can also have a hand-drawn sketch map (a room, building, or region layout) — a " +
+    "boxes-and-labels diagram, not a precise architectural drawing. Only propose one when the user " +
+    "actually asks you to sketch, draw, or lay out the place; never propose one unsolicited, since " +
+    "accepting one REPLACES any existing sketch for this location.\n\n" +
+    "To propose a sketch, include a fenced block in this exact form:\n\n" +
+    "```map-sketch-proposal\n" +
+    '{"title": "short map title", "elements": [' +
+    '{"type": "rectangle", "x": 0, "y": 0, "width": 120, "height": 80, "label": "Entry hall"}, ' +
+    '{"type": "text", "x": 0, "y": 100, "text": "free-floating label"}, ' +
+    '{"type": "arrow", "x": 0, "y": 0, "points": [[0, 0], [120, 0]]}' +
+    "]}\n" +
+    "```\n\n" +
+    'Valid "type" values: rectangle, ellipse, diamond, text, arrow, line. x/y is each element\'s ' +
+    "top-left corner, roughly within a 0-900 by 0-600 area (a larger scene can extend further) — " +
+    'lay elements out so they don\'t overlap. A rectangle/ellipse/diamond can carry a "label" ' +
+    '(text centered inside the shape); a standalone "text" element uses "text" instead. "arrow"/' +
+    '"line" elements use "points" (an array of [x, y] pairs relative to their own x/y) instead of ' +
+    "width/height. Propose at most one map-sketch-proposal per reply, with at least 2 elements.";
+
 // Assemble the effective system prompt for a chat: chat-type framing + template hint (World-
 // Building only). Extend the framing constants above — not the template catalogue — when
 // adding further global system instructions.
@@ -514,7 +544,7 @@ const buildSystemPrompt = (
     const base = template?.systemPromptHint ? `${WORLDBUILDING_FRAMING}\n\n${template.systemPromptHint}` : WORLDBUILDING_FRAMING;
     const withStyle = base + resolveStyleHint(WB_STYLE_HINTS, style);
     if (templateSlug === "character_codex" && includePsychModule) return `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}${regionsAddendum}`;
-    if (templateSlug === "locations") return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}${regionsAddendum}`;
+    if (templateSlug === "locations") return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}\n\n${MAP_SKETCH_INSTRUCTIONS}${regionsAddendum}`;
     return withStyle + regionsAddendum;
 };
 

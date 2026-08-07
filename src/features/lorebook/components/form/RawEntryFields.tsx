@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { OpenMapButton } from "@/features/story-maps/components/OpenMapButton";
 import { useNaturalEntryView } from "@/lib/useNaturalEntryView";
 import { CATEGORIES, IMPORTANCE_LEVELS } from "./entryFormUtils";
 import type { CreateEntryForm, LorebookCategory } from "./entryFormUtils";
@@ -35,6 +36,7 @@ export function RawEntryFields({ control, tagInput, selectedCategory, entryId, s
     // L4 — locations have two tiers: PlaceSheetFields (unversioned) until codexEnabled, then
     // PlaceCodexStateEditor (versioned) takes over. See PlaceCodexStateEditor.tsx's own comment.
     const codexEnabled = useWatch({ control, name: "codexEnabled" });
+    const name = useWatch({ control, name: "name" });
 
     return (
         <>
@@ -104,6 +106,14 @@ export function RawEntryFields({ control, tagInput, selectedCategory, entryId, s
             />
 
             {selectedCategory === "character" && <CodexStateEditor control={control} />}
+            {/* MV3, docs/Maps_V2_Sketch_Design.md — "from location Open map" create flow. Orthogonal
+                to codexEnabled/L4 place-Codex versioning (a map link isn't Codex state), so it's not
+                gated behind !codexEnabled the way PlaceSheetFields below is. Needs a saved entryId
+                (a brand-new unsaved entry can't be a map's locationId yet, same guard
+                LorebookReworkButton uses for its own entryId-gated affordance) and storyId. */}
+            {selectedCategory === "location" && entryId && storyId && (
+                <OpenMapButton storyId={storyId} locationId={entryId} locationName={name || "Untitled location"} />
+            )}
             {selectedCategory === "location" && !codexEnabled && <PlaceSheetFields control={control} />}
             {/* PlaceCodexStateEditor renders unconditionally for locations (mirrors CodexStateEditor's
                 own always-rendered pattern for character) — its "Track Place State" switch is the

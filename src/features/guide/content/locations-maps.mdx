@@ -1,6 +1,6 @@
 # Locations & Maps
 
-Location entries in the Lorebook get their own guided setup script, a lightweight "place sheet" of structured details, an optional Story Map showing how places connect spatially, and — if you need it — the same versioned Codex tracking Character entries use.
+Location entries in the Lorebook get their own guided setup script, a lightweight "place sheet" of structured details, a sketch-canvas **Maps** tool for actually drawing a place, and — if you need it — the same versioned Codex tracking Character entries use.
 
 > [!NOTE]
 > None of this is required. A location entry works exactly like any other Lorebook entry if you never touch these features — they're opt-in layers on top.
@@ -20,27 +20,33 @@ You can fill these in by hand, or a World-Building chat can propose them for you
 > [!TIP]
 > The **Image brief** field feeds the **Map** image preset (alongside the usual **Mood** preset) when generating a location's image — it produces a top-down/reference-style image instead of a mood illustration.
 
-## 3. Story Map
+## 3. Maps — sketch canvases
 
-_Path: **Story Map** in the left sidebar_
+_Path: **Maps** in the left sidebar_
 
-A spatial diagram of how your locations relate to each other — separate from the **Relations** graph, which tracks factual/social relationships between any entries. Story Map edges describe physical/spatial layout instead:
+A hand-drawn, boxes-and-labels sketch canvas — a safehouse floor plan, a city, a whole continent, whatever scale you need. This is a different job from **Relations** (which tracks factual/social connections between any two entries) — Maps is for actually drawing a place.
 
-| Edge type    | Meaning                          |
-| ------------ | --------------------------------- |
-| Contains     | One location is nested inside another (e.g. a room inside a building) |
-| Borders      | Two locations are adjacent        |
-| Road To      | A route connects two locations    |
-| Portal To    | A non-physical connection (magic, teleportation, etc.) |
-| Below / Above | Vertical relationship (e.g. floors in the same building) |
-| Other        | Anything that doesn't fit the above |
+**Maps** opens on a list of the story's sketch maps. **New map** creates one — either a free-standing story map (not tied to any location, good for a "front lines" theater map or anything that doesn't map to a single Lorebook entry) or one linked to an existing location. A location entry's own editor also has an **Open map** button: it opens that location's linked map, or creates one on the spot if it doesn't have one yet.
 
-Click a location node to open its side panel, then **Add map link** to connect it to another location — pick **From**, **To**, **Type**, and optionally a short **Label** and **Description**. Locations with a **Floor** value on their place sheet show a small floor badge on their node. Use **Focus on region** (or a node's own **Focus on this region** button) to walk a location's `Contains` tree instead of viewing the whole map at once.
+Click into a map to reach the canvas itself — a full [Excalidraw](https://excalidraw.com)-based sketch tool: rectangles, ellipses, diamonds, arrows, lines, freehand drawing, and text, with native undo/redo (Ctrl+Z / Ctrl+Shift+Z, or the toolbar buttons). Everything autosaves as you draw — there's no save button.
 
-**Export as image** saves the current view as a PNG — an illustration only, it's never re-imported. Story Map data (locations, links, and their layout) round-trips through story export/import.
+At the top of a map's canvas:
+
+| Button | What it does |
+| --- | --- |
+| **Export to place sheet** (location-linked maps) / **Copy as text** (free maps) | Summarizes the current sketch as a short text list (what's on the canvas, roughly top-to-bottom) — either written into the linked location's **Layout** place-sheet field, or copied to your clipboard |
+| **Download PNG** | Saves the current sketch as an image — an illustration only, never re-imported as the map's real data |
+| Trash icon | Deletes the map (and its sketch) permanently |
+
+> [!TIP]
+> If a location already has text in its **Layout** place-sheet field (see §2 above) when you first open its (still-empty) linked map, you'll be offered a one-time **Convert to sketch** choice — it drops that existing text onto the canvas as a starting point rather than making you retype it. Choosing **Start blank canvas** instead just skips it for now; the offer reappears next time you open that same still-empty map, so nothing is lost either way.
+
+### AI-sketched maps
+
+A location's own World-Building chat can propose a sketch for you — ask in plain language ("sketch the safehouse: entry hall, bolt-hole, alley exit") and, if it has enough to go on, the reply includes a **Sketch map** card summarizing what it drew (title, element count, a short preview). **Accept** creates (or replaces the sketch on) that location's linked map and takes you straight to the canvas so you can nudge things into place; **Reject** discards it. Accepting **replaces the entire current sketch** — the AI proposes a whole scene, not a patch, so accept a proposal only when you're fine starting over from it. This only works for location-linked maps (a chat needs something to anchor to); free story maps don't have an AI-propose option.
 
 > [!NOTE]
-> If Story Map is empty, add some location entries in the Lorebook tool first, then come back — nodes are created from your existing Lorebook location entries, not from the Story Map tool itself.
+> If the Maps list is empty for a story, that's normal — sketch maps don't exist until you create one (via **New map**, or a location's **Open map** / an AI sketch proposal's Accept). Nothing is auto-generated from your Lorebook entries.
 
 ## 4. Tracking Full Place-Codex State
 
@@ -50,11 +56,12 @@ For locations that matter enough to need real edit history — the way Character
 
 | Problem                                        | What's happening                                                                          |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| Story Map shows no locations                     | Add location-category entries in the Lorebook first — Story Map reads from existing Lorebook entries |
+| Maps list is empty                                | Normal until you create a map — nothing is auto-generated from Lorebook entries; use **New map** or a location's **Open map** |
+| "Export to place sheet" / "Copy as text" says nothing to export | Draw something on the canvas first — an empty sketch has nothing to summarize |
+| A sketch proposal's Accept overwrote my drawing   | Accepting an AI sketch proposal always replaces the map's entire current sketch, by design — the card's own text warns about this before you click Accept |
 | Place sheet changes didn't take effect right away | Check whether **Track Place State** is on — once it is, changes go through Approve/Reject like Character Codex, they don't apply instantly |
 | "Track Place State" switch seems to do nothing at first | It only affects future place-sheet edits (manual and chat-proposed) — existing values are carried over automatically |
-| Map export button seems stuck                    | Image export can occasionally hang in unusual browser configurations — it will time out and show an error rather than staying stuck forever; try again |
 
 ---
 
-Place sheets, Track Place State, and Story Map links all save to your story like any other Lorebook/Codex data — no separate export step needed beyond the normal story export.
+Place sheets, Track Place State, and sketch maps all save to your story like any other Lorebook data — no separate export step needed beyond the normal story export (which includes your maps' sketches).

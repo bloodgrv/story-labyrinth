@@ -24,8 +24,10 @@ import { parseProseProposal } from "../services/parseProseProposal";
 import type { ParsedPsychProposal } from "../services/parsePsychProposal";
 import { parsePsychProposal } from "../services/parsePsychProposal";
 import { parsePlaceSheetProposal } from "../services/parsePlaceSheetProposal";
+import { parseMapSketchProposal } from "../services/parseMapSketchProposal";
 import { parseShuttleProposal } from "../services/parseShuttleProposal";
 import type { PlaceState } from "@/types/story";
+import type { MapSketchProposal } from "@/types/storyMaps";
 import { useApproveProposalMutation, useCreateProposalMutation } from "./useCodexProposalsQuery";
 import type { HandoffPacket, NoteSplitProposalPayload, OverviewProposalPayload, ShuttlePayload } from "@/types/brainstorm";
 
@@ -70,6 +72,10 @@ interface UseChatMessageGenerationParams {
     // only, L1 — see chatContextService.ts's PLACE_SHEET_INSTRUCTIONS). Not persisted server-side
     // — ephemeral until Accept merges it into the anchor entry's own metadata.placeState.
     onPlaceSheetProposal?: (messageId: string, proposal: PlaceState) => void;
+    // Called when a reply contains a ```map-sketch-proposal block (WB Locations-template chats
+    // only, MV5 — see chatContextService.ts's MAP_SKETCH_INSTRUCTIONS). Not persisted server-side
+    // — ephemeral until Accept resolves/creates the anchor location's map and applies it.
+    onMapSketchProposal?: (messageId: string, proposal: MapSketchProposal) => void;
     // Called when a reply contains a ```note-split-proposal block (Notes chats only, P0.4 K2 —
     // see chatContextService.ts's NOTE_SPLIT_PROPOSAL_INSTRUCTIONS). Same "persist immediately as
     // a durable brainstormChecklist row" posture as onOverviewProposal/onHandoffPackets above.
@@ -126,6 +132,7 @@ export const useChatMessageGeneration = ({
     onHandoffPackets,
     onPsychProposal,
     onPlaceSheetProposal,
+    onMapSketchProposal,
     onNoteSplitProposal,
     onShuttleProposal,
     onNameProposal,
@@ -193,7 +200,8 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterSplitStrip, proposal: noteSplitProposal } = parseNoteSplitProposal(afterHandoffStrip);
                 const { cleanedContent: afterPsychStrip, psychProposal } = parsePsychProposal(afterSplitStrip);
                 const { cleanedContent: afterPlaceSheetStrip, placeSheetProposal } = parsePlaceSheetProposal(afterPsychStrip);
-                const { cleanedContent: afterShuttleStrip, proposal: shuttleProposal } = parseShuttleProposal(afterPlaceSheetStrip);
+                const { cleanedContent: afterMapSketchStrip, mapSketchProposal } = parseMapSketchProposal(afterPlaceSheetStrip);
+                const { cleanedContent: afterShuttleStrip, proposal: shuttleProposal } = parseShuttleProposal(afterMapSketchStrip);
                 const { cleanedContent, proposal: nameProposal } = parseNameProposal(afterShuttleStrip);
 
                 // A reply that's ENTIRELY a fenced block (no conversational wrapper at all) strips
@@ -258,6 +266,7 @@ export const useChatMessageGeneration = ({
                 if (noteSplitProposal && assistantMessage) onNoteSplitProposal?.(assistantMessage.id, noteSplitProposal);
                 if (psychProposal && assistantMessage) onPsychProposal?.(assistantMessage.id, psychProposal);
                 if (placeSheetProposal && assistantMessage) onPlaceSheetProposal?.(assistantMessage.id, placeSheetProposal);
+                if (mapSketchProposal && assistantMessage) onMapSketchProposal?.(assistantMessage.id, mapSketchProposal);
                 if (shuttleProposal && assistantMessage) onShuttleProposal?.(assistantMessage.id, shuttleProposal);
                 if (nameProposal && assistantMessage) onNameProposal?.(assistantMessage.id, nameProposal);
             });
@@ -288,6 +297,7 @@ export const useChatMessageGeneration = ({
             onHandoffPackets,
             onPsychProposal,
             onPlaceSheetProposal,
+            onMapSketchProposal,
             onNoteSplitProposal,
             onShuttleProposal,
             onNameProposal,

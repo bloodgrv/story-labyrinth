@@ -39,6 +39,7 @@ export { playbookPacksApi } from "./playbookPacksClient";
 export { ragApi } from "./ragClient";
 export { storyGraphApi } from "./storyGraphClient";
 export { storyMapApi } from "./storyMapClient";
+export { storyMapsApi } from "./storyMapsClient";
 export { ttsApi } from "./ttsClient";
 export { usersApi } from "./usersClient";
 

@@ -4,6 +4,7 @@ import { BrainstormTool } from "./tools/BrainstormTool";
 import { ChaptersTool } from "./tools/ChaptersTool";
 import { EditorTool } from "./tools/EditorTool";
 import { LorebookTool } from "./tools/LorebookTool";
+import { MapsTool } from "./tools/MapsTool";
 import { NameGeneratorTool } from "./tools/NameGeneratorTool";
 import { NotesTool } from "./tools/NotesTool";
 import { OutlineTool } from "./tools/OutlineTool";
@@ -14,7 +15,6 @@ import { RagScannerTool } from "./tools/RagScannerTool";
 import { ResearchTool } from "./tools/ResearchTool";
 import { StoriesTool } from "./tools/StoriesTool";
 import { StoryGraphTool } from "./tools/StoryGraphTool";
-import { StoryMapTool } from "./tools/StoryMapTool";
 import { UsersTool } from "./tools/UsersTool";
 
 
@@ -50,7 +50,7 @@ export const MainContent = () => {
             case "relationships":
                 return <StoryGraphTool />;
             case "story-map":
-                return <StoryMapTool />;
+                return <MapsTool />;
             case "scanner":
                 return <RagScannerTool />;
             case "playbooks":
@@ -74,7 +74,10 @@ export const MainContent = () => {
     // within, so it scrolled the page-level `main` itself instead — dragging the chat list
     // sidebar off-screen along with it every time a message arrived. Relationships joins this
     // group for the same reason: React Flow's canvas needs a real bounded viewport to pan/zoom
-    // within, not a wrapper that grows to match content.
+    // within, not a wrapper that grows to match content. "story-map" (Maps v2) rejoins this group
+    // as of MV2 for the same reason — MapDetailPanel.tsx now embeds an Excalidraw canvas, which
+    // fills its parent's height rather than growing to match content; MapsListPanel.tsx (the list
+    // view, no canvas) manages its own internal scroll region within the bounded shell instead.
     const needsBoundedHeight =
         currentTool === "editor" ||
         currentTool === "outline" ||

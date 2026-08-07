@@ -18,6 +18,7 @@ import { resolveLorebookFolderId } from "../services/folderService.js";
 import { indexLorebookEntry, removeEntityFromIndex } from "../services/ragIndexService.js";
 import { deleteEdgesForEntity } from "../services/storyGraphService.js";
 import { deleteMapEdgesForEntity, deleteMapLayoutForEntity } from "../services/storyMapService.js";
+import { unlinkMapsForLocation } from "../services/storyMapsService.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -423,8 +424,9 @@ export default createCrudRouter({
 
         // DELETE /lorebook/:id - overrides the generic CRUD delete (customRoutes are registered
         // before the generic routes, see server/lib/crud.ts) to also delete the entry's image
-        // file, remove it from the RAG index, and remove its story-graph edges and story-map
-        // edges/layout (L3), so deleting an entry never orphans any of those.
+        // file, remove it from the RAG index, remove its story-graph edges and story-map
+        // edges/layout (L3), and unlink (not delete) any Maps v2 sketch document pointed at it, so
+        // deleting an entry never orphans any of those.
         router.delete(
             "/:id",
             asyncHandler(async (req, res) => {
@@ -435,6 +437,7 @@ export default createCrudRouter({
                 await deleteEdgesForEntity(req.params.id);
                 await deleteMapEdgesForEntity(req.params.id);
                 await deleteMapLayoutForEntity(req.params.id);
+                await unlinkMapsForLocation(req.params.id);
                 res.json({ success: true });
             })
         );

@@ -18,6 +18,10 @@ import { attemptPromise } from "@jfdi/attempt";
 import { toPng } from "html-to-image";
 import { Download, Loader2, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+
+// SOFT-DEPRECATED, UNREACHABLE (Maps v2 MV1/MV7, docs/Maps_V2_Sketch_Design.md decision #8) — only
+// StoryMapTool.tsx (itself unreachable) imports this. Left on disk deliberately, not deleted; do
+// not build new features on top of it — see features/story-maps/ (Maps v2) instead.
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

@@ -17,6 +17,7 @@ type ImportedOutlineItemCharacter = InferSelectModel<typeof schema.outlineItemCh
 type ImportedOrgFolder = InferSelectModel<typeof schema.orgFolders>;
 type ImportedStoryMapEdge = InferSelectModel<typeof schema.storyMapEdges>;
 type ImportedStoryMapLayout = InferSelectModel<typeof schema.storyMapLayout>;
+type ImportedStoryMap = InferSelectModel<typeof schema.storyMaps>;
 type ImportedPlaybookPack = InferSelectModel<typeof schema.playbookPacks>;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -62,6 +63,7 @@ export default createCrudRouter({
                         orgFolders,
                         storyMapEdges,
                         storyMapLayout,
+                        storyMaps,
                         playbookPacks
                     ] = await Promise.all([
                         db.select().from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
@@ -82,6 +84,10 @@ export default createCrudRouter({
                         // for decision — this establishes the technique if that's wanted later).
                         db.select().from(schema.storyMapEdges).where(eq(schema.storyMapEdges.storyId, storyId)),
                         db.select().from(schema.storyMapLayout).where(eq(schema.storyMapLayout.storyId, storyId)),
+                        // Maps v2 (MV0, docs/Maps_V2_Sketch_Design.md) — sketch-canvas documents.
+                        // thumbnailFilename intentionally stays out of the export JSON (no binary
+                        // ever ships, same posture as RAG chunks) — see the import block below.
+                        db.select().from(schema.storyMaps).where(eq(schema.storyMaps.storyId, storyId)),
                         // Playbook Packs (Character Guided Playbook Packs, PP5) — story-scoped rows
                         // only; global/shipped packs deliberately excluded (same posture as global
                         // lorebook entries), round-trip only via /api/playbook-packs/global/export|import.
@@ -106,6 +112,7 @@ export default createCrudRouter({
                         orgFolders,
                         storyMapEdges,
                         storyMapLayout,
+                        storyMaps,
                         playbookPacks
                     };
                 });
@@ -297,6 +304,26 @@ export default createCrudRouter({
                             })
                             .filter((position): position is NonNullable<typeof position> => position !== null);
                         if (newLayout.length > 0) await db.insert(schema.storyMapLayout).values(newLayout);
+                    }
+
+                    // Maps v2 (MV0, docs/Maps_V2_Sketch_Design.md) — new id, storyId remapped.
+                    // locationId is optional ownership (decision #6), so unlike storyMapEdges above
+                    // a map whose location didn't survive this export isn't skipped — it's imported
+                    // as a free-standing map instead, same "unlink, don't destroy" call
+                    // unlinkMapsForLocation makes on a live location delete. thumbnailFilename never
+                    // shipped in the export (no binary in story JSON), so it's always nulled here —
+                    // regenerated next time the map is opened/saved.
+                    if (storyData.storyMaps?.length) {
+                        const newMaps = (storyData.storyMaps as ImportedStoryMap[]).map(map => ({
+                            ...map,
+                            id: crypto.randomUUID(),
+                            storyId: newStoryId,
+                            locationId: map.locationId ? (idMap.get(map.locationId) ?? null) : null,
+                            thumbnailFilename: null,
+                            createdAt: new Date(),
+                            updatedAt: new Date()
+                        }));
+                        await db.insert(schema.storyMaps).values(newMaps);
                     }
 
                     if (storyData.aiChats?.length) {

@@ -393,6 +393,13 @@
       "when": 1785979744287,
       "tag": "0055_slow_doctor_doom",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "6",
+      "when": 1786070631945,
+      "tag": "0056_absent_photon",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import type { LorebookEntry } from "@/types/story";
+import type { MapSketchElementSkeleton } from "@/types/storyMaps";
 
 export type WorkspaceTool =
     | "stories"
@@ -52,6 +53,17 @@ interface StoryContextType {
     // unchanged (decision #4: "Brainstorm keeps existing handoff model").
     pendingShuttleSeed: { originChatId: string; shuttleItemId: string; text: string } | null;
     setPendingShuttleSeed: (seed: { originChatId: string; shuttleItemId: string; text: string } | null) => void;
+    // Maps v2 (MV3) — same one-shot posture as pendingLorebookEntryId, for a location lore
+    // entry's "Open map" affordance (RawEntryFields.tsx's OpenMapButton) to jump straight to a
+    // specific map after switching to the Maps tool, consumed once by MapsTool.tsx then cleared.
+    pendingMapId: string | null;
+    setPendingMapId: (id: string | null) => void;
+    // MV5 — the "Accept" path for a ```map-sketch-proposal chat fence (RawEntryFields' WB chat,
+    // gated to the locations template). Same one-shot posture as pendingMapId, but also carries
+    // the raw element skeleton the model proposed — MapsTool.tsx consumes both together (open this
+    // map AND seed it with this skeleton), clearing this whenever pendingMapId would also clear.
+    pendingMapSketch: { mapId: string; elements: MapSketchElementSkeleton[] } | null;
+    setPendingMapSketch: (sketch: { mapId: string; elements: MapSketchElementSkeleton[] } | null) => void;
     // In-progress (unsent) chat composer text, keyed by chat id. Lives here rather than in
     // ChatInterface's own state because switching workspace tools (e.g. Editor -> Lorebook and
     // back) unmounts/remounts ChatInterface — a plain useState there loses whatever the user was
@@ -105,6 +117,8 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     const [pendingLorebookSeed, setPendingLorebookSeed] = useState<StoryContextType["pendingLorebookSeed"]>(null);
     const [pendingChatComposerSeed, setPendingChatComposerSeed] = useState<StoryContextType["pendingChatComposerSeed"]>(null);
     const [pendingShuttleSeed, setPendingShuttleSeed] = useState<StoryContextType["pendingShuttleSeed"]>(null);
+    const [pendingMapId, setPendingMapId] = useState<string | null>(null);
+    const [pendingMapSketch, setPendingMapSketch] = useState<StoryContextType["pendingMapSketch"]>(null);
     const [chatDrafts, setChatDrafts] = useState<Record<string, string>>(loadPersistedChatDrafts);
     const setChatDraft = (chatId: string, text: string) =>
         setChatDrafts(prev => (text ? { ...prev, [chatId]: text } : Object.fromEntries(Object.entries(prev).filter(([id]) => id !== chatId))));
@@ -186,6 +200,10 @@ export function StoryProvider({ children }: { children: ReactNode }) {
                 setPendingChatComposerSeed,
                 pendingShuttleSeed,
                 setPendingShuttleSeed,
+                pendingMapId,
+                setPendingMapId,
+                pendingMapSketch,
+                setPendingMapSketch,
                 chatDrafts,
                 setChatDraft,
                 chapterContentRefreshToken,
