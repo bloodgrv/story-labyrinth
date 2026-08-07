@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { storyTimelineApi } from "@/services/api/client";
-import type { PinLinkType, StoryTimeline, TimelinePin } from "@/types/storyTimeline";
+import type { PinLinkType, StoryTimeline, TimelineMembership, TimelinePin } from "@/types/storyTimeline";
 
-// Story Timeline (T6, TL0-TL4, docs/Story_Timeline_Design.md) — mirrors
+// Story Timeline (T6, TL0-TL6, docs/Story_Timeline_Design.md) — mirrors
 // story-maps/hooks/useStoryMapsQuery.ts's key-factory/invalidate pattern.
 export const storyTimelineKeys = {
     all: ["storyTimelines"] as const,
@@ -36,6 +36,19 @@ export const usePinForLinkQuery = (storyId: string | null, linkType: PinLinkType
         enabled: !!storyId && !!linkType && !!linkId
     });
 
+// TL5 — board switcher's "New timeline" action.
+export const useCreateTimelineMutation = (storyId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (title: string) => storyTimelineApi.createTimeline(storyId, title),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: storyTimelineKeys.timelines(storyId) });
+            toast.success("Timeline created");
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to create timeline")
+    });
+};
+
 export const useUpdateTimelineMutation = (storyId: string) => {
     const queryClient = useQueryClient();
     return useMutation({
@@ -43,6 +56,21 @@ export const useUpdateTimelineMutation = (storyId: string) => {
             storyTimelineApi.updateTimeline(id, data),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: storyTimelineKeys.timelines(storyId) }),
         onError: (error: Error) => toast.error(error.message || "Failed to update timeline")
+    });
+};
+
+// TL5 — deleting a named timeline (spine delete is blocked server-side). Also invalidates pins
+// (deleteTimeline may have re-homed exclusively-owned pins onto Spine).
+export const useDeleteTimelineMutation = (storyId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => storyTimelineApi.deleteTimeline(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: storyTimelineKeys.timelines(storyId) });
+            queryClient.invalidateQueries({ queryKey: storyTimelineKeys.pins(storyId) });
+            toast.success("Timeline deleted");
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to delete timeline")
     });
 };
 
@@ -86,4 +114,26 @@ export const useDeletePinMutation = (storyId: string) => {
     });
 };
 
-export type { StoryTimeline, TimelinePin };
+// TL5 — PinMembershipPopover.tsx's per-timeline checkbox/lane control. No dedicated success toast
+// (the popover itself gives immediate visual feedback via checkbox state; a toast per checkbox
+// click would be noisy).
+export const useAddMembershipMutation = (storyId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ pinId, timelineId, laneId }: { pinId: string; timelineId: string; laneId?: string | null }) =>
+            storyTimelineApi.addMembership(pinId, timelineId, laneId),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: storyTimelineKeys.pins(storyId) }),
+        onError: (error: Error) => toast.error(error.message || "Failed to update timeline placement")
+    });
+};
+
+export const useRemoveMembershipMutation = (storyId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ pinId, timelineId }: { pinId: string; timelineId: string }) => storyTimelineApi.removeMembership(pinId, timelineId),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: storyTimelineKeys.pins(storyId) }),
+        onError: (error: Error) => toast.error(error.message || "Failed to update timeline placement")
+    });
+};
+
+export type { StoryTimeline, TimelineMembership, TimelinePin };

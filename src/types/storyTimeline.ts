@@ -1,7 +1,7 @@
-// Story Timeline (T6, TL0-TL4, docs/Story_Timeline_Design.md) — in-world chronology board, the
-// time twin of Story Maps (src/types/storyMaps.ts). Three domain shapes: timelines (spine + future
-// named ones, TL5), pins (story-scoped SoT — a pin exists independent of which timeline(s) show
-// it), memberships (join, a pin can appear on multiple timelines without duplicate drifting copies).
+// Story Timeline (T6, TL0-TL6, docs/Story_Timeline_Design.md) — in-world chronology board, the
+// time twin of Story Maps (src/types/storyMaps.ts). Three domain shapes: timelines (spine + named
+// ones, TL5), pins (story-scoped SoT — a pin exists independent of which timeline(s) show it),
+// memberships (join, a pin can appear on multiple timelines without duplicate drifting copies).
 
 export type TimelineOrientation = "horizontal" | "vertical";
 export type StoryStartMode = "chapter_one" | "manual_pin" | "manual_time";
@@ -23,6 +23,8 @@ export interface StoryTimeline {
     title: string;
     isDefault: boolean;
     orientation: TimelineOrientation;
+    // TL6 — when true, TimelineBoard renders lane rows instead of the plain H|V layout.
+    swimlanesEnabled: boolean;
     storyStartMode: StoryStartMode;
     storyStartChapterId: string | null;
     storyStartPinId: string | null;

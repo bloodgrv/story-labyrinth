@@ -3,7 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import type { PinLinkType, PinWhen, StoryTimeline, TimelineMembership, TimelinePin } from "../../src/types/storyTimeline.js";
 import { db, schema } from "../db/client.js";
 
-// Story Timeline (T6, TL0-TL4, docs/Story_Timeline_Design.md) — schema + CRUD only, no AI propose/
+// Story Timeline (T6, TL0-TL6, docs/Story_Timeline_Design.md) — schema + CRUD, no AI propose/
 // accept (TL7) or scanner hook (TL11) yet. DB access inlined here rather than a separate repository
 // layer, same "small enough not to be worth it" call storyMapsService.ts already made.
 
@@ -25,6 +25,7 @@ const rowToTimeline = (row: TimelineRow): StoryTimeline => ({
     title: row.title,
     isDefault: Boolean(row.isDefault),
     orientation: (row.orientation as StoryTimeline["orientation"]) ?? "horizontal",
+    swimlanesEnabled: Boolean(row.swimlanesEnabled),
     storyStartMode: (row.storyStartMode as StoryTimeline["storyStartMode"]) ?? "chapter_one",
     storyStartChapterId: row.storyStartChapterId ?? null,
     storyStartPinId: row.storyStartPinId ?? null,
@@ -78,6 +79,7 @@ export const ensureSpineTimeline = async (storyId: string): Promise<StoryTimelin
             title: "Spine",
             isDefault: true,
             orientation: "horizontal",
+            swimlanesEnabled: false,
             storyStartMode: "chapter_one",
             storyStartChapterId: firstChapter?.id ?? null,
             storyStartPinId: null,
@@ -95,8 +97,35 @@ export const listTimelinesForStory = async (storyId: string): Promise<StoryTimel
     return rows.map(rowToTimeline);
 };
 
+// TL5 — named timelines, board-first create (the switcher's "New timeline" action). Never
+// isDefault — only ensureSpineTimeline ever creates the one true spine row.
+export const createTimeline = async (storyId: string, title: string): Promise<StoryTimeline> => {
+    const now = new Date();
+    const [row] = await db
+        .insert(schema.storyTimelines)
+        .values({
+            id: randomUUID(),
+            storyId,
+            title,
+            isDefault: false,
+            orientation: "horizontal",
+            swimlanesEnabled: false,
+            storyStartMode: "chapter_one",
+            storyStartChapterId: null,
+            storyStartPinId: null,
+            storyStartManualWhenJson: null,
+            createdAt: now,
+            updatedAt: now
+        })
+        .returning();
+    return rowToTimeline(row);
+};
+
 export type UpdateTimelineInput = Partial<
-    Pick<StoryTimeline, "title" | "orientation" | "storyStartMode" | "storyStartChapterId" | "storyStartPinId" | "storyStartManualWhenJson">
+    Pick<
+        StoryTimeline,
+        "title" | "orientation" | "swimlanesEnabled" | "storyStartMode" | "storyStartChapterId" | "storyStartPinId" | "storyStartManualWhenJson"
+    >
 >;
 
 export const updateTimeline = async (id: string, input: UpdateTimelineInput): Promise<StoryTimeline> => {
@@ -107,6 +136,31 @@ export const updateTimeline = async (id: string, input: UpdateTimelineInput): Pr
         .returning();
     if (!row) throw new Error(`Timeline not found: ${id}`);
     return rowToTimeline(row);
+};
+
+// TL5 — deletes a named timeline. Blocks deleting the spine (a story must always keep one
+// guaranteed board). Before deleting, any pin whose ONLY membership is this timeline gets a Spine
+// membership added first — guarantees a pin can never become orphaned/unreachable by a timeline
+// delete (same "preserve, don't destroy" doctrine as unlinkMapsForLocation/unlinkPinsForSource).
+export const deleteTimeline = async (id: string): Promise<void> => {
+    const [timeline] = await db.select().from(schema.storyTimelines).where(eq(schema.storyTimelines.id, id));
+    if (!timeline) throw new Error(`Timeline not found: ${id}`);
+    if (timeline.isDefault) throw new Error("Cannot delete the spine timeline");
+
+    const memberships = await db.select().from(schema.storyTimelineMemberships).where(eq(schema.storyTimelineMemberships.timelineId, id));
+    if (memberships.length > 0) {
+        const spine = await ensureSpineTimeline(timeline.storyId);
+        for (const membership of memberships) {
+            const otherMemberships = await db
+                .select()
+                .from(schema.storyTimelineMemberships)
+                .where(eq(schema.storyTimelineMemberships.pinId, membership.pinId));
+            const wouldBeOrphaned = otherMemberships.every(m => m.timelineId === id);
+            if (wouldBeOrphaned) await addMembership(membership.pinId, spine.id);
+        }
+    }
+
+    await db.delete(schema.storyTimelines).where(eq(schema.storyTimelines.id, id));
 };
 
 export const listPinsForStory = async (storyId: string): Promise<TimelinePin[]> => {
@@ -196,6 +250,43 @@ export const updatePin = async (id: string, input: UpdatePinInput): Promise<Time
 
 export const deletePin = async (id: string): Promise<void> => {
     await db.delete(schema.storyTimelinePins).where(eq(schema.storyTimelinePins.id, id));
+};
+
+// TL5 — multi-timeline membership (design decision #7: "one pin SoT, multi-timeline membership").
+// Idempotent-ish: if the pin is already a member, returns the existing row rather than erroring
+// (the unique index on (timelineId, pinId) would otherwise throw on a double-click / re-add).
+export const addMembership = async (pinId: string, timelineId: string, laneId?: string | null): Promise<TimelineMembership> => {
+    const [existing] = await db
+        .select()
+        .from(schema.storyTimelineMemberships)
+        .where(and(eq(schema.storyTimelineMemberships.timelineId, timelineId), eq(schema.storyTimelineMemberships.pinId, pinId)));
+    if (existing) {
+        if (laneId === undefined) return rowToMembership(existing);
+        const [updated] = await db
+            .update(schema.storyTimelineMemberships)
+            .set({ laneId })
+            .where(eq(schema.storyTimelineMemberships.id, existing.id))
+            .returning();
+        return rowToMembership(updated);
+    }
+
+    const [row] = await db
+        .insert(schema.storyTimelineMemberships)
+        .values({ id: randomUUID(), timelineId, pinId, laneId: laneId ?? null, createdAt: new Date() })
+        .returning();
+    return rowToMembership(row);
+};
+
+// Blocks removing a pin's LAST remaining membership — a pin with zero memberships would still
+// exist as a DB row but be unreachable from any board (TL0-TL4/TL5 has no story-wide "all pins"
+// browse view). Deleting the pin itself (deletePin) is the correct action for that case instead.
+export const removeMembership = async (pinId: string, timelineId: string): Promise<void> => {
+    const allMemberships = await db.select().from(schema.storyTimelineMemberships).where(eq(schema.storyTimelineMemberships.pinId, pinId));
+    if (allMemberships.length <= 1) throw new Error("A pin must stay on at least one timeline — delete the pin instead");
+
+    await db
+        .delete(schema.storyTimelineMemberships)
+        .where(and(eq(schema.storyTimelineMemberships.timelineId, timelineId), eq(schema.storyTimelineMemberships.pinId, pinId)));
 };
 
 // "Place on timeline" (TL3) — a pin already exists for this exact link, used by

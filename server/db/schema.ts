@@ -592,6 +592,11 @@ export const storyTimelines = sqliteTable(
         isDefault: integer("isDefault", { mode: "boolean" }).notNull().default(false),
         // Per-timeline view pref (decision #5) — "horizontal" | "vertical".
         orientation: text("orientation").notNull().default("horizontal"),
+        // TL6 swimlanes — when on, the board renders lane rows (grouped by
+        // storyTimelineMemberships.laneId for this timeline) instead of the plain H|V layout;
+        // orientation above is ignored while this is true (implementer simplification, see
+        // DECISIONS.md's "Story Timeline — TL5-TL6" entry).
+        swimlanesEnabled: integer("swimlanesEnabled", { mode: "boolean" }).notNull().default(false),
         // Story-start anchor config (decision #11) — "chapter_one" | "manual_pin" | "manual_time".
         storyStartMode: text("storyStartMode").notNull().default("chapter_one"),
         // Loose refs (no real FK — same convention as storyMaps.locationId): the linked chapter/pin

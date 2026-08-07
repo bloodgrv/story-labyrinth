@@ -1,11 +1,15 @@
 import { attemptPromise } from "@jfdi/attempt";
 import express from "express";
 import {
+    addMembership,
     createPin,
+    createTimeline,
     deletePin,
+    deleteTimeline,
     getPinForLink,
     listPinsForStory,
     listTimelinesForStory,
+    removeMembership,
     updatePin,
     updateTimeline
 } from "../services/storyTimelineService.js";
@@ -26,15 +30,28 @@ router.get("/stories/:storyId/timelines", async (req, res) => {
     res.json(result);
 });
 
+router.post("/stories/:storyId/timelines", async (req, res) => {
+    const { title } = req.body as { title?: unknown };
+    if (typeof title !== "string" || !title.trim()) {
+        res.status(400).json({ error: "title is required" });
+        return;
+    }
+    const [error, result] = await attemptPromise(() => createTimeline(req.params.storyId, title.trim()));
+    if (error) {
+        res.status(400).json({ error: "Failed to create timeline", details: error.message });
+        return;
+    }
+    res.status(201).json(result);
+});
+
 router.patch("/timelines/:id", async (req, res) => {
-    const { title, orientation, storyStartMode, storyStartChapterId, storyStartPinId, storyStartManualWhenJson } = req.body as Record<
-        string,
-        unknown
-    >;
+    const { title, orientation, swimlanesEnabled, storyStartMode, storyStartChapterId, storyStartPinId, storyStartManualWhenJson } =
+        req.body as Record<string, unknown>;
     const [error, result] = await attemptPromise(() =>
         updateTimeline(req.params.id, {
             title: typeof title === "string" ? title : undefined,
             orientation: orientation as "horizontal" | "vertical" | undefined,
+            swimlanesEnabled: typeof swimlanesEnabled === "boolean" ? swimlanesEnabled : undefined,
             storyStartMode: storyStartMode as "chapter_one" | "manual_pin" | "manual_time" | undefined,
             storyStartChapterId: storyStartChapterId === undefined ? undefined : (storyStartChapterId as string | null),
             storyStartPinId: storyStartPinId === undefined ? undefined : (storyStartPinId as string | null),
@@ -46,6 +63,15 @@ router.patch("/timelines/:id", async (req, res) => {
         return;
     }
     res.json(result);
+});
+
+router.delete("/timelines/:id", async (req, res) => {
+    const [error] = await attemptPromise(() => deleteTimeline(req.params.id));
+    if (error) {
+        res.status(400).json({ error: "Failed to delete timeline", details: error.message });
+        return;
+    }
+    res.json({ success: true });
 });
 
 router.get("/stories/:storyId/timeline-pins", async (req, res) => {
@@ -126,6 +152,33 @@ router.delete("/timeline-pins/:id", async (req, res) => {
     const [error] = await attemptPromise(() => deletePin(req.params.id));
     if (error) {
         res.status(500).json({ error: "Failed to delete timeline pin", details: error.message });
+        return;
+    }
+    res.json({ success: true });
+});
+
+// TL5 — multi-timeline membership. POST is also how PinMembershipPopover.tsx updates a pin's
+// laneId for an already-active timeline (addMembership is idempotent on the unique pair).
+router.post("/timeline-pins/:id/memberships", async (req, res) => {
+    const { timelineId, laneId } = req.body as { timelineId?: unknown; laneId?: unknown };
+    if (typeof timelineId !== "string" || !timelineId) {
+        res.status(400).json({ error: "timelineId is required" });
+        return;
+    }
+    const [error, result] = await attemptPromise(() =>
+        addMembership(req.params.id, timelineId, laneId === undefined ? undefined : (laneId as string | null))
+    );
+    if (error) {
+        res.status(400).json({ error: "Failed to add timeline membership", details: error.message });
+        return;
+    }
+    res.status(201).json(result);
+});
+
+router.delete("/timeline-pins/:id/memberships/:timelineId", async (req, res) => {
+    const [error] = await attemptPromise(() => removeMembership(req.params.id, req.params.timelineId));
+    if (error) {
+        res.status(400).json({ error: "Failed to remove timeline membership", details: error.message });
         return;
     }
     res.json({ success: true });

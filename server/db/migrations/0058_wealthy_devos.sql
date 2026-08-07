@@ -1,0 +1,1 @@
+ALTER TABLE `storyTimelines` ADD `swimlanesEnabled` integer DEFAULT false NOT NULL;

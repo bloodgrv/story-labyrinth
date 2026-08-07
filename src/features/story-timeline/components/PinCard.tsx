@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import type { TimelinePin } from "@/types/storyTimeline";
+import { PinMembershipPopover } from "./PinMembershipPopover";
 
 const linkIcon = { chapter: FileEdit, lorebook: BookOpen, note: StickyNote };
 
@@ -19,6 +20,7 @@ const whenLabel = (pin: TimelinePin): string => {
 };
 
 interface PinCardProps {
+    storyId: string;
     pin: TimelinePin;
     onEdit: (pin: TimelinePin) => void;
     onDelete: (pin: TimelinePin) => void;
@@ -32,7 +34,7 @@ interface PinCardProps {
 
 // Story Timeline (T6, TL1/TL3) — pin display + click-through "open link" when linked, reusing the
 // same one-shot StoryContext navigation pointers every other cross-tool jump in this app uses.
-export function PinCard({ pin, onEdit, onDelete, dragHandle }: PinCardProps) {
+export function PinCard({ storyId, pin, onEdit, onDelete, dragHandle }: PinCardProps) {
     const { setCurrentChapterId, setCurrentTool, setPendingLorebookEntryId, setPendingNoteId } = useStoryContext();
 
     const handleOpenLink = () => {
@@ -60,6 +62,7 @@ export function PinCard({ pin, onEdit, onDelete, dragHandle }: PinCardProps) {
                         <h4 className="text-sm font-semibold leading-tight">{pin.title}</h4>
                     </div>
                     <div className="flex gap-0.5 shrink-0">
+                        <PinMembershipPopover storyId={storyId} pin={pin} />
                         <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit pin" onClick={() => onEdit(pin)}>
                             <FileEdit className="h-3.5 w-3.5" />
                         </Button>
