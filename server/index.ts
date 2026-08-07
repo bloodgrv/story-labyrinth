@@ -38,6 +38,7 @@ import storiesRouter from "./routes/stories.js";
 import storyGraphRouter from "./routes/storyGraph.js";
 import storyMapRouter from "./routes/storyMap.js";
 import storyMapsRouter from "./routes/storyMaps.js";
+import storyTimelineRouter from "./routes/storyTimeline.js";
 import ttsRouter from "./routes/tts.js";
 import usersRouter from "./routes/users.js";
 
@@ -143,6 +144,9 @@ app.use("/api", storyMapRouter);
 // storyMapRouter directly above (that one stays as the L3 spatial graph, deprecated in the UI only
 // per decision #8). Same bare-/api mounting reasoning, same editor-level auth.
 app.use("/api", storyMapsRouter);
+// Story Timeline (T6, TL0-TL4, docs/Story_Timeline_Design.md) — in-world chronology board, same
+// bare-/api mounting reasoning as storyMapsRouter directly above. Same editor-level auth.
+app.use("/api", storyTimelineRouter);
 // Transfer Log (docs/Transfer_Log_And_Settings_IA_Design.md) — mounted at bare /api for the same
 // reason storyGraphRouter is: its routes are /stories/:storyId/transfers, a story sub-resource
 // rather than its own top-level prefix. Editor-level auth (requireAuth + blockViewerMutations,

@@ -21,6 +21,7 @@ import {
     setVersionLabel,
     updateVersionContent
 } from "../services/chapterVersionsRepository.js";
+import { unlinkPinsForSource } from "../services/storyTimelineService.js";
 
 type Chapter = InferSelectModel<typeof schema.chapters>;
 
@@ -60,6 +61,19 @@ export default createCrudRouter({
                     return;
                 }
                 res.json(applyTransform(updated as Chapter));
+            })
+        );
+
+        // DELETE /api/chapters/:id — overrides the generic CRUD delete (customRoutes are
+        // registered before the generic routes, see server/lib/crud.ts) so a Story Timeline pin
+        // pointing at this chapter keeps its placement rather than the writer's chronology work
+        // vanishing (unlink-don't-destroy, matches lorebook.ts's unlinkMapsForLocation posture).
+        router.delete(
+            "/:id",
+            asyncHandler(async (req, res) => {
+                await db.delete(table).where(eq(table.id, req.params.id));
+                await unlinkPinsForSource("chapter", req.params.id);
+                res.json({ success: true });
             })
         );
 

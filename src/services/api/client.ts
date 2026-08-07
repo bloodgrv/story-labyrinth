@@ -40,6 +40,7 @@ export { ragApi } from "./ragClient";
 export { storyGraphApi } from "./storyGraphClient";
 export { storyMapApi } from "./storyMapClient";
 export { storyMapsApi } from "./storyMapsClient";
+export { storyTimelineApi } from "./storyTimelineClient";
 export { ttsApi } from "./ttsClient";
 export { usersApi } from "./usersClient";
 

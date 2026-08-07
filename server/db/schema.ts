@@ -575,6 +575,98 @@ export const storyMaps = sqliteTable(
     })
 );
 
+// Story Timeline (T6, TL0, docs/Story_Timeline_Design.md) — in-world chronology board, the time
+// twin of Story Maps above. Three tables: timelines (spine + future named ones), pins (story-
+// scoped SoT — a pin exists independent of which timeline(s) show it), memberships (join table,
+// a pin can appear on multiple timelines without duplicate drifting copies — design decision #7).
+export const storyTimelines = sqliteTable(
+    "storyTimelines",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        title: text("title").notNull(),
+        // True for the one auto-created "spine" timeline per story (TL0's lazy ensureSpineTimeline).
+        // Named timelines (TL5, not built this pass) would be isDefault=false.
+        isDefault: integer("isDefault", { mode: "boolean" }).notNull().default(false),
+        // Per-timeline view pref (decision #5) — "horizontal" | "vertical".
+        orientation: text("orientation").notNull().default("horizontal"),
+        // Story-start anchor config (decision #11) — "chapter_one" | "manual_pin" | "manual_time".
+        storyStartMode: text("storyStartMode").notNull().default("chapter_one"),
+        // Loose refs (no real FK — same convention as storyMaps.locationId): the linked chapter/pin
+        // may not exist yet when this row is created, and a pin FK would create ordering headaches
+        // with storyTimelinePins declared below. Only the field matching storyStartMode is read.
+        storyStartChapterId: text("storyStartChapterId"),
+        storyStartPinId: text("storyStartPinId"),
+        // Same PinWhen shape as storyTimelinePins' when-fields, used only for storyStartMode="manual_time"
+        // (a writer-set anchor with no backing chapter or pin) — kept as JSON since it's a rare,
+        // self-contained mode rather than three more nullable flat columns on this row.
+        storyStartManualWhenJson: text("storyStartManualWhenJson", { mode: "json" }),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdIdx: index("storytimelines_story_id_idx").on(table.storyId)
+    })
+);
+
+export const storyTimelinePins = sqliteTable(
+    "storyTimelinePins",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        title: text("title").notNull(),
+        blurb: text("blurb"),
+        // "relative" | "fuzzy" | "civil" — only the matching field(s) below are meaningful for a
+        // given pin (design's time-representation table). Flat columns rather than one JSON blob:
+        // simpler to read/sort without a parse step, and the shape is small/stable.
+        whenKind: text("whenKind").notNull().default("fuzzy"),
+        // 0 = at story-start, negative = years before, positive = years after — matches the design
+        // doc's own "T-6y" notation directly (yearsFromStart = -6).
+        relativeOffsetYears: real("relativeOffsetYears"),
+        fuzzyPhrase: text("fuzzyPhrase"),
+        // Free-form civil date text ("1890" or "2019-03-14") — never required (design decision #4).
+        civilDate: text("civilDate"),
+        // Fallback ordering for fuzzy-only pins with neither a civil date nor a relative offset
+        // (sortPins.ts's "fuzzy bucket + manual order" tier), and the drag-reorder target within
+        // that tier — same reassign-1..N-on-drag pattern ChaptersTool.tsx already uses for chapters.
+        manualOrder: integer("manualOrder").notNull().default(0),
+        // Multi-source pins (decision #3) — "chapter" | "lorebook" | "note" | null (native, no link).
+        linkType: text("linkType"),
+        linkId: text("linkId"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        storyIdIdx: index("storytimelinepins_story_id_idx").on(table.storyId),
+        linkIdx: index("storytimelinepins_link_idx").on(table.linkType, table.linkId)
+    })
+);
+
+export const storyTimelineMemberships = sqliteTable(
+    "storyTimelineMemberships",
+    {
+        id: text("id").primaryKey(),
+        timelineId: text("timelineId")
+            .notNull()
+            .references(() => storyTimelines.id, { onDelete: "cascade" }),
+        pinId: text("pinId")
+            .notNull()
+            .references(() => storyTimelinePins.id, { onDelete: "cascade" }),
+        // Writer-defined lane label within a timeline (TL6 swimlanes) — schema-only this pass, no UI.
+        laneId: text("laneId"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        uniqueMembershipIdx: uniqueIndex("storytimelinememberships_unique_idx").on(table.timelineId, table.pinId),
+        timelineIdIdx: index("storytimelinememberships_timeline_id_idx").on(table.timelineId),
+        pinIdIdx: index("storytimelinememberships_pin_id_idx").on(table.pinId)
+    })
+);
+
 // Org Folders table — cosmetic-only user filing for lorebook entries and chat sessions (B9,
 // docs/Folders_Org_Design.md). One shared "folder engine" table for both leaf kinds rather than
 // two near-identical tables — `kind` selects which of the scope columns below are meaningful.

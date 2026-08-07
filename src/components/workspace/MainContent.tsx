@@ -15,6 +15,7 @@ import { RagScannerTool } from "./tools/RagScannerTool";
 import { ResearchTool } from "./tools/ResearchTool";
 import { StoriesTool } from "./tools/StoriesTool";
 import { StoryGraphTool } from "./tools/StoryGraphTool";
+import { TimelineTool } from "./tools/TimelineTool";
 import { UsersTool } from "./tools/UsersTool";
 
 
@@ -51,6 +52,8 @@ export const MainContent = () => {
                 return <StoryGraphTool />;
             case "story-map":
                 return <MapsTool />;
+            case "story-timeline":
+                return <TimelineTool />;
             case "scanner":
                 return <RagScannerTool />;
             case "playbooks":
@@ -84,7 +87,8 @@ export const MainContent = () => {
         currentTool === "lorebook" ||
         currentTool === "brainstorm" ||
         currentTool === "relationships" ||
-        currentTool === "story-map";
+        currentTool === "story-map" ||
+        currentTool === "story-timeline";
 
     return (
         <div

@@ -2,6 +2,7 @@ import { Edit2, Pin, Sparkles, Trash2 } from "lucide-react";
 import type { MouseEvent } from "react";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { Badge } from "@/components/ui/badge";
+import { PlaceOnTimelineButton } from "@/features/story-timeline/components/PlaceOnTimelineButton";
 import { cn } from "@/lib/utils";
 import type { Note } from "@/types/story";
 import { getNoteTypeLabel } from "./NoteFormDialog";
@@ -71,6 +72,11 @@ export const NoteListItem = ({
                         size="sm"
                         className={note.includeInAi ? "text-primary" : undefined}
                     />
+                    {/* stopPropagation wrapper — the row's own onClick (onSelect) would otherwise
+                        fire too, same guard NoteList.tsx applies to every other row action here. */}
+                    <span onClick={e => e.stopPropagation()}>
+                        <PlaceOnTimelineButton storyId={note.storyId} linkType="note" linkId={note.id} defaultTitle={note.title} compact compactSize="sm" />
+                    </span>
                     <ActionButton icon={Edit2} tooltip="Edit note" onClick={onEdit} size="sm" />
                     <ActionButton icon={Trash2} tooltip="Delete note" onClick={onDelete} size="sm" variant="destructive" />
                 </div>

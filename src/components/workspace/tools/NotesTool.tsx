@@ -1,5 +1,5 @@
 import { Check, ChevronsUpDown, MessageSquare, Plus, StickyNote, Upload } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -65,8 +65,17 @@ const ImportDumpDialog = ({
 };
 
 export const NotesTool = () => {
-    const { currentStoryId, setPendingChatComposerSeed } = useStoryContext();
+    const { currentStoryId, setPendingChatComposerSeed, pendingNoteId, setPendingNoteId } = useStoryContext();
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+
+    // Story Timeline (T6, TL3) — a linked pin's "open" action for a note (PinCard.tsx). Same
+    // consume-once pattern MapsTool.tsx uses for pendingMapId.
+    useEffect(() => {
+        if (pendingNoteId) {
+            setSelectedNoteId(pendingNoteId);
+            setPendingNoteId(null);
+        }
+    }, [pendingNoteId, setPendingNoteId]);
     const [mobileOpen, setMobileOpen] = useState(false);
     // K1 — the Notes chat rail is optional/toggleable (design doc §7: "Optional Notes chat rail
     // (open/close) — not required for CRUD"), unlike WB/Outline's always-docked panels.

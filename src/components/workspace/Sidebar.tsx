@@ -4,6 +4,7 @@ import {
     Check,
     ChevronLeft,
     ChevronRight,
+    Clock,
     ExternalLink,
     FileEdit,
     GraduationCap,
@@ -48,6 +49,9 @@ const tools = [
     // graph tool (decision #4 / implementation clarification d: keep the id, swap the component
     // and label only, to avoid nav-reference churn). See MainContent.tsx's switch case.
     { id: "story-map" as WorkspaceTool, label: "Maps", icon: Map, requiresStory: true },
+    // Story Timeline (T6, TL1, docs/Story_Timeline_Design.md) — peer of Maps (design's own "UI
+    // surfaces" table), same requiresStory posture.
+    { id: "story-timeline" as WorkspaceTool, label: "Timeline", icon: Clock, requiresStory: true },
     { id: "playbooks" as WorkspaceTool, label: "Playbooks", icon: GraduationCap, requiresStory: true }
 ];
 

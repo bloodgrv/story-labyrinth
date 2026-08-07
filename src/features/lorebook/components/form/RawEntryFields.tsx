@@ -6,6 +6,7 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { OpenMapButton } from "@/features/story-maps/components/OpenMapButton";
+import { PlaceOnTimelineButton } from "@/features/story-timeline/components/PlaceOnTimelineButton";
 import { useNaturalEntryView } from "@/lib/useNaturalEntryView";
 import { CATEGORIES, IMPORTANCE_LEVELS } from "./entryFormUtils";
 import type { CreateEntryForm, LorebookCategory } from "./entryFormUtils";
@@ -113,6 +114,17 @@ export function RawEntryFields({ control, tagInput, selectedCategory, entryId, s
                 LorebookReworkButton uses for its own entryId-gated affordance) and storyId. */}
             {selectedCategory === "location" && entryId && storyId && (
                 <OpenMapButton storyId={storyId} locationId={entryId} locationName={name || "Untitled location"} />
+            )}
+            {/* Story Timeline (T6, TL3) — unconditional on category (design: "any category; `event`
+                natural"), unlike OpenMapButton above which is location-only. Same entryId/storyId
+                guard — a brand-new unsaved entry can't be linked yet. */}
+            {entryId && storyId && (
+                <PlaceOnTimelineButton
+                    storyId={storyId}
+                    linkType="lorebook"
+                    linkId={entryId}
+                    defaultTitle={name || "Untitled entry"}
+                />
             )}
             {selectedCategory === "location" && !codexEnabled && <PlaceSheetFields control={control} />}
             {/* PlaceCodexStateEditor renders unconditionally for locations (mirrors CodexStateEditor's

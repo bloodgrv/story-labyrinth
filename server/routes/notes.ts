@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { buildNoteText, indexNote, removeEntityFromIndex } from "../services/ragIndexService.js";
+import { unlinkPinsForSource } from "../services/storyTimelineService.js";
 
 type NoteRow = typeof schema.notes.$inferSelect;
 
@@ -60,12 +61,15 @@ export default createCrudRouter({
         );
 
         // Overrides the generic DELETE /:id so a deleted note's RAG chunks (if any) never linger
-        // as orphans.
+        // as orphans, and any Story Timeline pin pointing at this note keeps its placement rather
+        // than the writer's chronology work vanishing (unlink-don't-destroy, matches lorebook.ts's
+        // unlinkMapsForLocation posture).
         router.delete(
             "/:id",
             asyncHandler(async (req, res) => {
                 await db.delete(table).where(eq(table.id, req.params.id));
                 removeEntityFromIndex("note", req.params.id);
+                await unlinkPinsForSource("note", req.params.id);
                 res.json({ success: true });
             })
         );

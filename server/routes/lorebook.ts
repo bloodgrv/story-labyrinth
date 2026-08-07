@@ -19,6 +19,7 @@ import { indexLorebookEntry, removeEntityFromIndex } from "../services/ragIndexS
 import { deleteEdgesForEntity } from "../services/storyGraphService.js";
 import { deleteMapEdgesForEntity, deleteMapLayoutForEntity } from "../services/storyMapService.js";
 import { unlinkMapsForLocation } from "../services/storyMapsService.js";
+import { unlinkPinsForSource } from "../services/storyTimelineService.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -438,6 +439,7 @@ export default createCrudRouter({
                 await deleteMapEdgesForEntity(req.params.id);
                 await deleteMapLayoutForEntity(req.params.id);
                 await unlinkMapsForLocation(req.params.id);
+                await unlinkPinsForSource("lorebook", req.params.id);
                 res.json({ success: true });
             })
         );

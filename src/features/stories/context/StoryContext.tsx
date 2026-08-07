@@ -16,6 +16,7 @@ export type WorkspaceTool =
     | "memory"
     | "relationships"
     | "story-map"
+    | "story-timeline"
     | "scanner"
     | "name-generator"
     | "playbooks";
@@ -64,6 +65,16 @@ interface StoryContextType {
     // map AND seed it with this skeleton), clearing this whenever pendingMapId would also clear.
     pendingMapSketch: { mapId: string; elements: MapSketchElementSkeleton[] } | null;
     setPendingMapSketch: (sketch: { mapId: string; elements: MapSketchElementSkeleton[] } | null) => void;
+    // Story Timeline (TL1/TL3) — same one-shot posture as pendingMapId, for a "Place on timeline"
+    // button elsewhere (or a pin's own "open" click) to jump to the Timeline tool and scroll/
+    // highlight a specific pin, consumed once by TimelineTool.tsx then cleared.
+    pendingTimelineFocusPinId: string | null;
+    setPendingTimelineFocusPinId: (id: string | null) => void;
+    // Story Timeline (TL3) — a linked pin's "open" action for a note (chapters use the existing
+    // currentChapterId, lorebook uses pendingLorebookEntryId above; Notes had no equivalent
+    // external-open hook before this — NotesTool.tsx only tracked selectedNoteId locally).
+    pendingNoteId: string | null;
+    setPendingNoteId: (id: string | null) => void;
     // In-progress (unsent) chat composer text, keyed by chat id. Lives here rather than in
     // ChatInterface's own state because switching workspace tools (e.g. Editor -> Lorebook and
     // back) unmounts/remounts ChatInterface — a plain useState there loses whatever the user was
@@ -119,6 +130,8 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     const [pendingShuttleSeed, setPendingShuttleSeed] = useState<StoryContextType["pendingShuttleSeed"]>(null);
     const [pendingMapId, setPendingMapId] = useState<string | null>(null);
     const [pendingMapSketch, setPendingMapSketch] = useState<StoryContextType["pendingMapSketch"]>(null);
+    const [pendingTimelineFocusPinId, setPendingTimelineFocusPinId] = useState<string | null>(null);
+    const [pendingNoteId, setPendingNoteId] = useState<string | null>(null);
     const [chatDrafts, setChatDrafts] = useState<Record<string, string>>(loadPersistedChatDrafts);
     const setChatDraft = (chatId: string, text: string) =>
         setChatDrafts(prev => (text ? { ...prev, [chatId]: text } : Object.fromEntries(Object.entries(prev).filter(([id]) => id !== chatId))));
@@ -204,6 +217,10 @@ export function StoryProvider({ children }: { children: ReactNode }) {
                 setPendingMapId,
                 pendingMapSketch,
                 setPendingMapSketch,
+                pendingTimelineFocusPinId,
+                setPendingTimelineFocusPinId,
+                pendingNoteId,
+                setPendingNoteId,
                 chatDrafts,
                 setChatDraft,
                 chapterContentRefreshToken,

@@ -10,6 +10,7 @@ import { ROUTES } from "@/constants/urls";
 import { useDeleteChapterMutation, useUpdateChapterMutation } from "@/features/chapters/hooks/useChaptersQuery";
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { PlaceOnTimelineButton } from "@/features/story-timeline/components/PlaceOnTimelineButton";
 import { parseLocalStorage } from "@/schemas/entities";
 import type { Chapter } from "@/types/story";
 import { ChapterSummarySection } from "./ChapterSummarySection";
@@ -125,6 +126,7 @@ export function ChapterCard({ chapter, storyId, onWriteClick }: ChapterCardProps
                             <Button variant="ghost" size="icon" className="h-8 w-8" title="Write" onClick={handleWriteClick}>
                                 <PenLine className="h-4 w-4" />
                             </Button>
+                            <PlaceOnTimelineButton storyId={storyId} linkType="chapter" linkId={chapter.id} defaultTitle={chapter.title} compact />
                             <Button
                                 variant="ghost"
                                 size="icon"
