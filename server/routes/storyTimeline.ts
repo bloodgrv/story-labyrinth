@@ -2,13 +2,16 @@ import { attemptPromise } from "@jfdi/attempt";
 import express from "express";
 import {
     addMembership,
+    approvePin,
     createPin,
     createTimeline,
     deletePin,
     deleteTimeline,
     getPinForLink,
+    listPendingPinsForStory,
     listPinsForStory,
     listTimelinesForStory,
+    rejectPin,
     removeMembership,
     updatePin,
     updateTimeline
@@ -78,6 +81,34 @@ router.get("/stories/:storyId/timeline-pins", async (req, res) => {
     const [error, result] = await attemptPromise(() => listPinsForStory(req.params.storyId));
     if (error) {
         res.status(500).json({ error: "Failed to load timeline pins", details: error.message });
+        return;
+    }
+    res.json(result);
+});
+
+// TL11B — pending review, mirrors storyGraph.ts's own pending/approve/reject routes.
+router.get("/stories/:storyId/timeline-pins/pending", async (req, res) => {
+    const [error, result] = await attemptPromise(() => listPendingPinsForStory(req.params.storyId));
+    if (error) {
+        res.status(500).json({ error: "Failed to load pending timeline pins", details: error.message });
+        return;
+    }
+    res.json({ pending: result });
+});
+
+router.post("/timeline-pins/:id/approve", async (req, res) => {
+    const [error, result] = await attemptPromise(() => approvePin(req.params.id));
+    if (error) {
+        res.status(400).json({ error: "Failed to approve timeline pin", details: error.message });
+        return;
+    }
+    res.json(result);
+});
+
+router.post("/timeline-pins/:id/reject", async (req, res) => {
+    const [error, result] = await attemptPromise(() => rejectPin(req.params.id));
+    if (error) {
+        res.status(400).json({ error: "Failed to reject timeline pin", details: error.message });
         return;
     }
     res.json(result);

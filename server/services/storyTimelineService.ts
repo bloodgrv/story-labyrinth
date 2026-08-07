@@ -46,6 +46,8 @@ const rowToPin = (row: PinRow, memberships: TimelineMembership[]): TimelinePin =
     manualOrder: row.manualOrder,
     linkType: (row.linkType as PinLinkType | null) ?? null,
     linkId: row.linkId ?? null,
+    status: (row.status as TimelinePin["status"]) ?? "active",
+    source: (row.source as TimelinePin["source"]) ?? "user",
     createdAt: row.createdAt as unknown as Date,
     updatedAt: row.updatedAt as unknown as Date,
     memberships
@@ -163,8 +165,14 @@ export const deleteTimeline = async (id: string): Promise<void> => {
     await db.delete(schema.storyTimelines).where(eq(schema.storyTimelines.id, id));
 };
 
+// Active pins only — mirrors storyGraphService's listActiveEdgesForStory. Pending AI-suggested
+// pins (TL11B) never appear on a board or in chronology context until approved via the Pending
+// tab; use listPendingPinsForStory for that review surface instead.
 export const listPinsForStory = async (storyId: string): Promise<TimelinePin[]> => {
-    const pinRows = await db.select().from(schema.storyTimelinePins).where(eq(schema.storyTimelinePins.storyId, storyId));
+    const pinRows = await db
+        .select()
+        .from(schema.storyTimelinePins)
+        .where(and(eq(schema.storyTimelinePins.storyId, storyId), eq(schema.storyTimelinePins.status, "active")));
     if (pinRows.length === 0) return [];
 
     // Memberships fetched via one join across the whole story rather than per-pin — pin counts per
@@ -230,6 +238,85 @@ export const createPin = async (input: CreatePinInput): Promise<TimelinePin> => 
         .returning();
 
     return rowToPin(row, [rowToMembership(membershipRow)]);
+};
+
+// TL11B — pending pin review, mirrors storyGraphService.ts's listPendingEdges/approveEdge/
+// rejectEdge exactly. Only timelineSuggestPinsJob.ts writes "pending" rows; everything else
+// (manual create, TL7's chat fence, Place-on-timeline) writes "active" directly via createPin.
+
+export const listPendingPinsForStory = async (storyId: string): Promise<TimelinePin[]> => {
+    const pinRows = await db
+        .select()
+        .from(schema.storyTimelinePins)
+        .where(and(eq(schema.storyTimelinePins.storyId, storyId), eq(schema.storyTimelinePins.status, "pending")));
+    if (pinRows.length === 0) return [];
+    return pinRows.map(row => rowToPin(row, []));
+};
+
+export type ProposeAiSuggestedPinInput = CreatePinInput;
+
+// Always onto Spine (createPin's own default when timelineId is omitted) — an AI-suggested pin
+// has no natural "which named timeline" signal, same posture as TL7's chat-proposed pins.
+export const proposeAiSuggestedPin = async (input: ProposeAiSuggestedPinInput): Promise<TimelinePin> => {
+    const existingPins = await db.select().from(schema.storyTimelinePins).where(eq(schema.storyTimelinePins.storyId, input.storyId));
+    const maxOrder = existingPins.reduce((max, r) => Math.max(max, r.manualOrder), 0);
+
+    const now = new Date();
+    const [row] = await db
+        .insert(schema.storyTimelinePins)
+        .values({
+            id: randomUUID(),
+            storyId: input.storyId,
+            title: input.title,
+            blurb: input.blurb ?? null,
+            whenKind: input.whenKind,
+            relativeOffsetYears: input.relativeOffsetYears ?? null,
+            fuzzyPhrase: input.fuzzyPhrase ?? null,
+            civilDate: input.civilDate ?? null,
+            manualOrder: maxOrder + 1,
+            linkType: null,
+            linkId: null,
+            status: "pending",
+            source: "ai_suggested",
+            createdAt: now,
+            updatedAt: now
+        })
+        .returning();
+
+    const spine = await ensureSpineTimeline(input.storyId);
+    const [membershipRow] = await db
+        .insert(schema.storyTimelineMemberships)
+        .values({ id: randomUUID(), timelineId: spine.id, pinId: row.id, laneId: null, createdAt: now })
+        .returning();
+
+    return rowToPin(row, [rowToMembership(membershipRow)]);
+};
+
+export const approvePin = async (id: string): Promise<TimelinePin> => {
+    const [existing] = await db.select().from(schema.storyTimelinePins).where(eq(schema.storyTimelinePins.id, id));
+    if (!existing) throw new Error(`Timeline pin not found: ${id}`);
+    if (existing.status !== "pending") throw new Error(`Pin is not pending (status: ${existing.status})`);
+
+    const [row] = await db
+        .update(schema.storyTimelinePins)
+        .set({ status: "active", updatedAt: new Date() })
+        .where(eq(schema.storyTimelinePins.id, id))
+        .returning();
+    const memberships = await db.select().from(schema.storyTimelineMemberships).where(eq(schema.storyTimelineMemberships.pinId, id));
+    return rowToPin(row, memberships.map(rowToMembership));
+};
+
+export const rejectPin = async (id: string): Promise<TimelinePin> => {
+    const [existing] = await db.select().from(schema.storyTimelinePins).where(eq(schema.storyTimelinePins.id, id));
+    if (!existing) throw new Error(`Timeline pin not found: ${id}`);
+    if (existing.status !== "pending") throw new Error(`Pin is not pending (status: ${existing.status})`);
+
+    const [row] = await db
+        .update(schema.storyTimelinePins)
+        .set({ status: "rejected", updatedAt: new Date() })
+        .where(eq(schema.storyTimelinePins.id, id))
+        .returning();
+    return rowToPin(row, []);
 };
 
 export type UpdatePinInput = Partial<
@@ -305,6 +392,43 @@ export const getPinForLink = async (storyId: string, linkType: PinLinkType, link
     if (!row) return null;
     const memberships = await db.select().from(schema.storyTimelineMemberships).where(eq(schema.storyTimelineMemberships.pinId, row.id));
     return rowToPin(row, memberships.map(rowToMembership));
+};
+
+export type ChronologyExcerpt = { id: string; title: string; blurb: string | null; when: string };
+
+// Spine-only, compact chronology excerpt — "when" is a resolved display label (mirrors
+// PinCard.tsx's own whenLabel), tier-sorted civil -> relative -> fuzzy (mirrors
+// src/features/story-timeline/lib/sortPins.ts's pipeline). Shared by TL8's opt-in chat context
+// (chatContextService.ts) and TL11A's scanner chronology-aware check (ragScanner.ts) — originally
+// duplicated directly in chatContextService.ts as a small, deliberately-not-imported server-owned
+// copy (see DECISIONS.md's TL7-TL8 entry); extracted here once a second consumer needed the exact
+// same logic, since "keep two consumers in sync by hand" stopped being the simpler option.
+export const getSpineChronologyExcerpt = async (storyId: string): Promise<ChronologyExcerpt[]> => {
+    const spine = await ensureSpineTimeline(storyId);
+    const allPins = await listPinsForStory(storyId);
+    const pins = allPins.filter(pin => pin.memberships.some(m => m.timelineId === spine.id));
+
+    const tier = (pin: (typeof pins)[number]) => (pin.civilDate ? 0 : pin.relativeOffsetYears != null ? 1 : 2);
+    const sorted = [...pins].sort((a, b) => {
+        const tierDiff = tier(a) - tier(b);
+        if (tierDiff !== 0) return tierDiff;
+        if (tier(a) === 0) return (a.civilDate ?? "").localeCompare(b.civilDate ?? "");
+        if (tier(a) === 1) return (a.relativeOffsetYears ?? 0) - (b.relativeOffsetYears ?? 0);
+        return a.manualOrder - b.manualOrder;
+    });
+
+    const whenLabel = (pin: (typeof pins)[number]): string => {
+        if (pin.civilDate) return pin.civilDate;
+        if (pin.relativeOffsetYears != null) {
+            if (pin.relativeOffsetYears === 0) return "Story-start";
+            const years = Math.abs(pin.relativeOffsetYears);
+            return `${years}y ${pin.relativeOffsetYears < 0 ? "before" : "after"} start`;
+        }
+        if (pin.fuzzyPhrase) return pin.fuzzyPhrase;
+        return "Unordered";
+    };
+
+    return sorted.map(pin => ({ id: pin.id, title: pin.title, blurb: pin.blurb, when: whenLabel(pin) }));
 };
 
 // Unlink-don't-destroy on source delete (same posture as storyMapsService.unlinkMapsForLocation) —

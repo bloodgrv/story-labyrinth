@@ -8,7 +8,8 @@ import { PinMembershipPopover } from "./PinMembershipPopover";
 
 const linkIcon = { chapter: FileEdit, lorebook: BookOpen, note: StickyNote };
 
-const whenLabel = (pin: TimelinePin): string => {
+// Exported for reuse by TimelineOverviewStrip.tsx (TL9) — same resolved display label logic.
+export const whenLabel = (pin: TimelinePin): string => {
     if (pin.whenKind === "civil" && pin.civilDate) return pin.civilDate;
     if (pin.whenKind === "relative" && pin.relativeOffsetYears != null) {
         const years = Math.abs(pin.relativeOffsetYears);
@@ -54,7 +55,7 @@ export function PinCard({ storyId, pin, onEdit, onDelete, dragHandle }: PinCardP
     const LinkIcon = pin.linkType ? linkIcon[pin.linkType] : null;
 
     return (
-        <Card className="w-56 shrink-0">
+        <Card className="w-56 shrink-0" data-pin-id={pin.id}>
             <CardContent className="p-3 space-y-1.5">
                 <div className="flex items-start justify-between gap-1">
                     <div className="flex items-start gap-1 min-w-0">

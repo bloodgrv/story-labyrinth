@@ -7,6 +7,11 @@ export type TimelineOrientation = "horizontal" | "vertical";
 export type StoryStartMode = "chapter_one" | "manual_pin" | "manual_time";
 export type PinWhenKind = "relative" | "fuzzy" | "civil";
 export type PinLinkType = "chapter" | "lorebook" | "note";
+// TL11B — same "active" | "pending" | "rejected" lane as storyGraphEdges.status/.source
+// (src/types/storyGraph.ts). Only ai_suggested pins are ever "pending"; everything else is
+// created "active" directly.
+export type PinStatus = "active" | "pending" | "rejected";
+export type PinSource = "user" | "ai_suggested";
 
 // Same shape as storyTimelinePins' flat when-fields, reused for storyStartManualWhenJson
 // (storyStartMode="manual_time" — a writer-set anchor with no backing chapter or pin).
@@ -41,6 +46,8 @@ export interface TimelinePin extends PinWhen {
     manualOrder: number;
     linkType: PinLinkType | null;
     linkId: string | null;
+    status: PinStatus;
+    source: PinSource;
     createdAt: Date;
     updatedAt: Date;
     // Resolved server-side alongside the pin list so "Place on timeline" buttons and the board can

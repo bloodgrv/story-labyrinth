@@ -8,7 +8,8 @@ export type AgentJobType =
     | "prune_history"
     | "distill_memory"
     | "suggest_codex_updates"
-    | "graph_suggest_edges";
+    | "graph_suggest_edges"
+    | "timeline_suggest_pins";
 // distill_memory is never auto-enqueued by jobRunner.ts's schedule tick (Phase B) — same
 // "background LLM spend must not surprise the user" reasoning as rag_scan_story. It's only
 // ever created via the manual POST /api/agent/jobs route.
@@ -17,6 +18,9 @@ export type AgentJobType =
 // graph_suggest_edges (P1.2 G1.5+, docs/CURRENT_BACKLOG.md) follows the same precedent —
 // manual POST /api/agent/jobs only (see graphSuggestEdgesJob.ts). Produces storyGraphEdges rows
 // with status: "pending", source: "ai_suggested" — reviewed through the existing Pending tab.
+// timeline_suggest_pins (TL11B, docs/Story_Timeline_Design.md) follows the exact same precedent —
+// manual POST /api/agent/jobs only (see timelineSuggestPinsJob.ts). Produces storyTimelinePins
+// rows with status: "pending", source: "ai_suggested" — reviewed through their own Pending tab.
 
 export type AgentJobStatus = "queued" | "running" | "completed" | "failed";
 

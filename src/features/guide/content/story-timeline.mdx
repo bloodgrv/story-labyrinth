@@ -1,0 +1,68 @@
+# Story Timeline
+
+An in-world chronology board — the time twin of **Maps**. Where Maps is about *where* things are, Timeline is about *when* things happen relative to each other: pins for beats, placed on one or more boards, sorted into a real order.
+
+> [!NOTE]
+> This is a placement + order layer, not a second encyclopedia. It doesn't replace the Lorebook's `event` entries, and it isn't the same thing as a chapter's own edit History.
+
+---
+
+## 1. Spine and named timelines
+
+_Path: **Timeline** in the left sidebar_
+
+Every story gets one **Spine** timeline automatically — the default board, and the one other features (chat context, the scanner) read from. You can also create **named timelines** (the switcher at the top of the tool) for anything narrower — one character's backstory, a single POV thread, a subplot. A pin can belong to multiple timelines at once (Spine *and* a named one) via the small membership icon on each pin card; removing a pin's last remaining timeline is blocked — delete the pin itself instead if you really want it gone.
+
+Deleting a named timeline never destroys its pins: any pin that would otherwise be orphaned is automatically kept on Spine.
+
+## 2. Placing pins
+
+A pin needs a title and a **when**, in one of three forms:
+
+| Kind | Use it for | Example |
+| --- | --- | --- |
+| **Civil** | A real calendar date/year stated in the story | `1890`, `2019-03-14` |
+| **Relative** | Tied explicitly to Story-start | `6 years before start`, `Story-start` itself at 0 |
+| **Fuzzy** | Everything else, ordered by drag | "during her childhood" |
+
+Pins sort in three strict tiers — civil dates first, then relative-to-start, then fuzzy/drag-ordered — rather than one blended scale, since there's no principled way to mix a real calendar date with "six years before start" without a resolved anchor date.
+
+**Story-start** defaults to Chapter One and shows as a marker on the board; you can move it to a different pin or a freeform manual time instead, per timeline.
+
+### From elsewhere in the app
+
+Chapters, Lorebook entries (any category), and notes all have a **Place on timeline** button — it creates a pin linked back to that source. Deleting the source later doesn't delete the pin; it just unlinks it, so your chronology work never silently vanishes.
+
+## 3. Board layout
+
+- **H | V toggle** — horizontal or vertical board orientation, per timeline.
+- **Swimlanes** — group pins into writer-defined lane rows (a character name, a POV thread, whatever you type into a pin's lane field) instead of one flat strip. Swimlanes force horizontal layout; the H|V toggle hides while they're on.
+- **Overview strip** — a compact row of ticks above the board, one per pin, grouped by tier. Click a tick to jump straight to that pin on the board below — useful once a board has more pins than fit on screen at once.
+- **Export as image** — downloads the current board as a PNG. Illustration only; it's never re-imported, so drawing over it or archiving it doesn't affect your real data.
+
+## 4. AI propose/accept
+
+World-Building chats opened on the **Timeline** template can propose new pins in plain conversation — the reply includes a card listing each proposed beat with its own Accept / Reject, plus an **Accept all**. Accepted pins land on Spine. This only works for native, unlinked pins (the chat has no reliable way to know which specific chapter/entry/note a beat "is") — link one in afterward with **Place on timeline** if you want that connection.
+
+### Suggest pins
+
+Owners can also click **Suggest pins** on the Timeline toolbar to have the AI scan the story's Lorebook entries and notes for chronology beats the text implies but nothing has recorded yet. Suggestions never land on the board directly — they go to the **Pending** tab for Approve/Reject, same review step every other AI-suggested lane in this app (Relationship Graph edges, Codex updates) uses.
+
+## 5. Chat context and the Scanner
+
+- **Opt-in chat context** — any chat's "Context & memory" section has an **Include Story Timeline** toggle. When on, the model sees a compact, tier-sorted list of Spine pins (title, blurb, resolved "when") so it doesn't lose track of established order — never the full text of whatever a pin links to.
+- **Scanner hook** — the Chapter Scanner (both the editor drawer and the story-wide Scanner tool) has its own **Include Story Timeline** toggle, next to Include Project Memory. When on, the scanner weighs Spine's pin order alongside the Codex when flagging `timeline`-type contradictions — a chapter that implies an event happened before/after another in a way that conflicts with your recorded chronology.
+
+## 6. Troubleshooting
+
+| Problem | What's happening |
+| --- | --- |
+| A pin I deleted a timeline's source for is still there | By design — "Place on timeline" pins unlink rather than delete when their source chapter/entry/note goes away |
+| Removing a pin's last timeline membership fails | A pin must always belong to at least one timeline — delete the pin itself instead |
+| "Suggest pins" proposals don't show up on the board | They land in the **Pending** tab first — Approve them there to add them to Spine |
+| Chat doesn't seem to know about my chronology | Check the chat's "Context & memory" section for the **Include Story Timeline** toggle — it's off by default |
+| Export as image seems to hang | Rare timeout on some machines/environments; it fails cleanly after 15 seconds — just retry |
+
+---
+
+Timelines, pins, and memberships all save to your story like any other data — no separate export step needed beyond the normal story export.

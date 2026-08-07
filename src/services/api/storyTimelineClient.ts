@@ -55,5 +55,10 @@ export const storyTimelineApi = {
     addMembership: (pinId: string, timelineId: string, laneId?: string | null) =>
         fetchJSON<TimelineMembership>(`/timeline-pins/${pinId}/memberships`, { method: "POST", body: JSON.stringify({ timelineId, laneId }) }),
     removeMembership: (pinId: string, timelineId: string) =>
-        fetchJSON<{ success: boolean }>(`/timeline-pins/${pinId}/memberships/${timelineId}`, { method: "DELETE" })
+        fetchJSON<{ success: boolean }>(`/timeline-pins/${pinId}/memberships/${timelineId}`, { method: "DELETE" }),
+
+    // TL11B — pending review, mirrors storyGraphClient.ts's own pending/approve/reject shape.
+    listPendingPins: (storyId: string) => fetchJSON<{ pending: TimelinePin[] }>(`/stories/${storyId}/timeline-pins/pending`),
+    approvePin: (id: string) => fetchJSON<TimelinePin>(`/timeline-pins/${id}/approve`, { method: "POST" }),
+    rejectPin: (id: string) => fetchJSON<TimelinePin>(`/timeline-pins/${id}/reject`, { method: "POST" })
 };

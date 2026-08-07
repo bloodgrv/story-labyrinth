@@ -15,6 +15,7 @@ import { runGraphSuggestEdgesJob } from "./jobs/graphSuggestEdgesJob.js";
 import { runReconcileIndexJob } from "./jobs/reconcileIndexJob.js";
 import { runPruneHistoryJob } from "./jobs/pruneHistoryJob.js";
 import { runRagScanChapterJob, runRagScanStoryJob } from "./jobs/ragScanJobs.js";
+import { runTimelineSuggestPinsJob } from "./jobs/timelineSuggestPinsJob.js";
 
 // In-process job runner — no queue library, no worker_threads, no second process (single Docker
 // container, single SQLite file; see docs/Agent_Framework_And_Project_Memory_Design.md §3.2/3.3).
@@ -41,7 +42,8 @@ const HANDLERS: Record<AgentJobType, JobHandler> = {
     prune_history: runPruneHistoryJob,
     distill_memory: runDistillMemoryJob,
     suggest_codex_updates: runSuggestCodexUpdatesJob,
-    graph_suggest_edges: runGraphSuggestEdgesJob
+    graph_suggest_edges: runGraphSuggestEdgesJob,
+    timeline_suggest_pins: runTimelineSuggestPinsJob
 };
 
 let claimIntervalId: NodeJS.Timeout | null = null;

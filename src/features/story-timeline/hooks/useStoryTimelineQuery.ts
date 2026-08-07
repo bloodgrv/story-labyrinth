@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { storyTimelineApi } from "@/services/api/client";
+import { agentJobsApi, storyTimelineApi } from "@/services/api/client";
 import type { PinLinkType, StoryTimeline, TimelineMembership, TimelinePin } from "@/types/storyTimeline";
 
 // Story Timeline (T6, TL0-TL6, docs/Story_Timeline_Design.md) — mirrors
@@ -10,7 +10,8 @@ export const storyTimelineKeys = {
     timelines: (storyId: string) => [...storyTimelineKeys.all, "timelines", storyId] as const,
     pins: (storyId: string) => [...storyTimelineKeys.all, "pins", storyId] as const,
     pinForLink: (storyId: string, linkType: PinLinkType, linkId: string) =>
-        [...storyTimelineKeys.all, "pinForLink", storyId, linkType, linkId] as const
+        [...storyTimelineKeys.all, "pinForLink", storyId, linkType, linkId] as const,
+    pendingPins: (storyId: string) => [...storyTimelineKeys.all, "pendingPins", storyId] as const
 };
 
 export const useTimelinesQuery = (storyId: string | null) =>
@@ -133,6 +134,60 @@ export const useRemoveMembershipMutation = (storyId: string) => {
         mutationFn: ({ pinId, timelineId }: { pinId: string; timelineId: string }) => storyTimelineApi.removeMembership(pinId, timelineId),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: storyTimelineKeys.pins(storyId) }),
         onError: (error: Error) => toast.error(error.message || "Failed to update timeline placement")
+    });
+};
+
+// TL11B — pending pin review, mirrors useStoryGraphQuery.ts's usePendingEdgesQuery/
+// useApproveEdgeMutation/useRejectEdgeMutation/useSuggestGraphEdgesMutation exactly.
+
+export const usePendingPinsQuery = (storyId: string | null) =>
+    useQuery({
+        queryKey: storyTimelineKeys.pendingPins(storyId ?? ""),
+        queryFn: () => storyTimelineApi.listPendingPins(storyId as string),
+        enabled: !!storyId
+    });
+
+export const useApprovePinMutation = (storyId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => storyTimelineApi.approvePin(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: storyTimelineKeys.pins(storyId) });
+            queryClient.invalidateQueries({ queryKey: storyTimelineKeys.pendingPins(storyId) });
+            toast.success("Timeline pin approved");
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to approve timeline pin")
+    });
+};
+
+export const useRejectPinMutation = (storyId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => storyTimelineApi.rejectPin(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: storyTimelineKeys.pendingPins(storyId) });
+            toast.success("Timeline pin rejected");
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to reject timeline pin")
+    });
+};
+
+// Manually enqueues timeline_suggest_pins for the whole story — fire-and-forget enqueue, no job
+// polling; the Pending tab's own query is what the user checks afterward.
+export const useSuggestTimelinePinsMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (storyId: string) => agentJobsApi.enqueue({ jobType: "timeline_suggest_pins", storyId }),
+        onSuccess: (job, storyId) => {
+            queryClient.invalidateQueries({ queryKey: storyTimelineKeys.pendingPins(storyId) });
+            queryClient.invalidateQueries({ queryKey: ["agentJobs"] });
+            toast.success(
+                job.status === "running" || job.status === "queued"
+                    ? "Suggesting timeline pins from this story's lorebook and notes…"
+                    : "A pin-suggestion job for this story already ran"
+            );
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to queue timeline pin suggestions")
     });
 };
 

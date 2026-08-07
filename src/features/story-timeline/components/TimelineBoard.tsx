@@ -10,8 +10,9 @@ import {
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { attemptPromise } from "@jfdi/attempt";
-import { Flag, GripVertical, LayoutGrid, Rows3 } from "lucide-react";
-import { useState } from "react";
+import { toPng } from "html-to-image";
+import { Download, Flag, GripVertical, LayoutGrid, Loader2, Rows3 } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -23,6 +24,7 @@ import { useCreatePinMutation, useDeletePinMutation, useUpdatePinMutation, useUp
 import { PinCard } from "./PinCard";
 import { PinFormDialog } from "./PinFormDialog";
 import { StoryStartControl } from "./StoryStartControl";
+import { TimelineOverviewStrip } from "./TimelineOverviewStrip";
 
 const tierLabel = { civil: "Dated", relative: "Relative to Story-start", fuzzy: "Unordered / fuzzy" };
 const UNASSIGNED_LANE = "__unassigned__";
@@ -148,6 +150,8 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
     const [formOpen, setFormOpen] = useState(false);
     const [editingPin, setEditingPin] = useState<TimelinePin | null>(null);
     const [deletingPin, setDeletingPin] = useState<TimelinePin | null>(null);
+    const [isExportingImage, setIsExportingImage] = useState(false);
+    const boardRef = useRef<HTMLDivElement>(null);
     const createMutation = useCreatePinMutation(storyId);
     const updateMutation = useUpdatePinMutation(storyId);
     const deleteMutation = useDeletePinMutation(storyId);
@@ -168,6 +172,28 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
     const handleSubmit = (values: Parameters<NonNullable<React.ComponentProps<typeof PinFormDialog>["onSubmit"]>>[0]) => {
         if (editingPin) updateMutation.mutate({ id: editingPin.id, data: values }, { onSuccess: () => setFormOpen(false) });
         else createMutation.mutate({ ...values, timelineId: timeline.id }, { onSuccess: () => setFormOpen(false) });
+    };
+
+    // TL10 — illustration-only export (same "images never SoT" doctrine as Story Map's own
+    // handleExportImage, src/features/story-map/components/StoryMapCanvas.tsx). Simpler than that
+    // version: this board is a plain scrolling DOM layout, not a pan/zoom React Flow canvas, so no
+    // getNodesBounds/getViewportForBounds math is needed — just toPng directly against the ref'd
+    // board container. Same timeout race: toPng can hang indefinitely rather than reject in some
+    // environments (observed live for the Story Map equivalent).
+    const handleExportImage = async () => {
+        if (!boardRef.current) return;
+        setIsExportingImage(true);
+        const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Image export timed out")), 15_000));
+        const [error, dataUrl] = await attemptPromise(() => Promise.race([toPng(boardRef.current!), timeout]));
+        setIsExportingImage(false);
+        if (error || !dataUrl) {
+            toast.error("Failed to export image");
+            return;
+        }
+        const link = document.createElement("a");
+        link.download = `timeline-${timeline.title}-${storyId}.png`;
+        link.href = dataUrl;
+        link.click();
     };
 
     const orientation = timeline.orientation;
@@ -229,11 +255,25 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                             </Button>
                         </div>
                     )}
+                    {pins.length > 0 && (
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={isExportingImage}
+                            onClick={handleExportImage}
+                            title="Export the current board as a PNG image — illustration only, never re-imported"
+                        >
+                            {isExportingImage ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+                            Export as image
+                        </Button>
+                    )}
                     <Button size="sm" onClick={() => { setEditingPin(null); setFormOpen(true); }}>
                         Add pin
                     </Button>
                 </div>
             </div>
+
+            {pins.length > 0 && <TimelineOverviewStrip pins={pins} />}
 
             {pins.length === 0 ? (
                 <EmptyState
@@ -242,7 +282,7 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                     onAction={() => { setEditingPin(null); setFormOpen(true); }}
                 />
             ) : laneGroups ? (
-                <div className="flex flex-col gap-6 overflow-y-auto">
+                <div ref={boardRef} className="flex flex-col gap-6 overflow-y-auto bg-background">
                     {laneGroups.map(lane => (
                         <div key={lane.label} className="border-b pb-4 last:border-b-0">
                             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{lane.label}</div>
@@ -251,7 +291,9 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                     ))}
                 </div>
             ) : (
-                <TieredBoard storyId={storyId} pins={pins} timeline={timeline} orientation={orientation} onEdit={handleEdit} onDelete={handleDelete} />
+                <div ref={boardRef} className="bg-background">
+                    <TieredBoard storyId={storyId} pins={pins} timeline={timeline} orientation={orientation} onEdit={handleEdit} onDelete={handleDelete} />
+                </div>
             )}
 
             <PinFormDialog

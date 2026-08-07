@@ -76,8 +76,23 @@ export const useScanJobWithInvalidation = (jobId: string | null, storyId: string
 export const useTriggerChapterScanMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ storyId, chapterId, includeMemory }: { storyId: string; chapterId: string; includeMemory?: boolean }) =>
-            agentJobsApi.enqueue({ jobType: "rag_scan_chapter", storyId, entityId: chapterId, payload: { includeMemory: !!includeMemory } }),
+        mutationFn: ({
+            storyId,
+            chapterId,
+            includeMemory,
+            includeTimeline
+        }: {
+            storyId: string;
+            chapterId: string;
+            includeMemory?: boolean;
+            includeTimeline?: boolean;
+        }) =>
+            agentJobsApi.enqueue({
+                jobType: "rag_scan_chapter",
+                storyId,
+                entityId: chapterId,
+                payload: { includeMemory: !!includeMemory, includeTimeline: !!includeTimeline }
+            }),
         onSuccess: (job, { storyId }) => {
             invalidateStoryScanData(queryClient, storyId);
             toast.success(job.status === "running" ? "A scan for this chapter is already running" : "Chapter scan queued");
@@ -89,8 +104,12 @@ export const useTriggerChapterScanMutation = () => {
 export const useTriggerStoryScanMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ storyId, includeMemory }: { storyId: string; includeMemory?: boolean }) =>
-            agentJobsApi.enqueue({ jobType: "rag_scan_story", storyId, payload: { includeMemory: !!includeMemory } }),
+        mutationFn: ({ storyId, includeMemory, includeTimeline }: { storyId: string; includeMemory?: boolean; includeTimeline?: boolean }) =>
+            agentJobsApi.enqueue({
+                jobType: "rag_scan_story",
+                storyId,
+                payload: { includeMemory: !!includeMemory, includeTimeline: !!includeTimeline }
+            }),
         onSuccess: (job, { storyId }) => {
             invalidateStoryScanData(queryClient, storyId);
             toast.success(job.status === "running" ? "A story scan is already running" : "Story scan queued");

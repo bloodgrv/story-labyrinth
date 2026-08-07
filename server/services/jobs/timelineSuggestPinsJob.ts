@@ -1,0 +1,155 @@
+import type { AgentJob } from "../../../src/types/agentJob.js";
+import type { PinWhenKind } from "../../../src/types/storyTimeline.js";
+import { eq } from "drizzle-orm";
+import { db, schema } from "../../db/client.js";
+import { buildClientForFeature } from "../aiClientFactory.js";
+import { extractTextFromLexical } from "../entityDetector.js";
+import { getSpineChronologyExcerpt, listPendingPinsForStory, proposeAiSuggestedPin } from "../storyTimelineService.js";
+import { listVisibleEntriesForStory } from "../storyGraphRepository.js";
+
+// timeline_suggest_pins (TL11B, docs/Story_Timeline_Design.md) — reads a story's visible lorebook
+// entries and notes, proposes new storyTimelinePins for chronology beats the text implies but
+// nothing has recorded yet. Follows the exact "manual trigger only, pending-row output only"
+// precedent as graph_suggest_edges (server/services/jobs/graphSuggestEdgesJob.ts): never
+// auto-enqueued, and every candidate lands as status: "pending", source: "ai_suggested" —
+// reviewed through the Pending tab's Approve/Reject, never applied directly. Proposed pins are
+// native only (no linkType/linkId — same scope cut TL7's chat fence made: the job has no reliable
+// way to resolve which specific chapter/note/entry a beat "is", only that the text implies one).
+
+const MAX_ENTRIES = 40;
+const MAX_NOTES = 20;
+const MAX_TEXT_CHARS = 240;
+
+type CandidateSource = { label: string; text: string };
+
+const WHEN_KINDS: PinWhenKind[] = ["relative", "fuzzy", "civil"];
+
+const SYSTEM_PROMPT = `You suggest chronology beats (timeline pins) for a fiction story, from its lorebook entries and notes.
+You are given a numbered list of sources (character/location/faction/item descriptions and writer's notes) and a list
+of chronology beats already recorded so you don't repeat them.
+
+For each beat you can support directly from the text (not invented, not inferred from genre convention), propose one
+pin. Prefer specificity: use "civil" only for a real calendar date/year stated in the text, "relative" for a beat
+explicitly tied to story-start (e.g. "six years before the story begins"), and "fuzzy" for anything else with only a
+vague time reference (e.g. "during her childhood"). If nothing is clearly supported, return an empty array.
+
+Return ONLY a valid JSON array. Each element must have exactly these fields:
+{
+  "sourceIndex": number,
+  "title": string,
+  "blurb": string | null,
+  "whenKind": "civil" | "relative" | "fuzzy",
+  "relativeOffsetYears": number | null,
+  "fuzzyPhrase": string | null,
+  "civilDate": string | null
+}
+Only the field(s) matching whenKind need be non-null. "title" should briefly name the beat (not restate the source label).`;
+
+type ParsedCandidate = {
+    sourceIndex: number;
+    title: string;
+    blurb: string | null;
+    whenKind: string;
+    relativeOffsetYears: number | null;
+    fuzzyPhrase: string | null;
+    civilDate: string | null;
+};
+
+const parseCandidates = (raw: string): ParsedCandidate[] => {
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+
+    let parsed: unknown[];
+    try {
+        parsed = JSON.parse(match[0]) as unknown[];
+    } catch {
+        return [];
+    }
+
+    return parsed
+        .filter((c): c is Record<string, unknown> => typeof c === "object" && c !== null)
+        .filter(c => typeof c.sourceIndex === "number" && typeof c.title === "string" && c.title.trim() && typeof c.whenKind === "string")
+        .map(c => ({
+            sourceIndex: c.sourceIndex as number,
+            title: (c.title as string).trim(),
+            blurb: typeof c.blurb === "string" && c.blurb.trim() ? c.blurb.trim() : null,
+            whenKind: (c.whenKind as string).trim(),
+            relativeOffsetYears: typeof c.relativeOffsetYears === "number" ? c.relativeOffsetYears : null,
+            fuzzyPhrase: typeof c.fuzzyPhrase === "string" && c.fuzzyPhrase.trim() ? c.fuzzyPhrase.trim() : null,
+            civilDate: typeof c.civilDate === "string" && c.civilDate.trim() ? c.civilDate.trim() : null
+        }));
+};
+
+const isValidWhenKind = (value: string): value is PinWhenKind => WHEN_KINDS.includes(value as PinWhenKind);
+
+export const runTimelineSuggestPinsJob = async (job: AgentJob): Promise<{ storyId: string; proposedCount: number }> => {
+    if (!job.storyId) throw new Error("timeline_suggest_pins job requires storyId");
+    const storyId = job.storyId;
+
+    const [visibleEntries, noteRows] = await Promise.all([
+        listVisibleEntriesForStory(storyId),
+        db.select().from(schema.notes).where(eq(schema.notes.storyId, storyId)).limit(MAX_NOTES)
+    ]);
+
+    const enabledEntries = visibleEntries.filter(e => !e.isDisabled);
+    const sources: CandidateSource[] = [
+        ...[...enabledEntries]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .slice(0, MAX_ENTRIES)
+            .map(e => ({ label: `${e.name} (${e.category})`, text: e.description ?? "" })),
+        ...noteRows.map(n => ({ label: `Note: ${n.title}`, text: extractTextFromLexical(n.content) }))
+    ].filter(s => s.text.trim().length > 0);
+
+    if (sources.length === 0) return { storyId, proposedCount: 0 };
+
+    const [existingPins, pendingPins] = await Promise.all([getSpineChronologyExcerpt(storyId), listPendingPinsForStory(storyId)]);
+    const existingSummaryLines = [
+        ...existingPins.map(p => `${p.when}: ${p.title}`),
+        ...pendingPins.map(p => `(pending) ${p.title}`)
+    ].slice(0, 200);
+
+    const connection = await buildClientForFeature("timeline_suggest_pins");
+    if (!connection)
+        throw new Error(
+            "No AI provider configured for Story Timeline pin suggestions. Set a global default or a 'Story Timeline (Suggest Pins)' feature endpoint in AI Settings."
+        );
+    const { client, model } = connection;
+
+    const sourcesBlock = sources.map((s, i) => `[${i}] ${s.label}: ${s.text.slice(0, MAX_TEXT_CHARS)}`).join("\n");
+    const existingBlock = existingSummaryLines.length > 0 ? existingSummaryLines.join("\n") : "(none yet)";
+
+    const completion = await client.chat.completions.create({
+        model,
+        messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            {
+                role: "user",
+                content: `=== SOURCES ===\n${sourcesBlock}\n\n=== ALREADY RECORDED (do not repeat) ===\n${existingBlock}`
+            }
+        ],
+        temperature: 0,
+        max_tokens: 2048
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "[]";
+    const parsedCandidates = parseCandidates(raw);
+
+    let proposedCount = 0;
+    for (const candidate of parsedCandidates) {
+        if (!sources[candidate.sourceIndex]) continue; // hallucinated index — skip, don't throw
+        if (!isValidWhenKind(candidate.whenKind)) continue;
+
+        await proposeAiSuggestedPin({
+            storyId,
+            title: candidate.title,
+            blurb: candidate.blurb,
+            whenKind: candidate.whenKind,
+            relativeOffsetYears: candidate.relativeOffsetYears,
+            fuzzyPhrase: candidate.fuzzyPhrase,
+            civilDate: candidate.civilDate
+        });
+        proposedCount++;
+    }
+
+    return { storyId, proposedCount };
+};

@@ -8,7 +8,6 @@ import type {
     ChatContextOutlineExcerpt,
     ChatContextOutlineTreeItem,
     ChatContextPlaybookPack,
-    ChatContextTimelinePinExcerpt,
     ChatContextWrittenChapter,
     ChatType
 } from "../../src/types/worldbuilding.js";
@@ -26,7 +25,7 @@ import { resolvePlaybookPack as resolvePlaybookPackLadder } from "./playbookPack
 import { search } from "./ragIndexService.js";
 import { DEFAULT_SEARCH_ENTITY_TYPES, type RagEntityType, type SearchResult } from "./ragRepository.js";
 import { fetchPage, searchWeb, type FetchedPage } from "./webSearchService.js";
-import { ensureSpineTimeline, listPinsForStory } from "./storyTimelineService.js";
+import { getSpineChronologyExcerpt } from "./storyTimelineService.js";
 
 const RELEVANT_ENTRIES_LIMIT = 8;
 const SEARCH_POOL_SIZE = RELEVANT_ENTRIES_LIMIT * 2;
@@ -919,41 +918,6 @@ const resolveMemories = async (results: SearchResult[], storyId: string | null):
     return [...pinnedExcerpts, ...searchExcerpts];
 };
 
-// TL8, docs/Story_Timeline_Design.md — compact chronology context, gated on this chat's own
-// includeTimeline toggle. Spine only (design doc's own AI/RAG table: "selected timeline(s) or
-// spine" — spine alone is a valid, simplest choice; named-timeline selection is a fast-follow).
-// "when" is a resolved display label; the tiered sort here is a deliberately small, server-owned
-// duplicate of src/features/story-timeline/lib/sortPins.ts's civil -> relative -> fuzzy pipeline
-// (not imported directly, to avoid a server file depending on a client feature module for three
-// lines of logic) — keep both in sync if the sort pipeline itself ever changes.
-const resolveTimelinePins = async (storyId: string): Promise<ChatContextTimelinePinExcerpt[]> => {
-    const spine = await ensureSpineTimeline(storyId);
-    const allPins = await listPinsForStory(storyId);
-    const pins = allPins.filter(pin => pin.memberships.some(m => m.timelineId === spine.id));
-
-    const tier = (pin: (typeof pins)[number]) => (pin.civilDate ? 0 : pin.relativeOffsetYears != null ? 1 : 2);
-    const sorted = [...pins].sort((a, b) => {
-        const tierDiff = tier(a) - tier(b);
-        if (tierDiff !== 0) return tierDiff;
-        if (tier(a) === 0) return (a.civilDate ?? "").localeCompare(b.civilDate ?? "");
-        if (tier(a) === 1) return (a.relativeOffsetYears ?? 0) - (b.relativeOffsetYears ?? 0);
-        return a.manualOrder - b.manualOrder;
-    });
-
-    const whenLabel = (pin: (typeof pins)[number]): string => {
-        if (pin.civilDate) return pin.civilDate;
-        if (pin.relativeOffsetYears != null) {
-            if (pin.relativeOffsetYears === 0) return "Story-start";
-            const years = Math.abs(pin.relativeOffsetYears);
-            return `${years}y ${pin.relativeOffsetYears < 0 ? "before" : "after"} start`;
-        }
-        if (pin.fuzzyPhrase) return pin.fuzzyPhrase;
-        return "Unordered";
-    };
-
-    return sorted.map(pin => ({ id: pin.id, title: pin.title, blurb: pin.blurb, when: whenLabel(pin) }));
-};
-
 // Lets the model see whether prior proposals/handoffs from this same Brainstorm chat are still
 // sitting unresolved (status pending/opened) before proposing more (P0.4 B4).
 const resolveHandoffStatus = async (chatId: string) => {
@@ -1166,7 +1130,7 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         ["editor", "outline", "worldbuilding", "brainstorm"].includes(chatType)
             ? resolveAvailableNameRegions(chat.storyId)
             : Promise.resolve([]),
-        includeTimeline && chat.storyId ? resolveTimelinePins(chat.storyId) : Promise.resolve([])
+        includeTimeline && chat.storyId ? getSpineChronologyExcerpt(chat.storyId) : Promise.resolve([])
     ]);
 
     return {

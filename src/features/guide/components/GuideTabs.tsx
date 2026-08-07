@@ -14,6 +14,7 @@ import NameGeneratorGuide from "../content/name-generator.mdx";
 import OutlineGuide from "../content/outline.mdx";
 import PromptGuide from "../content/prompts.mdx";
 import SettingsNavGuide from "../content/settings-nav.mdx";
+import StoryTimelineGuide from "../content/story-timeline.mdx";
 import TtsGuide from "../content/tts.mdx";
 
 // Shared by the standalone /guide route (GuidePage.tsx) and the Settings "Guide" tab, so the
@@ -29,6 +30,7 @@ export function GuideTabs() {
                 <TabsTrigger value="advanced">Advanced Guide</TabsTrigger>
                 <TabsTrigger value="lorebook">Lorebook Guide</TabsTrigger>
                 <TabsTrigger value="locations-maps">Locations & Maps</TabsTrigger>
+                <TabsTrigger value="story-timeline">Story Timeline</TabsTrigger>
                 <TabsTrigger value="prompts">Prompt Guide</TabsTrigger>
                 <TabsTrigger value="chat-features">Chat Features</TabsTrigger>
                 <TabsTrigger value="brainstorm">Brainstorm Guide</TabsTrigger>
@@ -67,6 +69,12 @@ export function GuideTabs() {
             <TabsContent value="locations-maps" className="space-y-4">
                 <GuideProvider>
                     <LocationsMapsGuide components={mdxComponents} />
+                </GuideProvider>
+            </TabsContent>
+
+            <TabsContent value="story-timeline" className="space-y-4">
+                <GuideProvider>
+                    <StoryTimelineGuide components={mdxComponents} />
                 </GuideProvider>
             </TabsContent>
 

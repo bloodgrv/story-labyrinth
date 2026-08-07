@@ -14,10 +14,14 @@ import { listOrderedChapterIds, requireScannerConnection, runChapterScan, scanCh
 const readIncludeMemory = (job: AgentJob): boolean =>
     (job.payload as { includeMemory?: boolean } | null)?.includeMemory === true;
 
+// TL11A — same per-scan opt-in shape as includeMemory.
+const readIncludeTimeline = (job: AgentJob): boolean =>
+    (job.payload as { includeTimeline?: boolean } | null)?.includeTimeline === true;
+
 export const runRagScanChapterJob = async (job: AgentJob): Promise<{ scanId: string; issueCount: number }> => {
     if (!job.entityId) throw new Error("rag_scan_chapter job requires entityId (chapterId)");
 
-    const { scan, issues } = await scanChapter(job.entityId, readIncludeMemory(job));
+    const { scan, issues } = await scanChapter(job.entityId, readIncludeMemory(job), readIncludeTimeline(job));
     return { scanId: scan.id, issueCount: issues.length };
 };
 
@@ -37,6 +41,7 @@ export const runRagScanStoryJob = async (
     if (!job.storyId) throw new Error("rag_scan_story job requires storyId");
     const storyId = job.storyId;
     const includeMemory = readIncludeMemory(job);
+    const includeTimeline = readIncludeTimeline(job);
 
     const { client, model } = await requireScannerConnection();
     const chapterIds = await listOrderedChapterIds(storyId);
@@ -64,7 +69,7 @@ export const runRagScanStoryJob = async (
     try {
         for (const [offset, chapterId] of remainingChapterIds.entries()) {
             try {
-                await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory });
+                await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory, includeTimeline });
             } catch (error) {
                 console.error(`rag_scan_story job: chapter ${chapterId} failed:`, (error as Error).message);
             }

@@ -646,12 +646,20 @@ export const storyTimelinePins = sqliteTable(
         // Multi-source pins (decision #3) — "chapter" | "lorebook" | "note" | null (native, no link).
         linkType: text("linkType"),
         linkId: text("linkId"),
+        // TL11B — 'active' | 'pending' | 'rejected', same lane as storyGraphEdges.status. Every pin
+        // created by CRUD/Place-on-timeline/TL7's chat fence this pass is 'active'; 'pending' is
+        // written only by the timeline_suggest_pins job (jobs/timelineSuggestPinsJob.ts), reviewed
+        // via the Pending tab's Approve/Reject before ever appearing on a board.
+        status: text("status").notNull().default("active"),
+        // 'user' | 'ai_suggested', same lane as storyGraphEdges.source.
+        source: text("source").notNull().default("user"),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
         updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
     },
     table => ({
         storyIdIdx: index("storytimelinepins_story_id_idx").on(table.storyId),
-        linkIdx: index("storytimelinepins_link_idx").on(table.linkType, table.linkId)
+        linkIdx: index("storytimelinepins_link_idx").on(table.linkType, table.linkId),
+        statusIdx: index("storytimelinepins_status_idx").on(table.status)
     })
 );
 

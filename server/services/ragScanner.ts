@@ -8,6 +8,7 @@ import { extractTextFromLexical } from "./entityDetector.js";
 import { listMemories } from "./agentMemoriesService.js";
 import { search } from "./ragIndexService.js";
 import type { SearchResult } from "./ragRepository.js";
+import { getSpineChronologyExcerpt } from "./storyTimelineService.js";
 import {
     completeScan,
     createIssues,
@@ -101,6 +102,10 @@ Compare the chapter text against the reference context and identify factual inco
 - "timeline": the chapter implies a sequence or duration of events that conflicts with the reference context
 - "other": any other consistency issue worth flagging that doesn't fit the above
 
+If a STORY TIMELINE reference block is provided, treat its pins as the story's established chronology (ordered
+oldest to newest) when classifying "timeline" issues — flag a chapter that implies an event happened before/after
+another in a way that contradicts that order.
+
 Only flag genuine, clearly-supported inconsistencies. Do not invent facts, and do not flag stylistic issues or matters of taste.
 If nothing is wrong, return an empty array.
 
@@ -132,6 +137,10 @@ Compare the chapter text against the reference context and identify factual inco
 
 Project Memory is approved but secondary to the Codex — if Project Memory and the Codex ever disagree with each other, do not flag it as a chapter issue (that's a project-memory/Codex sync problem, out of scope here).
 
+If a STORY TIMELINE reference block is provided, treat its pins as the story's established chronology (ordered
+oldest to newest) when classifying "timeline" issues — flag a chapter that implies an event happened before/after
+another in a way that contradicts that order.
+
 Only flag genuine, clearly-supported inconsistencies. Do not invent facts, and do not flag stylistic issues or matters of taste.
 If nothing is wrong, return an empty array.
 
@@ -157,10 +166,21 @@ const gatherMemoryContext = async (storyId: string): Promise<string> => {
     return memories.map(m => `[Project Memory: ${m.title} (${m.category})]\n${m.body}`).join("\n\n---\n\n");
 };
 
+// TL11A, docs/Story_Timeline_Design.md — opt-in per-scan (mirrors gatherMemoryContext's own
+// shape/gating exactly). Formats the Spine chronology as ordered "when: title — blurb" lines so
+// the scanner has real reference data for "timeline"-type issues instead of only inferring order
+// from prior-chapter text.
+const gatherTimelineContext = async (storyId: string): Promise<string> => {
+    const pins = await getSpineChronologyExcerpt(storyId);
+    if (pins.length === 0) return "";
+    return pins.map(p => `${p.when}: ${p.title}${p.blurb ? ` — ${p.blurb}` : ""}`).join("\n");
+};
+
 const buildPromptMessages = (
     chapterText: string,
     context: LabeledResult[],
-    memoryContext: string
+    memoryContext: string,
+    timelineContext: string
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
     const contextBlock = context.length
         ? context
@@ -168,16 +188,17 @@ const buildPromptMessages = (
               .join("\n\n---\n\n")
         : "(no related Codex entries or prior chapters found)";
 
-    const referenceSection = memoryContext
-        ? `=== REFERENCE CONTEXT (Codex + prior chapters) ===\n${contextBlock.slice(0, MAX_CONTEXT_CHARS)}\n\n` +
-          `=== PROJECT MEMORY (approved facts) ===\n${memoryContext.slice(0, MAX_CONTEXT_CHARS)}`
-        : `=== REFERENCE CONTEXT (Codex + prior chapters) ===\n${contextBlock.slice(0, MAX_CONTEXT_CHARS)}`;
+    const sections = [
+        `=== REFERENCE CONTEXT (Codex + prior chapters) ===\n${contextBlock.slice(0, MAX_CONTEXT_CHARS)}`,
+        memoryContext && `=== PROJECT MEMORY (approved facts) ===\n${memoryContext.slice(0, MAX_CONTEXT_CHARS)}`,
+        timelineContext && `=== STORY TIMELINE (established chronology) ===\n${timelineContext.slice(0, MAX_CONTEXT_CHARS)}`
+    ].filter(Boolean);
 
     return [
         { role: "system", content: memoryContext ? SCANNER_SYSTEM_PROMPT_WITH_MEMORY : SCANNER_SYSTEM_PROMPT },
         {
             role: "user",
-            content: `=== CHAPTER TEXT ===\n${chapterText.slice(0, MAX_CHAPTER_CHARS)}\n\n${referenceSection}`
+            content: `=== CHAPTER TEXT ===\n${chapterText.slice(0, MAX_CHAPTER_CHARS)}\n\n${sections.join("\n\n")}`
         }
     ];
 };
@@ -290,8 +311,10 @@ export const runChapterScan = async (params: {
     model: string;
     // C3 — opt-in per-scan flag; default false keeps the prompt/context identical to before.
     includeMemory?: boolean;
+    // TL11A — opt-in per-scan flag, same shape as includeMemory; default false.
+    includeTimeline?: boolean;
 }): Promise<RagScanIssue[]> => {
-    const { scanId, storyId, chapterId, client, model, includeMemory = false } = params;
+    const { scanId, storyId, chapterId, client, model, includeMemory = false, includeTimeline = false } = params;
 
     const [chapter] = await db.select().from(schema.chapters).where(eq(schema.chapters.id, chapterId));
     if (!chapter) throw new Error(`Chapter not found: ${chapterId}`);
@@ -300,14 +323,15 @@ export const runChapterScan = async (params: {
     if (!chapterText.trim()) return [];
 
     const chapterChunks = chunkText(chapterText);
-    const [context, memoryContext] = await Promise.all([
+    const [context, memoryContext, timelineContext] = await Promise.all([
         gatherContext(storyId, chapterId, chapterChunks),
-        includeMemory ? gatherMemoryContext(storyId) : Promise.resolve("")
+        includeMemory ? gatherMemoryContext(storyId) : Promise.resolve(""),
+        includeTimeline ? gatherTimelineContext(storyId) : Promise.resolve("")
     ]);
 
     const completion = await client.chat.completions.create({
         model,
-        messages: buildPromptMessages(chapterText, context, memoryContext),
+        messages: buildPromptMessages(chapterText, context, memoryContext, timelineContext),
         temperature: 0,
         max_tokens: 2048
     });
@@ -336,7 +360,11 @@ export const runChapterScan = async (params: {
 // ── Public API ─────────────────────────────────────────────────────────────────
 
 // Scan a single chapter synchronously. Throws if no 'rag_scanner' or global AI endpoint is configured.
-export const scanChapter = async (chapterId: string, includeMemory = false): Promise<{ scan: RagScan; issues: RagScanIssue[] }> => {
+export const scanChapter = async (
+    chapterId: string,
+    includeMemory = false,
+    includeTimeline = false
+): Promise<{ scan: RagScan; issues: RagScanIssue[] }> => {
     const [chapter] = await db
         .select({ id: schema.chapters.id, storyId: schema.chapters.storyId })
         .from(schema.chapters)
@@ -347,7 +375,7 @@ export const scanChapter = async (chapterId: string, includeMemory = false): Pro
 
     const scan = await createScan({ storyId: chapter.storyId, scope: "chapter", chapterId, totalChapters: 1 });
     try {
-        const issues = await runChapterScan({ scanId: scan.id, storyId: chapter.storyId, chapterId, client, model, includeMemory });
+        const issues = await runChapterScan({ scanId: scan.id, storyId: chapter.storyId, chapterId, client, model, includeMemory, includeTimeline });
         const completed = await completeScan(scan.id, { model, processedChapters: 1 });
         return { scan: completed, issues };
     } catch (error) {
@@ -370,7 +398,7 @@ export const listOrderedChapterIds = async (storyId: string): Promise<string[]> 
 // Kick off a whole-story scan: chapters are scanned one at a time in the background so the
 // caller gets an immediate response and polls `getScanWithIssues(scan.id)` for progress.
 // Throws immediately (before creating the scan row) if no scanner endpoint is configured.
-export const scanStory = async (storyId: string, includeMemory = false): Promise<RagScan> => {
+export const scanStory = async (storyId: string, includeMemory = false, includeTimeline = false): Promise<RagScan> => {
     const { client, model } = await requireScannerConnection();
 
     const chapterIds = await listOrderedChapterIds(storyId);
@@ -381,7 +409,7 @@ export const scanStory = async (storyId: string, includeMemory = false): Promise
         try {
             for (const [index, chapterId] of chapterIds.entries()) {
                 try {
-                    await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory });
+                    await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory, includeTimeline });
                 } catch (error) {
                     console.error(`RAG scan: chapter ${chapterId} failed:`, (error as Error).message);
                 }

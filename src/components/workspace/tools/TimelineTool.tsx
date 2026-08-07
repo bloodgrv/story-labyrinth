@@ -1,7 +1,17 @@
+import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
+import { PendingPinsPanel } from "@/features/story-timeline/components/PendingPinsPanel";
 import { TimelineBoard } from "@/features/story-timeline/components/TimelineBoard";
 import { TimelineSwitcher } from "@/features/story-timeline/components/TimelineSwitcher";
-import { useTimelinePinsQuery, useTimelinesQuery } from "@/features/story-timeline/hooks/useStoryTimelineQuery";
+import {
+    usePendingPinsQuery,
+    useSuggestTimelinePinsMutation,
+    useTimelinePinsQuery,
+    useTimelinesQuery
+} from "@/features/story-timeline/hooks/useStoryTimelineQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 
 const ACTIVE_TIMELINE_KEY = (storyId: string) => `timeline-active-id-${storyId}`;
@@ -15,6 +25,11 @@ export function TimelineTool() {
     const { data: timelines, isLoading: timelinesLoading } = useTimelinesQuery(currentStoryId);
     const { data: pins = [], isLoading: pinsLoading } = useTimelinePinsQuery(currentStoryId);
     const [activeTimelineId, setActiveTimelineIdState] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<"board" | "pending">("board");
+    const isOwner = useIsOwner();
+    const pendingQuery = usePendingPinsQuery(currentStoryId);
+    const suggestMutation = useSuggestTimelinePinsMutation();
+    const pendingCount = pendingQuery.data?.pending.length ?? 0;
 
     // "Place on timeline" elsewhere / a pin's own re-open — consume once on arrival, same pattern
     // MapsTool.tsx uses for pendingMapId. TL0-TL4 scope has no per-pin scroll/highlight target yet
@@ -53,16 +68,44 @@ export function TimelineTool() {
 
     return (
         <div className="h-full flex flex-col">
-            <div className="px-4 pt-4">
-                <TimelineSwitcher
-                    storyId={currentStoryId}
-                    timelines={timelines}
-                    activeTimelineId={activeTimelineId}
-                    onSelect={setActiveTimelineId}
-                />
+            <div className="px-4 pt-4 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <TimelineSwitcher
+                        storyId={currentStoryId}
+                        timelines={timelines}
+                        activeTimelineId={activeTimelineId}
+                        onSelect={setActiveTimelineId}
+                    />
+                    <Tabs value={viewMode} onValueChange={v => setViewMode(v as "board" | "pending")}>
+                        <TabsList>
+                            <TabsTrigger value="board">Board</TabsTrigger>
+                            <TabsTrigger value="pending">Pending{pendingCount > 0 ? ` (${pendingCount})` : ""}</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
+                {isOwner && (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={suggestMutation.isPending}
+                        onClick={() => suggestMutation.mutate(currentStoryId)}
+                        title="Propose new timeline pins from this story's lorebook entries and notes — reviewed in the Pending tab"
+                    >
+                        {suggestMutation.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        Suggest pins
+                    </Button>
+                )}
             </div>
             <div className="flex-1 min-h-0">
-                <TimelineBoard storyId={currentStoryId} timeline={activeTimeline} pins={pinsForActiveTimeline} />
+                {viewMode === "pending" ? (
+                    <PendingPinsPanel storyId={currentStoryId} />
+                ) : (
+                    <TimelineBoard storyId={currentStoryId} timeline={activeTimeline} pins={pinsForActiveTimeline} />
+                )}
             </div>
         </div>
     );

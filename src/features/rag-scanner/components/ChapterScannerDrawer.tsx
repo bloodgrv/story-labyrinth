@@ -28,6 +28,8 @@ export function ChapterScannerDrawer({ chapterId, storyId }: ChapterScannerDrawe
     const [triggeredJobId, setTriggeredJobId] = useState<string | null>(null);
     // C3 (docs/CURRENT_BACKLOG.md P0.3) — per-scan opt-in, default off; not a persisted setting.
     const [includeMemory, setIncludeMemory] = useState(false);
+    // TL11A (docs/Story_Timeline_Design.md) — same per-scan opt-in shape.
+    const [includeTimeline, setIncludeTimeline] = useState(false);
 
     const triggerMutation = useTriggerChapterScanMutation();
     const { data: job } = useScanJobWithInvalidation(triggeredJobId, storyId);
@@ -40,7 +42,7 @@ export function ChapterScannerDrawer({ chapterId, storyId }: ChapterScannerDrawe
 
     const handleScan = () => {
         triggerMutation.mutate(
-            { storyId, chapterId, includeMemory },
+            { storyId, chapterId, includeMemory, includeTimeline },
             { onSuccess: result => setTriggeredJobId(result.id) }
         );
     };
@@ -68,6 +70,14 @@ export function ChapterScannerDrawer({ chapterId, storyId }: ChapterScannerDrawe
                     <Switch id="chapter-scanner-include-memory" checked={includeMemory} onCheckedChange={setIncludeMemory} />
                     <Label htmlFor="chapter-scanner-include-memory" className="text-xs font-normal text-muted-foreground">
                         Include Project Memory (contradiction checks)
+                    </Label>
+                </div>
+            )}
+            {isOwner && (
+                <div className="flex items-center gap-2">
+                    <Switch id="chapter-scanner-include-timeline" checked={includeTimeline} onCheckedChange={setIncludeTimeline} />
+                    <Label htmlFor="chapter-scanner-include-timeline" className="text-xs font-normal text-muted-foreground">
+                        Include Story Timeline (chronology checks)
                     </Label>
                 </div>
             )}
