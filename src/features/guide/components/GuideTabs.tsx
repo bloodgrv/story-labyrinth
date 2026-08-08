@@ -11,6 +11,7 @@ import LocationsMapsGuide from "../content/locations-maps.mdx";
 import LorebookGuide from "../content/lorebook.mdx";
 import MultiViewGuide from "../content/multiview.mdx";
 import NameGeneratorGuide from "../content/name-generator.mdx";
+import NotesGuide from "../content/notes.mdx";
 import OutlineGuide from "../content/outline.mdx";
 import PromptGuide from "../content/prompts.mdx";
 import SettingsNavGuide from "../content/settings-nav.mdx";
@@ -33,6 +34,7 @@ export function GuideTabs() {
                 <TabsTrigger value="story-timeline">Story Timeline</TabsTrigger>
                 <TabsTrigger value="prompts">Prompt Guide</TabsTrigger>
                 <TabsTrigger value="chat-features">Chat Features</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
                 <TabsTrigger value="brainstorm">Brainstorm Guide</TabsTrigger>
                 <TabsTrigger value="tts">Text-to-Speech</TabsTrigger>
                 <TabsTrigger value="concrete-beats">Concrete Beats</TabsTrigger>
@@ -87,6 +89,12 @@ export function GuideTabs() {
             <TabsContent value="chat-features" className="space-y-4">
                 <GuideProvider>
                     <ChatFeaturesGuide components={mdxComponents} />
+                </GuideProvider>
+            </TabsContent>
+
+            <TabsContent value="notes" className="space-y-4">
+                <GuideProvider>
+                    <NotesGuide components={mdxComponents} />
                 </GuideProvider>
             </TabsContent>
 

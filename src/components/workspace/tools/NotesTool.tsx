@@ -1,17 +1,16 @@
-import { Check, ChevronsUpDown, MessageSquare, Plus, StickyNote, Upload } from "lucide-react";
+import { attempt } from "@jfdi/attempt";
+import { MessageSquare, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { LorebookProvider } from "@/features/lorebook/context/LorebookContext";
 import NoteEditor from "@/features/notes/components/NoteEditor";
-import NoteList from "@/features/notes/components/NoteList";
+import { NotesBrowsePane } from "@/features/notes/components/NotesBrowsePane";
 import { NotesChatRail } from "@/features/notes/components/NotesChatRail";
-import { useCreateNoteMutation, useNotesByStoryQuery } from "@/features/notes/hooks/useNotesQuery";
+import { type NoteOpenTab, NotesTabStrip } from "@/features/notes/components/NotesTabStrip";
+import { useNotesByStoryQuery } from "@/features/notes/hooks/useNotesQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
-import { cn } from "@/lib/utils";
 import type { Note } from "@/types/story";
 
 // P0.4 K4 — "Import dump" is the concrete UI entry point for K2's split-dump capability, not a
@@ -64,49 +63,77 @@ const ImportDumpDialog = ({
     );
 };
 
+// T7 (NO1, docs/Notes_Org_Browse_Design.md) — sticky Browse + closable note tabs, persisted per
+// story, mirrors LorebookPage.tsx's tab-persistence pattern exactly.
+const loadStoredTabs = (storageKey: string | null): { tabs: NoteOpenTab[]; activeIndex: number } => {
+    if (storageKey) {
+        const [, stored] = attempt(() => {
+            const raw = localStorage.getItem(storageKey);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw) as { tabs: NoteOpenTab[]; activeIndex: number };
+            if (Array.isArray(parsed.tabs) && parsed.tabs.length > 0) return parsed;
+            return null;
+        });
+        if (stored) return stored;
+    }
+    return { tabs: [{ kind: "browse" }], activeIndex: 0 };
+};
+
 export const NotesTool = () => {
     const { currentStoryId, setPendingChatComposerSeed, pendingNoteId, setPendingNoteId } = useStoryContext();
-    const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+    const tabsStorageKey = currentStoryId ? `notes-tabs-story-${currentStoryId}` : null;
+
+    const [openTabs, setOpenTabs] = useState<NoteOpenTab[]>(() => loadStoredTabs(tabsStorageKey).tabs);
+    const [activeTabIndex, setActiveTabIndex] = useState(() => loadStoredTabs(tabsStorageKey).activeIndex);
+    const [chatOpen, setChatOpen] = useState(false); // K1 — optional/toggleable, not always-docked
+    const [importDumpOpen, setImportDumpOpen] = useState(false);
+    const { data: notes = [] } = useNotesByStoryQuery(currentStoryId || "");
+
+    useEffect(() => {
+        if (!tabsStorageKey) return;
+        attempt(() => localStorage.setItem(tabsStorageKey, JSON.stringify({ tabs: openTabs, activeIndex: activeTabIndex })));
+    }, [openTabs, activeTabIndex, tabsStorageKey]);
+
+    // Invalid/deleted note ids (e.g. a note deleted from another tab, or a stale tab from a
+    // previous session) are dropped silently on the notes list settling, per design.
+    useEffect(() => {
+        if (notes.length === 0) return;
+        setOpenTabs(prev => {
+            const next = prev.filter(t => t.kind === "browse" || notes.some(n => n.id === t.noteId));
+            return next.length === prev.length ? prev : next.length > 0 ? next : [{ kind: "browse" }];
+        });
+    }, [notes]);
+
+    const openNoteTab = (note: Note) => {
+        const existingIdx = openTabs.findIndex(t => t.kind === "note" && t.noteId === note.id);
+        if (existingIdx >= 0) {
+            setActiveTabIndex(existingIdx);
+            return;
+        }
+        setActiveTabIndex(openTabs.length);
+        setOpenTabs(prev => [...prev, { kind: "note", noteId: note.id }]);
+    };
+
+    const closeTab = (index: number) => {
+        if (openTabs[index]?.kind === "browse") return;
+        setOpenTabs(prev => prev.filter((_, i) => i !== index));
+        setActiveTabIndex(current => {
+            if (index < current) return current - 1;
+            if (index === current) return Math.max(0, current - 1);
+            return current;
+        });
+    };
 
     // Story Timeline (T6, TL3) — a linked pin's "open" action for a note (PinCard.tsx). Same
     // consume-once pattern MapsTool.tsx uses for pendingMapId.
     useEffect(() => {
         if (pendingNoteId) {
-            setSelectedNoteId(pendingNoteId);
+            const note = notes.find(n => n.id === pendingNoteId);
+            if (note) openNoteTab(note);
             setPendingNoteId(null);
         }
-    }, [pendingNoteId, setPendingNoteId]);
-    const [mobileOpen, setMobileOpen] = useState(false);
-    // K1 — the Notes chat rail is optional/toggleable (design doc §7: "Optional Notes chat rail
-    // (open/close) — not required for CRUD"), unlike WB/Outline's always-docked panels.
-    const [chatOpen, setChatOpen] = useState(false);
-    const [importDumpOpen, setImportDumpOpen] = useState(false);
-    const { data: notes = [] } = useNotesByStoryQuery(currentStoryId || "");
-    const createNoteMutation = useCreateNoteMutation();
-
-    const selectedNote = notes.find(n => n.id === selectedNoteId) || null;
-
-    const handleSelectNote = (note: Note | null) => {
-        setSelectedNoteId(note?.id || null);
-    };
-
-    const handleCreateNote = () => {
-        if (!currentStoryId) return;
-        createNoteMutation.mutate(
-            {
-                storyId: currentStoryId,
-                title: `New Note ${new Date().toLocaleString()}`,
-                content: "",
-                type: "idea"
-            },
-            {
-                onSuccess: newNote => {
-                    setSelectedNoteId(newNote.id);
-                    setMobileOpen(false);
-                }
-            }
-        );
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pendingNoteId, notes, setPendingNoteId]);
 
     const handleImportDump = (text: string) => {
         setPendingChatComposerSeed({ tool: "notes", text });
@@ -120,111 +147,50 @@ export const NotesTool = () => {
             </div>
         );
 
+    const activeTab = openTabs[activeTabIndex] ?? openTabs[0];
+    // Desk privilege "focused note" (K1) = the active note tab's own note, else null — Browse
+    // (even with a selection inside it) doesn't count as "focused" per design.
+    const focusedNoteId = activeTab.kind === "note" ? activeTab.noteId : null;
 
     return (
         <LorebookProvider storyId={currentStoryId}>
-        <div className="h-full flex flex-col">
-            <div className="p-2 border-b flex items-center justify-end gap-2 shrink-0">
-                <Button variant="outline" size="sm" onClick={() => setImportDumpOpen(true)} className="flex items-center gap-1">
-                    <Upload className="h-4 w-4" />
-                    Import dump
-                </Button>
-                <Button
-                    variant={chatOpen ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setChatOpen(v => !v)}
-                    className="flex items-center gap-1"
-                >
-                    <MessageSquare className="h-4 w-4" />
-                    Chat
-                </Button>
-            </div>
-
-            <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-                {/* Mobile: dropdown note selector */}
-                <div className="md:hidden p-2 border-b flex gap-2">
-                    <Popover open={mobileOpen} onOpenChange={setMobileOpen}>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={mobileOpen}
-                                aria-controls="notes-listbox"
-                                className="flex-1 justify-between"
-                            >
-                                <span className="truncate">{selectedNote ? selectedNote.title : "Select note..."}</span>
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[calc(100vw-2rem)] p-0" align="start">
-                            <Command id="notes-listbox">
-                                <CommandInput placeholder="Search notes..." />
-                                <CommandList>
-                                    <CommandEmpty>No notes found.</CommandEmpty>
-                                    <CommandGroup>
-                                        {notes.map(note => (
-                                            <CommandItem
-                                                key={note.id}
-                                                value={note.title}
-                                                onSelect={() => {
-                                                    handleSelectNote(note);
-                                                    setMobileOpen(false);
-                                                }}
-                                            >
-                                                <Check
-                                                    className={cn(
-                                                        "mr-2 h-4 w-4",
-                                                        selectedNoteId === note.id ? "opacity-100" : "opacity-0"
-                                                    )}
-                                                />
-                                                <span className="truncate">{note.title}</span>
-                                                <span className="ml-2 text-xs text-muted-foreground capitalize">
-                                                    {note.type}
-                                                </span>
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                    <Button size="icon" onClick={handleCreateNote} title="New Note">
-                        <Plus className="h-4 w-4" />
+            <div className="h-full flex flex-col">
+                <div className="p-2 border-b flex items-center justify-end gap-2 shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => setImportDumpOpen(true)} className="flex items-center gap-1">
+                        <Upload className="h-4 w-4" />
+                        Import dump
+                    </Button>
+                    <Button
+                        variant={chatOpen ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setChatOpen(v => !v)}
+                        className="flex items-center gap-1"
+                    >
+                        <MessageSquare className="h-4 w-4" />
+                        Chat
                     </Button>
                 </div>
 
-                {/* Desktop: sidebar */}
-                <div className="hidden md:block">
-                    <NoteList storyId={currentStoryId} selectedNoteId={selectedNoteId} onSelectNote={handleSelectNote} />
-                </div>
+                <NotesTabStrip tabs={openTabs} activeIndex={activeTabIndex} notes={notes} onSelect={setActiveTabIndex} onClose={closeTab} />
 
-                <div className="flex-1 min-h-0 min-w-0">
-                    {selectedNoteId ? (
-                        <NoteEditor key={selectedNoteId} selectedNoteId={selectedNoteId} />
-                    ) : (
-                        <div className="flex items-center justify-center h-full flex-col gap-6 text-muted-foreground p-4">
-                            <StickyNote className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground/50" />
-                            <div className="text-center max-w-md">
-                                <h3 className="text-lg md:text-xl font-semibold mb-2">No Note Selected</h3>
-                                <p className="mb-6 text-sm md:text-base">Select a note or create a new one.</p>
-                                <Button variant="gradient" onClick={handleCreateNote} className="flex items-center gap-2">
-                                    <Plus className="h-4 w-4" />
-                                    Create New Note
-                                </Button>
-                            </div>
+                <div className="flex-1 min-h-0 flex flex-col md:flex-row">
+                    <div className="flex-1 min-h-0 min-w-0 flex flex-col">
+                        {activeTab.kind === "note" ? (
+                            <NoteEditor key={activeTab.noteId} selectedNoteId={activeTab.noteId} />
+                        ) : (
+                            <NotesBrowsePane storyId={currentStoryId} notes={notes} onOpenNote={openNoteTab} />
+                        )}
+                    </div>
+
+                    {chatOpen && (
+                        <div className="w-full md:w-[480px] shrink-0 border-t md:border-t-0 md:border-l border-input h-[50vh] md:h-full">
+                            <NotesChatRail storyId={currentStoryId} focusedNoteId={focusedNoteId} />
                         </div>
                     )}
                 </div>
 
-                {chatOpen && (
-                    <div className="w-full md:w-[480px] shrink-0 border-t md:border-t-0 md:border-l border-input h-[50vh] md:h-full">
-                        <NotesChatRail storyId={currentStoryId} focusedNoteId={selectedNoteId} />
-                    </div>
-                )}
+                <ImportDumpDialog open={importDumpOpen} onOpenChange={setImportDumpOpen} onSubmit={handleImportDump} />
             </div>
-
-            <ImportDumpDialog open={importDumpOpen} onOpenChange={setImportDumpOpen} onSubmit={handleImportDump} />
-        </div>
         </LorebookProvider>
     );
 };

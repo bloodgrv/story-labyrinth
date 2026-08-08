@@ -1,0 +1,44 @@
+# Notes
+
+A working-material parking lot for research, scraps, and to-dos — organized Lorebook-style with folders, tags, and a Cards|List browse surface, once your notes outgrow a single flat list.
+
+> [!NOTE]
+> Folders and tags are cosmetic filing only. They never change what the AI sees — a note only ever reaches a chat through its own **Include in AI chats** toggle (armed) plus that chat's own **Include notes** context toggle, exactly as before.
+
+---
+
+## 1. Browse and note tabs
+
+_Path: **Notes** in the left sidebar_
+
+**Browse** is the sticky home tab — a Cards or List grid of every note, plus a folder tree sidebar. Opening a note from Browse adds it as its own closable tab next to Browse, the same way the Lorebook does it; open tabs (and which one is active) are remembered per story, so switching tools and coming back leaves everything where you left it.
+
+Use the **Card | List** toggle in the toolbar to switch density — List is denser (no body preview), and defaults on automatically once a story has 12+ notes.
+
+## 2. Folders
+
+Folders are purely organizational — a note lives in one folder (or **Unfiled**), nested up to three levels deep. Drag a card/row onto a folder in the sidebar to file it, or use its hover **Move to…** action. Deleting a folder never deletes its notes: everything inside moves up to the parent folder (or Unfiled) instead.
+
+On an empty story you'll be offered a one-click **starter folder set** (Research, Continuity, Scene scraps, Promotions, Archive) — entirely optional, fully rename/delete-able afterward, and dismissible if you'd rather build your own from scratch.
+
+## 3. Search and smart piles
+
+The search box matches both **title and body** across the whole desk by default, even while a folder is selected — turn on **This folder only** (next to the search box, once you're inside a folder) to scope it down. Results outside your current folder selection show a small path crumb so you know where they actually live.
+
+**Piles** are quick virtual filters, not storage — they combine with your folder and type selection:
+
+| Pile | Shows |
+| --- | --- |
+| All | Everything |
+| Unfiled | Notes with no folder |
+| Pinned | Notes you've pinned to the top |
+| Armed | Notes with **Include in AI chats** on |
+| Recent | Updated in the last 14 days |
+
+## 4. Tags
+
+Thin, optional chips — add them from a note's own tab (next to its title/type) or filter by them from Browse. Tags are a plain-string convenience, not a taxonomy system: no colors, no hierarchy, no AI involvement, and (like folders) never appended to what gets indexed or sent to a chat.
+
+## 5. Everything else is unchanged
+
+Pin, arm (**Include in AI chats**), delete, rename, change type, the optional Notes chat rail, Import dump, and AI note-proposal/split/promote all work exactly as before — this pass only changed how you *find* and *file* notes, not how they're written or read by the AI.

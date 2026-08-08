@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { buildNoteText, indexNote, removeEntityFromIndex } from "../services/ragIndexService.js";
+import { resolveNotesFolderId } from "../services/folderService.js";
 import { unlinkPinsForSource } from "../services/storyTimelineService.js";
 
 type NoteRow = typeof schema.notes.$inferSelect;
@@ -50,6 +51,25 @@ export default createCrudRouter({
             "/:id",
             asyncHandler(async (req, res) => {
                 const { id: _id, createdAt: _createdAt, ...updates } = req.body;
+                const [existing] = await db.select().from(table).where(eq(table.id, req.params.id));
+                if (!existing) {
+                    res.status(404).json({ error: "Note not found" });
+                    return;
+                }
+                // T7 (NO3) — validates/auto-resolves folderId the same way lorebook.ts's PUT
+                // (resolveLorebookFolderId) already does — a bad explicit choice is a user
+                // mistake, 400 not 500, same convention.
+                if ("folderId" in updates) {
+                    const [folderError, resolvedFolderId] = await attemptPromise(() =>
+                        resolveNotesFolderId(existing as NoteRow, { folderId: updates.folderId })
+                    );
+                    if (folderError) {
+                        res.status(400).json({ error: folderError.message });
+                        return;
+                    }
+                    updates.folderId = resolvedFolderId;
+                }
+
                 const [updated] = await db.update(table).set(updates).where(eq(table.id, req.params.id)).returning();
                 if (!updated) {
                     res.status(404).json({ error: "Note not found" });

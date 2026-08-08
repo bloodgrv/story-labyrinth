@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 interface DraggableLeafProps {
     id: string;
-    data: { type: "lorebook-entry" | "chat"; leafId: string };
+    data: { type: "lorebook-entry" | "chat" | "note"; leafId: string };
     children: ReactNode;
 }
 

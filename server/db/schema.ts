@@ -1183,13 +1183,20 @@ export const notes = sqliteTable(
         // P0.4 K0 — pin to the top of the Notes list. A plain UI convenience flag, unrelated to
         // includeInAi (a note can be pinned without being AI-armed, or vice versa).
         pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+        // T7 (NO3) — cosmetic org folder (orgFolders.kind='notes'). Null = Unfiled. Never read by
+        // RAG/Codex/chat context, same boundary as lorebookEntries.folderId/aiChats.folderId.
+        folderId: text("folderId"),
+        // T7 (NO5) — thin optional tags, JSON string[]. Null/absent treated as [] client-side.
+        // Filter/search only — never appended to RAG-indexed text (see buildNoteText).
+        tags: text("tags", { mode: "json" }).$type<string[]>(),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
         updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
         isDemo: integer("isDemo", { mode: "boolean" })
     },
     table => ({
         storyIdIdx: index("note_story_id_idx").on(table.storyId),
-        typeIdx: index("note_type_idx").on(table.type)
+        typeIdx: index("note_type_idx").on(table.type),
+        folderIdIdx: index("note_folder_id_idx").on(table.folderId)
     })
 );
 

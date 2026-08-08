@@ -26,8 +26,8 @@ export default createCrudRouter({
                     category?: string;
                     chatType?: string;
                 };
-                if (kind !== "lorebook" && kind !== "chat") {
-                    res.status(400).json({ error: "kind must be 'lorebook' or 'chat'" });
+                if (kind !== "lorebook" && kind !== "chat" && kind !== "notes") {
+                    res.status(400).json({ error: "kind must be 'lorebook', 'chat', or 'notes'" });
                     return;
                 }
                 if (!scopeId) {
@@ -46,7 +46,7 @@ export default createCrudRouter({
             "/",
             asyncHandler(async (req, res) => {
                 const { kind, level, scopeId, category, chatType, parentId, name } = req.body as {
-                    kind?: "lorebook" | "chat";
+                    kind?: "lorebook" | "chat" | "notes";
                     level?: "series" | "story" | null;
                     scopeId?: string;
                     category?: string | null;

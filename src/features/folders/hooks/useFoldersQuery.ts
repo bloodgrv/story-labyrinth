@@ -8,11 +8,11 @@ import type { CreateFolderInput } from "@/types/folders";
 // completely unrelated chat folder list, and vice versa.
 export const folderKeys = {
     all: ["folders"] as const,
-    list: (kind: "lorebook" | "chat", scopeId: string, discriminator?: string) =>
+    list: (kind: "lorebook" | "chat" | "notes", scopeId: string, discriminator?: string) =>
         [...folderKeys.all, kind, scopeId, discriminator ?? "all"] as const
 };
 
-export const useFoldersQuery = (params: { kind: "lorebook" | "chat"; scopeId: string; category?: string; chatType?: string }) =>
+export const useFoldersQuery = (params: { kind: "lorebook" | "chat" | "notes"; scopeId: string; category?: string; chatType?: string }) =>
     useQuery({
         queryKey: folderKeys.list(params.kind, params.scopeId, params.category ?? params.chatType),
         queryFn: () => foldersApi.list(params),
@@ -51,11 +51,12 @@ export const useDeleteFolderMutation = () => {
     return useMutation({
         mutationFn: (id: string) => foldersApi.delete(id),
         onSuccess: () => {
-            // A folder delete reparents leaves (server-side) — the lorebook/chat lists holding
-            // those leaves' folderId are stale too, not just the folder tree itself.
+            // A folder delete reparents leaves (server-side) — the lorebook/chat/notes lists
+            // holding those leaves' folderId are stale too, not just the folder tree itself.
             queryClient.invalidateQueries({ queryKey: folderKeys.all });
             queryClient.invalidateQueries({ queryKey: ["lorebook"] });
             queryClient.invalidateQueries({ queryKey: ["chats"] });
+            queryClient.invalidateQueries({ queryKey: ["notes"] });
         },
         onError: (error: Error) => toast.error(error.message || "Failed to delete folder")
     });

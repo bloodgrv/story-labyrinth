@@ -355,7 +355,9 @@ export default createCrudRouter({
                                 id: newNoteId,
                                 storyId: newStoryId,
                                 createdAt: new Date(),
-                                updatedAt: new Date()
+                                updatedAt: new Date(),
+                                // T7 (NO3) — same null-fallback as lorebookEntries/aiChats above.
+                                folderId: note.folderId ? (folderIdMap.get(note.folderId) ?? null) : null
                             };
                         });
                         await db.insert(schema.notes).values(newNotes);

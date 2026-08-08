@@ -227,6 +227,10 @@ export interface Note extends BaseEntity {
     includeInAi?: boolean;
     // P0.4 K0 — pins to the top of the Notes list. Defaults false server-side.
     pinned?: boolean;
+    // T7 (NO3) — cosmetic org folder (orgFolders.kind="notes"). null/undefined = Unfiled.
+    folderId?: string | null;
+    // T7 (NO5) — thin optional tags, filter/search only, never affects RAG/chat context.
+    tags?: string[] | null;
 }
 
 // Lorebook types

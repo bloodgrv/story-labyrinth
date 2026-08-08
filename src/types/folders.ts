@@ -3,9 +3,9 @@
 // the scope fields below are meaningful.
 export interface OrgFolder {
     id: string;
-    kind: "lorebook" | "chat";
+    kind: "lorebook" | "chat" | "notes";
     level: "series" | "story" | null; // lorebook only
-    scopeId: string; // lorebook: seriesId/storyId per level; chat: storyId
+    scopeId: string; // lorebook: seriesId/storyId per level; chat/notes: storyId
     category: string | null; // lorebook only
     chatType: string | null; // chat only
     parentId: string | null; // null = root folder
@@ -16,7 +16,7 @@ export interface OrgFolder {
 }
 
 export interface CreateFolderInput {
-    kind: "lorebook" | "chat";
+    kind: "lorebook" | "chat" | "notes";
     level?: "series" | "story" | null;
     scopeId: string;
     category?: string | null;

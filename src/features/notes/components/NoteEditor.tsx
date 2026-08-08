@@ -2,10 +2,16 @@ import { MessageSquarePlus, Save } from "lucide-react";
 import { useState } from "react";
 import Editor from "react-simple-wysiwyg";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { captureNoteItemTarget } from "@/features/rework/adapters/noteItemAdapter";
 import { requestRework } from "@/features/rework/pendingReworkStore";
 import { cn } from "@/lib/utils";
+import type { Note } from "@/types/story";
 import { useNoteQuery, useUpdateNoteMutation } from "../hooks/useNotesQuery";
+import { NOTE_TYPES } from "./NoteFormDialog";
+import { NoteTagsInput } from "./NoteTagsInput";
+import { stripHtml } from "../lib/notePreview";
 
 interface NoteEditorProps {
     selectedNoteId: string | null;
@@ -27,17 +33,22 @@ export default function NoteEditor({ selectedNoteId }: NoteEditorProps) {
 }
 
 interface NoteEditorContentProps {
-    note: { id: string; storyId: string; title: string; content: string; updatedAt: Date };
+    note: Note;
     updateMutation: ReturnType<typeof useUpdateNoteMutation>;
 }
 
-// Strips markup for the rework capture's plain-text preview only — the note's own stored
-// content (WYSIWYG HTML) is untouched; this is purely what gets shown in the ReworkCard/sent to
-// the model as CURRENT TITLE + CONTENT.
-const stripHtml = (html: string): string => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-
 function NoteEditorContent({ note, updateMutation }: NoteEditorContentProps) {
     const [content, setContent] = useState(note.content);
+    const [title, setTitle] = useState(note.title);
+
+    const handleSaveTitle = () => {
+        const trimmed = title.trim();
+        if (!trimmed) {
+            setTitle(note.title);
+            return;
+        }
+        if (trimmed !== note.title) updateMutation.mutate({ id: note.id, data: { title: trimmed } });
+    };
 
     const handleSave = async () => {
         await updateMutation.mutateAsync({
@@ -55,14 +66,40 @@ function NoteEditorContent({ note, updateMutation }: NoteEditorContentProps) {
 
     return (
         <div className="h-full flex flex-col">
-            <div className="border-b border-input p-4 flex items-center justify-between">
-                <div>
-                    <h2 className="font-semibold text-foreground">{note.title}</h2>
-                    <p className="text-sm text-muted-foreground">
-                        Last updated: {new Date(note.updatedAt).toLocaleString()}
-                    </p>
+            <div className="border-b border-input p-4 flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1 space-y-2">
+                    <Input
+                        value={title}
+                        onChange={e => setTitle(e.target.value)}
+                        onBlur={handleSaveTitle}
+                        onKeyDown={e => {
+                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                        }}
+                        className="h-8 font-semibold text-foreground max-w-md"
+                    />
+                    <div className="flex items-center gap-2">
+                        <Select value={note.type} onValueChange={type => updateMutation.mutate({ id: note.id, data: { type: type as Note["type"] } })}>
+                            <SelectTrigger className="h-7 text-xs w-[110px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {NOTE_TYPES.map(t => (
+                                    <SelectItem key={t.value} value={t.value}>
+                                        {t.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">
+                            Last updated: {new Date(note.updatedAt).toLocaleString()}
+                        </p>
+                    </div>
+                    <NoteTagsInput
+                        tags={note.tags ?? []}
+                        onChange={tags => updateMutation.mutate({ id: note.id, data: { tags } })}
+                    />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                     <Button variant="outline" size="sm" onClick={handleRework} className="flex items-center gap-1">
                         <MessageSquarePlus className="h-3 w-3" />
                         Rework in chat

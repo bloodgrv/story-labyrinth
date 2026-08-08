@@ -11,13 +11,18 @@ type LorebookRow = typeof schema.lorebookEntries.$inferSelect;
 // Narrow shape (not the full aiChats row) — resolveChatFolderId is called from chatService.ts
 // with its own normalized ChatRow (parsed messages/typed chatType), not the raw drizzle row.
 type ChatFolderScope = { storyId: string | null; chatType: string | null };
+// Narrow shape for resolveNotesFolderId — a note's own scoping is just storyId, no
+// category/chatType concept (T7, docs/Notes_Org_Browse_Design.md).
+type NoteFolderScope = { storyId: string };
+
+export type FolderKind = "lorebook" | "chat" | "notes";
 
 const MAX_DEPTH = 3;
 
 // All folders sharing a (kind, scopeId) pair, across categories/chatTypes — small enough (a
 // personal novel's lorebook/chat folders) that fetching the whole scope once and doing depth/
 // tree math in memory is simpler and cheaper than N+1 parentId walks per validation.
-const listFoldersInScope = (kind: "lorebook" | "chat", scopeId: string): Promise<FolderRow[]> =>
+const listFoldersInScope = (kind: FolderKind, scopeId: string): Promise<FolderRow[]> =>
     db.select().from(schema.orgFolders).where(and(eq(schema.orgFolders.kind, kind), eq(schema.orgFolders.scopeId, scopeId)));
 
 const buildParentMap = (folders: FolderRow[]): Map<string, string | null> =>
@@ -104,7 +109,7 @@ const nextSiblingOrder = (folders: FolderRow[], parentId: string | null): number
 };
 
 export type CreateFolderInput = {
-    kind: "lorebook" | "chat";
+    kind: FolderKind;
     level?: "series" | "story" | null;
     scopeId: string;
     category?: string | null;
@@ -166,7 +171,7 @@ export const moveFolder = async (id: string, input: MoveFolderInput): Promise<Fo
     const [folder] = await db.select().from(schema.orgFolders).where(eq(schema.orgFolders.id, id));
     if (!folder) throw new Error(`Folder not found: ${id}`);
 
-    const folders = await listFoldersInScope(folder.kind as "lorebook" | "chat", folder.scopeId as string);
+    const folders = await listFoldersInScope(folder.kind as FolderKind, folder.scopeId as string);
     const targetParentId = input.parentId !== undefined ? input.parentId : folder.parentId;
 
     if (targetParentId) {
@@ -193,7 +198,7 @@ export const reorderFolders = async (updates: Array<{ id: string; order: number;
     if (updates.length === 0) return;
     const [sample] = await db.select().from(schema.orgFolders).where(eq(schema.orgFolders.id, updates[0].id));
     if (!sample) throw new Error(`Folder not found: ${updates[0].id}`);
-    const folders = await listFoldersInScope(sample.kind as "lorebook" | "chat", sample.scopeId as string);
+    const folders = await listFoldersInScope(sample.kind as FolderKind, sample.scopeId as string);
 
     for (const update of updates)
         if ("parentId" in update) {
@@ -227,13 +232,15 @@ export const deleteFolder = async (id: string): Promise<void> => {
 
     if (folder.kind === "lorebook")
         await db.update(schema.lorebookEntries).set({ folderId: newParentId }).where(eq(schema.lorebookEntries.folderId, id));
+    else if (folder.kind === "notes")
+        await db.update(schema.notes).set({ folderId: newParentId }).where(eq(schema.notes.folderId, id));
     else await db.update(schema.aiChats).set({ folderId: newParentId }).where(eq(schema.aiChats.folderId, id));
 
     await db.delete(schema.orgFolders).where(eq(schema.orgFolders.id, id));
 };
 
 export const listFolders = async (params: {
-    kind: "lorebook" | "chat";
+    kind: FolderKind;
     scopeId: string;
     category?: string;
     chatType?: string;
@@ -290,12 +297,33 @@ export const resolveChatFolderId = async (
     return updates.folderId;
 };
 
+// T7 (NO3) — mirrors resolveChatFolderId, simpler: a note's own scope is just its storyId, no
+// category/chatType concept to also match.
+export const resolveNotesFolderId = async (
+    note: NoteFolderScope,
+    updates: { folderId?: string | null }
+): Promise<string | null | undefined> => {
+    if (updates.folderId === undefined) return undefined;
+    if (!updates.folderId) return null;
+
+    const [folder] = await db.select().from(schema.orgFolders).where(eq(schema.orgFolders.id, updates.folderId));
+    const matches = folder && folder.kind === "notes" && folder.scopeId === note.storyId;
+    if (!matches) throw new Error("Folder does not match this note's story");
+    return updates.folderId;
+};
+
 // ── Scope cleanup on story/series delete ────────────────────────────────────────
 
 export const deleteFoldersForStoryScope = async (storyId: string): Promise<void> => {
     await db
         .delete(schema.orgFolders)
-        .where(or(and(eq(schema.orgFolders.kind, "lorebook"), eq(schema.orgFolders.level, "story"), eq(schema.orgFolders.scopeId, storyId)), and(eq(schema.orgFolders.kind, "chat"), eq(schema.orgFolders.scopeId, storyId))));
+        .where(
+            or(
+                and(eq(schema.orgFolders.kind, "lorebook"), eq(schema.orgFolders.level, "story"), eq(schema.orgFolders.scopeId, storyId)),
+                and(eq(schema.orgFolders.kind, "chat"), eq(schema.orgFolders.scopeId, storyId)),
+                and(eq(schema.orgFolders.kind, "notes"), eq(schema.orgFolders.scopeId, storyId))
+            )
+        );
 };
 
 export const deleteFoldersForSeriesScope = async (seriesId: string): Promise<void> => {

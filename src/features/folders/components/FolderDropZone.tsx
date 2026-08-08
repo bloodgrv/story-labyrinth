@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 interface FolderDropZoneProps {
     // "unfiled" is a synthetic drop target id (not a real folder id) representing "clear folderId".
     id: string | "unfiled";
-    data: { type: "lorebook-folder" | "chat-folder"; targetFolderId: string | null };
+    data: { type: "lorebook-folder" | "chat-folder" | "notes-folder"; targetFolderId: string | null };
     children: ReactNode;
     className?: string;
 }

@@ -2,7 +2,7 @@ import type { CreateFolderInput, OrgFolder } from "@/types/folders";
 import { fetchJSON } from "./apiFactory";
 
 export const foldersApi = {
-    list: (params: { kind: "lorebook" | "chat"; scopeId: string; category?: string; chatType?: string }) => {
+    list: (params: { kind: "lorebook" | "chat" | "notes"; scopeId: string; category?: string; chatType?: string }) => {
         const q = new URLSearchParams({ kind: params.kind, scopeId: params.scopeId });
         if (params.category) q.set("category", params.category);
         if (params.chatType) q.set("chatType", params.chatType);
