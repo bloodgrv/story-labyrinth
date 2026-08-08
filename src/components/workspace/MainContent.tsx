@@ -68,11 +68,12 @@ export const MainContent = () => {
     };
 
     // Every other tool grows to fit its content and lets `main` page-scroll — the right call for
-    // list/form-heavy tools. Editor, Outline, Lorebook, and Brainstorm are the exception:
-    // Editor/Outline can render a resizable chat rail (react-resizable-panels), Lorebook has its
-    // own open-tabs strip (LorebookPage.tsx), and Brainstorm docks a persistent chat-history
-    // sidebar (ChatList.tsx) next to the message thread — all four need a real bounded height to
-    // lay out against instead of a wrapper that grows to match the content. Without this,
+    // list/form-heavy tools. Editor, Outline, Lorebook, Notes, and Brainstorm are the exception:
+    // Editor/Outline can render a resizable chat rail (react-resizable-panels), Lorebook and Notes
+    // (T7) both have their own open-tabs strip + optional docked chat rail
+    // (LorebookPage.tsx/NotesTool.tsx), and Brainstorm docks a persistent chat-history sidebar
+    // (ChatList.tsx) next to the message thread — all five need a real bounded height to lay out
+    // against instead of a wrapper that grows to match the content. Without this,
     // Brainstorm's own scroll-to-bottom-on-new-message effect had nowhere bounded to scroll
     // within, so it scrolled the page-level `main` itself instead — dragging the chat list
     // sidebar off-screen along with it every time a message arrived. Relationships joins this
@@ -85,6 +86,7 @@ export const MainContent = () => {
         currentTool === "editor" ||
         currentTool === "outline" ||
         currentTool === "lorebook" ||
+        currentTool === "notes" ||
         currentTool === "brainstorm" ||
         currentTool === "relationships" ||
         currentTool === "story-map" ||

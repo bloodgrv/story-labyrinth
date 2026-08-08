@@ -10,6 +10,7 @@ import { GuidedSetupControl } from "@/features/chat/components/GuidedSetupContro
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { LorebookProvider } from "@/features/lorebook/context/LorebookContext";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { cn } from "@/lib/utils";
 import { chatsApi } from "@/services/api/client";
 import type { AIChat } from "@/types/story";
 import type { ChatStyle } from "@/types/worldbuilding";
@@ -56,6 +57,10 @@ export const BrainstormTool = () => {
     const { currentStoryId } = useStoryContext();
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const [composerSeedText, setComposerSeedText] = useState<string | null>(null);
+    // Lifted out of ChatList so BrainstormChecklistTray (below it, same column) collapses in
+    // sync — otherwise the list shrinks but the tray is left stranded at full width, still in
+    // the chat area's way (see NotesChatRail.tsx's own fix).
+    const [chatListCollapsed, setChatListCollapsed] = useState(false);
     const createMutation = useCreateChatMutation();
     const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(currentStoryId ?? "", "brainstorm");
 
@@ -106,8 +111,8 @@ export const BrainstormTool = () => {
 
     return (
         <LorebookProvider storyId={currentStoryId}>
-            <div className="flex h-full">
-                <div className="flex-1 h-full min-h-0 flex flex-col">
+            <div className="flex h-full min-w-0">
+                <div className="flex-1 h-full min-h-0 min-w-0 flex flex-col">
                     {selectedChat ? (
                         // min-h-0 is load-bearing — without it this flex-1 child can't shrink
                         // below its content's height, so a long reply grows the whole column
@@ -141,7 +146,12 @@ export const BrainstormTool = () => {
                     )}
                 </div>
 
-                <div className="flex flex-col w-[250px] sm:w-[300px] shrink-0">
+                <div
+                    className={cn(
+                        "flex flex-col shrink-0 transition-all duration-300",
+                        chatListCollapsed ? "w-0" : "w-[250px] sm:w-[300px]"
+                    )}
+                >
                     <ChatList
                         storyId={currentStoryId}
                         chatType="brainstorm"
@@ -151,8 +161,12 @@ export const BrainstormTool = () => {
                         onSelectChat={setSelectedChat}
                         renderNewChatAction={renderNewChatButton}
                         side="right"
+                        collapsed={chatListCollapsed}
+                        onCollapsedChange={setChatListCollapsed}
                     />
-                    {selectedChat && (
+                    {/* Not rendered while collapsed (rather than relying on the 0-width parent to
+                        visually contain it) — same reasoning as NotesChatRail.tsx's own tray. */}
+                    {selectedChat && !chatListCollapsed && (
                         <BrainstormChecklistTray chatId={selectedChat.id} storyId={currentStoryId} fromChatTitleSnapshot={selectedChat.title} />
                     )}
                 </div>

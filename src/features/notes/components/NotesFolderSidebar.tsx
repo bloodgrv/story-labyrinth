@@ -62,58 +62,63 @@ export function NotesFolderSidebar({
     const deletingFolder = folders.find(f => f.id === deletingId);
 
     return (
-        <div className="w-[200px] shrink-0 border-r border-border pr-2">
-            <div className="flex items-center justify-between px-1 pb-2">
+        <div className="w-[200px] shrink-0 h-full flex flex-col border-r border-border pr-2">
+            <div className="shrink-0 flex items-center justify-between px-1 pb-2">
                 <span className="text-xs font-semibold uppercase text-muted-foreground">Folders</span>
                 <Button variant="ghost" size="icon" className="h-6 w-6" title="New folder" onClick={() => setCreatingUnder(null)}>
                     <FolderPlus className="h-3.5 w-3.5" />
                 </Button>
             </div>
 
-            <FolderDropZone id="unfiled" data={{ type: "notes-folder", targetFolderId: null }}>
-                <div
-                    className={cn(
-                        "cursor-pointer rounded-md px-2 py-1 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                        selectedFolderId === null && "bg-muted"
-                    )}
-                    onClick={() => onSelectFolder(null)}
-                    onKeyDown={e => {
-                        if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            onSelectFolder(null);
-                        }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                >
-                    Unfiled / All
-                </div>
-            </FolderDropZone>
+            {/* Scrolls independently of the main note list (NotesBrowsePane.tsx) — a long folder
+                tree or a long note list scrolling out of sync with each other shouldn't get in
+                the way of dragging a note from one pane onto a folder in the other. */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <FolderDropZone id="unfiled" data={{ type: "notes-folder", targetFolderId: null }}>
+                    <div
+                        className={cn(
+                            "cursor-pointer rounded-md px-2 py-1 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                            selectedFolderId === null && "bg-muted"
+                        )}
+                        onClick={() => onSelectFolder(null)}
+                        onKeyDown={e => {
+                            if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onSelectFolder(null);
+                            }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                    >
+                        Unfiled / All
+                    </div>
+                </FolderDropZone>
 
-            <div className="mt-1">
-                {tree.map(node => (
-                    <NotesFolderTreeRow
-                        key={node.id}
-                        node={node}
-                        depth={0}
-                        selectedFolderId={selectedFolderId}
-                        onSelect={onSelectFolder}
-                        onNewSubfolder={parentId => setCreatingUnder(parentId)}
-                        onRename={setRenamingId}
-                        onMoveTo={setMovingId}
-                        onDelete={setDeletingId}
-                    />
-                ))}
+                <div className="mt-1">
+                    {tree.map(node => (
+                        <NotesFolderTreeRow
+                            key={node.id}
+                            node={node}
+                            depth={0}
+                            selectedFolderId={selectedFolderId}
+                            onSelect={onSelectFolder}
+                            onNewSubfolder={parentId => setCreatingUnder(parentId)}
+                            onRename={setRenamingId}
+                            onMoveTo={setMovingId}
+                            onDelete={setDeletingId}
+                        />
+                    ))}
+                </div>
+
+                {selectedFolderId && (
+                    <div className="mt-3 flex items-center gap-2 px-1">
+                        <Switch id="notes-folder-descendants" checked={includeDescendants} onCheckedChange={onIncludeDescendantsChange} />
+                        <Label htmlFor="notes-folder-descendants" className="text-xs font-normal text-muted-foreground">
+                            Include subfolders
+                        </Label>
+                    </div>
+                )}
             </div>
-
-            {selectedFolderId && (
-                <div className="mt-3 flex items-center gap-2 px-1">
-                    <Switch id="notes-folder-descendants" checked={includeDescendants} onCheckedChange={onIncludeDescendantsChange} />
-                    <Label htmlFor="notes-folder-descendants" className="text-xs font-normal text-muted-foreground">
-                        Include subfolders
-                    </Label>
-                </div>
-            )}
 
             <FolderNameDialog
                 open={creatingUnder !== undefined}

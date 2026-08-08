@@ -8,6 +8,7 @@ import { ChatList } from "@/features/chat/components/ChatList";
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { cn } from "@/lib/utils";
 import type { AIChat } from "@/types/story";
 import { NotesChecklistTray } from "./NotesChecklistTray";
 
@@ -48,6 +49,10 @@ interface NotesChatRailProps {
 // instead, handling note-split-proposal/promote-to-synopsis/promote-to-WB-or-Outline.
 export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
+    // Lifted out of ChatList so this rail's own promote/split tray (below the list, same column)
+    // collapses in sync — otherwise the list shrinks but the tray is left stranded at full width,
+    // still in the way of the chat area next to it.
+    const [chatListCollapsed, setChatListCollapsed] = useState(false);
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
     const createMutation = useCreateChatMutation();
     const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(storyId, "notes");
@@ -130,8 +135,13 @@ export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
     );
 
     return (
-        <div className="flex h-full">
-            <div className="flex-1 h-full min-h-0 flex flex-col">
+        <div className="flex h-full min-w-0">
+            {/* min-w-0 here (not just on this row's own parent) is load-bearing — without it this
+                flex-1 column refuses to shrink below its message content's natural width, which
+                overflows the docked rail's fixed 480px column and pushes the ChatList/tray beyond
+                the viewport instead of the rail itself scrolling. Same fix LorebookEntryEditor.tsx's
+                WB chat panel already needed for the identical reason. */}
+            <div className="relative flex-1 h-full min-h-0 min-w-0 flex flex-col">
                 {selectedChat ? (
                     <ErrorBoundary fallback={ChatErrorFallback} resetKeys={[selectedChat.id]}>
                         <ChatInterface
@@ -152,7 +162,12 @@ export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
                 )}
             </div>
 
-            <div className="flex flex-col w-[250px] sm:w-[300px] shrink-0">
+            <div
+                className={cn(
+                    "flex flex-col shrink-0 transition-all duration-300",
+                    chatListCollapsed ? "w-0" : "w-[250px] sm:w-[300px]"
+                )}
+            >
                 <ChatList
                     storyId={storyId}
                     chatType="notes"
@@ -162,8 +177,13 @@ export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
                     onSelectChat={setSelectedChat}
                     renderNewChatAction={renderNewChatButton}
                     side="right"
+                    collapsed={chatListCollapsed}
+                    onCollapsedChange={setChatListCollapsed}
                 />
-                {selectedChat && (
+                {/* Not rendered while collapsed (rather than relying on the 0-width parent to
+                    visually contain it) — its own content has no reason to respect that width and
+                    would otherwise spill out exactly like the pre-fix ChatList did. */}
+                {selectedChat && !chatListCollapsed && (
                     <NotesChecklistTray chatId={selectedChat.id} storyId={storyId} fromChatTitleSnapshot={selectedChat.title} />
                 )}
             </div>

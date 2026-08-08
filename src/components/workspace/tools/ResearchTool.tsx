@@ -205,8 +205,8 @@ export const ResearchTool = () => {
                     </TabsList>
                 </Tabs>
             </div>
-            <div className="flex-1 min-h-0 flex">
-                <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 flex min-w-0">
+                <div className="flex-1 min-h-0 min-w-0 flex flex-col">
                     {activeShuttleContext && chat && (
                         <div className="mx-4 mt-2 flex items-center justify-between gap-2 rounded-lg border border-border p-2">
                             <p className="text-xs text-muted-foreground">Shuttled in from another chat.</p>

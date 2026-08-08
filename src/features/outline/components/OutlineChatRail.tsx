@@ -25,6 +25,7 @@ import { outlineImportKeys, useUploadOutlineImportMutation } from "@/features/ou
 import { useOutlineQuery } from "@/features/outline/hooks/useOutlineQuery";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { cn } from "@/lib/utils";
 import { chatsApi, outlineImportApi } from "@/services/api/client";
 import type { AIChat } from "@/types/story";
 import type { ChatStyle } from "@/types/worldbuilding";
@@ -75,6 +76,10 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
     const [loreSuggestions, setLoreSuggestions] = useState<ParsedLoreSuggestion[]>([]);
+    // Lifted out of ChatList so the tray content below it (import card, Codex/Shuttle/Outline
+    // proposal trays) collapses in sync — otherwise the list shrinks but the tray is left
+    // stranded at full width, still in the chat area's way (see NotesChatRail.tsx's own fix).
+    const [chatListCollapsed, setChatListCollapsed] = useState(false);
     const createMutation = useCreateChatMutation();
     const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(storyId, "outline");
     const pendingRework = usePendingRework();
@@ -201,8 +206,8 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
     };
 
     return (
-        <div className="flex h-full">
-            <div className="flex-1 h-full min-h-0 flex flex-col">
+        <div className="flex h-full min-w-0">
+            <div className="flex-1 h-full min-h-0 min-w-0 flex flex-col">
                 <input ref={fileInputRef} type="file" accept=".pdf,.docx,.md,.txt" className="hidden" onChange={handleImportFileSelected} />
                 <div className="flex items-center justify-end border-b border-input px-2 py-1">
                     <Button
@@ -250,7 +255,12 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
                 )}
             </div>
 
-            <div className="flex flex-col w-[250px] sm:w-[300px] shrink-0">
+            <div
+                className={cn(
+                    "flex flex-col shrink-0 transition-all duration-300",
+                    chatListCollapsed ? "w-0" : "w-[250px] sm:w-[300px]"
+                )}
+            >
                 <ChatList
                     storyId={storyId}
                     chatType="outline"
@@ -260,24 +270,32 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
                     onSelectChat={setSelectedChat}
                     renderNewChatAction={renderNewChatButton}
                     side="right"
+                    collapsed={chatListCollapsed}
+                    onCollapsedChange={setChatListCollapsed}
                 />
-                <OutlineImportCard storyId={storyId} />
-                {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
-                {selectedChat && (
-                    <ShuttleTray
-                        chatId={selectedChat.id}
-                        storyId={storyId}
-                        fromDesk={selectedChat.chatType ?? "outline"}
-                        fromChatTitleSnapshot={selectedChat.title}
-                        onAnswerHere={setComposerSeedText}
-                    />
+                {/* Not rendered while collapsed (rather than relying on the 0-width parent to
+                    visually contain them) — same reasoning as NotesChatRail.tsx's own tray. */}
+                {!chatListCollapsed && (
+                    <>
+                        <OutlineImportCard storyId={storyId} />
+                        {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
+                        {selectedChat && (
+                            <ShuttleTray
+                                chatId={selectedChat.id}
+                                storyId={storyId}
+                                fromDesk={selectedChat.chatType ?? "outline"}
+                                fromChatTitleSnapshot={selectedChat.title}
+                                onAnswerHere={setComposerSeedText}
+                            />
+                        )}
+                        <OutlineProposalTray
+                            loreSuggestions={loreSuggestions}
+                            storyId={storyId}
+                            fromChatId={selectedChat?.id ?? ""}
+                            fromChatTitleSnapshot={selectedChat?.title ?? ""}
+                        />
+                    </>
                 )}
-                <OutlineProposalTray
-                    loreSuggestions={loreSuggestions}
-                    storyId={storyId}
-                    fromChatId={selectedChat?.id ?? ""}
-                    fromChatTitleSnapshot={selectedChat?.title ?? ""}
-                />
             </div>
 
             {/* Design lock #3 — non-empty outline: ask intent before extracting, don't silently extract. */}

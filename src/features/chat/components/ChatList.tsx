@@ -50,6 +50,12 @@ interface ChatListProps {
     // than Editor-specific so any other rail can scope its own list the same way later (see
     // EditorChatRail.tsx's chapter-scoping use).
     filterPredicate?: (chat: AIChat) => boolean;
+    // Optional controlled collapse — for a consumer (e.g. NotesChatRail.tsx) that renders extra
+    // content below this list in the same column (a promote/split tray), so that sibling content
+    // can collapse in sync instead of being left stranded at full width once this list shrinks to
+    // 0. Omit for the default self-contained behavior every other consumer already relies on.
+    collapsed?: boolean;
+    onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 export function ChatList({
@@ -61,7 +67,9 @@ export function ChatList({
     onSelectChat,
     renderNewChatAction,
     side = "left",
-    filterPredicate
+    filterPredicate,
+    collapsed,
+    onCollapsedChange
 }: ChatListProps) {
     const isLeftSide = side === "left";
     const { data: fetchedChats = [], isLoading } = useChatsByStoryQuery(storyId, chatType);
@@ -71,7 +79,9 @@ export function ChatList({
     const updateMutation = useUpdateChatMutation();
     const archiveMutation = useArchiveChatMutation();
 
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [internalCollapsed, setInternalCollapsed] = useState(false);
+    const isCollapsed = collapsed ?? internalCollapsed;
+    const setIsCollapsed = onCollapsedChange ?? setInternalCollapsed;
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingChat, setEditingChat] = useState<AIChat | null>(null);
     const [newTitle, setNewTitle] = useState("");
@@ -139,17 +149,31 @@ export function ChatList({
             <div
                 className={cn(
                     "relative bg-background transition-all duration-300",
-                    isLeftSide ? "border-r border-input" : "border-l border-input",
-                    isCollapsed ? "w-[40px]" : "w-[250px] sm:w-[300px]"
+                    // Collapsed = 0-width, not a blank 40px strip — the chat interface next to it
+                    // (flex-1 min-w-0) reclaims that space instead of leaving it dead. No
+                    // overflow-hidden here — the toggle button below is absolutely positioned
+                    // just outside this box's own edge (-left-3/-right-3) and must stay visible
+                    // even when the box itself collapses to zero width. The border only applies
+                    // while expanded so a collapsed rail doesn't leave a stray hairline.
+                    isCollapsed ? "w-0 border-transparent" : cn(isLeftSide ? "border-r border-input" : "border-l border-input", "w-[250px] sm:w-[300px]")
                 )}
             >
                 <button
                     type="button"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     className={cn(
-                        "absolute top-1/2 transform -translate-y-1/2 z-10",
+                        "absolute transform z-10",
                         "bg-background border-input border rounded-full p-1 shadow-sm hover:bg-muted",
-                        isLeftSide ? "-right-3" : "-left-3"
+                        isCollapsed
+                            ? // Collapsed: stay vertically centered, but pull in further from the
+                              // outer edge than the expanded offset — flush against the page's own
+                              // edge (side="right" rails dock at the viewport edge), the smaller
+                              // offset put the button half-hidden behind the browser scrollbar.
+                              cn("top-1/2 -translate-y-1/2", isLeftSide ? "-right-6" : "-left-6")
+                            : // Expanded: level with the header title row instead of the vertical
+                              // center of the whole list — center-height overlapped the chat
+                              // pane's own model/context dropdown next to it.
+                              cn("top-8 -translate-y-1/2", isLeftSide ? "-right-3" : "-left-3")
                     )}
                 >
                     {isCollapsed === isLeftSide ? (
