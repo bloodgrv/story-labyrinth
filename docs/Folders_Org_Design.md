@@ -2,7 +2,7 @@
 
 **Status:** **Design locked 2026-07-21** (grill) — **shipped 2026-07-21** (F0–F5)  
 **Priority:** **P2** (after Lorebook browse density **B8** / L0–L3)  
-**Related:** `docs/Lorebook_Browse_Density_Design.md` (list/cards compose with folder main pane)
+**Related:** `docs/Lorebook_Browse_Density_Design.md` (list/cards compose with folder main pane); **Notes artifacts folders** → T7 `docs/Notes_Org_Browse_Design.md` (extends `orgFolders.kind` with `notes` — design locked 2026-08-07, not built until promote). Notes *chat* lists already use kind `chat` via ChatList.
 
 ---
 
@@ -145,7 +145,7 @@ Folders **may**:
 - Depth > 3  
 - Global-level lore folder trees  
 - Replacing category tabs or chatType desks  
-- Notes desk “folders” unless Notes already uses `ChatList` — **if** Notes has a chat list, it gets folders via same chat engine automatically  
+- Notes desk **artifact** folders — **superseded by T7** (`docs/Notes_Org_Browse_Design.md`): extend engine with `kind: notes` + `notes.folderId`. Notes **chat** lists already get folders via kind `chat` / ChatList (unchanged)  
 
 ---
 
