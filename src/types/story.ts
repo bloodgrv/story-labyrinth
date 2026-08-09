@@ -299,6 +299,13 @@ export interface LorebookEntry extends BaseEntity {
     // Cosmetic org folder this entry is filed under (B9, docs/Folders_Org_Design.md) — null =
     // Unfiled. See src/types/folders.ts's OrgFolder.
     folderId?: string | null;
+    // Lore Sheet (T5, docs/Lore_Sheet_And_Sync_Design.md) — sheet-first source of truth; markdown
+    // with category section headings. Structured Codex/description fields are a derived
+    // projection produced by the separate Sync propose→Accept loop, never written from here.
+    sheetBody?: string | null;
+    // Set on Sync accept only — lets the UI detect "sheet edited since last sync" by comparing
+    // against updatedAt. Not touched by a plain sheet save.
+    sheetSyncedAt?: Date | null;
 }
 
 // Prompt Parser types

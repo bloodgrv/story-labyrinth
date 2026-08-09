@@ -22,7 +22,9 @@ export type FeatureKey =
     | "codex_compile" // Suggest Codex state updates from a chapter's text (C5, codexCompileJob.ts)
     | "graph_suggest_edges" // Suggest Relationship Graph edges from a story's lorebook (P1.2 G1.5+, graphSuggestEdgesJob.ts)
     | "outline_import" // Normalize an uploaded structure document into a chapter->scene draft (outlineImportService.ts)
-    | "timeline_suggest_pins"; // Suggest Story Timeline pins from a story's lorebook/notes (TL11B, timelineSuggestPinsJob.ts)
+    | "timeline_suggest_pins" // Suggest Story Timeline pins from a story's lorebook/notes (TL11B, timelineSuggestPinsJob.ts)
+    | "sheet_migrate" // Optional "Improve sheet with AI" tidy pass over a Lore Sheet (T5 FS2, sheetMigrateService.ts)
+    | "sheet_sync"; // "Sync structured fields" — LLM row/list extraction inside Lore Sheet sections (T5 FS3, sheetSyncService.ts)
 
 // "grok-session" is deliberately excluded — it isn't a simple OpenAI-compatible client (it proxies
 // through grok.com server-side via a bespoke SSE conversion, see grokSessionClient.ts) and is
@@ -70,7 +72,9 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
     codex_compile: "Codex Auto-Compile (Suggest Updates)",
     graph_suggest_edges: "Relationship Graph (Suggest Edges)",
     outline_import: "Outline Import",
-    timeline_suggest_pins: "Story Timeline (Suggest Pins)"
+    timeline_suggest_pins: "Story Timeline (Suggest Pins)",
+    sheet_migrate: "Lore Sheet (Improve with AI)",
+    sheet_sync: "Lore Sheet (Sync to Codex)"
 };
 
 export const FEATURE_KEYS: FeatureKey[] = [
@@ -88,5 +92,7 @@ export const FEATURE_KEYS: FeatureKey[] = [
     "codex_compile",
     "graph_suggest_edges",
     "outline_import",
-    "timeline_suggest_pins"
+    "timeline_suggest_pins",
+    "sheet_migrate",
+    "sheet_sync"
 ];

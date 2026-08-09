@@ -1,13 +1,7 @@
-import { LayoutTemplate } from "lucide-react";
 import { useRef } from "react";
 import { type Control, useWatch } from "react-hook-form";
-import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { OpenMapButton } from "@/features/story-maps/components/OpenMapButton";
-import { PlaceOnTimelineButton } from "@/features/story-timeline/components/PlaceOnTimelineButton";
-import { useNaturalEntryView } from "@/lib/useNaturalEntryView";
 import { CATEGORIES, IMPORTANCE_LEVELS } from "./entryFormUtils";
 import type { CreateEntryForm, LorebookCategory } from "./entryFormUtils";
 import { CodexStateEditor } from "./CodexStateEditor";
@@ -28,46 +22,22 @@ interface RawEntryFieldsProps {
     storyId?: string;
 }
 
-// The original raw-field entry form (name/category/importance/tags/description/codex state) —
-// extracted out of LorebookEntryEditor.tsx so it can sit alongside NaturalEntryView.tsx as the
-// other half of the Advanced Settings "Natural View" toggle.
+// The "machine chrome" raw-field entry form (category/importance/tags/raw description/raw Codex
+// state) — lives inside the Advanced collapsible (AdvancedSettings.tsx) now that the Lore Sheet
+// (LoreSheetEditor.tsx, T5 FS1) is the default primary editing surface. Name moved out to the
+// primary section (LorebookEntryEditor.tsx); OpenMapButton/PlaceOnTimelineButton moved out too —
+// those are user-facing action buttons, not machine chrome, so they stay visible without opening
+// Advanced. Structured description/Codex fields here stay hand-editable directly (unchanged from
+// before this pass) — the Sync loop that would make them a pure derived projection is FS3+, not
+// built yet.
 export function RawEntryFields({ control, tagInput, selectedCategory, entryId, storyId }: RawEntryFieldsProps) {
-    const [, setNaturalView] = useNaturalEntryView();
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
     // L4 — locations have two tiers: PlaceSheetFields (unversioned) until codexEnabled, then
     // PlaceCodexStateEditor (versioned) takes over. See PlaceCodexStateEditor.tsx's own comment.
     const codexEnabled = useWatch({ control, name: "codexEnabled" });
-    const name = useWatch({ control, name: "name" });
 
     return (
         <>
-            <div className="flex items-start gap-2">
-                <FormField
-                    control={control}
-                    name="name"
-                    rules={{ required: "Name is required" }}
-                    render={({ field }) => (
-                        <FormItem className="flex-1">
-                            <FormLabel>Name</FormLabel>
-                            <FormControl>
-                                <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="mt-6 shrink-0"
-                    onClick={() => setNaturalView(true)}
-                    title="Switch to Natural View"
-                >
-                    <LayoutTemplate className="h-4 w-4" />
-                </Button>
-            </div>
-
             <div className="grid grid-cols-2 gap-4">
                 <SelectField control={control} name="category" label="Category" options={CATEGORIES} placeholder="Select category" />
                 <SelectField
@@ -107,25 +77,6 @@ export function RawEntryFields({ control, tagInput, selectedCategory, entryId, s
             />
 
             {selectedCategory === "character" && <CodexStateEditor control={control} />}
-            {/* MV3, docs/Maps_V2_Sketch_Design.md — "from location Open map" create flow. Orthogonal
-                to codexEnabled/L4 place-Codex versioning (a map link isn't Codex state), so it's not
-                gated behind !codexEnabled the way PlaceSheetFields below is. Needs a saved entryId
-                (a brand-new unsaved entry can't be a map's locationId yet, same guard
-                LorebookReworkButton uses for its own entryId-gated affordance) and storyId. */}
-            {selectedCategory === "location" && entryId && storyId && (
-                <OpenMapButton storyId={storyId} locationId={entryId} locationName={name || "Untitled location"} />
-            )}
-            {/* Story Timeline (T6, TL3) — unconditional on category (design: "any category; `event`
-                natural"), unlike OpenMapButton above which is location-only. Same entryId/storyId
-                guard — a brand-new unsaved entry can't be linked yet. */}
-            {entryId && storyId && (
-                <PlaceOnTimelineButton
-                    storyId={storyId}
-                    linkType="lorebook"
-                    linkId={entryId}
-                    defaultTitle={name || "Untitled entry"}
-                />
-            )}
             {selectedCategory === "location" && !codexEnabled && <PlaceSheetFields control={control} />}
             {/* PlaceCodexStateEditor renders unconditionally for locations (mirrors CodexStateEditor's
                 own always-rendered pattern for character) — its "Track Place State" switch is the

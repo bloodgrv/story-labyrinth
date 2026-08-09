@@ -1,3 +1,4 @@
+import { attemptPromise } from "@jfdi/attempt";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -27,6 +28,7 @@ import { getActiveChapterEditor } from "@/lib/activeChapterEditorStore";
 import { useCreateNoteMutation, useUpdateNoteMutation } from "@/features/notes/hooks/useNotesQuery";
 import { NoteFormDialog } from "@/features/notes/components/NoteFormDialog";
 import { useUpdateLorebookMutation } from "@/features/lorebook/hooks/useLorebookQuery";
+import { codexPendingKeys } from "@/features/lorebook/hooks/useCodexHistoryQuery";
 import {
     useCreateOutlineItemMutation,
     useDeleteOutlineItemMutation,
@@ -34,7 +36,7 @@ import {
     useReorderOutlineMutation,
     useUpdateOutlineItemMutation
 } from "@/features/outline/hooks/useOutlineQuery";
-import { brainstormApi, chatsApi, deskTransfersApi } from "@/services/api/client";
+import { brainstormApi, chatsApi, deskTransfersApi, lorebookApi } from "@/services/api/client";
 import type { ChapterSelectionTarget } from "@/types/rework";
 import type { AIChat, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import type { ChatContext } from "@/types/worldbuilding";
@@ -46,6 +48,7 @@ import { ProposalCard } from "./ProposalCard";
 import { ProseProposalCard } from "./ProseProposalCard";
 import { PsychProposalCard } from "./PsychProposalCard";
 import { PlaceSheetProposalCard } from "./PlaceSheetProposalCard";
+import { SheetProposalCard } from "./SheetProposalCard";
 import { MapSketchProposalCard } from "./MapSketchProposalCard";
 import { useResolveOrCreateMapForLocationMutation } from "@/features/story-maps/hooks/useStoryMapsQuery";
 import { TimelinePinProposalCard } from "@/features/story-timeline/components/TimelinePinProposalCard";
@@ -656,6 +659,13 @@ export function ChatInterface({
     const [mapSketchProposals, setMapSketchProposals] = useState<Record<string, MapSketchProposal>>({});
     const resolveOrCreateMapMutation = useResolveOrCreateMapForLocationMutation(storyId ?? "");
 
+    // T5 FS4, docs/Lore_Sheet_And_Sync_Design.md §7c — any anchored WB chat's sheet-proposal fence
+    // (not template-gated like psych/place-sheet above). Same ephemeral-state posture; Accept
+    // replaces the anchor entry's sheetBody wholesale (handleAcceptSheet), "Accept & Sync"
+    // additionally chains the existing Sync call right after.
+    const [sheetProposals, setSheetProposals] = useState<Record<string, string>>({});
+    const [syncingSheetProposal, setSyncingSheetProposal] = useState<string | null>(null);
+
     // NG6 — same ephemeral-state posture as psychProposals above. No accept/reject dismissal to
     // track: NameProposalCard itself runs the real generate call and owns its own results state.
     const [nameProposals, setNameProposals] = useState<Record<string, ParsedNameProposal>>({});
@@ -844,6 +854,7 @@ export function ChatInterface({
         },
         onPsychProposal: (messageId, proposal) => setPsychProposals(prev => ({ ...prev, [messageId]: proposal })),
         onPlaceSheetProposal: (messageId, proposal) => setPlaceSheetProposals(prev => ({ ...prev, [messageId]: proposal })),
+        onSheetProposal: (messageId, proposal) => setSheetProposals(prev => ({ ...prev, [messageId]: proposal })),
         onMapSketchProposal: (messageId, proposal) => setMapSketchProposals(prev => ({ ...prev, [messageId]: proposal })),
         onNameProposal: (messageId, proposal) => setNameProposals(prev => ({ ...prev, [messageId]: proposal })),
         onTimelinePinProposal: (messageId, items) => setTimelinePinProposals(prev => ({ ...prev, [messageId]: items })),
@@ -1074,6 +1085,51 @@ export function ChatInterface({
             });
         }
         dismissPlaceSheetProposal(messageId);
+    };
+
+    const dismissSheetProposal = (messageId: string) =>
+        setSheetProposals(prev => {
+            const next = { ...prev };
+            delete next[messageId];
+            return next;
+        });
+
+    // T5 FS4 — a wholesale sheetBody replace, not a merge (the model is instructed to emit the
+    // whole sheet each time — see chatContextService.ts's SHEET_PROPOSAL_INSTRUCTIONS). Plain
+    // metadata-free field update via the generic entry-update mutation, same posture as
+    // handleAcceptPsych's non-Codex write.
+    const handleAcceptSheet = (messageId: string) => {
+        const proposal = sheetProposals[messageId];
+        const entryId = selectedChat.anchorEntryId;
+        if (!proposal || !entryId) return;
+        updateLorebookMutation.mutate({ id: entryId, data: { sheetBody: proposal } });
+        dismissSheetProposal(messageId);
+    };
+
+    // "Accept & Sync" — a convenience chain, not a bypass: writes sheetBody (same as Accept above),
+    // then immediately calls the existing Sync endpoint. Sync's own output still lands as a
+    // separate codexPendingChanges row requiring its own Approve — two real gates, one click (§7c's
+    // "two gates, one convenience click"). Button stays disabled (SheetProposalCard's isSyncing
+    // prop) while the chained call is in flight so a slow connection can't double-fire it.
+    const handleAcceptSheetAndSync = async (messageId: string) => {
+        const proposal = sheetProposals[messageId];
+        const entryId = selectedChat.anchorEntryId;
+        if (!proposal || !entryId) return;
+        const entry = entryLookup.get(entryId);
+        setSyncingSheetProposal(messageId);
+        const [error] = await attemptPromise(async () => {
+            await updateLorebookMutation.mutateAsync({ id: entryId, data: { sheetBody: proposal } });
+            const result = await lorebookApi.syncSheet(entryId, { sheetBody: proposal, category: entry?.category ?? "character" });
+            if (result.success) {
+                await queryClient.invalidateQueries({ queryKey: codexPendingKeys.list(entryId) });
+                toast.success("Sheet saved and synced — review the proposal below.");
+            } else {
+                toast.error(result.message || "Sheet saved, but nothing to sync");
+            }
+        });
+        if (error) toast.error(error.message || "Couldn't sync the sheet");
+        setSyncingSheetProposal(null);
+        dismissSheetProposal(messageId);
     };
 
     const dismissMapSketchProposal = (messageId: string) =>
@@ -1628,6 +1684,7 @@ export function ChatInterface({
                     const outlineProposalsForMessage = outlineProposals[messageId];
                     const psychProposal = psychProposals[messageId];
                     const placeSheetProposal = placeSheetProposals[messageId];
+                    const sheetProposal = sheetProposals[messageId];
                     const mapSketchProposal = mapSketchProposals[messageId];
                     const nameProposal = storyId ? nameProposals[messageId] : undefined;
                     const timelinePinProposalsForMessage = storyId ? timelinePinProposals[messageId] : undefined;
@@ -1638,6 +1695,7 @@ export function ChatInterface({
                         !outlineProposalsForMessage?.length &&
                         !psychProposal &&
                         !placeSheetProposal &&
+                        !sheetProposal &&
                         !mapSketchProposal &&
                         !nameProposal &&
                         !timelinePinProposalsForMessage?.length
@@ -1693,6 +1751,15 @@ export function ChatInterface({
                                     proposal={placeSheetProposal}
                                     onAccept={() => handleAcceptPlaceSheet(messageId)}
                                     onReject={() => dismissPlaceSheetProposal(messageId)}
+                                />
+                            )}
+                            {isWorldBuildingChat && sheetProposal && (
+                                <SheetProposalCard
+                                    proposal={sheetProposal}
+                                    onAccept={() => handleAcceptSheet(messageId)}
+                                    onAcceptAndSync={() => void handleAcceptSheetAndSync(messageId)}
+                                    onReject={() => dismissSheetProposal(messageId)}
+                                    isSyncing={syncingSheetProposal === messageId}
                                 />
                             )}
                             {isWorldBuildingChat && mapSketchProposal && (

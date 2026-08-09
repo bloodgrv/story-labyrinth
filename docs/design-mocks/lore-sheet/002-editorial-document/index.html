@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lore Sheet — Editorial document (Maisy)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #f4efe6;
+      --ink: #1c1916;
+      --rule: #d4cbbd;
+      --muted: #6b6358;
+      --wine: #7a2438;
+      --ember: #b54e22;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: #2a2622;
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 32px 16px 64px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      background: var(--paper);
+      box-shadow: 0 24px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.15);
+      padding: 48px 56px 56px;
+      position: relative;
+    }
+    .page::before {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border: 1px solid rgba(122,36,56,.15);
+      pointer-events: none;
+    }
+    .kicker {
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--wine);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 42px;
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 6px;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--wine);
+    }
+    h2 {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--wine);
+      margin: 28px 0 12px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--rule);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--rule);
+      vertical-align: top;
+    }
+    th {
+      width: 32%;
+      font-weight: 600;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    p {
+      font-size: 15px;
+      line-height: 1.65;
+      margin-bottom: 12px;
+    }
+    .lede {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 18px;
+      font-style: italic;
+      color: #3a342c;
+      margin-bottom: 14px;
+    }
+    ul {
+      margin: 0 0 8px 1.1em;
+      font-size: 14.5px;
+      line-height: 1.55;
+    }
+    li { margin-bottom: 6px; }
+    li strong { font-weight: 600; }
+    .foot {
+      margin-top: 36px;
+      padding-top: 16px;
+      border-top: 1px solid var(--rule);
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .toolbar {
+      max-width: 720px;
+      margin: 0 auto 16px;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      align-items: center;
+      color: #c4b8a8;
+      font-size: 12px;
+    }
+    .toolbar button {
+      font-family: inherit;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #4a433c;
+      background: #3a342e;
+      color: #e8e0d4;
+      cursor: pointer;
+    }
+    .toolbar button:hover { background: #454038; }
+    .toolbar button.primary {
+      background: var(--ember);
+      border-color: #8a3a18;
+      color: #fff;
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .toolbar { display: none; }
+      .page { box-shadow: none; max-width: none; }
+    }
+    @media (max-width: 640px) {
+      .page { padding: 28px 22px; }
+      h1 { font-size: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <span>Variant B · pure open document (sheetBody feel)</span>
+    <button type="button" onclick="window.print()">Print / PDF</button>
+    <button type="button" class="primary" onclick="alert('In-app: this markdown would be sheetBody; Sync packs hidden fields.')">Imagine Sync →</button>
+  </div>
+
+  <article class="page">
+    <div class="kicker">Character Profile · Lore Sheet</div>
+    <h1>Maisy June Miller</h1>
+    <p class="sub">Main protagonist · 19 · Story-level entry · sheetBody source of truth</p>
+
+    <h2>Core Identity</h2>
+    <table>
+      <tr><th>Full Name</th><td>Maisy June Miller</td></tr>
+      <tr><th>Age</th><td>19 Years Old</td></tr>
+      <tr><th>Role</th><td>Main Protagonist</td></tr>
+      <tr><th>Education</th><td>High School Graduate (Class of 2025)</td></tr>
+      <tr><th>Occupation</th><td>Part-time Cashier / Unemployed</td></tr>
+      <tr><th>Socioeconomic Status</th><td>Low Income / Working Class</td></tr>
+    </table>
+
+    <h2>Physical Appearance</h2>
+    <p class="lede">The girl next door — cute in a relatable, unpolished way. 5&prime;6&Prime;, 128 lbs. Approachable rather than refined.</p>
+    <table>
+      <tr><th>Hair</th><td>Bright, sun-bleached blonde; messy ponytail; loose strands; often frizzy or windblown.</td></tr>
+      <tr><th>Facial Features</th><td>Round soft face, button nose, pale freckles; wide trusting blue eyes; rare makeup, cheap lip gloss.</td></tr>
+      <tr><th>Physique</th><td>Noticeably curvy; large natural breasts; soft youthful build — not athletic.</td></tr>
+      <tr><th>Distinctive Features</th><td>Heart-shaped birthmark on left collarbone; work-roughened hands; slightly pigeon-toed when she hurries.</td></tr>
+    </table>
+
+    <h2>Wardrobe</h2>
+    <ul>
+      <li>Oversized thrift graphic tees that hide her shape</li>
+      <li>Worn-out denim shorts</li>
+      <li>Beat-up canvas sneakers</li>
+      <li>Almost entirely thrift finds and hand-me-downs</li>
+    </ul>
+
+    <h2>Personality &amp; Temperament</h2>
+    <p>Maisy is the human equivalent of a golden retriever — overflowing with enthusiasm but often lacking direction or caution.</p>
+    <ul>
+      <li><strong>Bubbly.</strong> Optimistic, quick to laugh; joy in thrift finds and sunny days. Can overwhelm cynics.</li>
+      <li><strong>Naive.</strong> Takes people at face value; misses manipulation and sarcasm until she is already in deep.</li>
+      <li><strong>Lack of ambition.</strong> Decent student; college feels foreign. Lives in the now; content to drift.</li>
+      <li><strong>Social.</strong> Hates being alone. Will talk to anyone — mail carrier, bus-stop stranger.</li>
+    </ul>
+
+    <h2>Background &amp; Lifestyle</h2>
+    <p>Only child of a single mother; they feel more like roommates than parent and child. Cramped two-bedroom in a neglected part of town — peeling wallpaper, temperamental appliances, fairy lights and old posters fighting the gloom.</p>
+    <p>Money is a quiet constant. She skips meals so her mom can pay the electric bill. She knows which day the bakery puts out the day-olds. Adulthood is something happening <em>to</em> her. Resume: the local Dollar store, and not much else.</p>
+
+    <h2>Character Motivations</h2>
+    <ul>
+      <li><strong>Primary goal.</strong> Keep her current happiness and make sure her mother is taken care of.</li>
+      <li><strong>Internal conflict.</strong> Guilt that she “should” want more, against a genuine lack of interest in traditional success.</li>
+      <li><strong>External conflict.</strong> Bills, a broken-down car, rent pressure — forces that shove her out of the bubbly comfort zone.</li>
+    </ul>
+
+    <h2>Wounds / Marks</h2>
+    <ul>
+      <li>Heart-shaped birthmark, left collarbone</li>
+      <li>Work-roughened hands from odd jobs</li>
+    </ul>
+
+    <h2>Items / Possessions</h2>
+    <ul>
+      <li>Cheap lip gloss</li>
+      <li>Rotating thrift-store finds</li>
+      <li>Keys to a car that barely runs</li>
+    </ul>
+
+    <div class="foot">
+      <span>Story Labyrinth · T5 Lore Sheet mock · editorial variant</span>
+      <span>Sync maps sections → Codex + narrative description</span>
+    </div>
+  </article>
+</body>
+</html>

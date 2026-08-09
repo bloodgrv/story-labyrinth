@@ -94,6 +94,10 @@ export interface ChatContextCodexEntry {
     // (see CODEX_PROPOSAL_INSTRUCTIONS in chatContextService.ts). Omitted for related/search rows
     // to keep their context small.
     codexState?: CodexState | null;
+    // T5 FS4 — only ever populated for role: "anchor". The entry's current Lore Sheet markdown, so
+    // a sheet-proposal builds on what's already there instead of starting from scratch (see
+    // SHEET_PROPOSAL_INSTRUCTIONS in chatContextService.ts).
+    sheetBody?: string | null;
 }
 
 // A chapter passage surfaced as context for an Editor chat — only populated for

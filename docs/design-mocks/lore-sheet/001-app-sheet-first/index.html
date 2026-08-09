@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lore Sheet — App sheet-first (Maisy)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e0f12;
+      --bg-elev: #16181d;
+      --bg-panel: #1a1d24;
+      --border: #2a2e38;
+      --fg: #e8eaef;
+      --muted: #8b929e;
+      --faint: #5c6370;
+      --ember: #c45c26;
+      --crimson: #8b1e3f;
+      --silver: #c5c9d1;
+      --ok: #3d9a6a;
+      --warn: #c9a227;
+      --radius: 8px;
+      --font: "Inter", system-ui, sans-serif;
+      --display: "Cormorant Garamond", Georgia, serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    /* App chrome */
+    .app {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      min-height: 100vh;
+    }
+    .rail {
+      background: #0a0b0e;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 0;
+      gap: 8px;
+    }
+    .rail .logo {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #2a1810, #1a0e0c);
+      border: 1px solid #3d2418;
+      color: var(--ember);
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: 15px;
+      display: grid; place-items: center;
+      margin-bottom: 12px;
+      box-shadow: 0 0 12px rgba(196,92,38,.25);
+    }
+    .rail button {
+      width: 36px; height: 36px;
+      border: none; border-radius: 8px;
+      background: transparent;
+      color: var(--faint);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .rail button.active {
+      background: rgba(196,92,38,.12);
+      color: var(--ember);
+      box-shadow: inset 3px 0 0 var(--ember);
+    }
+    .main {
+      display: grid;
+      grid-template-rows: 48px 1fr;
+      min-width: 0;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #14161b 0%, var(--bg) 100%);
+    }
+    .topbar .crumb {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .topbar .crumb strong { color: var(--fg); font-weight: 500; }
+    .topbar .spacer { flex: 1; }
+    .badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: var(--bg-elev);
+    }
+    .badge.story { border-color: #3a4a6a; color: #9db0d4; }
+    .badge.major { border-color: #5a3a20; color: #e0a86a; }
+    .badge.dirty {
+      border-color: #5a4820;
+      color: var(--warn);
+      background: rgba(201,162,39,.08);
+    }
+    .btn {
+      font-family: var(--font);
+      font-size: 12.5px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-elev);
+      color: var(--fg);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { border-color: #3d4452; background: #1e222a; }
+    .btn.primary {
+      background: linear-gradient(180deg, #d46a30, var(--ember));
+      border-color: #a34a1c;
+      color: #fff;
+      box-shadow: 0 0 0 1px rgba(196,92,38,.3), 0 4px 14px rgba(196,92,38,.2);
+    }
+    .btn.primary:hover { filter: brightness(1.06); }
+    .btn.ghost { background: transparent; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* Workspace: outline | sheet | advanced peek */
+    .workspace {
+      display: grid;
+      grid-template-columns: 200px 1fr 280px;
+      min-height: 0;
+      height: calc(100vh - 48px);
+    }
+    .outline {
+      border-right: 1px solid var(--border);
+      background: var(--bg-elev);
+      padding: 14px 10px;
+      overflow-y: auto;
+    }
+    .outline h3 {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--faint);
+      padding: 0 8px 8px;
+      font-weight: 600;
+    }
+    .outline a {
+      display: block;
+      padding: 6px 8px;
+      border-radius: 6px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12.5px;
+      margin-bottom: 2px;
+    }
+    .outline a:hover { background: rgba(255,255,255,.04); color: var(--fg); }
+    .outline a.active { background: rgba(196,92,38,.1); color: var(--ember); }
+    .outline a .dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--ok);
+      margin-right: 6px;
+      opacity: .7;
+    }
+    .outline a.machine .dot { background: var(--faint); }
+    .outline .hint {
+      margin-top: 16px;
+      padding: 10px;
+      font-size: 11px;
+      color: var(--faint);
+      line-height: 1.45;
+      border-top: 1px solid var(--border);
+    }
+
+    .sheet-pane {
+      overflow-y: auto;
+      padding: 28px 36px 80px;
+      background:
+        radial-gradient(ellipse 80% 40% at 50% 0%, rgba(196,92,38,.06), transparent 55%),
+        var(--bg);
+    }
+    .sheet {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .name-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .name-input {
+      flex: 1;
+      font-family: var(--display);
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1.15;
+      color: var(--fg);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 0 0 8px;
+      width: 100%;
+      outline: none;
+    }
+    .name-input:focus { border-bottom-color: var(--ember); }
+    .sheet-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 28px;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+    .sheet-meta code {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--faint);
+    }
+
+    .section {
+      margin-bottom: 28px;
+      scroll-margin-top: 24px;
+    }
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-head h2 {
+      font-family: var(--display);
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--silver);
+      letter-spacing: .01em;
+    }
+    .section-head .target {
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--faint);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .section-head .target.codex { color: #7a9bb8; }
+    .section-head .target.narr { color: #8a9a7a; }
+
+    .kv {
+      display: grid;
+      gap: 6px;
+    }
+    .kv-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(42,46,56,.6);
+    }
+    .kv-row:last-child { border-bottom: none; }
+    .kv-row label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      padding-top: 2px;
+    }
+    .kv-row .val {
+      font-size: 13.5px;
+      color: var(--fg);
+      outline: none;
+      min-height: 1.4em;
+    }
+    .kv-row .val:focus {
+      background: rgba(255,255,255,.03);
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin: -2px -6px;
+    }
+    .prose {
+      font-size: 14px;
+      line-height: 1.65;
+      color: #d0d4dc;
+      outline: none;
+      white-space: pre-wrap;
+    }
+    .prose:focus {
+      background: rgba(255,255,255,.02);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin: -8px -10px;
+    }
+    .prose p + p { margin-top: .85em; }
+    .list {
+      list-style: none;
+      display: grid;
+      gap: 6px;
+    }
+    .list li {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      font-size: 13.5px;
+      color: #d0d4dc;
+      padding: 4px 0;
+    }
+    .list li::before {
+      content: "·";
+      color: var(--ember);
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .list li[contenteditable]:focus {
+      background: rgba(255,255,255,.03);
+      border-radius: 4px;
+      padding: 4px 8px;
+      margin: 0 -8px;
+    }
+    .add-line {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--faint);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font);
+    }
+    .add-line:hover { color: var(--ember); }
+
+    /* Right: machine / projection */
+    .machine {
+      border-left: 1px solid var(--border);
+      background: var(--bg-panel);
+      overflow-y: auto;
+      padding: 14px 12px 40px;
+    }
+    .machine h3 {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--faint);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .machine .card {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+    .machine .card h4 {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--silver);
+    }
+    .machine .card p, .machine .card li {
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .machine .card ul { margin-left: 14px; }
+    .machine .card.hidden-field {
+      opacity: .85;
+      border-style: dashed;
+    }
+    .machine .label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--faint);
+      margin-bottom: 4px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e222a;
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: .25s ease;
+      box-shadow: 0 12px 40px rgba(0,0,0,.45);
+      z-index: 50;
+      max-width: 420px;
+      text-align: center;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast strong { color: var(--ember); }
+    .diff-preview {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 40;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .diff-preview.open { display: flex; }
+    .diff-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: min(480px, 100%);
+      padding: 20px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.5);
+    }
+    .diff-box h3 {
+      font-family: var(--display);
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+    .diff-box .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 16px; }
+    .diff-box .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .diff-box .row span:last-child { color: var(--ok); font-size: 12px; }
+    .diff-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+    @media (max-width: 1100px) {
+      .workspace { grid-template-columns: 160px 1fr; }
+      .machine { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail" aria-label="Tools">
+      <div class="logo" title="Story Labyrinth">SL</div>
+      <button type="button" title="Editor">Ed</button>
+      <button type="button" class="active" title="Lorebook">Lb</button>
+      <button type="button" title="Notes">Nt</button>
+      <button type="button" title="Maps">Mp</button>
+      <button type="button" title="Timeline">Tl</button>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div class="crumb">Lorebook · Characters · <strong>Maisy June Miller</strong></div>
+        <span class="badge story">Story</span>
+        <span class="badge major">Major</span>
+        <span class="badge dirty" id="dirtyBadge">Sheet dirty · not synced</span>
+        <div class="spacer"></div>
+        <button type="button" class="btn ghost" id="btnTemplate">Insert template</button>
+        <button type="button" class="btn ghost" id="btnAdvanced">Advanced</button>
+        <button type="button" class="btn primary" id="btnSync">⚡ Sync structured fields</button>
+      </header>
+
+      <div class="workspace">
+        <nav class="outline" aria-label="Sheet outline">
+          <h3>On sheet</h3>
+          <a href="#sec-identity" class="active" data-nav><span class="dot"></span>Core Identity</a>
+          <a href="#sec-appearance" data-nav><span class="dot"></span>Appearance</a>
+          <a href="#sec-wardrobe" data-nav><span class="dot"></span>Wardrobe</a>
+          <a href="#sec-personality" data-nav><span class="dot"></span>Personality</a>
+          <a href="#sec-background" data-nav><span class="dot"></span>Background</a>
+          <a href="#sec-motivations" data-nav><span class="dot"></span>Motivations</a>
+          <a href="#sec-wounds" data-nav><span class="dot"></span>Wounds</a>
+          <a href="#sec-items" data-nav><span class="dot"></span>Items</a>
+          <h3 style="margin-top:14px">Machine (hidden)</h3>
+          <a href="#mach" class="machine" data-nav><span class="dot"></span>Tags · level · Codex raw</a>
+          <div class="hint">
+            Locked T5: you edit the <strong style="color:var(--muted)">Lore Sheet</strong>.
+            Sync proposes Codex + narrative description. Accept lives in the tray — never silent.
+          </div>
+        </nav>
+
+        <div class="sheet-pane">
+          <article class="sheet" id="sheet">
+            <div class="name-row">
+              <input class="name-input" value="Maisy June Miller" aria-label="Character name" />
+            </div>
+            <div class="sheet-meta">
+              <span>Category · character</span>
+              <span>·</span>
+              <span>sheetBody SoT</span>
+              <span>·</span>
+              <code>## markdown sections</code>
+            </div>
+
+            <section class="section" id="sec-identity">
+              <div class="section-head">
+                <h2>Core Identity</h2>
+                <span class="target codex">→ codex.customFields</span>
+              </div>
+              <div class="kv">
+                <div class="kv-row"><label>Full Name</label><div class="val" contenteditable="true">Maisy June Miller</div></div>
+                <div class="kv-row"><label>Age</label><div class="val" contenteditable="true">19 Years Old</div></div>
+                <div class="kv-row"><label>Role</label><div class="val" contenteditable="true">Main Protagonist</div></div>
+                <div class="kv-row"><label>Education</label><div class="val" contenteditable="true">High School Graduate (Class of 2025)</div></div>
+                <div class="kv-row"><label>Occupation</label><div class="val" contenteditable="true">Part-time Cashier / Unemployed</div></div>
+                <div class="kv-row"><label>Socioeconomic Status</label><div class="val" contenteditable="true">Low Income / Working Class</div></div>
+              </div>
+              <button type="button" class="add-line">+ Add attribute</button>
+            </section>
+
+            <section class="section" id="sec-appearance">
+              <div class="section-head">
+                <h2>Physical Appearance</h2>
+                <span class="target codex">→ codex.appearance</span>
+              </div>
+              <div class="prose" contenteditable="true" style="margin-bottom:12px;color:var(--muted);font-size:13px">Maisy possesses a look often described as "the girl next door" — cute in a relatable, unpolished way. 5'6", 128 lbs.</div>
+              <div class="kv">
+                <div class="kv-row"><label>Hair</label><div class="val" contenteditable="true">Bright, sun-bleached blonde; messy ponytail with loose strands; often frizzy or windblown</div></div>
+                <div class="kv-row"><label>Facial Features</label><div class="val" contenteditable="true">Round soft face, button nose, pale freckles; wide trusting blue eyes; rare makeup, cheap lip gloss</div></div>
+                <div class="kv-row"><label>Physique</label><div class="val" contenteditable="true">Noticeably curvy; large natural breasts; soft build — not athletic, youthful energy</div></div>
+                <div class="kv-row"><label>Distinctive Features</label><div class="val" contenteditable="true">Heart-shaped birthmark left collarbone; rougher hands from odd jobs; slightly pigeon-toed when hurrying</div></div>
+              </div>
+            </section>
+
+            <section class="section" id="sec-wardrobe">
+              <div class="section-head">
+                <h2>Wardrobe</h2>
+                <span class="target codex">→ codex.wardrobe</span>
+              </div>
+              <ul class="list">
+                <li contenteditable="true">Oversized thrift graphic tees (hide her shape)</li>
+                <li contenteditable="true">Worn-out denim shorts</li>
+                <li contenteditable="true">Beat-up canvas sneakers</li>
+                <li contenteditable="true">Hand-me-downs and thrift finds almost exclusively</li>
+              </ul>
+              <button type="button" class="add-line">+ Add wardrobe item</button>
+            </section>
+
+            <section class="section" id="sec-personality">
+              <div class="section-head">
+                <h2>Personality &amp; Temperament</h2>
+                <span class="target narr">→ description (narrative)</span>
+              </div>
+              <div class="prose" contenteditable="true">Maisy is the human equivalent of a golden retriever — overflowing with enthusiasm but often lacking direction or caution.
+
+<strong style="color:var(--silver);font-weight:600">Bubbly.</strong> Naturally optimistic and quick to laugh. Finds joy in thrift finds and sunny days. Energy can overwhelm cynics.
+
+<strong style="color:var(--silver);font-weight:600">Naive.</strong> Small-town bubble despite hardship; takes people at face value. Misses manipulation and sarcasm until she's already in it.
+
+<strong style="color:var(--silver);font-weight:600">Lack of ambition.</strong> Decent student, but college feels foreign. Lives in the now; content to drift.
+
+<strong style="color:var(--silver);font-weight:600">Social.</strong> Hates being alone. Will talk to the mail carrier or a stranger at the bus stop.</div>
+            </section>
+
+            <section class="section" id="sec-background">
+              <div class="section-head">
+                <h2>Background &amp; Lifestyle</h2>
+                <span class="target narr">→ description (narrative)</span>
+              </div>
+              <div class="prose" contenteditable="true">Only child of a single mother — they feel more like roommates than parent and child. Cramped two-bedroom in a neglected part of town: peeling wallpaper, temperamental appliances, fairy lights and old posters trying to make it homey.
+
+Money is a quiet constant. She skips meals so mom can pay the electric bill; knows which day the bakery puts out day-olds. Adulthood is something happening to her, not something she is shaping. No resume beyond the local Dollar store.</div>
+            </section>
+
+            <section class="section" id="sec-motivations">
+              <div class="section-head">
+                <h2>Character Motivations</h2>
+                <span class="target narr">→ description (narrative)</span>
+              </div>
+              <div class="prose" contenteditable="true"><strong style="color:var(--silver);font-weight:600">Primary goal.</strong> Stay happy enough, and keep her mother taken care of.
+
+<strong style="color:var(--silver);font-weight:600">Internal conflict.</strong> Guilt that she "should" want more, clashing with a genuine lack of interest in traditional success.
+
+<strong style="color:var(--silver);font-weight:600">External conflict.</strong> Poverty's immediate heat — unpaid bills, a dying car, rent threats — forcing her out of the bubbly comfort zone.</div>
+            </section>
+
+            <section class="section" id="sec-wounds">
+              <div class="section-head">
+                <h2>Wounds / Marks</h2>
+                <span class="target codex">→ codex.wounds</span>
+              </div>
+              <ul class="list">
+                <li contenteditable="true">Heart-shaped birthmark, left collarbone</li>
+                <li contenteditable="true">Work-roughened hands (odd jobs)</li>
+              </ul>
+              <button type="button" class="add-line">+ Add wound or mark</button>
+            </section>
+
+            <section class="section" id="sec-items">
+              <div class="section-head">
+                <h2>Items / Possessions</h2>
+                <span class="target codex">→ codex.items</span>
+              </div>
+              <ul class="list">
+                <li contenteditable="true">Cheap lip gloss</li>
+                <li contenteditable="true">Thrift-store finds (rotating)</li>
+                <li contenteditable="true">Keys to a car that barely runs</li>
+              </ul>
+              <button type="button" class="add-line">+ Add item</button>
+            </section>
+          </article>
+        </div>
+
+        <aside class="machine" id="mach" aria-label="Machine fields (secondary)">
+          <h3>After Sync · projection</h3>
+          <div class="card">
+            <div class="label">description (compiled)</div>
+            <h4>Narrative only</h4>
+            <p>Personality + Background + Motivations (+ unknown ##). Identity/Appearance stay out of this blob by default (A3).</p>
+          </div>
+          <div class="card">
+            <div class="label">codexState</div>
+            <h4>Core Identity · 6 fields</h4>
+            <ul>
+              <li>Age → 19 Years Old</li>
+              <li>Role → Main Protagonist</li>
+              <li>…</li>
+            </ul>
+            <h4 style="margin-top:8px">Appearance · 4 labels</h4>
+            <p>Hair, Facial Features, Physique, Distinctive Features</p>
+            <h4 style="margin-top:8px">Wardrobe · 4 · Wounds · 2 · Items · 3</h4>
+          </div>
+          <div class="card hidden-field">
+            <div class="label">hidden chrome</div>
+            <h4>Tags · importance · status · level</h4>
+            <p>tags: Maisy, protagonist, working-class…</p>
+            <p>importance: major · status: active · level: story</p>
+          </div>
+          <div class="card hidden-field">
+            <div class="label">not on this sheet v1</div>
+            <h4>psychProfile · graph edges</h4>
+            <p>Optional psych module stays a writing aid. Relationships live on the graph desk.</p>
+          </div>
+          <div class="card" style="border-color:#3d2a18">
+            <h4 style="color:var(--ember)">Sync gate</h4>
+            <p>Click <strong style="color:var(--fg)">Sync</strong> → proposal tray (Codex + description). You Accept. No silent apply.</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="diff-preview" id="diff" role="dialog" aria-modal="true">
+    <div class="diff-box">
+      <h3>Sync proposal</h3>
+      <p class="sub">Would go to Codex tray + Accept — mock only.</p>
+      <div class="row"><span>customFields (Core Identity)</span><span>merge 6 keys</span></div>
+      <div class="row"><span>appearance</span><span>merge 4 labels</span></div>
+      <div class="row"><span>wardrobe</span><span>replace 4 items</span></div>
+      <div class="row"><span>wounds / items</span><span>replace lists</span></div>
+      <div class="row"><span>description</span><span>narrative compile</span></div>
+      <div class="diff-actions">
+        <button type="button" class="btn" id="diffReject">Reject</button>
+        <button type="button" class="btn primary" id="diffAccept">Accept (mock)</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const toast = (msg) => {
+      const el = document.getElementById("toast");
+      el.innerHTML = msg;
+      el.classList.add("show");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => el.classList.remove("show"), 2800);
+    };
+    document.getElementById("btnSync").onclick = () => {
+      document.getElementById("diff").classList.add("open");
+    };
+    document.getElementById("diffReject").onclick = () => {
+      document.getElementById("diff").classList.remove("open");
+      toast("Proposal discarded — sheet unchanged.");
+    };
+    document.getElementById("diffAccept").onclick = () => {
+      document.getElementById("diff").classList.remove("open");
+      document.getElementById("dirtyBadge").textContent = "Synced · projection current";
+      document.getElementById("dirtyBadge").style.color = "var(--ok)";
+      document.getElementById("dirtyBadge").style.borderColor = "#2a4a38";
+      toast("Accepted → <strong>Codex + description</strong> updated (mock).");
+    };
+    document.getElementById("btnTemplate").onclick = () =>
+      toast("Would insert empty category ## headings for character.");
+    document.getElementById("btnAdvanced").onclick = () => {
+      document.getElementById("mach").scrollIntoView({ behavior: "smooth" });
+      toast("Advanced / machine chrome lives on the right (tags, level, raw Codex).");
+    };
+    document.querySelectorAll("[data-nav]").forEach((a) => {
+      a.addEventListener("click", (e) => {
+        document.querySelectorAll("[data-nav]").forEach((x) => x.classList.remove("active"));
+        a.classList.add("active");
+      });
+    });
+    document.getElementById("sheet").addEventListener("input", () => {
+      const b = document.getElementById("dirtyBadge");
+      b.textContent = "Sheet dirty · not synced";
+      b.style.color = "";
+      b.style.borderColor = "";
+    });
+  </script>
+</body>
+</html>

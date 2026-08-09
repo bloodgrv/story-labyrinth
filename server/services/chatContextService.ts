@@ -529,6 +529,67 @@ const TIMELINE_PIN_INSTRUCTIONS =
     "native only; the writer can link one to a source later from the Timeline board itself. " +
     "Propose at most one timeline-pin-proposal block per reply.";
 
+// T5 FS4, docs/Lore_Sheet_And_Sync_Design.md §7c ("WB injects category section skeleton") — the
+// same per-category heading lists as sheetTemplates.ts (client) and sheetSyncService.ts's
+// SECTION_CONFIGS (server), duplicated a third time rather than cross-imported (server code
+// doesn't reach into src/features/*, and this list is small/stable enough that the duplication
+// risk is low — same tradeoff already accepted for PLACE_STATE_FIELD_LABELS/CODEX_PROPOSAL-style
+// constants elsewhere in this file). `note` has no fixed pack (freeform), so it's omitted here —
+// SHEET_PROPOSAL_INSTRUCTIONS below falls back to a generic "freeform notes" framing for it.
+const SHEET_SECTION_HEADINGS: Record<string, string[]> = {
+    character: [
+        "Core Identity",
+        "Physical Appearance",
+        "Wardrobe (optional)",
+        "Personality & Temperament",
+        "Background & Lifestyle",
+        "Character Motivations",
+        "Wounds / Marks (optional)",
+        "Items / Possessions (optional)"
+    ],
+    location: ["Overview", "Scale & Nature", "Holder & Control", "Landmarks", "Exits & Links", "Layout Notes", "Atmosphere"],
+    item: ["Overview", "Appearance", "Properties", "History", "Ownership"],
+    event: ["Summary", "When", "Where", "Who", "Outcome", "Aftermath"],
+    synopsis: ["Logline", "Summary", "Themes", "Scope"],
+    "starting scenario": ["Situation", "Stakes", "Opening Image", "Constraints"],
+    timeline: ["Summary", "Era", "Sequence Notes"]
+};
+
+// Unlike PSYCH_MODULE_INSTRUCTIONS/PLACE_SHEET_INSTRUCTIONS (template-gated: character_codex/
+// locations only), this fires for ANY World-Building template as long as the chat is anchored to
+// an entry — "bulk profile authoring" (the design's own §1 job statement) applies to every
+// category, not just the two with a dedicated template. The category and current sheet content
+// come from the anchor entry itself, not the template. Capped current-sheet excerpt keeps a large
+// existing sheet from dominating the prompt on every turn.
+const MAX_CURRENT_SHEET_CHARS = 4000;
+const SHEET_PROPOSAL_INSTRUCTIONS = (category: string, currentSheetBody: string | null | undefined): string => {
+    const headings = SHEET_SECTION_HEADINGS[category];
+    const skeletonLine = headings
+        ? `Its Lore Sheet section headings for a '${category}' entry are: ${headings.join(", ")}.`
+        : "This category has no fixed section list — write freeform `##` headings that make sense for the content.";
+    const currentBlock = currentSheetBody?.trim()
+        ? `\n\nIts CURRENT Lore Sheet content (build on this, don't discard it unless asked to):\n${currentSheetBody
+              .trim()
+              .slice(0, MAX_CURRENT_SHEET_CHARS)}`
+        : "\n\nIt has no Lore Sheet content yet.";
+    return (
+        "This entry has a Lore Sheet — a markdown document organized under `## Section` headings that's the " +
+        "primary writing surface for this entry (not tracked Codex state directly; the user runs a separate " +
+        "Sync step to turn it into concrete facts). " +
+        skeletonLine +
+        currentBlock +
+        "\n\nDerive content from what's actually been discussed in this conversation, not assumptions — never " +
+        "propose a sheet in your very first reply before any real conversation has happened. When you do " +
+        "propose, include the ENTIRE sheet (existing content plus your edits/additions), not just a diff — " +
+        "Accept replaces the sheet wholesale.\n\n" +
+        "To propose sheet content, include a fenced block in this exact form:\n\n" +
+        "```sheet-proposal\n" +
+        "## Section Heading\n\ncontent...\n\n## Another Heading\n\ncontent...\n" +
+        "```\n\n" +
+        "Propose at most one sheet-proposal per reply."
+    );
+};
+
 // Assemble the effective system prompt for a chat: chat-type framing + template hint (World-
 // Building only). Extend the framing constants above — not the template catalogue — when
 // adding further global system instructions.
@@ -538,7 +599,8 @@ const buildSystemPrompt = (
     style?: string,
     includeMemory?: boolean,
     includePsychModule?: boolean,
-    availableNameRegions: string[] = []
+    availableNameRegions: string[] = [],
+    anchorEntry?: { category: string; sheetBody?: string | null }
 ): string => {
     // Only the four chat types whose framing/instructions above actually include
     // NAME_PROPOSAL_INSTRUCTIONS (editor/outline/worldbuilding/brainstorm — never
@@ -571,10 +633,16 @@ const buildSystemPrompt = (
     const template = templateSlug ? getTemplate(templateSlug as Parameters<typeof getTemplate>[0]) : undefined;
     const base = template?.systemPromptHint ? `${WORLDBUILDING_FRAMING}\n\n${template.systemPromptHint}` : WORLDBUILDING_FRAMING;
     const withStyle = base + resolveStyleHint(WB_STYLE_HINTS, style);
-    if (templateSlug === "character_codex" && includePsychModule) return `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}${regionsAddendum}`;
-    if (templateSlug === "locations") return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}\n\n${MAP_SKETCH_INSTRUCTIONS}${regionsAddendum}`;
-    if (templateSlug === "timeline") return `${withStyle}\n\n${TIMELINE_PIN_INSTRUCTIONS}${regionsAddendum}`;
-    return withStyle + regionsAddendum;
+    // T5 FS4 — "bulk profile authoring" applies to any WB template once anchored to an entry, not
+    // just character_codex/locations' own dedicated psych/place-sheet fences (which stay
+    // targeted-field extras, unaffected by this). Timeline chats are never entry-anchored (see
+    // TIMELINE_PIN_INSTRUCTIONS' own comment), so anchorEntry is always undefined there in practice.
+    const sheetAddendum = anchorEntry ? `\n\n${SHEET_PROPOSAL_INSTRUCTIONS(anchorEntry.category, anchorEntry.sheetBody)}` : "";
+    if (templateSlug === "character_codex" && includePsychModule)
+        return `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}`;
+    if (templateSlug === "locations") return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}\n\n${MAP_SKETCH_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}`;
+    if (templateSlug === "timeline") return `${withStyle}\n\n${TIMELINE_PIN_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}`;
+    return withStyle + sheetAddendum + regionsAddendum;
 };
 
 // Global ∪ story ∪ series name-pool regions currently installed (reuses the exact same scope
@@ -628,7 +696,8 @@ const resolveAnchorAndRelated = async (anchorEntryId: string | null): Promise<Ch
             category: schema.lorebookEntries.category,
             description: schema.lorebookEntries.description,
             metadata: schema.lorebookEntries.metadata,
-            codexState: schema.lorebookEntries.codexState
+            codexState: schema.lorebookEntries.codexState,
+            sheetBody: schema.lorebookEntries.sheetBody
         })
         .from(schema.lorebookEntries)
         .where(eq(schema.lorebookEntries.id, anchorEntryId));
@@ -646,7 +715,8 @@ const resolveAnchorAndRelated = async (anchorEntryId: string | null): Promise<Ch
             category: anchorRow.category,
             excerpt: anchorRow.description,
             role: "anchor",
-            codexState: anchorRow.codexState as CodexState | null
+            codexState: anchorRow.codexState as CodexState | null,
+            sheetBody: anchorRow.sheetBody
         }
     ];
 
@@ -1134,7 +1204,15 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
     ]);
 
     return {
-        systemPrompt: buildSystemPrompt(chatType, chat.templateSlug, style, includeMemory, includePsychModule, availableNameRegions),
+        systemPrompt: buildSystemPrompt(
+            chatType,
+            chat.templateSlug,
+            style,
+            includeMemory,
+            includePsychModule,
+            availableNameRegions,
+            anchorEntries.find(e => e.role === "anchor")
+        ),
         pendingProposals,
         projectSynopsis: storyRows[0]?.synopsis ?? null,
         relevantCodexEntries: [...anchorEntries, ...searchCodexEntries],

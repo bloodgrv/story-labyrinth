@@ -249,6 +249,8 @@ export default createCrudRouter({
                                     // drizzle's insert calls .getTime() on it as if it were still a Date and throws.
                                     // createdAt above was already handled this way; updatedAt was the gap.
                                     updatedAt: entry.updatedAt ? new Date() : null,
+                                    // Lore Sheet (T5) — same JSON-round-trip timestamp gotcha as updatedAt above.
+                                    sheetSyncedAt: entry.sheetSyncedAt ? new Date() : null,
                                     // Folders (B9) — null-fallback if the folder didn't survive (shouldn't happen,
                                     // orgFolders is imported first, but a stale/malformed export shouldn't hard-fail).
                                     folderId: entry.folderId ? (folderIdMap.get(entry.folderId) ?? null) : null

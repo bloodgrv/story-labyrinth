@@ -2,6 +2,18 @@ import type { DocumentImportDraft } from "@/types/codex";
 import type { GlobalLorebookExport, LorebookEntry } from "@/types/story";
 import { fetchJSON, uploadFile } from "./apiFactory";
 
+export interface ImproveSheetResult {
+    success: boolean;
+    sheetBody?: string;
+    message?: string;
+}
+
+export interface SyncSheetResult {
+    success: boolean;
+    message?: string;
+    pendingChangeId?: string;
+}
+
 // Lorebook API — split out of client.ts (same reasoning as ttsApi/humanizerApi/etc. before it)
 // once it grew past the project's line limit adding image upload support.
 export const lorebookApi = {
@@ -35,5 +47,14 @@ export const lorebookApi = {
     // Not a fetch helper — this is the literal <img src> value, GET /:id/image is served directly
     // (auth cookie goes along automatically on same-origin <img> requests, see
     // DECISIONS.md's Lorebook Image Support entry for why this isn't a public static mount).
-    imageUrl: (entryId: string) => `/api/lorebook/${entryId}/image`
+    imageUrl: (entryId: string) => `/api/lorebook/${entryId}/image`,
+    // "Improve sheet with AI" (T5 FS2) — stateless, not entryId-scoped (works for a brand-new
+    // unsaved entry too). Caller applies the returned sheetBody to the form field; nothing
+    // persists until a normal Update/Create save.
+    improveSheet: (data: { sheetBody: string; category: string; name: string }) =>
+        fetchJSON<ImproveSheetResult>("/lorebook/sheet/improve", { method: "POST", body: JSON.stringify(data) }),
+    // "Sync structured fields" (T5 FS3) — entry-scoped; creates a codexPendingChanges row
+    // reviewed via the existing tray (CodexPendingChangesPanel.tsx), never applies directly.
+    syncSheet: (entryId: string, data: { sheetBody: string; category: string }) =>
+        fetchJSON<SyncSheetResult>(`/lorebook/${entryId}/sheet/sync`, { method: "POST", body: JSON.stringify(data) })
 };

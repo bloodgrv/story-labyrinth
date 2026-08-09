@@ -435,6 +435,13 @@
       "when": 1786162486816,
       "tag": "0061_reflective_bloodscream",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "6",
+      "when": 1786289893175,
+      "tag": "0062_long_joystick",
+      "breakpoints": true
     }
   ]
 }

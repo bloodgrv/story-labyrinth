@@ -77,8 +77,13 @@ const clientFromEndpoint = async (endpoint: FeatureEndpoint, settings: AiSetting
     }
 };
 
-// Replicates the existing priority order: local → openai → openrouter → grok.
-const clientFromGlobalSettings = (settings: AiSettingsRow): ClientAndModel | null => {
+// Priority order: local → openai → openrouter → grok → grok-oauth. grok-oauth was added last
+// (after plain grok) rather than left out of this chain entirely, per the user's explicit call —
+// a feature with no per-feature override and no other provider configured should still be able to
+// reach a connected xAI OAuth session, not dead-end into "no provider configured" when one is
+// genuinely available. Async only because of this one branch (a token refresh may need to hit the
+// network + persist a rotated token back to the DB, same as clientFromEndpoint's own case).
+const clientFromGlobalSettings = async (settings: AiSettingsRow): Promise<ClientAndModel | null> => {
     if (settings.localApiUrl && settings.defaultLocalModel) {
         return {
             client: new OpenAI({ baseURL: settings.localApiUrl, apiKey: "local" }),
@@ -106,6 +111,19 @@ const clientFromGlobalSettings = (settings: AiSettingsRow): ClientAndModel | nul
             model: settings.defaultGrokModel
         };
     }
+    if (settings.grokOAuthAccessToken && settings.defaultGrokOAuthModel) {
+        const accessToken = await getFreshGrokOAuthToken(settings);
+        if (accessToken) {
+            return {
+                client: new OpenAI({ baseURL: "https://api.x.ai/v1", apiKey: accessToken }),
+                model: settings.defaultGrokOAuthModel
+            };
+        }
+        // Token present but couldn't be refreshed (revoked/expired past recovery) — fall through
+        // to "no provider configured" rather than throwing, since this is a silent global
+        // fallback, not an explicit user choice of grok-oauth the way a per-feature override is
+        // (clientFromEndpoint's "grok-oauth" case still throws a clear error in that explicit case).
+    }
     return null;
 };
 
@@ -126,8 +144,7 @@ const parseEndpoints = (raw: string | null | undefined): FeatureEndpoints => {
  * Resolution order:
  *   1. Per-feature override in aiSettings.featureEndpoints (if featureKey provided) - can target
  *      any of local/openai/openrouter/grok/grok-oauth directly, independent of the global default
- *   2. Global defaults: local → openai → openrouter → grok (grok-oauth is not part of this
- *      fallback chain - reach it via an explicit per-feature override)
+ *   2. Global defaults: local → openai → openrouter → grok → grok-oauth
  *
  * Returns null when no provider is configured at all.
  */

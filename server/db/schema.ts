@@ -391,7 +391,18 @@ export const lorebookEntries = sqliteTable(
         // level/scopeId/category (enforced in folderService.assignLorebookFolder, called from
         // lorebook.ts's PUT). Cleaned up in application code on folder delete (reparented, not
         // cascaded).
-        folderId: text("folderId")
+        folderId: text("folderId"),
+        // Lore Sheet (T5, docs/Lore_Sheet_And_Sync_Design.md) — the sheet-first source of truth
+        // for this entry: open markdown with category section headings. Structured Codex state /
+        // description / cross-desk effects are a derived projection produced by the separate
+        // "Sync structured fields" propose→Accept loop (sheet_sync feature), never written here
+        // directly. Null/empty means the entry hasn't been seeded/migrated onto a sheet yet —
+        // FS1's lazy-open hook seeds new entries, FS2's lazy reverse-compile backfills old ones.
+        sheetBody: text("sheetBody"),
+        // Set whenever a Sync accept applies this sheet's content to structured fields — lets the
+        // UI show "sheet edited since last sync" without a separate dirty-flag column (compare
+        // against updatedAt). Not touched by plain sheet saves.
+        sheetSyncedAt: integer("sheetSyncedAt", { mode: "timestamp" })
     },
     table => ({
         levelIdx: index("lorebook_level_idx").on(table.level),

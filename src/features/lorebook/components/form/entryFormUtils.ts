@@ -1,5 +1,7 @@
 import type { CodexState, DocumentImportDraft } from "@/types/codex";
 import type { LorebookEntry, PlaceState } from "@/types/story";
+import { reverseCompileSheet } from "./reverseCompileSheet";
+import { buildEmptySheetSeed } from "./sheetTemplates";
 
 export const EMPTY_PLACE_STATE: PlaceState = {};
 
@@ -62,6 +64,10 @@ export interface CreateEntryForm {
     // Location template's light place sheet (L1) — only rendered/relevant for category="location"
     // (PlaceSheetFields.tsx), submitted into metadata.placeState alongside the rest of the form.
     placeState: PlaceState;
+    // Lore Sheet (T5, docs/Lore_Sheet_And_Sync_Design.md) — sheet-first source of truth; see
+    // LoreSheetEditor.tsx/sheetTemplates.ts. Submitted as a plain top-level column (buildSubmitData
+    // below), not part of metadata.
+    sheetBody: string;
 }
 
 // Synchronous data-URL -> File conversion (no fetch/Blob round trip needed) so a draft's
@@ -88,12 +94,20 @@ export const getDefaultFormValues = (
     const defaultLevel: LorebookLevel = entry?.level || (seriesId ? "series" : "story");
     const defaultScopeId = entry?.scopeId || seriesId || storyId || "";
     const codexState = entry?.codexState ?? draft?.codexState ?? EMPTY_CODEX_STATE;
+    const resolvedCategory: LorebookCategory = entry?.category || draft?.category || defaultCategory || "character";
+    // Lore Sheet seed (T5 FS1/FS2) — an existing entry's own sheetBody always wins. Otherwise: a
+    // brand-new entry (no `entry`) gets a blank required-section template (FS1); an existing
+    // entry that predates this feature (entry.sheetBody null/empty) gets FS2's deterministic
+    // reverse compile from its existing description/codexState/placeState instead of a blank
+    // template — real data, not just headings. Document-import drafts still get the blank
+    // template for now (draft.sheetBody fill-in is FS7, a separate slice).
+    const sheetBody = entry?.sheetBody || (entry ? reverseCompileSheet(entry) : buildEmptySheetSeed(resolvedCategory));
 
     return {
         level: defaultLevel,
         scopeId: defaultScopeId,
         name: entry?.name || draft?.name || "",
-        category: entry?.category || draft?.category || defaultCategory || "character",
+        category: resolvedCategory,
         importance: entry?.metadata?.importance || "minor",
         tags: entry?.tags?.join(", ") || draft?.tags?.join(", ") || "",
         description: entry?.description || draft?.description || "",
@@ -104,7 +118,8 @@ export const getDefaultFormValues = (
         codexState,
         imageFile: !entry && draft?.image ? dataUrlToFile(draft.image.dataUrl, draft.image.filename) : undefined,
         generateImagePreset: "mood",
-        placeState: entry?.metadata?.placeState ?? EMPTY_PLACE_STATE
+        placeState: entry?.metadata?.placeState ?? EMPTY_PLACE_STATE,
+        sheetBody
     };
 };
 
@@ -126,6 +141,7 @@ export const buildSubmitData = (data: CreateEntryForm, entry?: LorebookEntry) =>
         category: data.category,
         tags: processedTags,
         isDisabled: data.isDisabled,
+        sheetBody: data.sheetBody,
         metadata: {
             ...entry?.metadata,
             importance: data.importance,

@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
+import type { ReactNode } from "react";
 import type { Control } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -13,29 +14,24 @@ interface AdvancedSettingsProps {
     control: Control<CreateEntryForm>;
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    naturalView: boolean;
-    onNaturalViewChange: (value: boolean) => void;
+    // Machine chrome moved in here per T5 FS1 (docs/Lore_Sheet_And_Sync_Design.md §7a/§7a2) — the
+    // Lore Sheet is now the default primary surface, so level/scope, tags, importance, the raw
+    // description field, and raw Codex/place fields (formerly RawEntryFields' whole always-visible
+    // block, formerly toggled by the retired Natural View pref) render here instead, ahead of this
+    // component's own Type/Status/Disabled fields.
+    children?: ReactNode;
 }
 
-export const AdvancedSettings = ({ control, open, onOpenChange, naturalView, onNaturalViewChange }: AdvancedSettingsProps) => (
+export const AdvancedSettings = ({ control, open, onOpenChange, children }: AdvancedSettingsProps) => (
     <Collapsible open={open} onOpenChange={onOpenChange} className="border rounded-md p-2">
         <CollapsibleTrigger asChild>
             <Button variant="ghost" className="flex w-full justify-between p-2" type="button">
-                <span className="font-semibold">Advanced Settings</span>
+                <span className="font-semibold">Advanced</span>
                 {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-4 pt-2">
-            <div className="flex items-center justify-between space-x-2 border rounded-md p-3">
-                <div>
-                    <span className="text-sm font-medium">Natural View</span>
-                    <p className="text-xs text-muted-foreground">
-                        Edit this entry as a flowing character profile instead of raw fields. Hides tags, level, and
-                        category/importance — switch back here to manage them.
-                    </p>
-                </div>
-                <Switch checked={naturalView} onCheckedChange={onNaturalViewChange} />
-            </div>
+            {children}
 
             <div className="grid grid-cols-2 gap-4">
                 <FormField

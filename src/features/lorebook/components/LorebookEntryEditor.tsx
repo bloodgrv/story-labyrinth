@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Form } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
 import { CodexProposalTray } from "@/features/chat/components/CodexProposalTray";
@@ -15,10 +16,11 @@ import { ShuttleTray } from "@/features/chat/components/ShuttleTray";
 import { useChatsByStoryQuery, useChatTemplatesQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
+import { OpenMapButton } from "@/features/story-maps/components/OpenMapButton";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useStoryQuery } from "@/features/stories/hooks/useStoriesQuery";
+import { PlaceOnTimelineButton } from "@/features/story-timeline/components/PlaceOnTimelineButton";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
-import { useNaturalEntryView } from "@/lib/useNaturalEntryView";
 import { cn } from "@/lib/utils";
 import { codexApi, lorebookApi, chatsApi } from "@/services/api/client";
 import type { DocumentImportDraft } from "@/types/codex";
@@ -36,8 +38,10 @@ import {
     EMPTY_CODEX_STATE,
     ImageUploadField,
     LevelScopeFields,
-    NaturalEntryView,
+    LoreSheetEditor,
     RawEntryFields,
+    SheetSyncButton,
+    buildEmptySheetSeed,
     buildSubmitData,
     getDefaultFormValues
 } from "./form";
@@ -363,7 +367,6 @@ export function LorebookEntryEditor({
     const updateMutation = useUpdateLorebookMutation();
     const queryClient = useQueryClient();
     const [advancedOpen, setAdvancedOpen] = useState(false);
-    const [naturalView, setNaturalView] = useNaturalEntryView();
     const isDesktop = useIsDesktopViewport();
 
     // Tracks the real backing entry once one exists — starts as `entry` (already-saved case),
@@ -383,7 +386,22 @@ export function LorebookEntryEditor({
     const selectedLevel = form.watch("level");
     const tagInput = form.watch("tags");
     const selectedCategory = form.watch("category");
+    const nameValue = form.watch("name");
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Lore Sheet (T5 FS1) — if the user switches category on a still-untouched auto-seeded sheet
+    // (matches the previous category's own empty template exactly), reseed to the new category's
+    // template instead of leaving stale/mismatched headings around. Never touches a sheet the
+    // user has actually written into — this only fires when sheetBody === the prior seed verbatim.
+    const [previousCategory, setPreviousCategory] = useState(selectedCategory);
+    useEffect(() => {
+        if (selectedCategory === previousCategory) return;
+        const currentSheet = form.getValues("sheetBody");
+        if (currentSheet === buildEmptySheetSeed(previousCategory as LorebookCategory)) {
+            form.setValue("sheetBody", buildEmptySheetSeed(selectedCategory as LorebookCategory));
+        }
+        setPreviousCategory(selectedCategory);
+    }, [selectedCategory, previousCategory, form]);
 
     // Lazily creates a codex-enabled stub entry from whatever the form currently holds, so a WB
     // chat started before the user has ever hit Create still has a real entryId to anchor to
@@ -471,16 +489,20 @@ export function LorebookEntryEditor({
             <div className="flex-1 min-w-0 overflow-y-auto p-6">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                        {!naturalView && (
-                            <LevelScopeFields
-                                control={form.control}
-                                setValue={form.setValue}
-                                selectedLevel={selectedLevel}
-                                storyId={storyId}
-                                story={story}
-                                seriesList={seriesList}
-                            />
-                        )}
+                        <FormField
+                            control={form.control}
+                            name="name"
+                            rules={{ required: "Name is required" }}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Name</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
                         <ImageUploadField
                             control={form.control}
@@ -491,9 +513,49 @@ export function LorebookEntryEditor({
                             isLocation={selectedCategory === "location"}
                         />
 
-                        {naturalView ? (
-                            <NaturalEntryView control={form.control} entryId={liveEntry?.id} storyId={storyId} />
-                        ) : (
+                        {/* Sheet-first default surface (T5 FS1) — replaces the retired Natural View
+                            toggle. Structured/machine fields (category, tags, importance, raw
+                            description, raw Codex state, level/scope) moved into Advanced below. */}
+                        <LoreSheetEditor control={form.control} category={selectedCategory} />
+
+                        <div className="flex justify-end">
+                            <SheetSyncButton control={form.control} category={selectedCategory} entryId={liveEntry?.id} />
+                        </div>
+
+                        {/* User-facing action buttons, not machine chrome — kept visible without
+                            opening Advanced (moved out of RawEntryFields, T5 FS1). */}
+                        {selectedCategory === "location" && liveEntry?.id && storyId && (
+                            <OpenMapButton storyId={storyId} locationId={liveEntry.id} locationName={nameValue || "Untitled location"} />
+                        )}
+                        {liveEntry?.id && storyId && (
+                            <PlaceOnTimelineButton
+                                storyId={storyId}
+                                linkType="lorebook"
+                                linkId={liveEntry.id}
+                                defaultTitle={nameValue || "Untitled entry"}
+                            />
+                        )}
+
+                        {/* T5 FS3 — gate loosened from codexEnabled to just liveEntry.id: Sync now
+                            proposes into this same tray for every category (not just
+                            Codex-enabled character/location entries), and the panel already
+                            renders nothing when there's nothing pending — zero visual cost for
+                            entries that never receive a proposal. */}
+                        {liveEntry?.id && <CodexPendingChangesPanel entryId={liveEntry.id} storyId={storyId} />}
+
+                        {liveEntry?.codexEnabled && liveEntry.id && <CodexHistoryPanel entryId={liveEntry.id} storyId={storyId} />}
+
+                        {liveEntry?.category === "character" && liveEntry.id && <PsychProfilePanel entry={liveEntry} />}
+
+                        <AdvancedSettings control={form.control} open={advancedOpen} onOpenChange={setAdvancedOpen}>
+                            <LevelScopeFields
+                                control={form.control}
+                                setValue={form.setValue}
+                                selectedLevel={selectedLevel}
+                                storyId={storyId}
+                                story={story}
+                                seriesList={seriesList}
+                            />
                             <RawEntryFields
                                 control={form.control}
                                 tagInput={tagInput}
@@ -501,23 +563,7 @@ export function LorebookEntryEditor({
                                 entryId={liveEntry?.id}
                                 storyId={storyId}
                             />
-                        )}
-
-                        {liveEntry?.codexEnabled && liveEntry.id && (
-                            <CodexPendingChangesPanel entryId={liveEntry.id} storyId={storyId} />
-                        )}
-
-                        {liveEntry?.codexEnabled && liveEntry.id && <CodexHistoryPanel entryId={liveEntry.id} storyId={storyId} />}
-
-                        {liveEntry?.category === "character" && liveEntry.id && <PsychProfilePanel entry={liveEntry} />}
-
-                        <AdvancedSettings
-                            control={form.control}
-                            open={advancedOpen}
-                            onOpenChange={setAdvancedOpen}
-                            naturalView={naturalView}
-                            onNaturalViewChange={setNaturalView}
-                        />
+                        </AdvancedSettings>
 
                         <div className="flex justify-end gap-3">
                             {onCancel && (

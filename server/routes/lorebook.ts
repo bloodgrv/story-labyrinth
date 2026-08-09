@@ -16,6 +16,8 @@ import {
 } from "../services/lorebookImageStorage.js";
 import { resolveLorebookFolderId } from "../services/folderService.js";
 import { indexLorebookEntry, removeEntityFromIndex } from "../services/ragIndexService.js";
+import { improveSheetWithAI } from "../services/sheetMigrateService.js";
+import { syncSheetToCodex } from "../services/sheetSyncService.js";
 import { deleteEdgesForEntity } from "../services/storyGraphService.js";
 import { deleteMapEdgesForEntity, deleteMapLayoutForEntity } from "../services/storyMapService.js";
 import { unlinkMapsForLocation } from "../services/storyMapsService.js";
@@ -150,11 +152,49 @@ export default createCrudRouter({
             })
         );
 
+        // POST /lorebook/sheet/improve - "Improve sheet with AI" (T5 FS2) - stateless, not tied to
+        // a saved entryId (a brand-new unsaved entry can still use this). Client applies the
+        // result to the form's sheetBody field; nothing persists until the user hits Update.
+        router.post(
+            "/sheet/improve",
+            asyncHandler(async (req, res) => {
+                const { sheetBody, category, name } = req.body as { sheetBody?: string; category?: string; name?: string };
+                if (!sheetBody || !sheetBody.trim()) {
+                    res.json({ success: false, message: "The Lore Sheet is empty — write something first" });
+                    return;
+                }
+                const result = await improveSheetWithAI(sheetBody, category || "character", name || "this entry");
+                res.json(result);
+            })
+        );
+
+        // POST /lorebook/:id/sheet/sync - "Sync structured fields" (T5 FS3) - hybrid deterministic
+        // + LLM parse of the entry's current (possibly-unsaved) Lore Sheet text into a
+        // codexPendingChanges proposal, reviewed via the same tray every other Codex proposal
+        // already uses. Entry-scoped (unlike /sheet/improve and /sheet/migrate) since it needs the
+        // entry's saved codexState to merge against and a real id to attach the proposal to.
+        router.post(
+            "/:id/sheet/sync",
+            asyncHandler(async (req, res) => {
+                const { sheetBody, category } = req.body as { sheetBody?: string; category?: string };
+                if (!sheetBody || !sheetBody.trim()) {
+                    res.json({ success: false, message: "The Lore Sheet is empty — write something first" });
+                    return;
+                }
+                if (!category) {
+                    res.json({ success: false, message: "Missing category" });
+                    return;
+                }
+                const result = await syncSheetToCodex(req.params.id, sheetBody, category);
+                res.json(result);
+            })
+        );
+
         // Custom POST with validation
         router.post(
             "/",
             asyncHandler(async (req, res) => {
-                const { level, scopeId, name, description, category, tags, metadata, isDisabled, isDemo } = req.body;
+                const { level, scopeId, name, description, category, tags, metadata, isDisabled, isDemo, sheetBody } = req.body;
 
                 // Validate level/scopeId constraints
                 if (level === "global" && scopeId) {
@@ -177,7 +217,8 @@ export default createCrudRouter({
                     metadata: metadata ? JSON.stringify(metadata) : null,
                     isDisabled: isDisabled || false,
                     createdAt: new Date(),
-                    isDemo: isDemo || false
+                    isDemo: isDemo || false,
+                    sheetBody: sheetBody || null
                 };
 
                 const result = await db.insert(table).values(newEntry).returning();
