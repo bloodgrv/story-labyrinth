@@ -62,6 +62,12 @@ const ChatErrorFallback = (error: Error, resetError: () => void) => (
 
 interface OutlineChatRailProps {
     storyId: string;
+    // Controlled by OutlinePage.tsx via its ResizablePanel's own imperative collapse/expand
+    // (react-resizable-panels) — this rail sits inside a resizable panel group, so the actual
+    // collapse has to resize that panel, not just this component's own CSS. Falls back to plain
+    // internal state when omitted (e.g. any future non-resizable-panel host).
+    collapsed?: boolean;
+    onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 // Dedicated Outline chat rail (P0.4 R5/R7) — was EditorChatRail with chatType="editor" relabeled
@@ -72,14 +78,18 @@ interface OutlineChatRailProps {
 // simply "the story's most-recently-updated outline chat, else create one," used both for a
 // pending rework request AND for auto-selecting a chat on first mount (unlike EditorChatRail,
 // which leaves the "no chat selected" empty state for the user to act on manually).
-export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
+export function OutlineChatRail({ storyId, collapsed, onCollapsedChange }: OutlineChatRailProps) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
     const [loreSuggestions, setLoreSuggestions] = useState<ParsedLoreSuggestion[]>([]);
     // Lifted out of ChatList so the tray content below it (import card, Codex/Shuttle/Outline
     // proposal trays) collapses in sync — otherwise the list shrinks but the tray is left
     // stranded at full width, still in the chat area's way (see NotesChatRail.tsx's own fix).
-    const [chatListCollapsed, setChatListCollapsed] = useState(false);
+    // Controlled by OutlinePage.tsx (drives the actual ResizablePanel); falls back to internal
+    // state if this rail is ever used outside that resizable-panel host.
+    const [internalCollapsed, setInternalCollapsed] = useState(false);
+    const chatListCollapsed = collapsed ?? internalCollapsed;
+    const setChatListCollapsed = onCollapsedChange ?? setInternalCollapsed;
     const createMutation = useCreateChatMutation();
     const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(storyId, "outline");
     const pendingRework = usePendingRework();
@@ -272,6 +282,7 @@ export function OutlineChatRail({ storyId }: OutlineChatRailProps) {
                     side="right"
                     collapsed={chatListCollapsed}
                     onCollapsedChange={setChatListCollapsed}
+                    toggleEdgeOffset="wide"
                 />
                 {/* Not rendered while collapsed (rather than relying on the 0-width parent to
                     visually contain them) — same reasoning as NotesChatRail.tsx's own tray. */}

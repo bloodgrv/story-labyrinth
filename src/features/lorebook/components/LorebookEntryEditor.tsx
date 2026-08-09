@@ -1,6 +1,6 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus, Sparkles } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
@@ -19,6 +19,7 @@ import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useStoryQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
 import { useNaturalEntryView } from "@/lib/useNaturalEntryView";
+import { cn } from "@/lib/utils";
 import { codexApi, lorebookApi, chatsApi } from "@/services/api/client";
 import type { DocumentImportDraft } from "@/types/codex";
 import type { AIChat, LorebookEntry } from "@/types/story";
@@ -293,45 +294,49 @@ function WorldBuildingChatPanel({
                         {renderTemplatePicker()}
                     </div>
                 )}
-
-                <button
-                    type="button"
-                    onClick={() => setRailCollapsed(v => !v)}
-                    className="absolute top-1/2 -translate-y-1/2 -right-3 z-10 rounded-full border border-input bg-background p-1 shadow-sm hover:bg-muted"
-                    title={railCollapsed ? "Show World-Building Chats" : "Hide World-Building Chats"}
-                >
-                    {railCollapsed ? <ChevronLeft className="h-4 w-4 text-foreground" /> : <ChevronRight className="h-4 w-4 text-foreground" />}
-                </button>
             </div>
 
-            {!railCollapsed && (
-                <div className="flex flex-col w-[300px] shrink-0">
-                    <ChatList
+            {/* Single toggle now — ChatList's own collapse control (below), driven by this same
+                railCollapsed state via the collapsed/onCollapsedChange props, same pattern as
+                NotesChatRail.tsx/OutlineChatRail.tsx/BrainstormTool.tsx. Previously this div was
+                conditionally unmounted AND ChatList rendered its own separate always-on toggle,
+                so two overlapping buttons sat at the same boundary. Always rendered now (never
+                conditionally unmounted) so ChatList's toggle stays clickable to re-expand; width
+                collapses to 0 instead. */}
+            <div
+                className={cn(
+                    "flex flex-col shrink-0 transition-all duration-300",
+                    railCollapsed ? "w-0" : "w-[300px]"
+                )}
+            >
+                <ChatList
+                    storyId={storyId}
+                    chatType="worldbuilding"
+                    title="World-Building Chats"
+                    emptyLabel="No world-building chats yet"
+                    selectedChat={selectedChat}
+                    onSelectChat={setSelectedChat}
+                    renderNewChatAction={renderTemplatePicker}
+                    side="right"
+                    collapsed={railCollapsed}
+                    onCollapsedChange={setRailCollapsed}
+                />
+                {/* Was inline ProposalCard rendering only, Approve/Reject with no Edit — moved to
+                    the same tray Editor chats use (P0.4 R4 scope decision #1) so rework turns get
+                    edit-before-approve too, not just Editor's. See ChatInterface.tsx's
+                    usesCodexTray. Not rendered while collapsed — same reasoning as
+                    NotesChatRail.tsx's own tray. */}
+                {selectedChat && !railCollapsed && <CodexProposalTray chatId={selectedChat.id} />}
+                {selectedChat && !railCollapsed && (
+                    <ShuttleTray
+                        chatId={selectedChat.id}
                         storyId={storyId}
-                        chatType="worldbuilding"
-                        title="World-Building Chats"
-                        emptyLabel="No world-building chats yet"
-                        selectedChat={selectedChat}
-                        onSelectChat={setSelectedChat}
-                        renderNewChatAction={renderTemplatePicker}
-                        side="right"
+                        fromDesk={selectedChat.chatType ?? "worldbuilding"}
+                        fromChatTitleSnapshot={selectedChat.title}
+                        onAnswerHere={setComposerSeedText}
                     />
-                    {/* Was inline ProposalCard rendering only, Approve/Reject with no Edit — moved to
-                        the same tray Editor chats use (P0.4 R4 scope decision #1) so rework turns get
-                        edit-before-approve too, not just Editor's. See ChatInterface.tsx's
-                        usesCodexTray. */}
-                    {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
-                    {selectedChat && (
-                        <ShuttleTray
-                            chatId={selectedChat.id}
-                            storyId={storyId}
-                            fromDesk={selectedChat.chatType ?? "worldbuilding"}
-                            fromChatTitleSnapshot={selectedChat.title}
-                            onAnswerHere={setComposerSeedText}
-                        />
-                    )}
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }

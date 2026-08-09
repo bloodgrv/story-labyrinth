@@ -56,6 +56,11 @@ interface ChatListProps {
     // 0. Omit for the default self-contained behavior every other consumer already relies on.
     collapsed?: boolean;
     onCollapsedChange?: (collapsed: boolean) => void;
+    // Extra clearance for the collapse toggle button, for a consumer whose own chrome already
+    // occupies the default offset — OutlinePage.tsx's ResizableHandle (the panel drag grip) sits
+    // exactly where the default -left-3/-right-3 offset places this button, so OutlineChatRail.tsx
+    // passes "wide" to push it clear instead of visually colliding with the drag handle.
+    toggleEdgeOffset?: "default" | "wide";
 }
 
 export function ChatList({
@@ -69,7 +74,8 @@ export function ChatList({
     side = "left",
     filterPredicate,
     collapsed,
-    onCollapsedChange
+    onCollapsedChange,
+    toggleEdgeOffset = "default"
 }: ChatListProps) {
     const isLeftSide = side === "left";
     const { data: fetchedChats = [], isLoading } = useChatsByStoryQuery(storyId, chatType);
@@ -148,7 +154,18 @@ export function ChatList({
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <div
                 className={cn(
-                    "relative bg-background transition-all duration-300",
+                    "relative h-full bg-background transition-all duration-300",
+                    // h-full is load-bearing, not decorative — every consumer wraps this in its
+                    // own "flex flex-col" column (to stack a tray below it), and a column's
+                    // children don't auto-stretch along the main axis the way a row's do. Without
+                    // it, this box was only ever as tall as its own visible content — fine while
+                    // always-expanded (real header+list rows gave it real height), but once
+                    // collapsed the visible content becomes `hidden` (0 height) and the box
+                    // collapsed to ~0 tall, sitting at the very top of the column — the collapse
+                    // toggle button (positioned via top-1/2 relative to THIS box) then rendered
+                    // near the very top of the whole rail instead of centered in it, clipped by
+                    // whatever sits above (the topbar, in Brainstorm/WB's case where the rail
+                    // starts close to the page's own top edge).
                     // Collapsed = 0-width, not a blank 40px strip — the chat interface next to it
                     // (flex-1 min-w-0) reclaims that space instead of leaving it dead. No
                     // overflow-hidden here — the toggle button below is absolutely positioned
@@ -164,18 +181,36 @@ export function ChatList({
                     className={cn(
                         "absolute transform z-10",
                         "bg-background border-input border rounded-full p-1 shadow-sm hover:bg-muted",
+                        // Same top-8 vertical position in both states — collapsing shouldn't make
+                        // the toggle jump from near the header down to the vertical center of the
+                        // whole rail; the user should find it in roughly the same spot either way.
                         isCollapsed
-                            ? // Collapsed: stay vertically centered, but pull in further from the
-                              // outer edge than the expanded offset — flush against the page's own
-                              // edge (side="right" rails dock at the viewport edge), the smaller
-                              // offset put the button half-hidden behind the browser scrollbar.
-                              cn("top-1/2 -translate-y-1/2", isLeftSide ? "-right-6" : "-left-6")
+                            ? // Collapsed: pulled in further from the outer edge than the expanded
+                              // offset — flush against the page's own edge (side="right" rails dock
+                              // at the viewport edge). -6 (24px) left only ~2px of clearance past
+                              // the browser's own scrollbar gutter on a typical width, still
+                              // visibly clipping the rounded button; -8 (32px) gives real margin.
+                              cn("top-8 -translate-y-1/2", isLeftSide ? "-right-8" : "-left-8")
                             : // Expanded: level with the header title row instead of the vertical
                               // center of the whole list — center-height overlapped the chat
-                              // pane's own model/context dropdown next to it.
-                              cn("top-8 -translate-y-1/2", isLeftSide ? "-right-3" : "-left-3")
+                              // pane's own model/context dropdown next to it. "wide" pushes it out
+                              // further still — OutlineChatRail.tsx's ResizableHandle drag grip
+                              // otherwise sits directly on top of the default offset.
+                              cn(
+                                  "top-8 -translate-y-1/2",
+                                  toggleEdgeOffset === "wide"
+                                      ? isLeftSide
+                                          ? "-right-9"
+                                          : "-left-9"
+                                      : isLeftSide
+                                        ? "-right-3"
+                                        : "-left-3"
+                              )
                     )}
                 >
+                    {/* Right chevron while expanded (points toward where collapsing will push the
+                        list — off to its own edge), left chevron while collapsed (points back
+                        toward where expanding will bring it into view). */}
                     {isCollapsed === isLeftSide ? (
                         <ChevronRight className="h-4 w-4 text-foreground" />
                     ) : (

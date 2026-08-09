@@ -131,6 +131,14 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
                 {pageContent}
             </ResizablePanel>
             <ResizableHandle withHandle />
+            {/* Deliberately NOT wired to react-resizable-panels' own collapse API — that collapses
+                this WHOLE panel (chat interface included, not just the list beside it), since
+                OutlineChatRail renders both inside one ResizablePanel. The list's own collapse
+                toggle (OutlineChatRail.tsx's internal state, same CSS width-toggle pattern
+                NotesChatRail.tsx/BrainstormTool.tsx use) only needs to hand space back to the
+                chat interface next to it, not to this panel's sibling on the far left — leaves a
+                fixed-width dead gap in this panel when collapsed rather than resizing the panel,
+                a deliberately smaller cosmetic tradeoff over the collapse hiding the whole chat. */}
             <ResizablePanel defaultSize={28} minSize={20}>
                 <OutlineChatRail storyId={storyId} />
             </ResizablePanel>
