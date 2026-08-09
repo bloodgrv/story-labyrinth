@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ROUTES } from "@/constants/urls";
 import { useSingleSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
-import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useDeleteStoryMutation } from "@/features/stories/hooks/useStoriesQuery";
 import type { Story } from "@/types/story";
 
@@ -22,7 +21,6 @@ interface WorkspaceStoryCardProps {
 
 export const WorkspaceStoryCard = ({ story, onEdit, onExport }: WorkspaceStoryCardProps) => {
     const deleteStoryMutation = useDeleteStoryMutation();
-    const { setCurrentStoryId } = useStoryContext();
     const { data: series } = useSingleSeriesQuery(story.seriesId);
     const navigate = useNavigate();
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -48,7 +46,7 @@ export const WorkspaceStoryCard = ({ story, onEdit, onExport }: WorkspaceStoryCa
     };
 
     const handleCardClick = () => {
-        setCurrentStoryId(story.id);
+        navigate(ROUTES.DASHBOARD.ROOT(story.id));
     };
 
     return (

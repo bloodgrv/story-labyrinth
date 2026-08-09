@@ -5,6 +5,7 @@ import { ROUTES } from "@/constants/urls";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { useStoryQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { ChapterReader } from "../components/ChapterReader";
+import { useReadingProgress } from "../hooks/useReadingProgress";
 
 export function StoryReader() {
     const { storyId } = useParams<{ storyId: string }>();
@@ -14,6 +15,8 @@ export function StoryReader() {
     const { data: chapters = [], isLoading: chaptersLoading } = useChaptersByStoryQuery(storyId ?? "");
 
     const isLoading = storyLoading || chaptersLoading;
+
+    useReadingProgress(storyId ?? "", !isLoading && chapters.length > 0);
 
     if (isLoading) 
         return (
@@ -69,7 +72,9 @@ export function StoryReader() {
                 ) : (
                     <div className="space-y-12">
                         {sortedChapters.map((chapter, index) => (
-                            <ChapterReader key={chapter.id} chapter={chapter} chapterNumber={index + 1} />
+                            <div key={chapter.id} data-chapter-id={chapter.id}>
+                                <ChapterReader chapter={chapter} chapterNumber={index + 1} />
+                            </div>
                         ))}
                     </div>
                 )}
