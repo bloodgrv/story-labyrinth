@@ -7,6 +7,7 @@ export { LevelScopeFields } from "./LevelScopeFields";
 export { LoreSheetEditor } from "./LoreSheetEditor";
 export { RawEntryFields } from "./RawEntryFields";
 export { SheetSyncButton } from "./SheetSyncButton";
+export { SheetSyncCrossDeskCard } from "./SheetSyncCrossDeskCard";
 export { SelectField } from "./SelectField";
 export { TagsField } from "./TagsField";
 export { CATEGORIES, EMPTY_CODEX_STATE, IMPORTANCE_LEVELS, buildSubmitData, getDefaultFormValues } from "./entryFormUtils";

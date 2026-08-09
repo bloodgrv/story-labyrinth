@@ -9,11 +9,17 @@ import {
     useCodexPendingQuery,
     useRejectPendingChangeMutation
 } from "@/features/lorebook/hooks/useCodexHistoryQuery";
-import type { CodexPendingChange } from "@/types/codex";
+import { CodexFieldDiffLine, CodexListDiffLine } from "@/features/lorebook/utils/codexStateDiff";
+import type { CodexPendingChange, CodexState } from "@/types/codex";
 
 interface CodexPendingChangesPanelProps {
     entryId: string;
     storyId: string | undefined;
+    // T5 FS8 (docs/Lore_Sheet_And_Sync_Design.md §6e: "List buckets... full replace with diff
+    // shown") — the entry's own current codexState to diff each proposal's list buckets/labeled
+    // fields against. undefined/null (a brand-new unsaved entry, or a caller that hasn't wired
+    // this yet) degrades gracefully to the pre-FS8 "proposed value only" rendering below.
+    currentState?: CodexState | null;
 }
 
 const SOURCE_LABEL: Record<CodexPendingChange["sourceType"], string> = {
@@ -25,9 +31,10 @@ interface PendingChangeCardProps {
     change: CodexPendingChange;
     entryId: string;
     storyId: string | undefined;
+    currentState?: CodexState | null;
 }
 
-function PendingChangeCard({ change, entryId, storyId }: PendingChangeCardProps) {
+function PendingChangeCard({ change, entryId, storyId, currentState }: PendingChangeCardProps) {
     const approveMutation = useApprovePendingChangeMutation(entryId, storyId);
     const rejectMutation = useRejectPendingChangeMutation(entryId, storyId);
     const isUpdating = approveMutation.isPending || rejectMutation.isPending;
@@ -46,19 +53,11 @@ function PendingChangeCard({ change, entryId, storyId }: PendingChangeCardProps)
                         {/* A chat-emitted proposedState may only include the section(s) actually
                             changing (see CODEX_PROPOSAL_INSTRUCTIONS) — guard every key, not just
                             the object itself. */}
-                        {(change.proposedState.wardrobe?.length ?? 0) > 0 && (
-                            <p>Wardrobe: {change.proposedState.wardrobe.map(i => i.value).join(", ")}</p>
-                        )}
-                        {(change.proposedState.wounds?.length ?? 0) > 0 && (
-                            <p>Wounds: {change.proposedState.wounds.map(i => i.value).join(", ")}</p>
-                        )}
-                        {(change.proposedState.items?.length ?? 0) > 0 && <p>Items: {change.proposedState.items.map(i => i.value).join(", ")}</p>}
-                        {(change.proposedState.appearance?.length ?? 0) > 0 && (
-                            <p>Appearance: {change.proposedState.appearance.map(f => `${f.label}: ${f.value}`).join("; ")}</p>
-                        )}
-                        {(change.proposedState.customFields?.length ?? 0) > 0 && (
-                            <p>Custom fields: {change.proposedState.customFields.map(f => `${f.label}: ${f.value}`).join("; ")}</p>
-                        )}
+                        <CodexListDiffLine label="Wardrobe" current={currentState?.wardrobe} proposed={change.proposedState.wardrobe} />
+                        <CodexListDiffLine label="Wounds" current={currentState?.wounds} proposed={change.proposedState.wounds} />
+                        <CodexListDiffLine label="Items" current={currentState?.items} proposed={change.proposedState.items} />
+                        <CodexFieldDiffLine label="Appearance" current={currentState?.appearance} proposed={change.proposedState.appearance} />
+                        <CodexFieldDiffLine label="Custom fields" current={currentState?.customFields} proposed={change.proposedState.customFields} />
                     </div>
                 )}
                 <div className="flex gap-2">
@@ -83,7 +82,7 @@ function PendingChangeCard({ change, entryId, storyId }: PendingChangeCardProps)
 // next to CodexHistoryPanel.tsx (approving here creates the exact same "AI suggestion"-labeled
 // snapshot that panel already knew how to render, since codexService.ts's
 // pendingSourceToCodexSource already mapped "ai" -> "ai_suggestion" before any job used it).
-export function CodexPendingChangesPanel({ entryId, storyId }: CodexPendingChangesPanelProps) {
+export function CodexPendingChangesPanel({ entryId, storyId, currentState }: CodexPendingChangesPanelProps) {
     const [open, setOpen] = useState(true);
     const { data: pending, isLoading } = useCodexPendingQuery(entryId);
 
@@ -103,7 +102,9 @@ export function CodexPendingChangesPanel({ entryId, storyId }: CodexPendingChang
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    pending?.map(change => <PendingChangeCard key={change.id} change={change} entryId={entryId} storyId={storyId} />)
+                    pending?.map(change => (
+                        <PendingChangeCard key={change.id} change={change} entryId={entryId} storyId={storyId} currentState={currentState} />
+                    ))
                 )}
             </CollapsibleContent>
         </Collapsible>

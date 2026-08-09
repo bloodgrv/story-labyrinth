@@ -95,13 +95,22 @@ export const getDefaultFormValues = (
     const defaultScopeId = entry?.scopeId || seriesId || storyId || "";
     const codexState = entry?.codexState ?? draft?.codexState ?? EMPTY_CODEX_STATE;
     const resolvedCategory: LorebookCategory = entry?.category || draft?.category || defaultCategory || "character";
-    // Lore Sheet seed (T5 FS1/FS2) — an existing entry's own sheetBody always wins. Otherwise: a
-    // brand-new entry (no `entry`) gets a blank required-section template (FS1); an existing
-    // entry that predates this feature (entry.sheetBody null/empty) gets FS2's deterministic
-    // reverse compile from its existing description/codexState/placeState instead of a blank
-    // template — real data, not just headings. Document-import drafts still get the blank
-    // template for now (draft.sheetBody fill-in is FS7, a separate slice).
-    const sheetBody = entry?.sheetBody || (entry ? reverseCompileSheet(entry) : buildEmptySheetSeed(resolvedCategory));
+    // Lore Sheet seed (T5 FS1/FS2/FS7) — an existing entry's own sheetBody always wins. Otherwise:
+    // an existing entry that predates this feature (entry.sheetBody null/empty) gets FS2's
+    // deterministic reverse compile from its existing description/codexState/placeState instead of
+    // a blank template — real data, not just headings. A document-import draft (FS7) gets the same
+    // deterministic reverse compile, fed from what the draft itself already extracted
+    // (name/description/codexState) — reuses the exact same proven, no-AI compiler rather than a
+    // second LLM extraction pass; the sheet's own "Improve with AI" button is still there
+    // afterward if the user wants a nicer pass over it. Only a genuinely brand-new, undrafted entry
+    // falls back to the blank required-section template.
+    const sheetBody = entry?.sheetBody
+        ? entry.sheetBody
+        : entry
+          ? reverseCompileSheet(entry)
+          : draft
+            ? reverseCompileSheet({ category: resolvedCategory, description: draft.description, codexState: draft.codexState })
+            : buildEmptySheetSeed(resolvedCategory);
 
     return {
         level: defaultLevel,

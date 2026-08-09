@@ -54,6 +54,7 @@ export function CodexProposalTray({ chatId }: CodexProposalTrayProps) {
                                 chatId={chatId}
                                 entryName={entry?.name ?? "Unknown entry"}
                                 entryCategory={entry?.category ?? "unknown"}
+                                entryCurrentState={entry?.codexState}
                             />
                         );
                     })

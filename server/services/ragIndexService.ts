@@ -2,6 +2,7 @@ import { and, eq, inArray, or } from "drizzle-orm";
 import type { CodexCustomField, CodexState, CodexStateItem } from "../../src/types/codex.js";
 import { STORY_GRAPH_EDGE_TYPE_LABELS } from "../../src/types/storyGraph.js";
 import type { StoryGraphEdgeType } from "../../src/types/storyGraph.js";
+import type { PlaceState } from "../../src/types/story.js";
 import { db, schema } from "../db/client.js";
 import { chunkText, embedTexts } from "./embeddingService.js";
 import { extractTextFromLexical } from "./entityDetector.js";
@@ -34,6 +35,27 @@ const formatCodexState = (state: CodexState | null): string => {
     labeledFields(state.customFields);
 
     return lines.join("\n");
+};
+
+// T5 FS6 (docs/Lore_Sheet_And_Sync_Design.md §7) — location's light place sheet
+// (entry.metadata.placeState) can drift from the Lore Sheet's own text (it's editable
+// independently via PlaceSheetFields.tsx / the place-sheet-proposal chat fence, not just through
+// Sync), so it's worth surfacing to RAG in its own right. `layoutMd` is deliberately omitted here:
+// it's the same content the location sheet template's own "Layout Notes" heading carries (see
+// reverseCompileSheet.ts), so including it here would just duplicate that section verbatim.
+const formatPlaceState = (placeState: PlaceState | null | undefined): string => {
+    if (!placeState) return "";
+
+    const lines: string[] = [];
+    if (placeState.scale?.trim()) lines.push(`Scale: ${placeState.scale.trim()}`);
+    if (placeState.biomeOrClimate?.trim()) lines.push(`Biome/Climate: ${placeState.biomeOrClimate.trim()}`);
+    if (placeState.holder?.trim()) lines.push(`Holder: ${placeState.holder.trim()}`);
+    if (placeState.dangerLevel?.trim()) lines.push(`Danger Level: ${placeState.dangerLevel.trim()}`);
+    if (placeState.landmarks?.length) lines.push(`Landmarks: ${placeState.landmarks.join("; ")}`);
+    if (placeState.exitsSummary?.trim()) lines.push(`Exits: ${placeState.exitsSummary.trim()}`);
+    if (placeState.floorLabel?.trim()) lines.push(`Floor: ${placeState.floorLabel.trim()}`);
+
+    return lines.length ? `Place details:\n${lines.join("\n")}` : "";
 };
 
 // Plain-text summary of this entry's active Relationship Graph edges (P1.2 G1.5+,
@@ -77,10 +99,26 @@ const buildRelationshipText = async (entryId: string): Promise<string> => {
 // Exported for reconcileIndexJob.ts's staleness check, so it recomputes indexable text the
 // exact same way indexLorebookEntry does and can't drift from what actually gets indexed. Async
 // since P1.2 G1.5+ added a relationship-edge lookup — see buildRelationshipText above.
+//
+// T5 FS6 (docs/Lore_Sheet_And_Sync_Design.md §7) — once an entry has a non-empty Lore Sheet, the
+// sheet is the authored source of truth and `description` is a stale/legacy narrative dump next
+// to it (Sync already compiles the sheet's narrative sections back into `description`, so
+// including both would mostly duplicate text). Entries that never got a sheet keep indexing on
+// `description` exactly as before.
 export const buildLorebookEntryText = async (entry: LorebookRow): Promise<string> => {
     // Drizzle's `mode: "json"` column already deserializes this to an object on select.
     const codexText = formatCodexState((entry.codexState as CodexState | null) ?? null);
     const relationshipText = await buildRelationshipText(entry.id);
+    const sheetBody = (entry.sheetBody as string | null)?.trim() ?? "";
+
+    if (sheetBody) {
+        const placeText =
+            entry.category === "location"
+                ? formatPlaceState((entry.metadata as { placeState?: PlaceState } | null)?.placeState)
+                : "";
+        return [entry.name, sheetBody, codexText, placeText, relationshipText].filter(Boolean).join("\n\n");
+    }
+
     return [entry.name, entry.description, codexText, relationshipText].filter(Boolean).join("\n\n");
 };
 

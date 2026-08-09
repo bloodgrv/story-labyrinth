@@ -31,6 +31,7 @@ import type { ChatStyle, WorldBuildingTemplateSlug } from "@/types/worldbuilding
 import { getTemplate } from "@/types/worldbuilding";
 import { lorebookKeys, useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
 import { PsychProfilePanel } from "./PsychProfilePanel";
+import type { SyncSheetResult } from "@/services/api/lorebookClient";
 import {
     AdvancedSettings,
     CodexHistoryPanel,
@@ -41,6 +42,7 @@ import {
     LoreSheetEditor,
     RawEntryFields,
     SheetSyncButton,
+    SheetSyncCrossDeskCard,
     buildEmptySheetSeed,
     buildSubmitData,
     getDefaultFormValues
@@ -368,6 +370,11 @@ export function LorebookEntryEditor({
     const queryClient = useQueryClient();
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const isDesktop = useIsDesktopViewport();
+    // T5 FS5 — the map/notes cross-desk lanes SheetSyncCrossDeskCard renders only ever live in this
+    // one Sync response (nothing persists them server-side the way a codexPendingChanges row or a
+    // pending timeline pin does), so they're lifted here rather than owned inside SheetSyncButton
+    // itself — same reasoning CodexPendingChangesPanel's own independent query doesn't need.
+    const [crossDeskResult, setCrossDeskResult] = useState<SyncSheetResult | null>(null);
 
     // Tracks the real backing entry once one exists — starts as `entry` (already-saved case),
     // but for a brand-new entry (entry undefined) gets populated the first time the docked WB
@@ -519,8 +526,22 @@ export function LorebookEntryEditor({
                         <LoreSheetEditor control={form.control} category={selectedCategory} />
 
                         <div className="flex justify-end">
-                            <SheetSyncButton control={form.control} category={selectedCategory} entryId={liveEntry?.id} />
+                            <SheetSyncButton
+                                control={form.control}
+                                category={selectedCategory}
+                                entryId={liveEntry?.id}
+                                onSynced={setCrossDeskResult}
+                            />
                         </div>
+
+                        {/* T5 FS5 — ephemeral map-layout-brief / notes-stub cards, cleared on
+                            Apply/Create or explicit Dismiss (see crossDeskResult's own comment). */}
+                        <SheetSyncCrossDeskCard
+                            entry={liveEntry}
+                            storyId={storyId}
+                            result={crossDeskResult}
+                            onDismiss={() => setCrossDeskResult(null)}
+                        />
 
                         {/* User-facing action buttons, not machine chrome — kept visible without
                             opening Advanced (moved out of RawEntryFields, T5 FS1). */}
@@ -541,7 +562,9 @@ export function LorebookEntryEditor({
                             Codex-enabled character/location entries), and the panel already
                             renders nothing when there's nothing pending — zero visual cost for
                             entries that never receive a proposal. */}
-                        {liveEntry?.id && <CodexPendingChangesPanel entryId={liveEntry.id} storyId={storyId} />}
+                        {liveEntry?.id && (
+                            <CodexPendingChangesPanel entryId={liveEntry.id} storyId={storyId} currentState={liveEntry.codexState} />
+                        )}
 
                         {liveEntry?.codexEnabled && liveEntry.id && <CodexHistoryPanel entryId={liveEntry.id} storyId={storyId} />}
 

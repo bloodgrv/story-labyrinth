@@ -257,6 +257,11 @@ export type ProposeAiSuggestedPinInput = CreatePinInput;
 
 // Always onto Spine (createPin's own default when timelineId is omitted) — an AI-suggested pin
 // has no natural "which named timeline" signal, same posture as TL7's chat-proposed pins.
+//
+// `linkType`/`linkId` pass through from `CreatePinInput` (previously hardcoded to null here) so
+// T5 FS5's sheet-sync-proposed pins can link back to their source lorebook entry — unlike
+// `timelineSuggestPinsJob.ts`'s own bulk-suggest pins, which read lorebook entries/notes only as
+// inspiration and stay freestanding. Every other caller keeps getting null exactly as before.
 export const proposeAiSuggestedPin = async (input: ProposeAiSuggestedPinInput): Promise<TimelinePin> => {
     const existingPins = await db.select().from(schema.storyTimelinePins).where(eq(schema.storyTimelinePins.storyId, input.storyId));
     const maxOrder = existingPins.reduce((max, r) => Math.max(max, r.manualOrder), 0);
@@ -274,8 +279,8 @@ export const proposeAiSuggestedPin = async (input: ProposeAiSuggestedPinInput): 
             fuzzyPhrase: input.fuzzyPhrase ?? null,
             civilDate: input.civilDate ?? null,
             manualOrder: maxOrder + 1,
-            linkType: null,
-            linkId: null,
+            linkType: input.linkType ?? null,
+            linkId: input.linkId ?? null,
             status: "pending",
             source: "ai_suggested",
             createdAt: now,
@@ -290,6 +295,24 @@ export const proposeAiSuggestedPin = async (input: ProposeAiSuggestedPinInput): 
         .returning();
 
     return rowToPin(row, [rowToMembership(membershipRow)]);
+};
+
+// T5 FS5 — re-sync idempotency: before proposing another pending pin from the same entry's Lore
+// Sheet, check whether one already exists (pending review, or already approved/active) so
+// clicking Sync repeatedly doesn't spam duplicate pins. Mirrors the shape of listPinsForStory/
+// listPendingPinsForStory above but filtered by link instead of status.
+export const findPinsByLink = async (storyId: string, linkType: PinLinkType, linkId: string): Promise<TimelinePin[]> => {
+    const rows = await db
+        .select()
+        .from(schema.storyTimelinePins)
+        .where(
+            and(
+                eq(schema.storyTimelinePins.storyId, storyId),
+                eq(schema.storyTimelinePins.linkType, linkType),
+                eq(schema.storyTimelinePins.linkId, linkId)
+            )
+        );
+    return rows.filter(row => row.status !== "rejected").map(row => rowToPin(row, []));
 };
 
 export const approvePin = async (id: string): Promise<TimelinePin> => {

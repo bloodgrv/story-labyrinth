@@ -4,6 +4,7 @@ import { db, schema } from "../db/client.js";
 import type { CodexCustomField, CodexState, CodexStateItem } from "../../src/types/codex.js";
 import { buildClientForFeature } from "./aiClientFactory.js";
 import { proposeChange } from "./codexService.js";
+import { findPinsByLink, proposeAiSuggestedPin } from "./storyTimelineService.js";
 
 // Lore Sheet Sync loop (T5 FS3, docs/Lore_Sheet_And_Sync_Design.md §5/§6) — "Sync structured
 // fields": hybrid deterministic `##` split + LLM row/list extraction, always proposed through the
@@ -25,6 +26,25 @@ import { proposeChange } from "./codexService.js";
 //    A non-tracking location still gets its description compiled every time; flipping the
 //    existing toggle (already in the entry editor) is what unlocks the structured half, rather
 //    than this service inventing a second, parallel non-Codex proposal mechanism.
+//
+// T5 FS5 (docs/Lore_Sheet_And_Sync_Design.md §5a/§5b/§5c) adds three more independent, always-
+// propose-never-silent lanes alongside the Codex tray one above — each reported back on
+// `SyncSheetResult` for the client to render its own small card/toast for, per §6d's "split:
+// Codex tray for description/Codex patch; separate cards for map brief / timeline pins / note
+// link":
+// - `mapLayoutBrief` (location only) — the sheet's own "Layout Notes" section content, offered
+//   as a direct `metadata.placeState.layoutMd` merge on the client's explicit Accept. Deliberately
+//   NOT written here — this service only ever proposes, matching every other Sync lane.
+// - `timelinePinId` (event/timeline only) — unlike the other two lanes, this one actually persists
+//   immediately, but as a `status: "pending"` row via the same `proposeAiSuggestedPin`/Pending-tab
+//   review lane TL11B's bulk-suggest job already built — reusing an existing durable review
+//   surface beats inventing a second ephemeral one, and "pending" is not visible on any board or
+//   in chat context until a user approves it (still a real propose→Accept gate, just one with a
+//   different UI home). Linked back to the source entry (`linkType: "lorebook"`) so a re-sync
+//   doesn't spam duplicates — see `findPinsByLink`.
+// - `notesStub` (note only) — a one-shot "create a Notes-desk note from this" offer. No persisted
+//   link back (5c's "no dual-body mirror" — a lorebook `note` entry and a Notes-desk note stay two
+//   separate things after this).
 
 interface SheetSection {
     heading: string;
@@ -227,6 +247,16 @@ export interface SyncSheetResult {
     success: boolean;
     message?: string;
     pendingChangeId?: string;
+    // T5 FS5 — see the file header for what each of these three cross-desk lanes means and why
+    // they're reported separately instead of folded into the Codex tray proposal above.
+    mapLayoutBrief?: string;
+    timelinePinId?: string;
+    notesStub?: { title: string; content: string };
+    // T5 FS8 (§5d: "missing desk target — skip + soft notice") — a lane found real content to
+    // propose but had nowhere to send it (currently only the timeline lane's global/series-level
+    // case). A plain user-facing sentence, not an error — the Codex-tray lane can still succeed
+    // independently in the same response.
+    crossDeskNotice?: string;
 }
 
 export const syncSheetToCodex = async (entryId: string, sheetBody: string, category: string): Promise<SyncSheetResult> => {
@@ -241,11 +271,15 @@ export const syncSheetToCodex = async (entryId: string, sheetBody: string, categ
         customFields: []
     };
 
-    // "note" has no section pack at all (freeform) — the whole sheet is the description.
+    // "note" has no section pack at all (freeform) — the whole sheet is the description. §5c's
+    // Notes-desk offer rides along on every successful note-category sync, not just a first one —
+    // "no dual-body mirror" means there's nothing to dedupe against, each Accept just creates a
+    // fresh, independent Notes-desk note.
     if (category === "note") {
         if (!sheetBody.trim()) return { success: false, message: "The Lore Sheet is empty — write something first" };
-        const change = await proposeChange(entryId, { proposedDescription: sheetBody.trim() }, "ai", `sheet_sync:${entryId}:${Date.now()}`);
-        return { success: true, pendingChangeId: change.id };
+        const trimmed = sheetBody.trim();
+        const change = await proposeChange(entryId, { proposedDescription: trimmed }, "ai", `sheet_sync:${entryId}:${Date.now()}`);
+        return { success: true, pendingChangeId: change.id, notesStub: { title: entry.name, content: trimmed } };
     }
 
     const sectionConfig = SECTION_CONFIGS[category] ?? {};
@@ -256,6 +290,46 @@ export const syncSheetToCodex = async (entryId: string, sheetBody: string, categ
     // every other category's non-narrative sections are simply skipped (their content stays
     // sheet-only until a future slice gives them a real structured target).
     const structuredEligible = category === "character" || (category === "location" && entry.codexEnabled);
+
+    // T5 FS5's map lane — offered regardless of `codexEnabled` (unlike the customFields "Layout"
+    // mirror above, which only exists when Place Codex tracking is on): applying a layout brief to
+    // `metadata.placeState.layoutMd` is a separate, independent field from codexState, so there's
+    // nothing to conflict with either way.
+    const mapLayoutBrief =
+        category === "location" ? sections.find(s => s.heading.toLowerCase() === "layout notes")?.content || undefined : undefined;
+
+    // T5 FS5's timeline lane — event/timeline only, "pending pin(s) from When/Summary" per §4/§5b.
+    // Only story-level entries have a concrete storyId to attach a pin to. T5 FS8 (§5d: "missing
+    // desk target — skip + soft notice") adds the notice FS5 deliberately deferred: a global/
+    // series-level event/timeline entry with real When/Summary content to propose from now says
+    // so instead of silently doing nothing — still skip-not-error, just no longer silent.
+    let timelinePinId: string | undefined;
+    let crossDeskNotice: string | undefined;
+    if (category === "event" || category === "timeline") {
+        const storyId = entry.level === "story" ? entry.scopeId : null;
+        const whenSection = sections.find(s => s.heading.toLowerCase() === "when");
+        const summarySection = sections.find(s => s.heading.toLowerCase() === "summary");
+        const briefSource = whenSection?.content || summarySection?.content;
+        if (briefSource) {
+            if (!storyId) {
+                crossDeskNotice = `This is a ${entry.level}-level entry, so no timeline pin could be proposed — pins only attach to a single story.`;
+            } else {
+                const alreadyLinked = await findPinsByLink(storyId, "lorebook", entryId);
+                if (alreadyLinked.length === 0) {
+                    const pin = await proposeAiSuggestedPin({
+                        storyId,
+                        title: entry.name,
+                        blurb: (summarySection?.content || whenSection?.content || "").slice(0, 500) || null,
+                        whenKind: "fuzzy",
+                        fuzzyPhrase: (whenSection?.content || summarySection?.content || "").slice(0, 200),
+                        linkType: "lorebook",
+                        linkId: entryId
+                    });
+                    timelinePinId = pin.id;
+                }
+            }
+        }
+    }
 
     const narrativeParts: string[] = [];
     const llmRequests: LlmSectionRequest[] = [];
@@ -329,14 +403,24 @@ export const syncSheetToCodex = async (entryId: string, sheetBody: string, categ
         if (JSON.stringify(nextState) !== JSON.stringify(existingState)) proposedState = nextState;
     }
 
-    if (!proposedDescription && !proposedState)
+    // The Codex-tray lane may have nothing new this sync while the map/timeline lanes above still
+    // do (or vice versa) — §6d's "separate cards" split means these three lanes succeed and fail
+    // independently. A crossDeskNotice on its own still counts as "something happened" (§5d: skip
+    // + soft notice, not a silent no-op) — only report total failure when literally none of the
+    // four lanes found anything to say.
+    if (!proposedDescription && !proposedState && !mapLayoutBrief && !timelinePinId && !crossDeskNotice)
         return { success: false, message: "Nothing new to sync — add content under a recognized section heading first" };
 
-    const change = await proposeChange(
-        entryId,
-        { proposedDescription: proposedDescription || undefined, proposedState },
-        "ai",
-        `sheet_sync:${entryId}:${Date.now()}`
-    );
-    return { success: true, pendingChangeId: change.id };
+    let pendingChangeId: string | undefined;
+    if (proposedDescription || proposedState) {
+        const change = await proposeChange(
+            entryId,
+            { proposedDescription: proposedDescription || undefined, proposedState },
+            "ai",
+            `sheet_sync:${entryId}:${Date.now()}`
+        );
+        pendingChangeId = change.id;
+    }
+
+    return { success: true, pendingChangeId, mapLayoutBrief, timelinePinId, crossDeskNotice };
 };

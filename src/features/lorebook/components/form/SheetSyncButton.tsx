@@ -5,12 +5,18 @@ import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { codexPendingKeys } from "@/features/lorebook/hooks/useCodexHistoryQuery";
 import { lorebookApi } from "@/services/api/client";
+import type { SyncSheetResult } from "@/services/api/lorebookClient";
 import type { CreateEntryForm, LorebookCategory } from "./entryFormUtils";
 
 interface SheetSyncButtonProps {
     control: Control<CreateEntryForm>;
     category: LorebookCategory;
     entryId?: string;
+    // T5 FS5 — hands the raw result up to LorebookEntryEditor.tsx so it can render
+    // SheetSyncCrossDeskCard for whichever of the map/timeline/notes lanes fired. This button stays
+    // focused on the Codex-tray lane (toast + query invalidation); the cross-desk lanes are a
+    // sibling concern with their own accept UI, not something this button renders itself.
+    onSynced?: (result: SyncSheetResult) => void;
 }
 
 // "Sync structured fields" (T5 FS3, docs/Lore_Sheet_And_Sync_Design.md §5/§6) — hybrid
@@ -19,7 +25,7 @@ interface SheetSyncButtonProps {
 // LorebookEntryEditor.tsx) — never applies directly (6b's "always propose → Accept" lock).
 // Requires a saved entryId (the sheet must belong to a real entry to attach a proposal to and to
 // merge against its current Codex state) — disabled with an explanatory tooltip until then.
-export function SheetSyncButton({ control, category, entryId }: SheetSyncButtonProps) {
+export function SheetSyncButton({ control, category, entryId, onSynced }: SheetSyncButtonProps) {
     const sheetBody = useWatch({ control, name: "sheetBody" }) ?? "";
     const queryClient = useQueryClient();
 
@@ -27,8 +33,11 @@ export function SheetSyncButton({ control, category, entryId }: SheetSyncButtonP
         mutationFn: () => lorebookApi.syncSheet(entryId ?? "", { sheetBody, category }),
         onSuccess: result => {
             if (result.success) {
-                if (entryId) void queryClient.invalidateQueries({ queryKey: codexPendingKeys.list(entryId) });
-                toast.success("Sync proposed — review it below.");
+                if (entryId && result.pendingChangeId) void queryClient.invalidateQueries({ queryKey: codexPendingKeys.list(entryId) });
+                if (result.pendingChangeId) toast.success("Sync proposed — review it below.");
+                if (result.timelinePinId) toast.success("Timeline pin proposed — review it in Timeline → Pending.");
+                if (result.crossDeskNotice) toast.info(result.crossDeskNotice);
+                onSynced?.(result);
             } else {
                 toast.error(result.message || "Nothing to sync");
             }

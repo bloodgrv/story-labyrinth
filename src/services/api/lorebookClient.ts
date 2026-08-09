@@ -12,6 +12,17 @@ export interface SyncSheetResult {
     success: boolean;
     message?: string;
     pendingChangeId?: string;
+    // T5 FS5 (docs/Lore_Sheet_And_Sync_Design.md §5) — cross-desk lanes, independent of the Codex
+    // tray proposal above. At most one is ever present for a given sync, since they're mutually
+    // exclusive by category (location -> mapLayoutBrief, event/timeline -> timelinePinId, note ->
+    // notesStub). See sheetSyncService.ts's own file header for the full rationale.
+    mapLayoutBrief?: string;
+    timelinePinId?: string;
+    notesStub?: { title: string; content: string };
+    // T5 FS8 (§5d: "missing desk target — skip + soft notice") — a lane found real content but had
+    // nowhere to send it (e.g. a global/series-level event/timeline entry). Plain informational
+    // text, not an error; the Codex-tray lane can still succeed in the same response.
+    crossDeskNotice?: string;
 }
 
 // Lorebook API — split out of client.ts (same reasoning as ttsApi/humanizerApi/etc. before it)

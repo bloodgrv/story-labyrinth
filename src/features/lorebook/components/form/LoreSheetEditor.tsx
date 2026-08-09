@@ -34,18 +34,61 @@ export function LoreSheetEditor({ control, category }: LoreSheetEditorProps) {
     // the user still has to hit Update to persist anything.
     const improveMutation = useMutation({ mutationFn: () => lorebookApi.improveSheet({ sheetBody, category, name: name || "this entry" }) });
 
-    // Plain-textarea "scroll to heading" — no rich editor here, so this is an approximation
-    // (proportional scrollTop by line index) rather than a real scrollIntoView. Good enough for
-    // v1 navigation; exact positioning is FS8 polish territory if it ever matters.
+    // T5 FS8 template polish — replaces the old proportional-scrollTop approximation (flagged in
+    // FS1's own comment as "exact positioning is FS8 polish territory") with the standard
+    // mirror-div technique: a hidden off-screen div styled identically to the textarea (same
+    // font/width/padding, so it wraps text exactly the same way) renders the sheet's text up to
+    // the target heading, and a marker span's `offsetTop` gives the real pixel position — accurate
+    // even with long wrapped lines, which the old per-`\n`-line proportional math wasn't.
+    const measureOffsetTop = (el: HTMLTextAreaElement, index: number): number => {
+        const style = window.getComputedStyle(el);
+        const mirror = document.createElement("div");
+        const mirroredProps: Array<keyof CSSStyleDeclaration> = [
+            "boxSizing",
+            "width",
+            "paddingTop",
+            "paddingRight",
+            "paddingBottom",
+            "paddingLeft",
+            "borderTopWidth",
+            "borderRightWidth",
+            "borderBottomWidth",
+            "borderLeftWidth",
+            "fontFamily",
+            "fontSize",
+            "fontWeight",
+            "lineHeight",
+            "letterSpacing",
+            "tabSize"
+        ];
+        for (const prop of mirroredProps) (mirror.style as unknown as Record<string, string>)[prop as string] = style[prop] as string;
+        mirror.style.position = "absolute";
+        mirror.style.visibility = "hidden";
+        mirror.style.whiteSpace = "pre-wrap";
+        mirror.style.wordWrap = "break-word";
+        mirror.style.top = "0";
+        mirror.style.left = "-9999px";
+        mirror.style.height = "auto";
+
+        mirror.textContent = el.value.slice(0, index);
+        const marker = document.createElement("span");
+        marker.textContent = "​";
+        mirror.appendChild(marker);
+
+        document.body.appendChild(mirror);
+        const offsetTop = marker.offsetTop;
+        document.body.removeChild(mirror);
+        return offsetTop;
+    };
+
     const scrollToHeading = (heading: string) => {
         const target = headings.find(h => h.heading.toLowerCase() === heading.toLowerCase());
         const el = textareaRef.current;
         if (!target || !el) return;
         el.focus();
         el.setSelectionRange(target.index, target.index + target.heading.length + 3);
-        const totalLines = sheetBody.split("\n").length || 1;
-        const lineIndex = sheetBody.slice(0, target.index).split("\n").length - 1;
-        el.scrollTop = (lineIndex / totalLines) * el.scrollHeight;
+        const lineHeight = parseFloat(window.getComputedStyle(el).lineHeight) || 20;
+        el.scrollTop = Math.max(0, measureOffsetTop(el, target.index) - lineHeight);
     };
 
     return (

@@ -1,6 +1,19 @@
-import type { LorebookEntry } from "@/types/story";
+import type { CodexState } from "@/types/codex";
+import type { PlaceState } from "@/types/story";
 import type { LorebookCategory } from "./entryFormUtils";
 import { getSheetTemplate } from "./sheetTemplates";
+
+// Narrowed to exactly what reverseCompileSheet reads (category/description/codexState/
+// metadata.placeState) rather than the full `LorebookEntry` — T5 FS7 needs to reverse-compile a
+// document-import draft, which has no id/level/scopeId/createdAt/etc. yet (it isn't a real entry
+// until the user saves it), and this is a structurally-compatible subset any real `LorebookEntry`
+// already satisfies, so every existing call site keeps working unchanged.
+export interface ReverseCompileSource {
+    category: LorebookCategory;
+    description?: string;
+    codexState?: CodexState | null;
+    metadata?: { placeState?: PlaceState };
+}
 
 // Per-category "catch-all" heading where an entry's existing free-text `description` lands on
 // reverse compile — docs/Lore_Sheet_And_Sync_Design.md §8/§9a: "description → Overview or
@@ -33,7 +46,7 @@ const bulletList = (items: string[]): string => items.filter(item => item?.trim(
 // Never invents content; a section with nothing to reverse-compile just renders as an empty
 // heading (or is omitted entirely, for optional sections with no source data — same "optional
 // sections aren't auto-seeded empty" rule FS1's buildEmptySheetSeed already follows).
-export const reverseCompileSheet = (entry: LorebookEntry): string => {
+export const reverseCompileSheet = (entry: ReverseCompileSource): string => {
     const category = entry.category;
 
     if (category === "note") return entry.description?.trim() ?? "";

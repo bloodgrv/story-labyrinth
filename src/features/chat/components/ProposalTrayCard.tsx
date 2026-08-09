@@ -10,6 +10,7 @@ import {
     useRejectProposalMutation,
     useReviseProposalMutation
 } from "@/features/chat/hooks/useCodexProposalsQuery";
+import { CodexFieldDiffLine, CodexListDiffLine } from "@/features/lorebook/utils/codexStateDiff";
 import type { CodexCustomField, CodexPendingChange, CodexState, CodexStateItem } from "@/types/codex";
 
 interface ProposalTrayCardProps {
@@ -17,6 +18,11 @@ interface ProposalTrayCardProps {
     chatId: string;
     entryName: string;
     entryCategory: string;
+    // T5 FS8 (docs/Lore_Sheet_And_Sync_Design.md §6e) — the anchor entry's own current codexState,
+    // for the same "list buckets full-replace, diff shown" treatment
+    // CodexPendingChangesPanel.tsx's Sync-lane cards already got. undefined (an entry not present
+    // in this chat's lorebook context yet) degrades to the pre-FS8 proposed-value-only summary.
+    entryCurrentState?: CodexState | null;
 }
 
 const EMPTY_CODEX_STATE: CodexState = { wardrobe: [], appearance: [], wounds: [], items: [], customFields: [] };
@@ -149,26 +155,25 @@ function LabeledFieldListBox({
 
 // Read-only summary of a proposal's proposedState — shown outside edit mode so structured field
 // changes are actually visible before approval, not applied silently (previously the tray only
-// ever rendered proposedDescription/proposedTags, see DECISIONS.md).
-function ProposedStateSummary({ state: rawState }: { state: CodexState }) {
+// ever rendered proposedDescription/proposedTags, see DECISIONS.md). T5 FS8 added the
+// current-vs-proposed diff treatment (added/removed for the full-replace list buckets,
+// before→after for the merge-by-key labeled fields) — same helpers/visual language
+// CodexPendingChangesPanel.tsx's Sync-lane cards use, see codexStateDiff.tsx.
+function ProposedStateSummary({ state: rawState, currentState }: { state: CodexState; currentState?: CodexState | null }) {
     // rawState may only include the section(s) actually changing (see
     // CODEX_PROPOSAL_INSTRUCTIONS) — normalize before reading any key's length.
     const state = { ...EMPTY_CODEX_STATE, ...rawState };
-    const sections: Array<[string, string]> = [];
-    if (state.wardrobe.length) sections.push(["Wardrobe", state.wardrobe.map(i => i.value).join(", ")]);
-    if (state.appearance.length) sections.push(["Appearance", state.appearance.map(f => `${f.label}: ${f.value}`).join(", ")]);
-    if (state.wounds.length) sections.push(["Wounds", state.wounds.map(i => i.value).join(", ")]);
-    if (state.items.length) sections.push(["Items", state.items.map(i => i.value).join(", ")]);
-    if (state.customFields.length) sections.push(["Custom fields", state.customFields.map(f => `${f.label}: ${f.value}`).join(", ")]);
-    if (sections.length === 0) return null;
+    const hasContent =
+        state.wardrobe.length || state.appearance.length || state.wounds.length || state.items.length || state.customFields.length;
+    if (!hasContent) return null;
 
     return (
-        <div className="space-y-1 border rounded-md p-2">
-            {sections.map(([label, value]) => (
-                <div key={label} className="text-sm">
-                    <span className="font-medium">{label}:</span> <span className="text-muted-foreground">{value}</span>
-                </div>
-            ))}
+        <div className="space-y-1 border rounded-md p-2 text-sm">
+            <CodexListDiffLine label="Wardrobe" current={currentState?.wardrobe} proposed={state.wardrobe} />
+            <CodexListDiffLine label="Wounds" current={currentState?.wounds} proposed={state.wounds} />
+            <CodexListDiffLine label="Items" current={currentState?.items} proposed={state.items} />
+            <CodexFieldDiffLine label="Appearance" current={currentState?.appearance} proposed={state.appearance} />
+            <CodexFieldDiffLine label="Custom fields" current={currentState?.customFields} proposed={state.customFields} />
         </div>
     );
 }
@@ -194,7 +199,7 @@ function ProposedStateEditor({ state, onChange }: { state: CodexState; onChange:
 // previously-unused useReviseProposalMutation (server-side reviseChatProposal has existed since
 // before this tray — only the UI to reach it was missing). Action-row/status-badge pattern
 // modeled on src/features/rag-scanner/components/IssueCard.tsx.
-export function ProposalTrayCard({ proposal, chatId, entryName, entryCategory }: ProposalTrayCardProps) {
+export function ProposalTrayCard({ proposal, chatId, entryName, entryCategory, entryCurrentState }: ProposalTrayCardProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [draftDescription, setDraftDescription] = useState(proposal.proposedDescription ?? "");
     const [draftTags, setDraftTags] = useState((proposal.proposedTags ?? []).join(", "));
@@ -275,7 +280,7 @@ export function ProposalTrayCard({ proposal, chatId, entryName, entryCategory }:
                 ) : (
                     <>
                         <p className="text-sm whitespace-pre-wrap">{proposal.proposedDescription}</p>
-                        {proposal.proposedState && <ProposedStateSummary state={proposal.proposedState} />}
+                        {proposal.proposedState && <ProposedStateSummary state={proposal.proposedState} currentState={entryCurrentState} />}
                     </>
                 )}
 
