@@ -23,11 +23,11 @@ export function StoryReader() {
         );
     
 
-    if (!story) 
+    if (!story)
         return (
             <div className="flex flex-col items-center justify-center min-h-screen gap-4">
                 <p className="text-muted-foreground">Story not found</p>
-                <Button onClick={() => navigate(ROUTES.STORIES)}>Return to Stories</Button>
+                <Button onClick={() => navigate(ROUTES.HOME)}>Return to Stories</Button>
             </div>
         );
     
@@ -39,7 +39,7 @@ export function StoryReader() {
             {/* Header */}
             <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
                 <div className="container max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => navigate(ROUTES.STORIES)}>
+                    <Button variant="ghost" size="icon" onClick={() => navigate(ROUTES.DASHBOARD.ROOT(story.id))}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div className="flex-1">

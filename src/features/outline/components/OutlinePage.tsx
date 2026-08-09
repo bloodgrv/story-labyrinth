@@ -126,8 +126,8 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
     if (!isDesktop) return <div className="h-full">{pageContent}</div>;
 
     return (
-        <ResizablePanelGroup direction="horizontal" className="h-full">
-            <ResizablePanel defaultSize={72} minSize={40}>
+        <ResizablePanelGroup direction="horizontal" className="h-full" autoSaveId="outline-chat-rail-layout">
+            <ResizablePanel id="outline-main" defaultSize={72} minSize={40}>
                 {pageContent}
             </ResizablePanel>
             <ResizableHandle withHandle />
@@ -139,7 +139,7 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
                 chat interface next to it, not to this panel's sibling on the far left — leaves a
                 fixed-width dead gap in this panel when collapsed rather than resizing the panel,
                 a deliberately smaller cosmetic tradeoff over the collapse hiding the whole chat. */}
-            <ResizablePanel defaultSize={28} minSize={20}>
+            <ResizablePanel id="outline-chat" defaultSize={28} minSize={20}>
                 <OutlineChatRail storyId={storyId} />
             </ResizablePanel>
         </ResizablePanelGroup>
