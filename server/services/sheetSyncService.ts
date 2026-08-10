@@ -80,6 +80,7 @@ const CHARACTER_SECTIONS: Record<string, SectionRole> = {
     wardrobe: { kind: "stringList", target: "wardrobe" },
     "personality & temperament": { kind: "narrative" },
     "background & lifestyle": { kind: "narrative" },
+    "friends & family": { kind: "narrative" },
     "character motivations": { kind: "narrative" },
     "wounds / marks": { kind: "stringList", target: "wounds" },
     "items / possessions": { kind: "stringList", target: "items" }

@@ -543,6 +543,7 @@ const SHEET_SECTION_HEADINGS: Record<string, string[]> = {
         "Wardrobe (optional)",
         "Personality & Temperament",
         "Background & Lifestyle",
+        "Friends & Family (optional)",
         "Character Motivations",
         "Wounds / Marks (optional)",
         "Items / Possessions (optional)"

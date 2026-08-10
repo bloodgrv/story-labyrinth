@@ -18,6 +18,7 @@ const SHEET_TEMPLATES: Record<LorebookCategory, SheetSection[]> = {
         { heading: "Wardrobe", optional: true },
         { heading: "Personality & Temperament" },
         { heading: "Background & Lifestyle" },
+        { heading: "Friends & Family", optional: true },
         { heading: "Character Motivations" },
         { heading: "Wounds / Marks", optional: true },
         { heading: "Items / Possessions", optional: true }

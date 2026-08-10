@@ -92,9 +92,16 @@ export function ChatMessageList({
         setSelectedText(text);
     };
 
+    // Scroll to the latest message on load — deliberately NOT messagesEndRef.scrollIntoView().
+    // scrollIntoView({block: "start"}, the default) walks every scrollable ancestor it needs to,
+    // not just this list's own ScrollArea viewport — with this panel nested inside the workspace's
+    // own scrollable page chrome, that made the whole page jump on every chat load, shifting the
+    // header controls above the fold. Scrolling only this list's own Radix viewport element never
+    // touches an ancestor's scroll position.
     useEffect(
         () => {
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            const viewport = messagesContainerRef.current?.closest<HTMLElement>("[data-radix-scroll-area-viewport]");
+            if (viewport) viewport.scrollTop = viewport.scrollHeight;
         },
         [
             /* effect dep */
