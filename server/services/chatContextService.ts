@@ -562,7 +562,12 @@ const SHEET_SECTION_HEADINGS: Record<string, string[]> = {
 // come from the anchor entry itself, not the template. Capped current-sheet excerpt keeps a large
 // existing sheet from dominating the prompt on every turn.
 const MAX_CURRENT_SHEET_CHARS = 4000;
-const SHEET_PROPOSAL_INSTRUCTIONS = (category: string, currentSheetBody: string | null | undefined): string => {
+const SHEET_PROPOSAL_INSTRUCTIONS = (
+    entryId: string,
+    entryName: string,
+    category: string,
+    currentSheetBody: string | null | undefined
+): string => {
     const headings = SHEET_SECTION_HEADINGS[category];
     const skeletonLine = headings
         ? `Its Lore Sheet section headings for a '${category}' entry are: ${headings.join(", ")}.`
@@ -573,7 +578,7 @@ const SHEET_PROPOSAL_INSTRUCTIONS = (category: string, currentSheetBody: string 
               .slice(0, MAX_CURRENT_SHEET_CHARS)}`
         : "\n\nIt has no Lore Sheet content yet.";
     return (
-        "This entry has a Lore Sheet — a markdown document organized under `## Section` headings that's the " +
+        `This entry has a Lore Sheet — a markdown document organized under \`## Section\` headings that's the ` +
         "primary writing surface for this entry (not tracked Codex state directly; the user runs a separate " +
         "Sync step to turn it into concrete facts). " +
         skeletonLine +
@@ -586,7 +591,16 @@ const SHEET_PROPOSAL_INSTRUCTIONS = (category: string, currentSheetBody: string 
         "```sheet-proposal\n" +
         "## Section Heading\n\ncontent...\n\n## Another Heading\n\ncontent...\n" +
         "```\n\n" +
-        "Propose at most one sheet-proposal per reply."
+        "Propose at most one sheet-proposal per reply.\n\n" +
+        `IMPORTANT — this overrides the codex-proposal instructions above for THIS entry (id: ${entryId}, name: ` +
+        `"${entryName}"): when you learn a new fact ABOUT ${entryName} — physical description, personality, ` +
+        "wardrobe, wounds, background, possessions, anything narrative or concrete about who/what they are — " +
+        `put it in the Lore Sheet via sheet-proposal, NOT in a codex-proposal (never emit ` +
+        `{"type": "modify_entry", "entryId": "${entryId}", ...} for this entry). The Lore Sheet is this entry's ` +
+        "source of truth; the user's own separate Sync action is the only supported path from sheet to Codex, " +
+        "so a direct codex-proposal here would silently bypass and desync the sheet. codex-proposal stays fine " +
+        "for two other cases only: proposing a brand-new entry (type=new_entry), or modifying a DIFFERENT " +
+        "existing entry (a different entryId) that also came up in conversation."
     );
 };
 
@@ -600,7 +614,7 @@ const buildSystemPrompt = (
     includeMemory?: boolean,
     includePsychModule?: boolean,
     availableNameRegions: string[] = [],
-    anchorEntry?: { category: string; sheetBody?: string | null }
+    anchorEntry?: { entryId: string; name: string; category: string; sheetBody?: string | null }
 ): string => {
     // Only the four chat types whose framing/instructions above actually include
     // NAME_PROPOSAL_INSTRUCTIONS (editor/outline/worldbuilding/brainstorm — never
@@ -637,7 +651,9 @@ const buildSystemPrompt = (
     // just character_codex/locations' own dedicated psych/place-sheet fences (which stay
     // targeted-field extras, unaffected by this). Timeline chats are never entry-anchored (see
     // TIMELINE_PIN_INSTRUCTIONS' own comment), so anchorEntry is always undefined there in practice.
-    const sheetAddendum = anchorEntry ? `\n\n${SHEET_PROPOSAL_INSTRUCTIONS(anchorEntry.category, anchorEntry.sheetBody)}` : "";
+    const sheetAddendum = anchorEntry
+        ? `\n\n${SHEET_PROPOSAL_INSTRUCTIONS(anchorEntry.entryId, anchorEntry.name, anchorEntry.category, anchorEntry.sheetBody)}`
+        : "";
     if (templateSlug === "character_codex" && includePsychModule)
         return `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}`;
     if (templateSlug === "locations") return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}\n\n${MAP_SKETCH_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}`;

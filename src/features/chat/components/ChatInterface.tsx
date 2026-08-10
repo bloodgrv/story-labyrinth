@@ -38,7 +38,7 @@ import {
 } from "@/features/outline/hooks/useOutlineQuery";
 import { brainstormApi, chatsApi, deskTransfersApi, lorebookApi } from "@/services/api/client";
 import type { ChapterSelectionTarget } from "@/types/rework";
-import type { AIChat, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
+import type { AIChat, ChatMessage, LorebookEntry, Prompt, PromptParserConfig } from "@/types/story";
 import type { ChatContext } from "@/types/worldbuilding";
 import { ChatSystemPromptControl } from "./ChatSystemPromptControl";
 import { NameProposalCard } from "./NameProposalCard";
@@ -115,6 +115,14 @@ interface ChatInterfaceProps {
     // single line, rather than just the Guided Setup box alone. Absent for Editor/Research/Notes,
     // which keep their existing always-expanded header unchanged.
     guidedSetup?: ReactNode;
+    // World-Building only — fires with the server's post-write entry after any accept action here
+    // that mutates the anchor entry directly (sheet-proposal Accept/Accept & Sync today). A docked
+    // WB chat lives as a SIBLING of the entry's own edit form (LorebookEntryEditor.tsx), and that
+    // form's react-hook-form state is deliberately mount-time-only (see its own comment) — it has
+    // no other way to learn the anchor entry changed underneath it while both stay mounted on the
+    // same page. Without this, the field a user just watched the model draft stays stale until they
+    // close and reopen the entry tab (forces a remount).
+    onEntryUpdated?: (entry: LorebookEntry) => void;
 }
 
 // ChatInterface for chats.ts-backed chats (World-Building, Research, Editor) — reuses the same
@@ -132,7 +140,8 @@ export function ChatInterface({
     initialRework = null,
     initialComposerText = null,
     focusedNoteId,
-    guidedSetup
+    guidedSetup,
+    onEntryUpdated
 }: ChatInterfaceProps) {
     const { currentChapterId, setPendingChatComposerSeed, setCurrentTool, setPendingShuttleSeed, setPendingMapSketch, chatDrafts, setChatDraft } =
         useStoryContext();
@@ -1102,7 +1111,7 @@ export function ChatInterface({
         const proposal = sheetProposals[messageId];
         const entryId = selectedChat.anchorEntryId;
         if (!proposal || !entryId) return;
-        updateLorebookMutation.mutate({ id: entryId, data: { sheetBody: proposal } });
+        void updateLorebookMutation.mutateAsync({ id: entryId, data: { sheetBody: proposal } }).then(updated => onEntryUpdated?.(updated));
         dismissSheetProposal(messageId);
     };
 
@@ -1118,7 +1127,8 @@ export function ChatInterface({
         const entry = entryLookup.get(entryId);
         setSyncingSheetProposal(messageId);
         const [error] = await attemptPromise(async () => {
-            await updateLorebookMutation.mutateAsync({ id: entryId, data: { sheetBody: proposal } });
+            const updated = await updateLorebookMutation.mutateAsync({ id: entryId, data: { sheetBody: proposal } });
+            onEntryUpdated?.(updated);
             const result = await lorebookApi.syncSheet(entryId, { sheetBody: proposal, category: entry?.category ?? "character" });
             if (result.success) {
                 await queryClient.invalidateQueries({ queryKey: codexPendingKeys.list(entryId) });

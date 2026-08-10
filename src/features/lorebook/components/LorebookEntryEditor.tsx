@@ -109,11 +109,13 @@ export interface LorebookEntryEditorProps {
 function WorldBuildingChatPanel({
     storyId,
     entryId,
-    onEnsureEntry
+    onEnsureEntry,
+    onEntryUpdated
 }: {
     storyId: string;
     entryId?: string;
     onEnsureEntry: () => Promise<LorebookEntry>;
+    onEntryUpdated?: (entry: LorebookEntry) => void;
 }) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
@@ -249,6 +251,7 @@ function WorldBuildingChatPanel({
                             onChatUpdate={setSelectedChat}
                             initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
                             initialComposerText={composerSeedText}
+                            onEntryUpdated={onEntryUpdated}
                             guidedSetup={
                                 <div className="space-y-2">
                                     <GuidedSetupControl
@@ -440,6 +443,15 @@ export function LorebookEntryEditor({
         return withCodex;
     };
 
+    // The docked WB chat's sheet-proposal Accept writes sheetBody straight to the server (bypassing
+    // this form entirely, same as ensureLiveEntry's own direct-write precedent above) — this is the
+    // form's only chance to learn about it while both stay mounted. Skips the field if the user has
+    // it mid-edit (dirty) so an in-flight Accept from the chat can never clobber unsaved typing.
+    const handleEntryUpdatedFromChat = (updated: LorebookEntry) => {
+        setLiveEntry(prev => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+        if (!form.formState.dirtyFields.sheetBody) form.setValue("sheetBody", updated.sheetBody ?? "");
+    };
+
     const handleSubmit = async (data: CreateEntryForm) => {
         setIsSubmitting(true);
         const [error] = await attemptPromise(async () => {
@@ -608,7 +620,12 @@ export function LorebookEntryEditor({
                 // ~120px for the interface itself once min-w-0 (below) stopped it from silently
                 // overflowing off-screen. Widened to give the interface real breathing room.
                 <div className="w-[680px] shrink-0 h-full">
-                    <WorldBuildingChatPanel storyId={storyId as string} entryId={liveEntry?.id} onEnsureEntry={ensureLiveEntry} />
+                    <WorldBuildingChatPanel
+                        storyId={storyId as string}
+                        entryId={liveEntry?.id}
+                        onEnsureEntry={ensureLiveEntry}
+                        onEntryUpdated={handleEntryUpdatedFromChat}
+                    />
                 </div>
             )}
         </div>
