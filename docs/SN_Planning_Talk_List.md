@@ -2,7 +2,7 @@
 
 **Purpose:** Topics queued for design grill / home sessions — **not** built unless noted.  
 **SoT priority still:** `docs/CURRENT_BACKLOG.md`  
-**Updated:** 2026-08-09 (parked **T8** UX/UI polish cleanup; T5 design locked; T7 shipped; Relations note-pins parked)
+**Updated:** 2026-08-09 (scoped **T9** Lore Sheet inline rework, not grilled; parked **T8** UX/UI polish cleanup; T5 design locked; T7 shipped; Relations note-pins parked)
 
 ---
 
@@ -20,6 +20,7 @@
 | **T7** | **Notes desk org + browse UI** | Doc: `docs/Notes_Org_Browse_Design.md`. Lorebook-shaped Browse+tabs; Cards\|List; cosmetic folders (`kind: notes`); thin tags; smart piles; **no** Notes graph. Slices **NO0–NO6**. | ✅ **Shipped** (2026-08-08) |
 | **Relations · note pins** | **Notes on the relationship graph** | Later: notes as **optional linked pins/leaves** on Relations (not a second graph on Notes). Complements Timeline multi-source pins. **Do not build with T7.** | **Parked — discuss with Relations** |
 | **T8** | **UX/UI polish cleanup (full toolbox)** | User not happy with current look/feel; **keep all tool sections/desks** the product needs — cleaner hierarchy, density, chrome quieting, polish. **Not** a feature cull. Distinct from T1 chrome tokens (already shipped) and from T5 sheet SoT (content model). Pilot candidate: Lorebook once T5 ships, or app-wide pass. **Do not build until grilled + locked.** | **Parked — discuss** |
+| **T9** | **Lore Sheet inline rework with AI** | Sub-span "Rework in chat" for the Lore Sheet textarea (highlight → docked WB chat → Accept splices just that span), extending the existing description-field/chapter-prose rework pattern. Doc: `docs/Lore_Sheet_Inline_Rework_Design.md`. Slices **IR0–IR6** (proposed, not grilled). Not a T5 reopen — new mechanism alongside FS4's whole-sheet `sheet-proposal`. **Do not build until grilled + locked.** | **Parked — scoped, not grilled** |
 
 ---
 
