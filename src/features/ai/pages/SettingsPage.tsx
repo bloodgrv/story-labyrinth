@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { RagScannerTool } from "@/components/workspace/tools/RagScannerTool";
 import { UsersTool } from "@/components/workspace/tools/UsersTool";
 import { WriterPrefsCard } from "@/features/agent-memory/components/WriterPrefsCard";
-import { PlaybookPacksPanel } from "@/features/playbooks/components/PlaybookPacksPanel";
+import { PlaybookPacksSettingsCard } from "@/features/playbooks/components/PlaybookPacksSettingsCard";
 import { ArchivedChatsCard } from "@/features/ai/components/ArchivedChatsCard";
 import { ContextMeterSettingsCard } from "@/features/ai/components/ContextMeterSettingsCard";
 import { FeatureEndpointsCard } from "@/features/ai/components/FeatureEndpointsCard";
@@ -258,7 +258,7 @@ export default function SettingsPage() {
                                 <HumanizerSettingsCard />
                                 <GrammarSettingsCard />
                                 <WriterPrefsCard />
-                                <PlaybookPacksPanel storyId={null} />
+                                <PlaybookPacksSettingsCard />
                             </TabsContent>
 
                             <TabsContent value="logs" className="mt-0 space-y-6">

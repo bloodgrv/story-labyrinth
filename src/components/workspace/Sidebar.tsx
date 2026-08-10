@@ -7,7 +7,6 @@ import {
     Clock,
     ExternalLink,
     FileEdit,
-    GraduationCap,
     Layers,
     Library,
     List,
@@ -51,8 +50,12 @@ const tools = [
     { id: "story-map" as WorkspaceTool, label: "Maps", icon: Map, requiresStory: true },
     // Story Timeline (T6, TL1, docs/Story_Timeline_Design.md) — peer of Maps (design's own "UI
     // surfaces" table), same requiresStory posture.
-    { id: "story-timeline" as WorkspaceTool, label: "Timeline", icon: Clock, requiresStory: true },
-    { id: "playbooks" as WorkspaceTool, label: "Playbooks", icon: GraduationCap, requiresStory: true }
+    { id: "story-timeline" as WorkspaceTool, label: "Timeline", icon: Clock, requiresStory: true }
+    // "playbooks" deliberately not in the main rail — it's occasional pack-management config, not
+    // a desk you visit repeatedly, and its story-scope distinction from Settings' Writing Tools tab
+    // confused users without guidance. Reachable via Settings > Writing tools (now story-aware) and
+    // the WB Character chat's "Open Playbooks" link (LorebookEntryEditor.tsx). The tool/route itself
+    // stays valid — only removed from this nav list.
 ];
 
 // Tools that make sense as a standalone browser tab (deep-linkable via /?story=&tool=,
