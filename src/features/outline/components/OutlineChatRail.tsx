@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, MessageSquare, Paperclip, Plus, RefreshCcw } from "lucide-react";
+import { AlertCircle, MessageSquare, Paperclip, Plus, RefreshCcw, SlidersHorizontal, Inbox, Wand2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,12 +12,19 @@ import {
     AlertDialogHeader,
     AlertDialogTitle
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useBrainstormChecklistQuery } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
+import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
+import { ChatToolsRail } from "@/features/chat/components/ChatToolsRail";
 import { CodexProposalTray } from "@/features/chat/components/CodexProposalTray";
 import { GuidedSetupControl } from "@/features/chat/components/GuidedSetupControl";
 import { ShuttleTray } from "@/features/chat/components/ShuttleTray";
+import { useChatContextToggles } from "@/features/chat/hooks/useChatContextToggles";
+import { useChatListCollapse } from "@/features/chat/hooks/useChatListCollapse";
+import { useChatProposalsQuery } from "@/features/chat/hooks/useCodexProposalsQuery";
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import type { ParsedLoreSuggestion } from "@/features/chat/services/parseLoreSuggestions";
 import { OutlineImportCard } from "@/features/outline/components/OutlineImportCard";
@@ -82,14 +89,21 @@ export function OutlineChatRail({ storyId, collapsed, onCollapsedChange }: Outli
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
     const [loreSuggestions, setLoreSuggestions] = useState<ParsedLoreSuggestion[]>([]);
-    // Lifted out of ChatList so the tray content below it (import card, Codex/Shuttle/Outline
-    // proposal trays) collapses in sync — otherwise the list shrinks but the tray is left
-    // stranded at full width, still in the chat area's way (see NotesChatRail.tsx's own fix).
-    // Controlled by OutlinePage.tsx (drives the actual ResizablePanel); falls back to internal
-    // state if this rail is ever used outside that resizable-panel host.
-    const [internalCollapsed, setInternalCollapsed] = useState(false);
-    const chatListCollapsed = collapsed ?? internalCollapsed;
-    const setChatListCollapsed = onCollapsedChange ?? setInternalCollapsed;
+    // Lifted out of ChatList so the import card beside it collapses in sync — otherwise the list
+    // shrinks but the card is left stranded at full width (see NotesChatRail.tsx's own fix). T10
+    // CR7 — defaults collapsed on first paint (Axis 6), same as Notes' CR1; `collapsed`/
+    // `onCollapsedChange` are dead props today (OutlinePage.tsx never passes them, deliberately —
+    // see its own comment), so this is a pure port, not a behavior change to OutlinePage.
+    const [chatListCollapsed, setChatListCollapsed] = useChatListCollapse(collapsed, onCollapsedChange, true);
+    // T10 CR7 — single source of truth for the Context & memory toggles, shared with ChatInterface
+    // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
+    const contextToggles = useChatContextToggles(selectedChat, "outline");
+    // Mounted here (not just inside CodexProposalTray/ShuttleTray) so the "Approvals" icon's
+    // pending-count badge stays live while its drawer — and those tray components — are unmounted.
+    // Same pattern NotesChatRail.tsx's CR3 used; shares each tray's own query cache key.
+    const { data: pendingCodexProposals = [] } = useChatProposalsQuery(selectedChat?.id, "pending");
+    const { data: activeShuttleItems = [] } = useBrainstormChecklistQuery(selectedChat?.id, "active");
+    const [openPanelId, setOpenPanelId] = useState<string | null>(null);
     const createMutation = useCreateChatMutation();
     const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(storyId, "outline");
     const pendingRework = usePendingRework();
@@ -246,14 +260,8 @@ export function OutlineChatRail({ storyId, collapsed, onCollapsedChange }: Outli
                                 initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
                                 initialComposerText={composerSeedText}
                                 onLoreSuggestions={suggestions => setLoreSuggestions(prev => [...prev, ...suggestions])}
-                                guidedSetup={
-                                    <GuidedSetupControl
-                                        style={(selectedChat.outlineStyle as ChatStyle) ?? "standard"}
-                                        onStyleChange={handleStyleChange}
-                                        blurb="Plan your story structure here — or run Guided setup for a structured interview."
-                                        onGuidedSetup={style => setComposerSeedText(OUTLINE_OPENING_LINES[style])}
-                                    />
-                                }
+                                contextToggles={contextToggles}
+                                contextPanelMode="external"
                             />
                         </ErrorBoundary>
                     </div>
@@ -282,32 +290,98 @@ export function OutlineChatRail({ storyId, collapsed, onCollapsedChange }: Outli
                     side="right"
                     collapsed={chatListCollapsed}
                     onCollapsedChange={setChatListCollapsed}
-                    toggleEdgeOffset="wide"
+                    hideToggle
                 />
-                {/* Not rendered while collapsed (rather than relying on the 0-width parent to
-                    visually contain them) — same reasoning as NotesChatRail.tsx's own tray. */}
-                {!chatListCollapsed && (
-                    <>
-                        <OutlineImportCard storyId={storyId} />
-                        {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
-                        {selectedChat && (
-                            <ShuttleTray
-                                chatId={selectedChat.id}
-                                storyId={storyId}
-                                fromDesk={selectedChat.chatType ?? "outline"}
-                                fromChatTitleSnapshot={selectedChat.title}
-                                onAnswerHere={setComposerSeedText}
-                            />
-                        )}
-                        <OutlineProposalTray
-                            loreSuggestions={loreSuggestions}
-                            storyId={storyId}
-                            fromChatId={selectedChat?.id ?? ""}
-                            fromChatTitleSnapshot={selectedChat?.title ?? ""}
-                        />
-                    </>
-                )}
+                {/* T10 CR7 — OutlineImportCard stays here (not ChatToolsRail's hostExtras, which
+                    is too narrow in icon-only mode for a card+button) — Approvals/Context trays
+                    moved out to the rail's modal panels below. Not rendered while collapsed, same
+                    reasoning as NotesChatRail.tsx's own tray used to have. */}
+                {!chatListCollapsed && <OutlineImportCard storyId={storyId} />}
             </div>
+
+            {/* T10 CR7 — Approvals (Codex+Shuttle+lore-suggestion trays) and Context & memory as
+                ChatToolsRail modal panels, plus the Chats primitive above (docs/Chat_Chrome_Declutter_Design.md). */}
+            <ChatToolsRail
+                collapsed
+                chatsOpen={!chatListCollapsed}
+                onToggleChats={() => setChatListCollapsed(!chatListCollapsed)}
+                openPanelId={openPanelId}
+                onTogglePanel={id => setOpenPanelId(cur => (cur === id ? null : id))}
+                onClosePanel={() => setOpenPanelId(null)}
+                panels={
+                    selectedChat
+                        ? [
+                              {
+                                  id: "approvals",
+                                  icon: Inbox,
+                                  label: "Approvals",
+                                  title: "Approvals",
+                                  content: (
+                                      <div className="space-y-0">
+                                          <CodexProposalTray chatId={selectedChat.id} />
+                                          <ShuttleTray
+                                              chatId={selectedChat.id}
+                                              storyId={storyId}
+                                              fromDesk={selectedChat.chatType ?? "outline"}
+                                              fromChatTitleSnapshot={selectedChat.title}
+                                              onAnswerHere={setComposerSeedText}
+                                          />
+                                          <OutlineProposalTray
+                                              loreSuggestions={loreSuggestions}
+                                              storyId={storyId}
+                                              fromChatId={selectedChat.id}
+                                              fromChatTitleSnapshot={selectedChat.title}
+                                          />
+                                      </div>
+                                  ),
+                                  badge: (() => {
+                                      const count = pendingCodexProposals.length + activeShuttleItems.length + loreSuggestions.length;
+                                      return count > 0 ? (
+                                          <Badge variant="secondary" className="font-normal ml-2">
+                                              {count} pending
+                                          </Badge>
+                                      ) : undefined;
+                                  })(),
+                                  compactBadge: (() => {
+                                      const count = pendingCodexProposals.length + activeShuttleItems.length + loreSuggestions.length;
+                                      return count > 0 ? (
+                                          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                                              {count}
+                                          </span>
+                                      ) : undefined;
+                                  })()
+                              },
+                              {
+                                  id: "context",
+                                  icon: SlidersHorizontal,
+                                  label: "Context",
+                                  title: "Context & memory",
+                                  content: <ChatContextPanelContent selectedChat={selectedChat} promptType="outline" toggles={contextToggles} />,
+                                  badge:
+                                      contextToggles.armedLabels.length > 0 ? (
+                                          <Badge variant="secondary" className="font-normal ml-2">
+                                              {contextToggles.armedLabels.join(" · ")}
+                                          </Badge>
+                                      ) : undefined
+                              },
+                              {
+                                  id: "playbook",
+                                  icon: Wand2,
+                                  label: "Playbook",
+                                  title: "Guided setup",
+                                  content: (
+                                      <GuidedSetupControl
+                                          style={(selectedChat.outlineStyle as ChatStyle) ?? "standard"}
+                                          onStyleChange={handleStyleChange}
+                                          blurb="Plan your story structure here — or run Guided setup for a structured interview."
+                                          onGuidedSetup={style => setComposerSeedText(OUTLINE_OPENING_LINES[style])}
+                                      />
+                                  )
+                              }
+                          ]
+                        : []
+                }
+            />
 
             {/* Design lock #3 — non-empty outline: ask intent before extracting, don't silently extract. */}
             <AlertDialog open={pendingImportFile !== null} onOpenChange={open => !open && setPendingImportFile(null)}>

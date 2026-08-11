@@ -6,9 +6,9 @@ import { toast } from "react-toastify";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useContextMemoryExpanded } from "@/lib/useContextMemoryExpanded";
+import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
+import { type ChatContextToggles, useChatContextToggles } from "@/features/chat/hooks/useChatContextToggles";
 import { ChatMessageList } from "@/features/brainstorm/components/ChatMessageList";
 import { ContextSelector } from "@/features/brainstorm/components/ContextSelector";
 import { MessageInputArea } from "@/features/brainstorm/components/MessageInputArea";
@@ -123,6 +123,15 @@ interface ChatInterfaceProps {
     // same page. Without this, the field a user just watched the model draft stays stale until they
     // close and reopen the entry tab (forces a remount).
     onEntryUpdated?: (entry: LorebookEntry) => void;
+    // T10 CR4 (docs/Chat_Chrome_Declutter_Design.md) — when a host has migrated the "Context &
+    // memory" bucket onto ChatToolsRail's own modal panel (Notes first), it calls
+    // useChatContextToggles itself (single source of truth) and passes the result here so this
+    // component uses that instance instead of creating its own. Paired with contextPanelMode
+    // below. Absent for every host still using the original inline Collapsible.
+    contextToggles?: ChatContextToggles;
+    // "external" suppresses this component's own inline Collapsible entirely — the host's rail
+    // panel renders ChatContextPanelContent instead. Defaults to "inline" (unchanged behavior).
+    contextPanelMode?: "inline" | "external";
 }
 
 // ChatInterface for chats.ts-backed chats (World-Building, Research, Editor) — reuses the same
@@ -141,7 +150,9 @@ export function ChatInterface({
     initialComposerText = null,
     focusedNoteId,
     guidedSetup,
-    onEntryUpdated
+    onEntryUpdated,
+    contextToggles,
+    contextPanelMode = "inline"
 }: ChatInterfaceProps) {
     const { currentChapterId, setPendingChatComposerSeed, setCurrentTool, setPendingShuttleSeed, setPendingMapSketch, chatDrafts, setChatDraft } =
         useStoryContext();
@@ -244,78 +255,19 @@ export function ChatInterface({
         clearSelections
     } = useContextSelection();
 
-    // Notes/Outline bridge chat-level gate (docs/Notes_Outline_Chat_Bridges_Design.md) — mirrors
-    // the lastUsedModelId pattern above (local state, persisted via chatsApi.update). Local state
-    // only updates after the PATCH resolves so the codexContext refetch effect below (which
-    // depends on these) always sees the value the server actually has.
-    const [includeNotes, setIncludeNotes] = useState(selectedChat.includeNotes);
-    const [includeOutline, setIncludeOutline] = useState(selectedChat.includeOutline);
-    // Project Memory chat-level gate (C1, Agent_Framework_And_Project_Memory_Design.md §4.5) —
-    // same local-state-persisted-after-PATCH pattern as includeNotes/includeOutline above.
-    const [includeMemory, setIncludeMemory] = useState(selectedChat.includeMemory);
-    // TL8, docs/Story_Timeline_Design.md — opt-in compact Spine chronology block. Same local-
-    // state-persisted-after-PATCH pattern as includeMemory above.
-    const [includeTimeline, setIncludeTimeline] = useState(selectedChat.includeTimeline);
-    // Brainstorm-only opt-in gates (P0.4 B0-B4) — same local-state-persisted-after-PATCH pattern.
-    // Lorebook search is ON by default for every other chat type; Brainstorm is the one exception
-    // (see chatContextService.ts's entityTypes computation).
-    const [includeLorebook, setIncludeLorebook] = useState(selectedChat.includeLorebook);
-    const [includeChapterSummaries, setIncludeChapterSummaries] = useState(selectedChat.includeChapterSummaries);
-    // P0.4 R6 — auto-insert/auto-accept toggles (docs/Chat_Panel_Integrations_Design.md doctrine
-    // "no silent canon unless an explicit toggle is ON"). Same local-state-persisted-after-PATCH
-    // pattern as the toggles above. autoInsertProse only rendered/used for Editor; autoAcceptOutline
-    // only rendered/used for Outline; autoAcceptCodex applies to Editor/WB/Outline (usesCodexTray).
-    const [autoInsertProse, setAutoInsertProse] = useState(selectedChat.autoInsertProse);
-    const [autoAcceptCodex, setAutoAcceptCodex] = useState(selectedChat.autoAcceptCodex);
-    const [autoAcceptOutline, setAutoAcceptOutline] = useState(selectedChat.autoAcceptOutline);
-    // P0.4 S1 — Research-only off-switch for live web search, defaults true server-side (see
-    // schema.ts's webSearchEnabled comment). Same local-state-persisted-after-PATCH pattern.
-    const [webSearchEnabled, setWebSearchEnabled] = useState(selectedChat.webSearchEnabled);
-    // Chat Shuttle H7 — Editor/Outline/WB-only "always-shuttle" pref, same local-state-persisted-
-    // after-PATCH pattern as autoAcceptCodex above. Default false (schema.ts).
-    const [autoShuttle, setAutoShuttle] = useState(selectedChat.autoShuttle);
-    const usesShuttle = isEditorChat || isWorldBuildingChat || isOutlineChat;
-
-    const toggleIncludeNotes = (value: boolean) =>
-        chatsApi.update(selectedChat.id, { includeNotes: value }).then(() => setIncludeNotes(value));
-    const toggleIncludeOutline = (value: boolean) =>
-        chatsApi.update(selectedChat.id, { includeOutline: value }).then(() => setIncludeOutline(value));
-    const toggleIncludeMemory = (value: boolean) =>
-        chatsApi.update(selectedChat.id, { includeMemory: value }).then(() => setIncludeMemory(value));
-    const toggleIncludeTimeline = (value: boolean) =>
-        chatsApi.update(selectedChat.id, { includeTimeline: value }).then(() => setIncludeTimeline(value));
-    const toggleIncludeLorebook = (value: boolean) =>
-        chatsApi.update(selectedChat.id, { includeLorebook: value }).then(() => setIncludeLorebook(value));
-    const toggleIncludeChapterSummaries = (value: boolean) =>
-        chatsApi.update(selectedChat.id, { includeChapterSummaries: value }).then(() => setIncludeChapterSummaries(value));
-    const toggleAutoInsertProse = (value: boolean) =>
-        chatsApi.update(selectedChat.id, { autoInsertProse: value }).then(() => setAutoInsertProse(value));
-    const toggleAutoAcceptCodex = (value: boolean) =>
-        chatsApi.update(selectedChat.id, { autoAcceptCodex: value }).then(() => setAutoAcceptCodex(value));
-    const toggleAutoAcceptOutline = (value: boolean) =>
-        chatsApi.update(selectedChat.id, { autoAcceptOutline: value }).then(() => setAutoAcceptOutline(value));
-    const toggleWebSearchEnabled = (value: boolean) =>
-        chatsApi.update(selectedChat.id, { webSearchEnabled: value }).then(() => setWebSearchEnabled(value));
-    const toggleAutoShuttle = (value: boolean) =>
-        chatsApi.update(selectedChat.id, { autoShuttle: value }).then(() => setAutoShuttle(value));
+    // T10 CR4 (docs/Chat_Chrome_Declutter_Design.md) — the 11 Context & memory toggles + their
+    // armed-labels computation now live in this shared hook so a host that's migrated the bucket
+    // onto ChatToolsRail's own modal panel (Notes first) can call it once and hand the same
+    // instance to both this component (via contextToggles below) and its rail panel content,
+    // instead of two independent copies racing each other's chatsApi.update calls. Every host not
+    // yet migrated gets internalToggles — behavior is unchanged (same hook, called here instead).
+    const internalToggles = useChatContextToggles(selectedChat, promptType);
+    const toggles = contextToggles ?? internalToggles;
 
     // Chat chrome density (CC0) — collapsed-by-default "Context & memory" disclosure wrapping the
-    // two toggle groups below; armed-only summary chips (C3) mirror each group's own render
-    // conditions exactly, so a toggle only ever shows up here if it's actually rendered there too.
+    // two toggle groups now rendered by ChatContextPanelContent; armed-only summary chips (C3)
+    // mirror each group's own render conditions exactly (see useChatContextToggles.armedLabels).
     const [contextMemoryExpanded, setContextMemoryExpanded] = useContextMemoryExpanded();
-    const armedContextLabels = [
-        !isNotesChat && includeNotes && "Notes",
-        !isOutlineChat && !isResearchChat && includeOutline && "Outline",
-        !isResearchChat && !isNotesChat && includeMemory && "Memory",
-        !isResearchChat && !isNotesChat && includeTimeline && "Timeline",
-        (isBrainstormChat || isResearchChat || isNotesChat) && includeLorebook && "Lorebook",
-        isResearchChat && webSearchEnabled && "Web search",
-        isBrainstormChat && includeChapterSummaries && "Chapter summaries",
-        usesCodexTray && isEditorChat && autoInsertProse && "Auto-insert prose",
-        usesCodexTray && autoAcceptCodex && "Auto-accept Codex",
-        usesCodexTray && isOutlineChat && autoAcceptOutline && "Auto-accept outline",
-        usesCodexTray && usesShuttle && autoShuttle && "Auto-shuttle"
-    ].filter((label): label is string => typeof label === "string");
 
     // Grounds the AI in the chat's context (chat-type framing, project synopsis, the chat's
     // anchor entry/chapter + the entry's one-hop relationships, other relevant Codex entries, and
@@ -497,12 +449,12 @@ export function ChatInterface({
         };
     }, [
         selectedChat.id,
-        includeNotes,
-        includeOutline,
-        includeMemory,
-        includeTimeline,
-        includeLorebook,
-        includeChapterSummaries,
+        toggles.includeNotes,
+        toggles.includeOutline,
+        toggles.includeMemory,
+        toggles.includeTimeline,
+        toggles.includeLorebook,
+        toggles.includeChapterSummaries,
         isBrainstormChat,
         focusedNoteId,
         // Guided-start style + psych-module toggle (P0.4 B0-B5) live in the PARENT component
@@ -718,7 +670,7 @@ export function ChatInterface({
         selectedModel,
         onChatUpdate,
         createPromptConfig,
-        autoAcceptCodex,
+        autoAcceptCodex: toggles.autoAcceptCodex,
         onUsage: usage => setLastUsage(usage ?? null),
         onProseProposal: enableProseProposals
             ? (messageId, proposal) => {
@@ -728,7 +680,7 @@ export function ChatInterface({
                   // carries a target here.
                   const target = activeRework && activeRework.target.kind === "chapter-selection" ? activeRework.target : null;
                   const record = { text: proposal, target };
-                  if (autoInsertProse) {
+                  if (toggles.autoInsertProse) {
                       const result = applyProseProposal(record);
                       if (result === "applied") {
                           if (target) setActiveRework(null);
@@ -771,7 +723,7 @@ export function ChatInterface({
                         wordCountTarget: proposal.wordCountTarget,
                         order: Date.now(),
                         source: "ai_suggested",
-                        status: autoAcceptOutline ? "confirmed" : "pending",
+                        status: toggles.autoAcceptOutline ? "confirmed" : "pending",
                         chapterId: null
                     });
                     continue;
@@ -780,7 +732,7 @@ export function ChatInterface({
                 // same mutations handleAcceptOutlineProposal below uses manually. delete is
                 // deliberately excluded (docs/Chat_Panel_Integrations_Design.md §4: only create/
                 // edit/reorder get the toggle) — always falls through to the ephemeral card.
-                if (autoAcceptOutline && proposal.type !== "delete") {
+                if (toggles.autoAcceptOutline && proposal.type !== "delete") {
                     if (proposal.type === "edit") {
                         const { itemId, type: _type, ...fields } = proposal;
                         updateOutlineItemMutation.mutate({ id: itemId, data: fields });
@@ -903,7 +855,7 @@ export function ChatInterface({
                             sourceChecklistItemId: item.id
                         })
                         .catch(() => {});
-                    if (!autoShuttle) return;
+                    if (!toggles.autoShuttle) return;
                     const text = proposal.crumb ? `${proposal.question}\n\n(Scene context: ${proposal.crumb})` : proposal.question;
                     setPendingShuttleSeed({ originChatId: selectedChat.id, shuttleItemId: item.id, text });
                     brainstormApi
@@ -1488,149 +1440,23 @@ export function ChatInterface({
                     <ReworkCard packet={activeRework.packet} onClear={() => setActiveRework(null)} hostHint={reworkHostHint} />
                 )}
 
-                {(!isEditorChat || usesCodexTray) && (
+                {/* T10 CR4 — when a host has migrated this bucket onto ChatToolsRail's own modal
+                    panel (contextPanelMode="external"), that panel renders ChatContextPanelContent
+                    itself; this component renders nothing here to avoid a duplicate. Every host
+                    not yet migrated keeps the original inline Collapsible unchanged. */}
+                {contextPanelMode !== "external" && (!isEditorChat || usesCodexTray) && (
                     <Collapsible open={contextMemoryExpanded} onOpenChange={setContextMemoryExpanded}>
                         <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
                             <ChevronRight className={`h-4 w-4 transition-transform ${contextMemoryExpanded ? "rotate-90" : ""}`} />
                             Context &amp; memory
-                            {!contextMemoryExpanded && armedContextLabels.length > 0 && (
+                            {!contextMemoryExpanded && toggles.armedLabels.length > 0 && (
                                 <Badge variant="secondary" className="font-normal">
-                                    {armedContextLabels.join(" · ")}
+                                    {toggles.armedLabels.join(" · ")}
                                 </Badge>
                             )}
                         </CollapsibleTrigger>
-                        <CollapsibleContent className="space-y-4 pt-3">
-                {!isEditorChat && (
-                    <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border p-3">
-                        {/* Include Notes (the bridge toggle) is meaningless for the Notes chat itself — it
-                            already gets privileged always-on reads (allNotes/focusedNote) instead. */}
-                        {!isNotesChat && (
-                            <div className="flex items-center gap-2">
-                                <Switch id={`${selectedChat.id}-include-notes`} checked={includeNotes} onCheckedChange={toggleIncludeNotes} />
-                                <Label htmlFor={`${selectedChat.id}-include-notes`} className="text-sm font-normal">
-                                    Include Notes (working material, not canon)
-                                </Label>
-                            </div>
-                        )}
-                        {!isOutlineChat && !isResearchChat && (
-                            <div className="flex items-center gap-2">
-                                <Switch id={`${selectedChat.id}-include-outline`} checked={includeOutline} onCheckedChange={toggleIncludeOutline} />
-                                <Label htmlFor={`${selectedChat.id}-include-outline`} className="text-sm font-normal">
-                                    Include Outline (planning intent, not canon)
-                                </Label>
-                            </div>
-                        )}
-                        {!isResearchChat && !isNotesChat && (
-                            <div className="flex items-center gap-2">
-                                <Switch id={`${selectedChat.id}-include-memory`} checked={includeMemory} onCheckedChange={toggleIncludeMemory} />
-                                <Label htmlFor={`${selectedChat.id}-include-memory`} className="text-sm font-normal">
-                                    Include Project Memory (approved facts)
-                                </Label>
-                            </div>
-                        )}
-                        {!isResearchChat && !isNotesChat && (
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id={`${selectedChat.id}-include-timeline`}
-                                    checked={includeTimeline}
-                                    onCheckedChange={toggleIncludeTimeline}
-                                />
-                                <Label htmlFor={`${selectedChat.id}-include-timeline`} className="text-sm font-normal">
-                                    Include Story Timeline (Spine chronology)
-                                </Label>
-                            </div>
-                        )}
-                        {/* Lorebook is Brainstorm/Research/Notes-only opt-in — every other chat type's
-                            lorebook search stays always-on (see chatContextService.ts's entityTypes computation). */}
-                        {(isBrainstormChat || isResearchChat || isNotesChat) && (
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id={`${selectedChat.id}-include-lorebook`}
-                                    checked={includeLorebook}
-                                    onCheckedChange={toggleIncludeLorebook}
-                                />
-                                <Label htmlFor={`${selectedChat.id}-include-lorebook`} className="text-sm font-normal">
-                                    Include Lorebook
-                                </Label>
-                            </div>
-                        )}
-                        {isResearchChat && (
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id={`${selectedChat.id}-web-search`}
-                                    checked={webSearchEnabled}
-                                    onCheckedChange={toggleWebSearchEnabled}
-                                />
-                                <Label htmlFor={`${selectedChat.id}-web-search`} className="text-sm font-normal">
-                                    Web search
-                                </Label>
-                            </div>
-                        )}
-                        {isBrainstormChat && (
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id={`${selectedChat.id}-include-chapter-summaries`}
-                                    checked={includeChapterSummaries}
-                                    onCheckedChange={toggleIncludeChapterSummaries}
-                                />
-                                <Label htmlFor={`${selectedChat.id}-include-chapter-summaries`} className="text-sm font-normal">
-                                    Include Chapter Summaries
-                                </Label>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {usesCodexTray && (
-                    <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border p-3">
-                        {isEditorChat && (
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id={`${selectedChat.id}-auto-insert-prose`}
-                                    checked={autoInsertProse}
-                                    onCheckedChange={toggleAutoInsertProse}
-                                />
-                                <Label htmlFor={`${selectedChat.id}-auto-insert-prose`} className="text-sm font-normal">
-                                    Auto-insert prose (skip review)
-                                </Label>
-                            </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                            <Switch
-                                id={`${selectedChat.id}-auto-accept-codex`}
-                                checked={autoAcceptCodex}
-                                onCheckedChange={toggleAutoAcceptCodex}
-                            />
-                            <Label htmlFor={`${selectedChat.id}-auto-accept-codex`} className="text-sm font-normal">
-                                Auto-accept Codex changes
-                            </Label>
-                        </div>
-                        {isOutlineChat && (
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id={`${selectedChat.id}-auto-accept-outline`}
-                                    checked={autoAcceptOutline}
-                                    onCheckedChange={toggleAutoAcceptOutline}
-                                />
-                                <Label htmlFor={`${selectedChat.id}-auto-accept-outline`} className="text-sm font-normal">
-                                    Auto-accept outline changes (not delete)
-                                </Label>
-                            </div>
-                        )}
-                        {usesShuttle && (
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id={`${selectedChat.id}-auto-shuttle`}
-                                    checked={autoShuttle}
-                                    onCheckedChange={toggleAutoShuttle}
-                                />
-                                <Label htmlFor={`${selectedChat.id}-auto-shuttle`} className="text-sm font-normal">
-                                    Always-shuttle high-confidence lookups
-                                </Label>
-                            </div>
-                        )}
-                    </div>
-                )}
+                        <CollapsibleContent>
+                            <ChatContextPanelContent selectedChat={selectedChat} promptType={promptType} toggles={toggles} />
                         </CollapsibleContent>
                     </Collapsible>
                 )}

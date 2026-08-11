@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type { AIChat } from "@/types/story";
 import type { ChatType } from "@/types/worldbuilding";
 import { useArchiveChatMutation, useChatsByStoryQuery, useCreateChatMutation, useUpdateChatMutation } from "../hooks/useChatQuery";
+import { useChatListCollapse } from "../hooks/useChatListCollapse";
 import { ChatFolderDialogs } from "./ChatFolderDialogs";
 import { ChatFolderNode } from "./ChatFolderNode";
 import { ChatListItem } from "./ChatListItem";
@@ -61,6 +62,12 @@ interface ChatListProps {
     // exactly where the default -left-3/-right-3 offset places this button, so OutlineChatRail.tsx
     // passes "wide" to push it clear instead of visually colliding with the drag handle.
     toggleEdgeOffset?: "default" | "wide";
+    // Suppresses this list's own built-in collapse-toggle button — for a consumer whose own
+    // enclosing chrome (T10's ChatToolsRail "Chats" icon) already owns that control, so the two
+    // don't end up as two overlapping buttons driving the same collapsed/onCollapsedChange state
+    // (the exact bug WB's chat panel fixed once already — see LorebookEntryEditor.tsx). The
+    // width/hidden-class collapse behavior itself is unaffected; only the button is hidden.
+    hideToggle?: boolean;
 }
 
 export function ChatList({
@@ -75,7 +82,8 @@ export function ChatList({
     filterPredicate,
     collapsed,
     onCollapsedChange,
-    toggleEdgeOffset = "default"
+    toggleEdgeOffset = "default",
+    hideToggle = false
 }: ChatListProps) {
     const isLeftSide = side === "left";
     const { data: fetchedChats = [], isLoading } = useChatsByStoryQuery(storyId, chatType);
@@ -85,9 +93,7 @@ export function ChatList({
     const updateMutation = useUpdateChatMutation();
     const archiveMutation = useArchiveChatMutation();
 
-    const [internalCollapsed, setInternalCollapsed] = useState(false);
-    const isCollapsed = collapsed ?? internalCollapsed;
-    const setIsCollapsed = onCollapsedChange ?? setInternalCollapsed;
+    const [isCollapsed, setIsCollapsed] = useChatListCollapse(collapsed, onCollapsedChange);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingChat, setEditingChat] = useState<AIChat | null>(null);
     const [newTitle, setNewTitle] = useState("");
@@ -175,6 +181,7 @@ export function ChatList({
                     isCollapsed ? "w-0 border-transparent" : cn(isLeftSide ? "border-r border-input" : "border-l border-input", "w-[250px] sm:w-[300px]")
                 )}
             >
+                {!hideToggle && (
                 <button
                     type="button"
                     onClick={() => setIsCollapsed(!isCollapsed)}
@@ -217,6 +224,7 @@ export function ChatList({
                         <ChevronLeft className="h-4 w-4 text-foreground" />
                     )}
                 </button>
+                )}
 
                 <div className={cn("h-full overflow-y-auto", isCollapsed ? "hidden" : "block")}>
                     <div className="p-4 border-b border-input">

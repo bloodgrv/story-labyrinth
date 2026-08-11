@@ -1,19 +1,26 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Sparkles } from "lucide-react";
+import { Inbox, Plus, SlidersHorizontal, Sparkles, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useBrainstormChecklistQuery } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
+import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
+import { ChatToolsRail } from "@/features/chat/components/ChatToolsRail";
 import { CodexProposalTray } from "@/features/chat/components/CodexProposalTray";
 import { GuidedSetupControl } from "@/features/chat/components/GuidedSetupControl";
 import { ShuttleTray } from "@/features/chat/components/ShuttleTray";
+import { useChatContextToggles } from "@/features/chat/hooks/useChatContextToggles";
+import { useChatListCollapse } from "@/features/chat/hooks/useChatListCollapse";
 import { useChatsByStoryQuery, useChatTemplatesQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
+import { useChatProposalsQuery } from "@/features/chat/hooks/useCodexProposalsQuery";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
 import { OpenMapButton } from "@/features/story-maps/components/OpenMapButton";
@@ -125,7 +132,16 @@ function WorldBuildingChatPanel({
     // can't reclaim the column's width once a chat (and therefore the trays) is selected. This is
     // a second, outer toggle that hides the whole column — same pattern as EditorChatRail's own
     // "Show/Hide Editor Chats" toggle.
-    const [railCollapsed, setRailCollapsed] = useState(false);
+    // T10 CR7 — defaults collapsed on first paint (Axis 6), same as every other host's CR7 pass.
+    const [railCollapsed, setRailCollapsed] = useChatListCollapse(undefined, undefined, true);
+    // Single source of truth for the Context & memory toggles, shared with ChatInterface
+    // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
+    const contextToggles = useChatContextToggles(selectedChat, "worldbuilding");
+    // Mounted here (not just inside CodexProposalTray/ShuttleTray) so the "Approvals" icon's
+    // pending-count badge stays live while its drawer — and those tray components — are unmounted.
+    const { data: pendingCodexProposals = [] } = useChatProposalsQuery(selectedChat?.id, "pending");
+    const { data: activeShuttleItems = [] } = useBrainstormChecklistQuery(selectedChat?.id, "active");
+    const [openPanelId, setOpenPanelId] = useState<string | null>(null);
     const createMutation = useCreateChatMutation();
     const { setCurrentTool } = useStoryContext();
     const { data: templates = [] } = useChatTemplatesQuery();
@@ -252,48 +268,8 @@ function WorldBuildingChatPanel({
                             initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
                             initialComposerText={composerSeedText}
                             onEntryUpdated={onEntryUpdated}
-                            guidedSetup={
-                                <div className="space-y-2">
-                                    <GuidedSetupControl
-                                        style={(selectedChat.wbStyle as ChatStyle) ?? "standard"}
-                                        onStyleChange={handleStyleChange}
-                                        blurb={`Develop this ${getTemplate(selectedChat.templateSlug as WorldBuildingTemplateSlug)?.name ?? "entry"} together — or run Guided setup for a structured interview.`}
-                                        onGuidedSetup={handleGuidedSetup}
-                                        extraToggles={
-                                            isCharacterTemplate
-                                                ? [
-                                                      {
-                                                          key: "playbook-pack",
-                                                          label: "Use playbook pack",
-                                                          checked: selectedChat.usePlaybookPack ?? false,
-                                                          onChange: handleTogglePlaybookPack
-                                                      }
-                                                  ]
-                                                : undefined
-                                        }
-                                    />
-                                    {isCharacterTemplate && (
-                                        <div className="flex items-center gap-3">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-auto py-1 text-xs"
-                                                onClick={handleAddPsychPrompt}
-                                            >
-                                                Add psych prompt
-                                            </Button>
-                                            <Button
-                                                variant="link"
-                                                size="sm"
-                                                className="h-auto p-0 text-xs"
-                                                onClick={() => setCurrentTool("playbooks")}
-                                            >
-                                                Open Playbooks
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            }
+                            contextToggles={contextToggles}
+                            contextPanelMode="external"
                         />
                     </div>
                 ) : (
@@ -329,23 +305,125 @@ function WorldBuildingChatPanel({
                     side="right"
                     collapsed={railCollapsed}
                     onCollapsedChange={setRailCollapsed}
+                    hideToggle
                 />
-                {/* Was inline ProposalCard rendering only, Approve/Reject with no Edit — moved to
-                    the same tray Editor chats use (P0.4 R4 scope decision #1) so rework turns get
-                    edit-before-approve too, not just Editor's. See ChatInterface.tsx's
-                    usesCodexTray. Not rendered while collapsed — same reasoning as
-                    NotesChatRail.tsx's own tray. */}
-                {selectedChat && !railCollapsed && <CodexProposalTray chatId={selectedChat.id} />}
-                {selectedChat && !railCollapsed && (
-                    <ShuttleTray
-                        chatId={selectedChat.id}
-                        storyId={storyId}
-                        fromDesk={selectedChat.chatType ?? "worldbuilding"}
-                        fromChatTitleSnapshot={selectedChat.title}
-                        onAnswerHere={setComposerSeedText}
-                    />
-                )}
             </div>
+
+            {/* T10 CR7 (final host) — Approvals (Codex+Shuttle trays) and Context & memory as
+                ChatToolsRail modal panels, plus the Chats primitive above
+                (docs/Chat_Chrome_Declutter_Design.md). Guided Setup (psych prompt/Open Playbooks/
+                playbook-pack toggle above) deliberately stays inline — CR5 not yet done on any host. */}
+            <ChatToolsRail
+                collapsed
+                chatsOpen={!railCollapsed}
+                onToggleChats={() => setRailCollapsed(!railCollapsed)}
+                openPanelId={openPanelId}
+                onTogglePanel={id => setOpenPanelId(cur => (cur === id ? null : id))}
+                onClosePanel={() => setOpenPanelId(null)}
+                panels={
+                    selectedChat
+                        ? [
+                              {
+                                  id: "approvals",
+                                  icon: Inbox,
+                                  label: "Approvals",
+                                  title: "Approvals",
+                                  content: (
+                                      <div className="space-y-0">
+                                          <CodexProposalTray chatId={selectedChat.id} />
+                                          <ShuttleTray
+                                              chatId={selectedChat.id}
+                                              storyId={storyId}
+                                              fromDesk={selectedChat.chatType ?? "worldbuilding"}
+                                              fromChatTitleSnapshot={selectedChat.title}
+                                              onAnswerHere={setComposerSeedText}
+                                          />
+                                      </div>
+                                  ),
+                                  badge: (() => {
+                                      const count = pendingCodexProposals.length + activeShuttleItems.length;
+                                      return count > 0 ? (
+                                          <Badge variant="secondary" className="font-normal ml-2">
+                                              {count} pending
+                                          </Badge>
+                                      ) : undefined;
+                                  })(),
+                                  compactBadge: (() => {
+                                      const count = pendingCodexProposals.length + activeShuttleItems.length;
+                                      return count > 0 ? (
+                                          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                                              {count}
+                                          </span>
+                                      ) : undefined;
+                                  })()
+                              },
+                              {
+                                  id: "context",
+                                  icon: SlidersHorizontal,
+                                  label: "Context",
+                                  title: "Context & memory",
+                                  content: (
+                                      <ChatContextPanelContent selectedChat={selectedChat} promptType="worldbuilding" toggles={contextToggles} />
+                                  ),
+                                  badge:
+                                      contextToggles.armedLabels.length > 0 ? (
+                                          <Badge variant="secondary" className="font-normal ml-2">
+                                              {contextToggles.armedLabels.join(" · ")}
+                                          </Badge>
+                                      ) : undefined
+                              },
+                              {
+                                  id: "playbook",
+                                  icon: Wand2,
+                                  label: "Playbook",
+                                  title: "Guided setup",
+                                  content: (
+                                      <div className="space-y-2">
+                                          <GuidedSetupControl
+                                              style={(selectedChat.wbStyle as ChatStyle) ?? "standard"}
+                                              onStyleChange={handleStyleChange}
+                                              blurb={`Develop this ${getTemplate(selectedChat.templateSlug as WorldBuildingTemplateSlug)?.name ?? "entry"} together — or run Guided setup for a structured interview.`}
+                                              onGuidedSetup={handleGuidedSetup}
+                                              extraToggles={
+                                                  isCharacterTemplate
+                                                      ? [
+                                                            {
+                                                                key: "playbook-pack",
+                                                                label: "Use playbook pack",
+                                                                checked: selectedChat.usePlaybookPack ?? false,
+                                                                onChange: handleTogglePlaybookPack
+                                                            }
+                                                        ]
+                                                      : undefined
+                                              }
+                                          />
+                                          {isCharacterTemplate && (
+                                              <div className="flex items-center gap-3">
+                                                  <Button
+                                                      variant="outline"
+                                                      size="sm"
+                                                      className="h-auto py-1 text-xs"
+                                                      onClick={handleAddPsychPrompt}
+                                                  >
+                                                      Add psych prompt
+                                                  </Button>
+                                                  <Button
+                                                      variant="link"
+                                                      size="sm"
+                                                      className="h-auto p-0 text-xs"
+                                                      onClick={() => setCurrentTool("playbooks")}
+                                                  >
+                                                      Open Playbooks
+                                                  </Button>
+                                              </div>
+                                          )}
+                                      </div>
+                                  )
+                              }
+                          ]
+                        : []
+                }
+            />
         </div>
     );
 }

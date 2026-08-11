@@ -1,12 +1,18 @@
-import { AlertCircle, MessageSquare, Plus, RefreshCcw } from "lucide-react";
+import { AlertCircle, Inbox, MessageSquare, Plus, RefreshCcw, SlidersHorizontal, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BrainstormChecklistTray } from "@/features/brainstorm/components/BrainstormChecklistTray";
+import { useBrainstormChecklistQuery } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
+import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
+import { ChatToolsRail } from "@/features/chat/components/ChatToolsRail";
 import { GuidedSetupControl } from "@/features/chat/components/GuidedSetupControl";
+import { useChatContextToggles } from "@/features/chat/hooks/useChatContextToggles";
+import { useChatListCollapse } from "@/features/chat/hooks/useChatListCollapse";
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { LorebookProvider } from "@/features/lorebook/context/LorebookContext";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
@@ -57,10 +63,17 @@ export const BrainstormTool = () => {
     const { currentStoryId } = useStoryContext();
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const [composerSeedText, setComposerSeedText] = useState<string | null>(null);
-    // Lifted out of ChatList so BrainstormChecklistTray (below it, same column) collapses in
-    // sync — otherwise the list shrinks but the tray is left stranded at full width, still in
-    // the chat area's way (see NotesChatRail.tsx's own fix).
-    const [chatListCollapsed, setChatListCollapsed] = useState(false);
+    // T10 CR7 — defaults collapsed on first paint (Axis 6), same as Notes/Outline's CR1 wiring;
+    // BrainstormChecklistTray moved off this column onto ChatToolsRail's Approvals panel below.
+    const [chatListCollapsed, setChatListCollapsed] = useChatListCollapse(undefined, undefined, true);
+    // Single source of truth for the Context & memory toggles, shared with ChatInterface
+    // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
+    const contextToggles = useChatContextToggles(selectedChat, "brainstorm");
+    // Mounted here (not just inside BrainstormChecklistTray) so the "Approvals" icon's
+    // pending-count badge stays live while its drawer — and the tray — are unmounted. Shares the
+    // tray's own query cache key, same pattern NotesChatRail.tsx's CR3 used.
+    const { data: activeChecklistItems = [] } = useBrainstormChecklistQuery(selectedChat?.id, "active");
+    const [openPanelId, setOpenPanelId] = useState<string | null>(null);
     const createMutation = useCreateChatMutation();
     const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(currentStoryId ?? "", "brainstorm");
 
@@ -127,14 +140,8 @@ export const BrainstormTool = () => {
                                     onChatUpdate={setSelectedChat}
                                     enableProseProposals={false}
                                     initialComposerText={composerSeedText}
-                                    guidedSetup={
-                                        <GuidedSetupControl
-                                            style={(selectedChat.brainstormStyle as ChatStyle) ?? "standard"}
-                                            onStyleChange={handleStyleChange}
-                                            blurb="Start designing your project here — or run Guided setup for a structured interview."
-                                            onGuidedSetup={style => setComposerSeedText(OPENING_LINES[style])}
-                                        />
-                                    }
+                                    contextToggles={contextToggles}
+                                    contextPanelMode="external"
                                 />
                             </ErrorBoundary>
                         </div>
@@ -163,13 +170,81 @@ export const BrainstormTool = () => {
                         side="right"
                         collapsed={chatListCollapsed}
                         onCollapsedChange={setChatListCollapsed}
+                        hideToggle
                     />
-                    {/* Not rendered while collapsed (rather than relying on the 0-width parent to
-                        visually contain it) — same reasoning as NotesChatRail.tsx's own tray. */}
-                    {selectedChat && !chatListCollapsed && (
-                        <BrainstormChecklistTray chatId={selectedChat.id} storyId={currentStoryId} fromChatTitleSnapshot={selectedChat.title} />
-                    )}
                 </div>
+
+                {/* T10 CR7 — Approvals (BrainstormChecklistTray) and Context & memory as
+                    ChatToolsRail modal panels, plus the Chats primitive above
+                    (docs/Chat_Chrome_Declutter_Design.md). */}
+                <ChatToolsRail
+                    collapsed
+                    chatsOpen={!chatListCollapsed}
+                    onToggleChats={() => setChatListCollapsed(!chatListCollapsed)}
+                    openPanelId={openPanelId}
+                    onTogglePanel={id => setOpenPanelId(cur => (cur === id ? null : id))}
+                    onClosePanel={() => setOpenPanelId(null)}
+                    panels={
+                        selectedChat
+                            ? [
+                                  {
+                                      id: "approvals",
+                                      icon: Inbox,
+                                      label: "Approvals",
+                                      title: "Approvals",
+                                      content: (
+                                          <BrainstormChecklistTray
+                                              chatId={selectedChat.id}
+                                              storyId={currentStoryId}
+                                              fromChatTitleSnapshot={selectedChat.title}
+                                          />
+                                      ),
+                                      badge:
+                                          activeChecklistItems.length > 0 ? (
+                                              <Badge variant="secondary" className="font-normal ml-2">
+                                                  {activeChecklistItems.length} pending
+                                              </Badge>
+                                          ) : undefined,
+                                      compactBadge:
+                                          activeChecklistItems.length > 0 ? (
+                                              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                                                  {activeChecklistItems.length}
+                                              </span>
+                                          ) : undefined
+                                  },
+                                  {
+                                      id: "context",
+                                      icon: SlidersHorizontal,
+                                      label: "Context",
+                                      title: "Context & memory",
+                                      content: (
+                                          <ChatContextPanelContent selectedChat={selectedChat} promptType="brainstorm" toggles={contextToggles} />
+                                      ),
+                                      badge:
+                                          contextToggles.armedLabels.length > 0 ? (
+                                              <Badge variant="secondary" className="font-normal ml-2">
+                                                  {contextToggles.armedLabels.join(" · ")}
+                                              </Badge>
+                                          ) : undefined
+                                  },
+                                  {
+                                      id: "playbook",
+                                      icon: Wand2,
+                                      label: "Playbook",
+                                      title: "Guided setup",
+                                      content: (
+                                          <GuidedSetupControl
+                                              style={(selectedChat.brainstormStyle as ChatStyle) ?? "standard"}
+                                              onStyleChange={handleStyleChange}
+                                              blurb="Start designing your project here — or run Guided setup for a structured interview."
+                                              onGuidedSetup={style => setComposerSeedText(OPENING_LINES[style])}
+                                          />
+                                      )
+                                  }
+                              ]
+                            : []
+                    }
+                />
             </div>
         </LorebookProvider>
     );

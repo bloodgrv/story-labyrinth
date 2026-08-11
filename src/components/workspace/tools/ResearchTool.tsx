@@ -1,13 +1,18 @@
-import { AlertCircle, Loader2, RefreshCcw, Send } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCcw, Send, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
+import { ChatToolsRail } from "@/features/chat/components/ChatToolsRail";
 import { GlobalResearchChatList } from "@/features/chat/components/GlobalResearchChatList";
+import { useChatContextToggles } from "@/features/chat/hooks/useChatContextToggles";
+import { useChatListCollapse } from "@/features/chat/hooks/useChatListCollapse";
 import {
     useChatsByStoryQuery,
     useCreateChatMutation,
@@ -17,6 +22,7 @@ import {
 import { extractMarkdownLinks } from "@/features/chat/services/extractMarkdownLinks";
 import { LorebookProvider } from "@/features/lorebook/context/LorebookContext";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { cn } from "@/lib/utils";
 import { brainstormApi, chatsApi, deskTransfersApi } from "@/services/api/client";
 import type { AIChat } from "@/types/story";
 
@@ -113,6 +119,14 @@ export const ResearchTool = () => {
     }, [mode, globalChats, globalChatsLoading, selectedGlobalChat]);
 
     const chat = mode === "story" ? selectedStoryChat : selectedGlobalChat;
+
+    // T10 CR7 — Research's first-ever collapse state (previously neither ChatList nor
+    // GlobalResearchChatList had one lifted here); defaults collapsed on first paint (Axis 6).
+    const [chatListCollapsed, setChatListCollapsed] = useChatListCollapse(undefined, undefined, true);
+    // Single source of truth for the Context & memory toggles, shared with ChatInterface
+    // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
+    const contextToggles = useChatContextToggles(chat, "research");
+    const [openPanelId, setOpenPanelId] = useState<string | null>(null);
 
     // Brainstorm's "Handoff → Research" tray action (P0.4 B0-B4) — same one-shot consumption
     // posture as OutlineChatRail's, generalized via StoryContext.pendingChatComposerSeed.
@@ -229,25 +243,71 @@ export const ResearchTool = () => {
                                     selectedChat={chat}
                                     onChatUpdate={handleChatUpdate}
                                     initialComposerText={composerSeedText}
+                                    contextToggles={contextToggles}
+                                    contextPanelMode="external"
                                 />
                             </ErrorBoundary>
                         </LorebookProvider>
                     )}
                 </div>
 
-                {mode === "story" && currentStoryId ? (
-                    <ChatList
-                        storyId={currentStoryId}
-                        chatType="research"
-                        title="Research Chats"
-                        emptyLabel="No research chats yet"
-                        selectedChat={selectedStoryChat}
-                        onSelectChat={setSelectedStoryChat}
-                        side="right"
-                    />
-                ) : mode === "global" ? (
-                    <GlobalResearchChatList selectedChat={selectedGlobalChat} onSelectChat={setSelectedGlobalChat} />
-                ) : null}
+                {/* T10 CR7 — the "Chats" bucket's collapsing column. GlobalResearchChatList has no
+                    collapse props of its own (unlike ChatList) — the wrapper's own overflow-hidden
+                    handles hiding it visually while collapsed. */}
+                <div
+                    className={cn(
+                        "flex flex-col shrink-0 transition-all duration-300",
+                        chatListCollapsed ? "w-0 overflow-hidden" : "w-[250px] sm:w-[300px]"
+                    )}
+                >
+                    {mode === "story" && currentStoryId ? (
+                        <ChatList
+                            storyId={currentStoryId}
+                            chatType="research"
+                            title="Research Chats"
+                            emptyLabel="No research chats yet"
+                            selectedChat={selectedStoryChat}
+                            onSelectChat={setSelectedStoryChat}
+                            side="right"
+                            collapsed={chatListCollapsed}
+                            onCollapsedChange={setChatListCollapsed}
+                            hideToggle
+                        />
+                    ) : mode === "global" ? (
+                        <GlobalResearchChatList selectedChat={selectedGlobalChat} onSelectChat={setSelectedGlobalChat} />
+                    ) : null}
+                </div>
+
+                {/* T10 CR7 — Context & memory as a ChatToolsRail modal panel, plus the Chats
+                    primitive above (docs/Chat_Chrome_Declutter_Design.md). No Approvals bucket —
+                    Research has no Codex/Shuttle/checklist tray to put in one. */}
+                <ChatToolsRail
+                    collapsed
+                    chatsOpen={!chatListCollapsed}
+                    onToggleChats={() => setChatListCollapsed(!chatListCollapsed)}
+                    openPanelId={openPanelId}
+                    onTogglePanel={id => setOpenPanelId(cur => (cur === id ? null : id))}
+                    onClosePanel={() => setOpenPanelId(null)}
+                    panels={
+                        chat
+                            ? [
+                                  {
+                                      id: "context",
+                                      icon: SlidersHorizontal,
+                                      label: "Context",
+                                      title: "Context & memory",
+                                      content: <ChatContextPanelContent selectedChat={chat} promptType="research" toggles={contextToggles} />,
+                                      badge:
+                                          contextToggles.armedLabels.length > 0 ? (
+                                              <Badge variant="secondary" className="font-normal ml-2">
+                                                  {contextToggles.armedLabels.join(" · ")}
+                                              </Badge>
+                                          ) : undefined
+                                  }
+                              ]
+                            : []
+                    }
+                />
             </div>
         </div>
     );

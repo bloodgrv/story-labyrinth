@@ -1,10 +1,16 @@
-import { AlertCircle, MessageSquare, Plus, RefreshCcw } from "lucide-react";
+import { AlertCircle, Inbox, MessageSquare, Plus, RefreshCcw, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useBrainstormChecklistQuery } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
+import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
+import { ChatToolsRail } from "@/features/chat/components/ChatToolsRail";
+import { useChatContextToggles } from "@/features/chat/hooks/useChatContextToggles";
+import { useChatListCollapse } from "@/features/chat/hooks/useChatListCollapse";
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
@@ -51,8 +57,20 @@ export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     // Lifted out of ChatList so this rail's own promote/split tray (below the list, same column)
     // collapses in sync — otherwise the list shrinks but the tray is left stranded at full width,
-    // still in the way of the chat area next to it.
-    const [chatListCollapsed, setChatListCollapsed] = useState(false);
+    // still in the way of the chat area next to it. T10 CR1 — Notes is the first host wired onto
+    // ChatToolsRail's "Chats" primitive (Axis 6: collapsed by default on first paint); the button
+    // itself now lives in that rail (below), not in ChatList (see hideToggle on ChatList).
+    const [chatListCollapsed, setChatListCollapsed] = useChatListCollapse(undefined, undefined, true);
+    // T10 CR4 — single source of truth for the Context & memory toggles, shared between
+    // ChatInterface (contextToggles/contextPanelMode="external" below) and the rail's own
+    // "Context" drawer panel (openPanelId), so there's exactly one PATCH-and-local-state copy.
+    const contextToggles = useChatContextToggles(selectedChat, "notes");
+    // T10 CR3 — mounted at this top level (not just inside NotesChecklistTray) so the pending
+    // count is available for the closed "Approvals" icon's badge even while the drawer itself is
+    // closed and the tray isn't mounted. Shares the tray's own query cache key, so no duplicate
+    // fetch once both are mounted.
+    const { data: activeChecklistItems = [] } = useBrainstormChecklistQuery(selectedChat?.id, "active");
+    const [openPanelId, setOpenPanelId] = useState<string | null>(null);
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
     const createMutation = useCreateChatMutation();
     const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(storyId, "notes");
@@ -152,6 +170,8 @@ export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
                             initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
                             initialComposerText={composerSeedText}
                             focusedNoteId={focusedNoteId ?? undefined}
+                            contextToggles={contextToggles}
+                            contextPanelMode="external"
                         />
                     </ErrorBoundary>
                 ) : (
@@ -179,14 +199,62 @@ export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
                     side="right"
                     collapsed={chatListCollapsed}
                     onCollapsedChange={setChatListCollapsed}
+                    hideToggle
                 />
-                {/* Not rendered while collapsed (rather than relying on the 0-width parent to
-                    visually contain it) — its own content has no reason to respect that width and
-                    would otherwise spill out exactly like the pre-fix ChatList did. */}
-                {selectedChat && !chatListCollapsed && (
-                    <NotesChecklistTray chatId={selectedChat.id} storyId={storyId} fromChatTitleSnapshot={selectedChat.title} />
-                )}
             </div>
+
+            {/* T10 CR1/CR3/CR4 — the rail's Chats primitive (CR1) plus its Approvals (CR3,
+                NotesChecklistTray) and Context & memory (CR4) modal panels
+                (docs/Chat_Chrome_Declutter_Design.md). Icon-only (no onToggleCollapsed — nothing
+                to expand yet). */}
+            <ChatToolsRail
+                collapsed
+                chatsOpen={!chatListCollapsed}
+                onToggleChats={() => setChatListCollapsed(!chatListCollapsed)}
+                openPanelId={openPanelId}
+                onTogglePanel={id => setOpenPanelId(cur => (cur === id ? null : id))}
+                onClosePanel={() => setOpenPanelId(null)}
+                panels={
+                    selectedChat
+                        ? [
+                              {
+                                  id: "approvals",
+                                  icon: Inbox,
+                                  label: "Approvals",
+                                  title: "Approvals",
+                                  content: (
+                                      <NotesChecklistTray chatId={selectedChat.id} storyId={storyId} fromChatTitleSnapshot={selectedChat.title} />
+                                  ),
+                                  badge:
+                                      activeChecklistItems.length > 0 ? (
+                                          <Badge variant="secondary" className="font-normal ml-2">
+                                              {activeChecklistItems.length} pending
+                                          </Badge>
+                                      ) : undefined,
+                                  compactBadge:
+                                      activeChecklistItems.length > 0 ? (
+                                          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                                              {activeChecklistItems.length}
+                                          </span>
+                                      ) : undefined
+                              },
+                              {
+                                  id: "context",
+                                  icon: SlidersHorizontal,
+                                  label: "Context",
+                                  title: "Context & memory",
+                                  content: <ChatContextPanelContent selectedChat={selectedChat} promptType="notes" toggles={contextToggles} />,
+                                  badge:
+                                      contextToggles.armedLabels.length > 0 ? (
+                                          <Badge variant="secondary" className="font-normal ml-2">
+                                              {contextToggles.armedLabels.join(" · ")}
+                                          </Badge>
+                                      ) : undefined
+                              }
+                          ]
+                        : []
+                }
+            />
         </div>
     );
 }
