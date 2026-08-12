@@ -1,6 +1,6 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { useQueryClient } from "@tanstack/react-query";
-import { Inbox, NotebookPen, Plus, SlidersHorizontal, Sparkles, Wand2 } from "lucide-react";
+import { Inbox, Library, NotebookPen, Plus, SlidersHorizontal, Sparkles, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
@@ -11,6 +11,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useBrainstormChecklistQuery } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
+import { ContextSelector } from "@/features/brainstorm/components/ContextSelector";
+import { useContextSelection } from "@/features/brainstorm/hooks/useContextSelection";
+import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
@@ -22,6 +25,8 @@ import { useChatContextToggles } from "@/features/chat/hooks/useChatContextToggl
 import { useChatListCollapse } from "@/features/chat/hooks/useChatListCollapse";
 import { useChatsByStoryQuery, useChatTemplatesQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import { useChatProposalsQuery } from "@/features/chat/hooks/useCodexProposalsQuery";
+import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
+import { getFilteredEntries as getFilteredLorebookEntries } from "@/features/lorebook/utils/lorebookFilters";
 import { consumePendingRework, type InitialReworkPayload, usePendingRework } from "@/features/rework/pendingReworkStore";
 import { useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
 import { OpenMapButton } from "@/features/story-maps/components/OpenMapButton";
@@ -147,6 +152,23 @@ function WorldBuildingChatPanel({
     // Single source of truth for the Context & memory toggles, shared with ChatInterface
     // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
     const contextToggles = useChatContextToggles(selectedChat, "worldbuilding");
+    // T10-follow-up — same single-source-of-truth pattern as contextToggles above, for the older,
+    // separate "Story Context" structured picker (ContextSelector — Include Full Context/Chapter
+    // Summaries/Chapter Content/Lorebook Entries), which predates T10 and was never part of the
+    // Context & memory bucket CR4 migrated. Was left inline (ChatInterface.tsx's own always-
+    // rendered Collapsible) after CR7's WB pass, sitting redundantly next to this rail's own
+    // "Context" icon — folded in here on user request. chapters/lorebookEntries are this
+    // component's own fetches (ChatInterface already fetches both itself, but a host rendering
+    // ContextSelector directly in its own rail panel needs them too — same reasoning
+    // WorldBuildingChatPanel already re-fetches `chats` alongside ChatList's identical query).
+    const contextSelection = useContextSelection();
+    const { data: chapters = [] } = useChaptersByStoryQuery(storyId);
+    const { entries: lorebookEntries } = useLorebookContext();
+    const getFilteredEntries = () => getFilteredLorebookEntries(lorebookEntries, false);
+    const handleContextItemSelect = (itemId: string) => {
+        const item = getFilteredEntries().find(e => e.id === itemId);
+        if (item) contextSelection.addItem(item);
+    };
     // Mounted here (not just inside CodexProposalTray/ShuttleTray) so the "Approvals" icon's
     // pending-count badge stays live while its drawer — and those tray components — are unmounted.
     const { data: pendingCodexProposals = [] } = useChatProposalsQuery(selectedChat?.id, "pending");
@@ -280,6 +302,8 @@ function WorldBuildingChatPanel({
                             onEntryUpdated={onEntryUpdated}
                             contextToggles={contextToggles}
                             contextPanelMode="external"
+                            contextSelection={contextSelection}
+                            storyContextPanelMode="external"
                         />
                     </div>
                 ) : (
@@ -398,6 +422,49 @@ function WorldBuildingChatPanel({
                                               {contextToggles.armedLabels.join(" · ")}
                                           </Badge>
                                       ) : undefined
+                              },
+                              {
+                                  id: "story-context",
+                                  icon: Library,
+                                  label: "Story Context",
+                                  title: "Story Context",
+                                  content: (
+                                      <ContextSelector
+                                          includeFullContext={contextSelection.includeFullContext}
+                                          contextOpen={contextSelection.contextOpen}
+                                          selectedSummaries={contextSelection.selectedSummaries}
+                                          selectedItems={contextSelection.selectedItems}
+                                          selectedChapterContent={contextSelection.selectedChapterContent}
+                                          chapters={chapters}
+                                          lorebookEntries={lorebookEntries}
+                                          onToggleFullContext={contextSelection.toggleFullContext}
+                                          onToggleContextOpen={contextSelection.toggleContextOpen}
+                                          onToggleSummary={contextSelection.toggleSummary}
+                                          onItemSelect={handleContextItemSelect}
+                                          onRemoveItem={contextSelection.removeItem}
+                                          onChapterContentSelect={contextSelection.addChapterContent}
+                                          onRemoveChapterContent={contextSelection.removeChapterContent}
+                                          getFilteredEntries={getFilteredEntries}
+                                          hideHeader
+                                      />
+                                  ),
+                                  badge: contextSelection.includeFullContext ? (
+                                      <Badge variant="secondary" className="font-normal ml-2">
+                                          Full context
+                                      </Badge>
+                                  ) : (
+                                      (() => {
+                                          const count =
+                                              contextSelection.selectedSummaries.length +
+                                              contextSelection.selectedItems.length +
+                                              contextSelection.selectedChapterContent.length;
+                                          return count > 0 ? (
+                                              <Badge variant="secondary" className="font-normal ml-2">
+                                                  {count} items
+                                              </Badge>
+                                          ) : undefined;
+                                      })()
+                                  )
                               },
                               {
                                   id: "playbook",

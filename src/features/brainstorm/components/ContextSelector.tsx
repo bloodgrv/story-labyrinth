@@ -23,6 +23,15 @@ interface ContextSelectorProps {
     onChapterContentSelect: (chapterId: string) => void;
     onRemoveChapterContent: (chapterId: string) => void;
     getFilteredEntries: () => LorebookEntry[];
+    // T10-follow-up (docs/Chat_Chrome_Declutter_Design.md's ChatToolsRail pattern) — when this
+    // component is hosted inside a rail modal panel (WorldBuildingChatPanel's "Story Context"
+    // bucket), the panel's own Sheet title already says "Story Context" and its icon button
+    // already carries the armed badge, so repeating both here (plus a second, redundant nested
+    // collapse toggle) would be visual noise. Skips the header row + outer Collapsible entirely
+    // and always renders the body — same "content-only, no repeated header" shape
+    // ChatContextPanelContent.tsx already established for the Context & memory bucket. Defaults
+    // false so the pre-existing inline usage (ChatInterface.tsx, WB-only) stays byte-identical.
+    hideHeader?: boolean;
 }
 
 export function ContextSelector({
@@ -40,9 +49,107 @@ export function ContextSelector({
     onRemoveItem,
     onChapterContentSelect,
     onRemoveChapterContent,
-    getFilteredEntries
+    getFilteredEntries,
+    hideHeader = false
 }: ContextSelectorProps) {
     const anyContextSelected = selectedSummaries.length > 0 || selectedItems.length > 0;
+
+    const body = (
+        <div className="space-y-4 mb-4 p-4 border rounded-lg">
+            <div className="flex items-center justify-between">
+                <span className="text-sm">Include Full Context</span>
+                <Switch checked={includeFullContext} onCheckedChange={onToggleFullContext} />
+            </div>
+
+            {!includeFullContext && (
+                <>
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Chapter Summaries</span>
+                        </div>
+                        <div className="space-y-2">
+                            {chapters.map(chapter => (
+                                <div key={chapter.id} className="flex items-center justify-between">
+                                    <span className="text-sm">
+                                        Chapter {chapter.order}: {chapter.title}
+                                    </span>
+                                    <Switch
+                                        checked={selectedSummaries.includes(chapter.id)}
+                                        onCheckedChange={() => onToggleSummary(chapter.id)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Chapter Content</span>
+                            <Select onValueChange={onChapterContentSelect}>
+                                <SelectTrigger className="w-[200px]">
+                                    <SelectValue placeholder="Add chapter..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {chapters
+                                        .filter(ch => !selectedChapterContent.includes(ch.id))
+                                        .map(chapter => (
+                                            <SelectItem key={chapter.id} value={chapter.id}>
+                                                Chapter {chapter.order}: {chapter.title}
+                                            </SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {selectedChapterContent.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {selectedChapterContent.map(chapterId => {
+                                    const chapter = chapters.find(ch => ch.id === chapterId);
+                                    return (
+                                        <RemovableBadge key={chapterId} onRemove={() => onRemoveChapterContent(chapterId)}>
+                                            Chapter {chapter?.order}: {chapter?.title}
+                                        </RemovableBadge>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Lorebook Entries</span>
+                            <Select onValueChange={onItemSelect}>
+                                <SelectTrigger className="w-[200px]">
+                                    <SelectValue placeholder="Add entry..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {getFilteredEntries()
+                                        .filter(entry => !selectedItems.some(i => i.id === entry.id))
+                                        .map(entry => (
+                                            <SelectItem key={entry.id} value={entry.id}>
+                                                {entry.category}: {entry.name}
+                                            </SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {selectedItems.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {selectedItems.map(item => (
+                                    <RemovableBadge key={item.id} onRemove={() => onRemoveItem(item.id)}>
+                                        {item.category}: {item.name}
+                                    </RemovableBadge>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+
+    if (hideHeader) return body;
 
     return (
         <Collapsible open={contextOpen} onOpenChange={onToggleContextOpen}>
@@ -62,100 +169,7 @@ export function ContextSelector({
                 </div>
             </div>
 
-            <CollapsibleContent>
-                <div className="space-y-4 mb-4 p-4 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm">Include Full Context</span>
-                        <Switch checked={includeFullContext} onCheckedChange={onToggleFullContext} />
-                    </div>
-
-                    {!includeFullContext && (
-                        <>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium">Chapter Summaries</span>
-                                </div>
-                                <div className="space-y-2">
-                                    {chapters.map(chapter => (
-                                        <div key={chapter.id} className="flex items-center justify-between">
-                                            <span className="text-sm">
-                                                Chapter {chapter.order}: {chapter.title}
-                                            </span>
-                                            <Switch
-                                                checked={selectedSummaries.includes(chapter.id)}
-                                                onCheckedChange={() => onToggleSummary(chapter.id)}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium">Chapter Content</span>
-                                    <Select onValueChange={onChapterContentSelect}>
-                                        <SelectTrigger className="w-[200px]">
-                                            <SelectValue placeholder="Add chapter..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {chapters
-                                                .filter(ch => !selectedChapterContent.includes(ch.id))
-                                                .map(chapter => (
-                                                    <SelectItem key={chapter.id} value={chapter.id}>
-                                                        Chapter {chapter.order}: {chapter.title}
-                                                    </SelectItem>
-                                                ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {selectedChapterContent.length > 0 && (
-                                    <div className="flex flex-wrap gap-2">
-                                        {selectedChapterContent.map(chapterId => {
-                                            const chapter = chapters.find(ch => ch.id === chapterId);
-                                            return (
-                                                <RemovableBadge key={chapterId} onRemove={() => onRemoveChapterContent(chapterId)}>
-                                                    Chapter {chapter?.order}: {chapter?.title}
-                                                </RemovableBadge>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium">Lorebook Entries</span>
-                                    <Select onValueChange={onItemSelect}>
-                                        <SelectTrigger className="w-[200px]">
-                                            <SelectValue placeholder="Add entry..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {getFilteredEntries()
-                                                .filter(entry => !selectedItems.some(i => i.id === entry.id))
-                                                .map(entry => (
-                                                    <SelectItem key={entry.id} value={entry.id}>
-                                                        {entry.category}: {entry.name}
-                                                    </SelectItem>
-                                                ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {selectedItems.length > 0 && (
-                                    <div className="flex flex-wrap gap-2">
-                                        {selectedItems.map(item => (
-                                            <RemovableBadge key={item.id} onRemove={() => onRemoveItem(item.id)}>
-                                                {item.category}: {item.name}
-                                            </RemovableBadge>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </>
-                    )}
-                </div>
-            </CollapsibleContent>
+            <CollapsibleContent>{body}</CollapsibleContent>
         </Collapsible>
     );
 }

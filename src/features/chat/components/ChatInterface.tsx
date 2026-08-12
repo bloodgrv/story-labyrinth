@@ -14,6 +14,7 @@ import { ContextSelector } from "@/features/brainstorm/components/ContextSelecto
 import { MessageInputArea } from "@/features/brainstorm/components/MessageInputArea";
 import { useChatMessages } from "@/features/brainstorm/hooks/useChatMessages";
 import { useContextSelection } from "@/features/brainstorm/hooks/useContextSelection";
+import type { UseContextSelectionReturn } from "@/features/brainstorm/hooks/useContextSelection";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { useAISettingsQuery } from "@/features/ai/hooks/useAISettingsQuery";
 import { ContextMeterChip } from "@/features/context-meter/components/ContextMeterChip";
@@ -132,6 +133,18 @@ interface ChatInterfaceProps {
     // "external" suppresses this component's own inline Collapsible entirely — the host's rail
     // panel renders ChatContextPanelContent instead. Defaults to "inline" (unchanged behavior).
     contextPanelMode?: "inline" | "external";
+    // T10-follow-up — same lifted-single-source-of-truth pattern as contextToggles/
+    // contextPanelMode above, for the older, separate "Story Context" structured-context picker
+    // (ContextSelector: Include Full Context / Chapter Summaries / Chapter Content / Lorebook
+    // Entries — not part of the Context & memory toggle bucket CR4 migrated). WB's
+    // WorldBuildingChatPanel calls useContextSelection itself and passes the instance here so its
+    // own "Story Context" rail panel and this component's generate() payload read the same state
+    // instead of two independent copies. Absent for every other host (this selector has always
+    // been WB-only, see showContextSelector below).
+    contextSelection?: UseContextSelectionReturn;
+    // "external" suppresses this component's own inline <ContextSelector> render entirely — the
+    // host's rail panel renders it instead. Defaults to "inline" (unchanged behavior).
+    storyContextPanelMode?: "inline" | "external";
 }
 
 // ChatInterface for chats.ts-backed chats (World-Building, Research, Editor) — reuses the same
@@ -152,7 +165,9 @@ export function ChatInterface({
     guidedSetup,
     onEntryUpdated,
     contextToggles,
-    contextPanelMode = "inline"
+    contextPanelMode = "inline",
+    contextSelection,
+    storyContextPanelMode = "inline"
 }: ChatInterfaceProps) {
     const { currentChapterId, setPendingChatComposerSeed, setCurrentTool, setPendingShuttleSeed, setPendingMapSketch, chatDrafts, setChatDraft } =
         useStoryContext();
@@ -239,6 +254,10 @@ export function ChatInterface({
     );
     useEffect(() => setLastUsage(null), [selectedChat.id]);
 
+    // T10-follow-up — same internalToggles/contextToggles fallback pattern used for the Context &
+    // memory bucket below: every host not yet migrated gets its own instance (byte-identical
+    // behavior); WB passes its own so its "Story Context" rail panel shares the same state.
+    const internalContextSelection = useContextSelection();
     const {
         includeFullContext,
         contextOpen,
@@ -253,7 +272,7 @@ export function ChatInterface({
         addChapterContent,
         removeChapterContent,
         clearSelections
-    } = useContextSelection();
+    } = contextSelection ?? internalContextSelection;
 
     // T10 CR4 (docs/Chat_Chrome_Declutter_Design.md) — the 11 Context & memory toggles + their
     // armed-labels computation now live in this shared hook so a host that's migrated the bucket
@@ -1554,7 +1573,11 @@ export function ChatInterface({
                     </Collapsible>
                 )}
 
-                {showContextSelector && (
+                {/* T10-follow-up — when the host has migrated this bucket onto ChatToolsRail's own
+                    "Story Context" panel (storyContextPanelMode="external"), that panel renders
+                    <ContextSelector> itself; this component renders nothing here to avoid a
+                    duplicate, same posture as the Context & memory Collapsible above. */}
+                {showContextSelector && storyContextPanelMode !== "external" && (
                     <ContextSelector
                         includeFullContext={includeFullContext}
                         contextOpen={contextOpen}

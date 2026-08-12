@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import type { LorebookEntry } from "@/types/story";
 
-interface UseContextSelectionReturn {
+export interface UseContextSelectionReturn {
     includeFullContext: boolean;
     contextOpen: boolean;
     selectedSummaries: string[];
