@@ -104,6 +104,15 @@ const OUTLINE_PROPOSAL_INSTRUCTIONS =
     '{"type": "create", "itemType": "chapter", "parentId": null, "title": "...", "summary": "...", "wordCountTarget": null}\n' +
     "```\n\n" +
     "(`itemType` is \"chapter\" or \"scene\"; `parentId` is the chapter's id when creating a scene under it, else null.)\n\n" +
+    "To create a new chapter and its scenes together in the same reply (the real chapter id doesn't exist yet), give " +
+    "the chapter's create block a `tempId` you make up, and have each scene's create block use that string as its " +
+    '`parentId`:\n\n' +
+    "```outline-proposal\n" +
+    '{"type": "create", "itemType": "chapter", "parentId": null, "tempId": "ch1", "title": "...", "summary": "...", "wordCountTarget": null}\n' +
+    "```\n" +
+    "```outline-proposal\n" +
+    '{"type": "create", "itemType": "scene", "parentId": "ch1", "title": "...", "summary": "...", "wordCountTarget": null}\n' +
+    "```\n\n" +
     "To propose editing an existing item's title/summary/word count target (use the itemId from the outline tree below):\n\n" +
     "```outline-proposal\n" +
     '{"type": "edit", "itemId": "...", "title": "...", "summary": "..."}\n' +
@@ -116,7 +125,11 @@ const OUTLINE_PROPOSAL_INSTRUCTIONS =
     "```outline-proposal\n" +
     '{"type": "delete", "itemId": "..."}\n' +
     "```\n\n" +
-    "You may propose only one outline change per reply.";
+    "You may include multiple ```outline-proposal``` fences in a single reply — e.g. when the user asks for a full " +
+    "chapter/scene breakdown at once, propose the chapter and all of its scenes together (using `tempId` as shown " +
+    "above) rather than making the user ask for each one individually. Each 'create' lands as its own pending item " +
+    "in the tree, in the order you propose them. Still keep each fence to one change, and don't repropose something " +
+    "already pending or confirmed in the outline tree below.";
 
 // P0.4 R8 — a lightweight list of candidate new lorebook entities, handed off to the
 // World-Building chat rather than created directly here (Outline is not a lore factory — see

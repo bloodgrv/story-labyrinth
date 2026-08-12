@@ -9,10 +9,17 @@ import { attempt } from "@jfdi/attempt";
 export interface ParsedOutlineCreateProposal {
     type: "create";
     itemType: "chapter" | "scene";
+    // A real outline item id, a `tempId` declared by an earlier "create" in the same reply (see
+    // below), or null for a top-level chapter.
     parentId: string | null;
     title: string;
     summary: string | null;
     wordCountTarget: number | null;
+    // Optional model-chosen label (e.g. "ch1") a chapter can declare on itself so scene "create"
+    // proposals later in the *same reply* can reference it as `parentId` before the real
+    // server-generated id exists yet — lets one reply create a chapter and its scenes together
+    // instead of forcing one outline change per turn. Resolved client-side in ChatInterface.tsx.
+    tempId?: string;
 }
 
 export interface ParsedOutlineEditProposal {

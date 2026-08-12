@@ -758,28 +758,44 @@ export function ChatInterface({
                 nextOrderByParent.set(key, current + 1);
                 return current;
             };
-            for (const proposal of proposals) {
-                if (proposal.type === "create") {
+            // A chapter and its scenes can now arrive as separate "create" proposals in the same
+            // reply (OUTLINE_PROPOSAL_INSTRUCTIONS's `tempId` protocol) — the chapter's real id
+            // doesn't exist until its own mutation resolves, so creates run sequentially and each
+            // scene's parentId is resolved from the map of tempId -> real id built up as we go.
+            const tempIdToRealId = new Map<string, string>();
+            const resolveParentId = (parentId: string | null): string | null =>
+                parentId !== null && tempIdToRealId.has(parentId) ? tempIdToRealId.get(parentId)! : parentId;
+            const applyCreates = async () => {
+                for (const proposal of proposals) {
+                    if (proposal.type !== "create") continue;
+                    const parentId = resolveParentId(proposal.parentId);
                     // Same "persist immediately as a row" convention the retired bulk-Generate
                     // button used. Normally lands "pending" — appears instantly in the tree with
                     // the existing "AI Suggested" badge + Accept/Reject controls
                     // (OutlineChapterCard.tsx/OutlineSceneRow.tsx). When autoAcceptOutline is on,
                     // land it "confirmed" directly instead — same end state as an instant manual
                     // accept, skipping the badge entirely (P0.4 R6).
-                    createOutlineItemMutation.mutate({
+                    const created = await createOutlineItemMutation.mutateAsync({
                         storyId,
-                        parentId: proposal.parentId,
+                        parentId,
                         type: proposal.itemType,
                         title: proposal.title,
                         summary: proposal.summary,
                         wordCountTarget: proposal.wordCountTarget,
-                        order: nextOrder(proposal.parentId),
+                        order: nextOrder(parentId),
                         source: "ai_suggested",
                         status: toggles.autoAcceptOutline ? "confirmed" : "pending",
                         chapterId: null
                     });
-                    continue;
+                    if (proposal.tempId) tempIdToRealId.set(proposal.tempId, created.id);
                 }
+            };
+            // Errors already surface via createOutlineItemMutation's own onError toast; a rejected
+            // create just stops the rest of this reply's batch (e.g. its scenes) rather than
+            // throwing an unhandled rejection.
+            void applyCreates().catch(() => {});
+            for (const proposal of proposals) {
+                if (proposal.type === "create") continue;
                 // P0.4 R6 — edit/reorder auto-accept immediately when the toggle is on, calling the
                 // same mutations handleAcceptOutlineProposal below uses manually. delete is
                 // deliberately excluded (docs/Chat_Panel_Integrations_Design.md §4: only create/
