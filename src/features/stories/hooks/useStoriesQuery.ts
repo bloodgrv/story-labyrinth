@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
+import { seriesKeys } from "@/features/series/hooks/useSeriesQuery";
 import { storiesApi } from "@/services/api/client";
 import type { Story } from "@/types/story";
 
@@ -33,7 +34,7 @@ export const useCreateStoryMutation = () => {
         onSuccess: data => {
             queryClient.invalidateQueries({ queryKey: storiesKeys.all });
             // Invalidate series stories list if story is assigned to a series
-            if (data.seriesId) queryClient.invalidateQueries({ queryKey: ["series", data.seriesId, "stories"] });
+            if (data.seriesId) queryClient.invalidateQueries({ queryKey: seriesKeys.stories(data.seriesId) });
 
             toast.success("Story created successfully");
         },
@@ -52,15 +53,11 @@ export const useUpdateStoryMutation = () => {
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: storiesKeys.all });
             queryClient.invalidateQueries({ queryKey: storiesKeys.detail(variables.id) });
-            // Invalidate series stories list if seriesId was updated
-            if (variables.data.seriesId !== undefined) {
-                // Invalidate the new series
-                if (variables.data.seriesId)
-                    queryClient.invalidateQueries({ queryKey: ["series", variables.data.seriesId, "stories"] });
-
-                // Also invalidate the old series (data contains the updated story with old seriesId still cached)
-                queryClient.invalidateQueries({ queryKey: ["series"] });
-            }
+            // Invalidate every series' stories list if series membership or book order changed —
+            // a prefix match on seriesKeys.all covers both the old series (this story just left)
+            // and the new one, without needing to know either id here.
+            if (variables.data.seriesId !== undefined || variables.data.seriesOrder !== undefined)
+                queryClient.invalidateQueries({ queryKey: seriesKeys.all });
             toast.success("Story updated successfully");
         },
         onError: (error: Error) => {

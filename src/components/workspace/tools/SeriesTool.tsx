@@ -5,10 +5,11 @@ import { useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchFilter } from "@/components/ui/SearchFilter";
 import { CreateSeriesDialog } from "@/features/series/components/CreateSeriesDialog";
 import { EditSeriesDialog } from "@/features/series/components/EditSeriesDialog";
+import { SeriesStoriesList } from "@/features/series/components/SeriesStoriesList";
 import { useDeleteSeriesMutation, useSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
 import { SeriesExportService } from "@/services/export/SeriesExportService";
 import type { Series } from "@/types/story";
@@ -53,6 +54,9 @@ function SeriesCard({
                     <CardTitle>{series.name}</CardTitle>
                     {series.description && <CardDescription>{series.description}</CardDescription>}
                 </CardHeader>
+                <CardContent>
+                    <SeriesStoriesList seriesId={series.id} />
+                </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                     <ActionButton icon={Edit} tooltip="Edit series" onClick={handleEdit} />
                     <ActionButton icon={FolderUp} tooltip="Export series" onClick={handleExport} />
@@ -141,9 +145,9 @@ export const SeriesTool = () => {
 
                 <p className="text-center text-sm text-muted-foreground max-w-xl mx-auto">
                     A series groups related stories so they can share Lorebook entries (characters, locations, etc.)
-                    marked as series-level. Series themselves don&apos;t list stories here — to add a story to a
-                    series, open that story from the Stories tab and set its Series field (available when creating a
-                    new story, or via the story&apos;s Edit action).
+                    marked as series-level. Drag a series card&apos;s story list to set book order — to add a story
+                    to a series in the first place, open that story from the Stories tab and set its Series field
+                    (available when creating a new story, or via the story&apos;s Edit action).
                 </p>
 
                 <div className="flex justify-center pt-8">

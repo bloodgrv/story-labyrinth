@@ -1,6 +1,7 @@
 import { BookOpen, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { SeriesStoriesList } from "@/features/series/components/SeriesStoriesList";
 import type { Series } from "@/types/story";
 
 interface SeriesCardProps {
@@ -32,5 +33,8 @@ export const SeriesCard = ({ series, onDelete, onClick }: SeriesCardProps) => (
                 </Button>
             </div>
         </CardHeader>
+        <CardContent>
+            <SeriesStoriesList seriesId={series.id} />
+        </CardContent>
     </Card>
 );

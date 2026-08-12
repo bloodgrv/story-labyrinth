@@ -103,9 +103,9 @@ const SeriesListPage = () => {
 
             <p className="text-center text-sm text-muted-foreground max-w-xl mx-auto mt-12">
                 A series groups related stories so they can share Lorebook entries (characters, locations, etc.)
-                marked as series-level. Series themselves don&apos;t list stories here — to add a story to a series,
-                open that story from the Stories tab and set its Series field (available when creating a new story,
-                or via the story&apos;s Edit action).
+                marked as series-level. Drag a series card&apos;s story list to set book order — to add a story to a
+                series in the first place, open that story from the Stories tab and set its Series field (available
+                when creating a new story, or via the story&apos;s Edit action).
             </p>
         </div>
     );

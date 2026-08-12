@@ -1,6 +1,6 @@
 import { attemptPromise } from "@jfdi/attempt";
 import type { InferSelectModel } from "drizzle-orm";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { type Request, type Response, Router } from "express";
 import multer from "multer";
 import { nanoid } from "nanoid";
@@ -106,7 +106,8 @@ seriesRouter.delete(
     })
 );
 
-// GET /series/:id/stories - Get all stories in series
+// GET /series/:id/stories - Get all stories in series, book-ordered (seriesOrder, nulls last,
+// then createdAt for stories that haven't been manually ordered yet)
 seriesRouter.get(
     "/:id/stories",
     asyncHandler(async (req, res) => {
@@ -114,7 +115,7 @@ seriesRouter.get(
             .select()
             .from(stories)
             .where(eq(stories.seriesId, req.params.id))
-            .orderBy(stories.createdAt);
+            .orderBy(sql`${stories.seriesOrder} IS NULL`, asc(stories.seriesOrder), asc(stories.createdAt));
         res.json(seriesStories);
     })
 );

@@ -15,6 +15,9 @@ export interface Story extends BaseEntity {
     language: string;
     synopsis?: string;
     seriesId?: string;
+    // Book-order position within seriesId (1, 2, 3, ...). Null/undefined until manually reordered
+    // via SeriesStoriesList.tsx's drag handle — falls back to createdAt order until then.
+    seriesOrder?: number | null;
     // C4 (docs/CURRENT_BACKLOG.md P0.3) — opt-in for jobRunner.ts's daily unattended rag_scan_story
     // schedule tick. Defaults false server-side.
     unattendedScanEnabled?: boolean;

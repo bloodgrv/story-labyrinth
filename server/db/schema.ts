@@ -27,6 +27,10 @@ export const stories = sqliteTable(
         language: text("language").notNull(),
         synopsis: text("synopsis"),
         seriesId: text("seriesId").references(() => series.id, { onDelete: "set null" }),
+        // Book-order position within seriesId (1, 2, 3, ...). Null until the user drags this story
+        // into a position in the series' story list (SeriesStoriesList.tsx) — until then, stories
+        // just fall back to createdAt order (server/routes/series.ts's GET /:id/stories).
+        seriesOrder: integer("seriesOrder"),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
         isDemo: integer("isDemo", { mode: "boolean" }),
         // C4 (docs/CURRENT_BACKLOG.md P0.3) — per-story opt-in for an unattended rag_scan_story on

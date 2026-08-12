@@ -3,8 +3,8 @@ import { toast } from "react-toastify";
 import { seriesApi } from "@/services/api/client";
 import type { Series } from "@/types/story";
 
-// Query keys factory (internal use only)
-const seriesKeys = {
+// Query keys factory
+export const seriesKeys = {
     all: ["series"] as const,
     lists: () => [...seriesKeys.all, "list"] as const,
     list: () => [...seriesKeys.lists()] as const,
@@ -27,6 +27,14 @@ export const useSingleSeriesQuery = (id: string | undefined) =>
         queryKey: seriesKeys.detail(id ?? ""),
         queryFn: () => seriesApi.getById(id ?? ""),
         enabled: !!id
+    });
+
+// Query: Book-ordered stories in a series
+export const useSeriesStoriesQuery = (seriesId: string | undefined) =>
+    useQuery({
+        queryKey: seriesKeys.stories(seriesId ?? ""),
+        queryFn: () => seriesApi.getStories(seriesId ?? ""),
+        enabled: !!seriesId
     });
 
 // Mutation: Create series
