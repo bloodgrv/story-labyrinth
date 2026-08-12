@@ -349,13 +349,6 @@ export function ChatInterface({
             // own confirmed chronology, not loose working notes. Compact: order + title + blurb,
             // never the full linked-entry body (design doc's own "not full linked bodies" line).
             const timelineText = context.relevantTimelinePins.map(p => `- ${p.title} (${p.when})${p.blurb ? `: ${p.blurb}` : ""}`).join("\n");
-            // Guide — only non-empty when includeGuide is on AND guideSearchService.ts's
-            // searchGuideForChat cleared its own minimum-score threshold for this turn's message.
-            // App-usage documentation, never story content — kept clearly separate from every
-            // other block here, which is all either story canon or story-adjacent working material.
-            const guideText = context.relevantGuideSections
-                .map(s => `- ${s.topicLabel}${s.subTabLabel ? ` › ${s.subTabLabel}` : ""} — ${s.heading}: ${s.excerpt}`)
-                .join("\n");
 
             // Outline chat's own always-on structured reads (P0.4 R5) — only ever non-empty for
             // chatType="outline" (chatContextService.ts only populates these two for that type).
@@ -438,8 +431,10 @@ export function ChatInterface({
                     `[PROJECT MEMORY — approved facts]\nApproved project facts/notes relevant to this conversation. Treat as established unless it conflicts with the Codex, in which case the Codex wins.\n${memoriesText}`,
                 timelineText &&
                     `[STORY TIMELINE — established chronology]\nOrdered pins from the story's Spine timeline. Treat as established unless it conflicts with the Codex, in which case the Codex wins.\n${timelineText}`,
-                guideText &&
-                    `[STORY LABYRINTH GUIDE — app usage reference, not story content]\nDocumentation about how to use this app's own features. Only cite this when the user is asking how to use the app itself, never as information about their story. Never treat as canon.\n${guideText}`,
+                // Guide is deliberately NOT included in this mount-time block — see
+                // computeExtraContext below, which refreshes it per-message against the user's
+                // actual live text (this block only ever refetches on chat.title, same reasoning
+                // P0.4 S1 already established for Research's own web search).
                 outlineTreeText &&
                     `[OUTLINE TREE — full story structure; use the id values exactly as shown when proposing edits/reorders/deletes]\n${outlineTreeText}`,
                 writtenChaptersText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${writtenChaptersText}`,
@@ -462,7 +457,6 @@ export function ChatInterface({
         toggles.includeOutline,
         toggles.includeMemory,
         toggles.includeTimeline,
-        toggles.includeGuide,
         toggles.includeLorebook,
         toggles.includeChapterSummaries,
         isBrainstormChat,
@@ -1352,32 +1346,60 @@ export function ChatInterface({
     // (see DECISIONS.md's "Chat Context Anchoring" entry, where this was deliberately deferred).
     // Filtered to role==="search" only — anchor/related content is already unconditional in the
     // mount-time codexContext block, so re-including it here would just duplicate it.
+    //
+    // Guide (includeGuide) follows the exact same "refresh per-message, not per-mount" reasoning,
+    // additively across every chat type — including this in the SAME fetch as Research's web
+    // search (rather than a separate call) also fixes a real bug found in testing: a stale
+    // mount-time Guide excerpt sat next to a FRESH web-search block whose results were about
+    // unrelated third-party tools (e.g. other AI writing apps that also use the word "lorebook"),
+    // and the model blended/hallucinated citations across the two. The explicit framing below is
+    // what actually stops that — not just separating the fetches.
     const computeExtraContext = async (text: string): Promise<string | undefined> => {
-        if (isResearchChat && text.trim()) {
-            const ctx = await chatsApi.getContext(selectedChat.id, text);
+        const needsResearch = isResearchChat && text.trim();
+        const needsCodexSearch = (isWorldBuildingChat || isEditorChat || isOutlineChat) && text.trim() && storyId;
+        const needsGuide = toggles.includeGuide && text.trim();
+        if (!needsResearch && !needsCodexSearch && !needsGuide) return undefined;
+
+        const ctx = await chatsApi.getContext(selectedChat.id, text);
+        const blocks: (string | false | undefined)[] = [];
+
+        if (needsResearch) {
             const searchText = ctx.webSearchResults.map(r => `- [${r.title}](${r.url}): ${r.snippet}`).join("\n");
             const pagesText = ctx.fetchedPages.map(p => `[FETCHED PAGE: ${p.title}](${p.url})\n${p.text}`).join("\n\n");
-            return [searchText && `[WEB SEARCH RESULTS]\n${searchText}`, pagesText].filter(Boolean).join("\n\n") || undefined;
+            blocks.push(
+                searchText &&
+                    `[WEB SEARCH RESULTS — the public internet, not this app's own documentation]\nThese may include unrelated third-party tools that happen to use similar terms (e.g. "lorebook", "character card") — do not assume a result describes Story Labyrinth's own features unless it's clearly about Story Labyrinth specifically.\n${searchText}`
+            );
+            blocks.push(pagesText);
         }
-        if ((isWorldBuildingChat || isEditorChat || isOutlineChat) && text.trim() && storyId) {
-            const ctx = await chatsApi.getContext(selectedChat.id, text);
+
+        if (needsCodexSearch) {
             const searchEntries = ctx.relevantCodexEntries.filter(e => e.role === "search");
             const searchChapters = ctx.relevantChapterPassages.filter(p => p.role === "search");
             // id included for the same reason as the mount-time formatEntry above — a
             // modify_entry codex-proposal needs a real entryId to copy, not just the name.
             const entryText = searchEntries.map(e => `- ${e.name} (${e.category}, id: ${e.entryId}): ${e.excerpt}`).join("\n");
             const chapterText = searchChapters.map(p => `- ${p.title}: ${p.excerpt}`).join("\n");
-            return (
-                [
-                    entryText && `[UPDATED CONTEXT FOR THIS MESSAGE — Codex entries relevant to what you're currently asking]\n${entryText}`,
-                    chapterText &&
-                        `[UPDATED CONTEXT FOR THIS MESSAGE — chapter passages relevant to what you're currently asking]\n${chapterText}`
-                ]
-                    .filter(Boolean)
-                    .join("\n\n") || undefined
+            blocks.push(
+                entryText && `[UPDATED CONTEXT FOR THIS MESSAGE — Codex entries relevant to what you're currently asking]\n${entryText}`
+            );
+            blocks.push(
+                chapterText &&
+                    `[UPDATED CONTEXT FOR THIS MESSAGE — chapter passages relevant to what you're currently asking]\n${chapterText}`
             );
         }
-        return undefined;
+
+        if (needsGuide) {
+            const guideText = ctx.relevantGuideSections
+                .map(s => `- ${s.topicLabel}${s.subTabLabel ? ` › ${s.subTabLabel}` : ""} — ${s.heading}: ${s.excerpt}`)
+                .join("\n");
+            blocks.push(
+                guideText &&
+                    `[STORY LABYRINTH GUIDE — app usage reference, not story content]\nThe ONLY authoritative source for how Story Labyrinth's own features actually work. Never conflate this with web search results, fetched pages, or your own outside knowledge of other similar tools (SillyTavern, other AI writing/roleplay apps, etc.) even if they use similar terms — they are NOT this app. If this excerpt doesn't fully answer the question, say so rather than filling the gap from an unrelated tool.\n${guideText}`
+            );
+        }
+
+        return blocks.filter(Boolean).join("\n\n") || undefined;
     };
 
     const doSend = async () => {
