@@ -134,6 +134,10 @@ function WorldBuildingChatPanel({
     // "Show/Hide Editor Chats" toggle.
     // T10 CR7 — defaults collapsed on first paint (Axis 6), same as every other host's CR7 pass.
     const [railCollapsed, setRailCollapsed] = useChatListCollapse(undefined, undefined, true);
+    // T10 CR8 — icon-vs-label width toggle for the ChatToolsRail itself (separate axis from
+    // railCollapsed above, which hides/shows the whole Chats column). Mirrors EditorToolsPanel's
+    // own collapsed/onToggleCollapsed so the rail gets the same expand chevron + width transition.
+    const [toolsRailCollapsed, setToolsRailCollapsed] = useState(true);
     // Single source of truth for the Context & memory toggles, shared with ChatInterface
     // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
     const contextToggles = useChatContextToggles(selectedChat, "worldbuilding");
@@ -314,7 +318,8 @@ function WorldBuildingChatPanel({
                 (docs/Chat_Chrome_Declutter_Design.md). Guided Setup (psych prompt/Open Playbooks/
                 playbook-pack toggle above) deliberately stays inline — CR5 not yet done on any host. */}
             <ChatToolsRail
-                collapsed
+                collapsed={toolsRailCollapsed}
+                onToggleCollapsed={() => setToolsRailCollapsed(c => !c)}
                 chatsOpen={!railCollapsed}
                 onToggleChats={() => setRailCollapsed(!railCollapsed)}
                 openPanelId={openPanelId}

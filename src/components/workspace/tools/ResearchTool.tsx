@@ -123,6 +123,9 @@ export const ResearchTool = () => {
     // T10 CR7 — Research's first-ever collapse state (previously neither ChatList nor
     // GlobalResearchChatList had one lifted here); defaults collapsed on first paint (Axis 6).
     const [chatListCollapsed, setChatListCollapsed] = useChatListCollapse(undefined, undefined, true);
+    // T10 CR8 — icon-vs-label width toggle for the ChatToolsRail itself (separate axis from
+    // chatListCollapsed above). Mirrors EditorToolsPanel's own collapsed/onToggleCollapsed.
+    const [toolsRailCollapsed, setToolsRailCollapsed] = useState(true);
     // Single source of truth for the Context & memory toggles, shared with ChatInterface
     // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
     const contextToggles = useChatContextToggles(chat, "research");
@@ -282,7 +285,8 @@ export const ResearchTool = () => {
                     primitive above (docs/Chat_Chrome_Declutter_Design.md). No Approvals bucket —
                     Research has no Codex/Shuttle/checklist tray to put in one. */}
                 <ChatToolsRail
-                    collapsed
+                    collapsed={toolsRailCollapsed}
+                    onToggleCollapsed={() => setToolsRailCollapsed(c => !c)}
                     chatsOpen={!chatListCollapsed}
                     onToggleChats={() => setChatListCollapsed(!chatListCollapsed)}
                     openPanelId={openPanelId}

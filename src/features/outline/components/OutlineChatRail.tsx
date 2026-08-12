@@ -95,6 +95,9 @@ export function OutlineChatRail({ storyId, collapsed, onCollapsedChange }: Outli
     // `onCollapsedChange` are dead props today (OutlinePage.tsx never passes them, deliberately —
     // see its own comment), so this is a pure port, not a behavior change to OutlinePage.
     const [chatListCollapsed, setChatListCollapsed] = useChatListCollapse(collapsed, onCollapsedChange, true);
+    // T10 CR8 — icon-vs-label width toggle for the ChatToolsRail itself (separate axis from
+    // chatListCollapsed above). Mirrors EditorToolsPanel's own collapsed/onToggleCollapsed.
+    const [toolsRailCollapsed, setToolsRailCollapsed] = useState(true);
     // T10 CR7 — single source of truth for the Context & memory toggles, shared with ChatInterface
     // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
     const contextToggles = useChatContextToggles(selectedChat, "outline");
@@ -302,7 +305,8 @@ export function OutlineChatRail({ storyId, collapsed, onCollapsedChange }: Outli
             {/* T10 CR7 — Approvals (Codex+Shuttle+lore-suggestion trays) and Context & memory as
                 ChatToolsRail modal panels, plus the Chats primitive above (docs/Chat_Chrome_Declutter_Design.md). */}
             <ChatToolsRail
-                collapsed
+                collapsed={toolsRailCollapsed}
+                onToggleCollapsed={() => setToolsRailCollapsed(c => !c)}
                 chatsOpen={!chatListCollapsed}
                 onToggleChats={() => setChatListCollapsed(!chatListCollapsed)}
                 openPanelId={openPanelId}

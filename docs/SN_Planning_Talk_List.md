@@ -2,7 +2,7 @@
 
 **Purpose:** Topics queued for design grill / home sessions — **not** built unless noted.  
 **SoT priority still:** `docs/CURRENT_BACKLOG.md`  
-**Updated:** 2026-08-09 (scoped **T10** chat chrome declutter, not grilled, kept separate from T8 per user direction; scoped **T9** Lore Sheet inline rework, not grilled; parked **T8** UX/UI polish cleanup; T5 design locked; T7 shipped; Relations note-pins parked)
+**Updated:** 2026-08-10 (**T5** shipped; **T10 grilled/locked** Axes 1–6, not promoted; T9 scoped; T8 parked)
 
 ---
 
@@ -14,14 +14,14 @@
 | **T2** | **Lexical editor** | Deepen/polish existing stack. Doc: `docs/Lexical_Editor_Design.md`. **All T2 axes closed/shipped 2026-07-28**. | **Closed / shipped** |
 | **T3** | **Amazon text / KDP standards** | Kindle-ready EPUB. Doc: `docs/Amazon_KDP_Export_Design.md`. KDP0–KDP4. | **Locked + shipped** (2026-07-28) |
 | **T4** | **Context / token meter** | Local used-vs-left. Doc: `docs/Context_Token_Meter_Design.md`. M0–M5. | **Locked + shipped** |
-| **T5** | **Lore Sheet + Sync Loop** | Sheet-first `sheetBody` SoT; hybrid parse → Codex/description + cross-desk cards. Doc: `docs/Lore_Sheet_And_Sync_Design.md`. Slices **FS0–FS8**. Natural View retired by design. Maps canvas stays Maps v2. **P3 — do not build until promoted.** | **Design locked** |
+| **T5** | **Lore Sheet + Sync Loop** | Sheet-first `sheetBody` SoT; hybrid parse → Codex/description + cross-desk cards. Doc: `docs/Lore_Sheet_And_Sync_Design.md`. Slices **FS0–FS8** all done. Natural View retired. Maps canvas stays Maps v2. | ✅ **FS0–FS8 shipped in full (2026-08-09)** |
 | **T6** | **Story Timeline** | In-world chronology board. Doc: `docs/Story_Timeline_Design.md`. | ✅ **TL0–TL12 shipped in full 2026-08-07** |
 | **Maps v2** | **Sketch maps (Excalidraw)** | Doc: `docs/Maps_V2_Sketch_Design.md`. MV0–MV7. | ✅ **Shipped in full 2026-08-07** |
 | **T7** | **Notes desk org + browse UI** | Doc: `docs/Notes_Org_Browse_Design.md`. Lorebook-shaped Browse+tabs; Cards\|List; cosmetic folders (`kind: notes`); thin tags; smart piles; **no** Notes graph. Slices **NO0–NO6**. | ✅ **Shipped** (2026-08-08) |
 | **Relations · note pins** | **Notes on the relationship graph** | Later: notes as **optional linked pins/leaves** on Relations (not a second graph on Notes). Complements Timeline multi-source pins. **Do not build with T7.** | **Parked — discuss with Relations** |
-| **T8** | **UX/UI polish cleanup (full toolbox)** | User not happy with current look/feel; **keep all tool sections/desks** the product needs — cleaner hierarchy, density, chrome quieting, polish. **Not** a feature cull. Distinct from T1 chrome tokens (already shipped) and from T5 sheet SoT (content model). **Also distinct from T10** (chat-host chrome specifically, kept separate per user direction, not T8's first slice). Pilot candidate: Lorebook once T5 ships, or app-wide pass. **Do not build until grilled + locked.** | **Parked — discuss** |
+| **T8** | **UX/UI polish cleanup (full toolbox)** | User not happy with current look/feel; **keep all tool sections/desks** the product needs — cleaner hierarchy, density, chrome quieting, polish. **Not** a feature cull. Distinct from T1 chrome tokens (already shipped) and from T5 sheet SoT (content model). **Also distinct from T10** (chat-host chrome specifically, kept separate per user direction, not T8's first slice). Pilot candidate: Lorebook (post-T5), or app-wide pass. **Do not build until grilled + locked.** | **Parked — discuss** |
 | **T9** | **Lore Sheet inline rework with AI** | Sub-span "Rework in chat" for the Lore Sheet textarea (highlight → docked WB chat → Accept splices just that span), extending the existing description-field/chapter-prose rework pattern. Doc: `docs/Lore_Sheet_Inline_Rework_Design.md`. Slices **IR0–IR6** (proposed, not grilled). Not a T5 reopen — new mechanism alongside FS4's whole-sheet `sheet-proposal`. **Do not build until grilled + locked.** | **Parked — scoped, not grilled** |
-| **T10** | **Chat chrome declutter (icon rail + drawers)** | Applies the chapter Editor's own right-rail pattern (`EditorToolsPanel.tsx`) to the WB/Outline/Notes/Research/Brainstorm chats — chat list, Codex/approval tray, Context & memory, playbook controls each become an icon-triggered panel instead of always-visible siblings. Doc: `docs/Chat_Chrome_Declutter_Design.md`. Slices **CR0–CR8** (proposed, not grilled). Covers similar ground to T8 but scoped tightly to the 5 chat hosts — **kept as its own item per explicit user direction, not folded into T8.** **Do not build until grilled + locked.** | **Parked — scoped, not grilled** |
+| **T10** | **Chat chrome declutter (icon rail + drawers)** | Doc: `docs/Chat_Chrome_Declutter_Design.md`. **Grilled/locked 2026-08-10** (Axes 1–6). CR0–CR8 all shipped. ≠ T8. First paint: Chats collapsed. Rollout Notes→Outline→Brainstorm→Research→WB done. | ✅ **Shipped in full (2026-08-11)** |
 
 ---
 
@@ -54,12 +54,13 @@
 When user says “SN Planning” or “talk list”:
 
 1. Re-read live `docs/CURRENT_BACKLOG.md` — this file can lag  
-2. Open / next candidates: **T5** Lore Sheet (**design locked**, promote to build); **T8** UX polish (**parked**); **Relations · note pins** parked; **PP6** playbook prose; P1 polish / open bugs  
+2. Open / next candidates: **T8** UX polish (**parked**, grill first); **T9** Lore Sheet inline rework (**scoped**); **T10** chat chrome declutter (**scoped**); **Relations · note pins** parked; **PP6** playbook prose; P1 polish / residual bugs  
 3. One topic at a time; lock to `docs/` when decided  
-4. Don’t build **T5** / **T8** until **promoted** (T8 needs grill first)  
-5. Don’t re-grill closed T1–T4 / KDP / L0–L5 / **T6** / **Maps v2** / **T7** / **T5 locks** unless user reopens  
+4. Don’t build **T8** / **T9** / **T10** until **grilled + locked** (and promoted)  
+5. Don’t re-grill closed T1–T7 / KDP / L0–L5 / **T6** / **Maps v2** / **T5** unless user reopens  
 6. Notes graph ≠ Notes desk — graph pins live under **Relations** later, not T7  
 7. **T8 ≠ T1** — T1 locked chrome tokens; T8 is layout/hierarchy/polish with full tool surface kept  
+8. **T9 ≠ T5 reopen** — span rework is a new mechanism beside shipped whole-sheet `sheet-proposal`
 
 
 ---

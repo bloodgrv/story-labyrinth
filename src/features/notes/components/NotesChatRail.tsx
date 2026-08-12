@@ -61,6 +61,9 @@ export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
     // ChatToolsRail's "Chats" primitive (Axis 6: collapsed by default on first paint); the button
     // itself now lives in that rail (below), not in ChatList (see hideToggle on ChatList).
     const [chatListCollapsed, setChatListCollapsed] = useChatListCollapse(undefined, undefined, true);
+    // T10 CR8 — icon-vs-label width toggle for the ChatToolsRail itself (separate axis from
+    // chatListCollapsed above). Mirrors EditorToolsPanel's own collapsed/onToggleCollapsed.
+    const [toolsRailCollapsed, setToolsRailCollapsed] = useState(true);
     // T10 CR4 — single source of truth for the Context & memory toggles, shared between
     // ChatInterface (contextToggles/contextPanelMode="external" below) and the rail's own
     // "Context" drawer panel (openPanelId), so there's exactly one PATCH-and-local-state copy.
@@ -208,7 +211,8 @@ export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
                 (docs/Chat_Chrome_Declutter_Design.md). Icon-only (no onToggleCollapsed — nothing
                 to expand yet). */}
             <ChatToolsRail
-                collapsed
+                collapsed={toolsRailCollapsed}
+                onToggleCollapsed={() => setToolsRailCollapsed(c => !c)}
                 chatsOpen={!chatListCollapsed}
                 onToggleChats={() => setChatListCollapsed(!chatListCollapsed)}
                 openPanelId={openPanelId}

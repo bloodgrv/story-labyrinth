@@ -1,7 +1,7 @@
 # Chat Chrome Declutter — Drawer Rail (T10) — Design
 
 **Project:** Story Labyrinth  
-**Status:** **Grilled — locked 2026-08-10** — Axes 1–6 locked; slices CR0–CR8 frozen; **not promoted / not built**  
+**Status:** **Shipped in full 2026-08-11** — Axes 1–6 locked 2026-08-10; slices CR0–CR8 all built. Promoted P3→P0 2026-08-11.  
 **Priority:** **P3** until promoted  
 **Talk list:** **T10**  
 **Slices:** **CR0–CR8** (frozen)  
@@ -121,3 +121,4 @@ T10 is **not** a T8 slice. T8 remains parked for broader hierarchy/density/chrom
 
 - **2026-08-09** — Scoped; T10 kept separate from T8; P3, not promoted.
 - **2026-08-10** — Full grill Axes **1–6 locked**. Chats collapsed first paint. CR0–CR8 frozen. **Not promoted.**
+- **2026-08-11** — Promoted P3→P0; CR0–CR8 all built and live-verified across all 5 hosts. **T10 shipped in full** — see `docs/CURRENT_BACKLOG.md`'s CR0–CR8 entries for the per-slice build trail.

@@ -66,6 +66,9 @@ export const BrainstormTool = () => {
     // T10 CR7 — defaults collapsed on first paint (Axis 6), same as Notes/Outline's CR1 wiring;
     // BrainstormChecklistTray moved off this column onto ChatToolsRail's Approvals panel below.
     const [chatListCollapsed, setChatListCollapsed] = useChatListCollapse(undefined, undefined, true);
+    // T10 CR8 — icon-vs-label width toggle for the ChatToolsRail itself (separate axis from
+    // chatListCollapsed above). Mirrors EditorToolsPanel's own collapsed/onToggleCollapsed.
+    const [toolsRailCollapsed, setToolsRailCollapsed] = useState(true);
     // Single source of truth for the Context & memory toggles, shared with ChatInterface
     // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
     const contextToggles = useChatContextToggles(selectedChat, "brainstorm");
@@ -178,7 +181,8 @@ export const BrainstormTool = () => {
                     ChatToolsRail modal panels, plus the Chats primitive above
                     (docs/Chat_Chrome_Declutter_Design.md). */}
                 <ChatToolsRail
-                    collapsed
+                    collapsed={toolsRailCollapsed}
+                    onToggleCollapsed={() => setToolsRailCollapsed(c => !c)}
                     chatsOpen={!chatListCollapsed}
                     onToggleChats={() => setChatListCollapsed(!chatListCollapsed)}
                     openPanelId={openPanelId}
