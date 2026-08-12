@@ -7,6 +7,7 @@ import {
     Clock,
     ExternalLink,
     FileEdit,
+    HelpCircle,
     Layers,
     Library,
     List,
@@ -24,6 +25,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
 import { useStoryContext, type WorkspaceTool } from "@/features/stories/context/StoryContext";
 import { isDarkThemeId, useTheme } from "@/lib/theme-provider";
@@ -32,15 +34,17 @@ import { version } from "../../../package.json";
 import { useWorkspace } from "./context/WorkspaceContext";
 
 const tools = [
+    // dividerAfter groups the rail visually: story-selection, then writing/story-scoped desks,
+    // then reference/utility tools — purely cosmetic, doesn't affect routing or requiresStory.
     { id: "stories" as WorkspaceTool, label: "Stories", icon: Library, requiresStory: false },
-    { id: "series" as WorkspaceTool, label: "Series", icon: Layers, requiresStory: false },
+    { id: "series" as WorkspaceTool, label: "Series", icon: Layers, requiresStory: false, dividerAfter: true },
     { id: "editor" as WorkspaceTool, label: "Editor", icon: FileEdit, requiresStory: true },
     { id: "chapters" as WorkspaceTool, label: "Chapters", icon: List, requiresStory: true },
     { id: "outline" as WorkspaceTool, label: "Outline", icon: ListTree, requiresStory: true },
     { id: "lorebook" as WorkspaceTool, label: "Lorebook", icon: BookOpen, requiresStory: true },
     { id: "brainstorm" as WorkspaceTool, label: "Brainstorm", icon: MessageSquare, requiresStory: true },
     { id: "research" as WorkspaceTool, label: "Research", icon: Search, requiresStory: false },
-    { id: "notes" as WorkspaceTool, label: "Notes", icon: StickyNote, requiresStory: true },
+    { id: "notes" as WorkspaceTool, label: "Notes", icon: StickyNote, requiresStory: true, dividerAfter: true },
     { id: "name-generator" as WorkspaceTool, label: "Names", icon: Sparkles, requiresStory: true },
     { id: "memory" as WorkspaceTool, label: "Memory", icon: Brain, requiresStory: true },
     { id: "relationships" as WorkspaceTool, label: "Relations", icon: Network, requiresStory: true },
@@ -138,41 +142,44 @@ export const Sidebar = () => {
                         const isSelectedForNewTab = selectedForNewTab.has(tool.id);
 
                         return (
-                            <div key={tool.id} className="flex items-center gap-1">
-                                {showCheckbox && (
-                                    <button
-                                        type="button"
-                                        className={cn(
-                                            "h-4 w-4 shrink-0 rounded border flex items-center justify-center",
-                                            isSelectedForNewTab
-                                                ? "bg-primary border-primary text-primary-foreground"
-                                                : "border-muted-foreground/40"
-                                        )}
-                                        onClick={() => toggleSelectedForNewTab(tool.id)}
-                                        title={`Include ${tool.label} in new tab`}
-                                    >
-                                        {isSelectedForNewTab && <Check className="h-3 w-3" />}
-                                    </button>
-                                )}
-                                <Button
-                                    variant={isActive ? "secondary" : "ghost"}
-                                    className={cn(
-                                        "w-full gap-2",
-                                        collapsed ? "justify-center px-0" : "justify-start",
-                                        isDisabled && "opacity-50 cursor-not-allowed",
-                                        isActive && "raycast-rail-active"
+                            <div key={tool.id}>
+                                <div className="flex items-center gap-1">
+                                    {showCheckbox && (
+                                        <button
+                                            type="button"
+                                            className={cn(
+                                                "h-4 w-4 shrink-0 rounded border flex items-center justify-center",
+                                                isSelectedForNewTab
+                                                    ? "bg-primary border-primary text-primary-foreground"
+                                                    : "border-muted-foreground/40"
+                                            )}
+                                            onClick={() => toggleSelectedForNewTab(tool.id)}
+                                            title={`Include ${tool.label} in new tab`}
+                                        >
+                                            {isSelectedForNewTab && <Check className="h-3 w-3" />}
+                                        </button>
                                     )}
-                                    onClick={() =>
-                                        showCheckbox
-                                            ? toggleSelectedForNewTab(tool.id)
-                                            : handleToolClick(tool.id, tool.requiresStory)
-                                    }
-                                    disabled={isDisabled}
-                                    title={collapsed ? tool.label : undefined}
-                                >
-                                    <Icon className="h-4 w-4 shrink-0" />
-                                    {!collapsed && <span className="text-sm">{tool.label}</span>}
-                                </Button>
+                                    <Button
+                                        variant={isActive ? "secondary" : "ghost"}
+                                        className={cn(
+                                            "w-full gap-2",
+                                            collapsed ? "justify-center px-0" : "justify-start",
+                                            isDisabled && "opacity-50 cursor-not-allowed",
+                                            isActive && "raycast-rail-active"
+                                        )}
+                                        onClick={() =>
+                                            showCheckbox
+                                                ? toggleSelectedForNewTab(tool.id)
+                                                : handleToolClick(tool.id, tool.requiresStory)
+                                        }
+                                        disabled={isDisabled}
+                                        title={collapsed ? tool.label : undefined}
+                                    >
+                                        <Icon className="h-4 w-4 shrink-0" />
+                                        {!collapsed && <span className="text-sm">{tool.label}</span>}
+                                    </Button>
+                                </div>
+                                {tool.dividerAfter && <Separator className="my-1" />}
                             </div>
                         );
                     })}
@@ -228,6 +235,15 @@ export const Sidebar = () => {
                     >
                         <Settings className="h-4 w-4 shrink-0" />
                         {!collapsed && <span className="text-sm">Settings</span>}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        className={cn("w-full gap-2", collapsed ? "justify-center px-0" : "justify-start")}
+                        onClick={() => navigate("/guide")}
+                        title={collapsed ? "Guide" : undefined}
+                    >
+                        <HelpCircle className="h-4 w-4 shrink-0" />
+                        {!collapsed && <span className="text-sm">Guide</span>}
                     </Button>
                 </div>
 
