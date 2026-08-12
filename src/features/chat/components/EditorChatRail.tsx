@@ -185,6 +185,16 @@ export function EditorChatRail({
                         // when no chapter is focused yet (nothing to scope to).
                         filterPredicate={chat => !anchorChapterId || chat.anchorChapterId === anchorChapterId}
                         side="right"
+                        // The `collapsed` prop above already fully governs this list's visibility
+                        // (wired to EditorToolsPanel's "Chats" icon via StoryEditor's
+                        // chatRailCollapsed) — same T10 ChatToolsRail pattern every other host
+                        // (Outline/Notes/Brainstorm/Research) already uses. Editor never got the
+                        // matching `hideToggle` when that pattern landed, so ChatList's own
+                        // built-in floating chevron button stayed visible here as a second,
+                        // disconnected collapse control: clicking it only shrank this list inside
+                        // its own wrapper without telling chatRailCollapsed, leaving the "Chats"
+                        // icon still showing the panel as open.
+                        hideToggle
                     />
                 </div>
             )}
