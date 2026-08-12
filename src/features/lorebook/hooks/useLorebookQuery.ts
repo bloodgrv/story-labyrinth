@@ -102,6 +102,19 @@ export const useUpdateLorebookMutation = () => {
     });
 };
 
+// Scribble autosave — silent (no toast, no full-list invalidation) since this fires on every
+// debounced keystroke, mirroring useUpdateChapterMutation's own silent-success pattern rather than
+// useUpdateLorebookMutation's toast+invalidate-all (which would spam toasts and thrash the list
+// cache on every autosave tick). Scribble content isn't shown anywhere else, so no cache write-back
+// is needed on success either.
+export const useUpdateLorebookScribbleMutation = () =>
+    useMutation({
+        mutationFn: ({ id, data }: { id: string; data: Pick<LorebookEntry, "scribble"> }) => lorebookApi.update(id, data),
+        onError: () => {
+            toast.error("Failed to save scribble");
+        }
+    });
+
 // Delete lorebook entry mutation
 export const useDeleteLorebookMutation = () => {
     const queryClient = useQueryClient();

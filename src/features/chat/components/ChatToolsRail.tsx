@@ -15,8 +15,16 @@ export interface ChatToolsRailPanel {
     label: string;
     title: string;
     description?: ReactNode;
-    // Rendered inside this panel's drawer body while it's the open one.
-    content: ReactNode;
+    // Rendered inside this panel's drawer body while it's the open one. Omit and supply `onClick`
+    // instead for a plain shortcut button (e.g. Lorebook's "Scribble" — opens its own right-side
+    // Sheet elsewhere, not this rail's shared bottom Drawer) that just needs to sit in the icon
+    // column looking like every other rail button, without joining the single-open-panel/Drawer
+    // system at all.
+    content?: ReactNode;
+    // Escape hatch: fires instead of the normal onTogglePanel(id) drawer-toggle when present. Such
+    // a panel's `id` never ends up in openPanelId (nothing calls onTogglePanel for it), so it never
+    // matches openPanel below and `content` is never required.
+    onClick?: () => void;
     // Small chip/count rendered on the closed rail icon — pending-count badge for Approvals,
     // armed-summary chip for Context (Axis 4). Absent for panels with nothing to summarize.
     badge?: ReactNode;
@@ -96,13 +104,13 @@ export function ChatToolsRail({
                             : chatsBadge}
                     </Button>
 
-                    {panels.map(({ id, icon: Icon, label, title, badge, compactBadge }) => (
+                    {panels.map(({ id, icon: Icon, label, title, badge, compactBadge, onClick }) => (
                         <Button
                             key={id}
                             variant={openPanelId === id ? "default" : "outline"}
                             size="sm"
                             className={cn("mx-2 relative", collapsed ? "justify-center px-0 w-8" : "justify-start")}
-                            onClick={() => onTogglePanel(id)}
+                            onClick={onClick ?? (() => onTogglePanel(id))}
                             title={title}
                         >
                             <Icon className="h-4 w-4 shrink-0" />

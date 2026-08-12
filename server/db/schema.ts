@@ -402,7 +402,11 @@ export const lorebookEntries = sqliteTable(
         // Set whenever a Sync accept applies this sheet's content to structured fields — lets the
         // UI show "sheet edited since last sync" without a separate dirty-flag column (compare
         // against updatedAt). Not touched by plain sheet saves.
-        sheetSyncedAt: integer("sheetSyncedAt", { mode: "timestamp" })
+        sheetSyncedAt: integer("sheetSyncedAt", { mode: "timestamp" }),
+        // Scribble — a per-entry scratch pad, same shape/doctrine as chapters.notes: a single JSON
+        // blob {content, lastUpdated}, never RAG-indexed or chat-visible. Bridges to the real Notes
+        // desk only via an explicit one-shot "Send to Notes" convert (mirrors ChapterNotesEditor.tsx).
+        scribble: text("scribble", { mode: "json" })
     },
     table => ({
         levelIdx: index("lorebook_level_idx").on(table.level),

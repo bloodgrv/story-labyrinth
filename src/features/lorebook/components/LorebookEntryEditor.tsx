@@ -1,12 +1,13 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { useQueryClient } from "@tanstack/react-query";
-import { Inbox, Plus, SlidersHorizontal, Sparkles, Wand2 } from "lucide-react";
+import { Inbox, NotebookPen, Plus, SlidersHorizontal, Sparkles, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useBrainstormChecklistQuery } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
@@ -37,6 +38,7 @@ import { toastCRUD } from "@/utils/toastUtils";
 import type { ChatStyle, WorldBuildingTemplateSlug } from "@/types/worldbuilding";
 import { getTemplate } from "@/types/worldbuilding";
 import { lorebookKeys, useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
+import { LorebookScribbleContent } from "./LorebookScribbleContent";
 import { PsychProfilePanel } from "./PsychProfilePanel";
 import type { SyncSheetResult } from "@/services/api/lorebookClient";
 import {
@@ -116,13 +118,17 @@ export interface LorebookEntryEditorProps {
 function WorldBuildingChatPanel({
     storyId,
     entryId,
+    entry,
     onEnsureEntry,
-    onEntryUpdated
+    onEntryUpdated,
+    onOpenScribble
 }: {
     storyId: string;
     entryId?: string;
+    entry?: LorebookEntry;
     onEnsureEntry: () => Promise<LorebookEntry>;
     onEntryUpdated?: (entry: LorebookEntry) => void;
+    onOpenScribble: () => void;
 }) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
@@ -325,8 +331,24 @@ function WorldBuildingChatPanel({
                 openPanelId={openPanelId}
                 onTogglePanel={id => setOpenPanelId(cur => (cur === id ? null : id))}
                 onClosePanel={() => setOpenPanelId(null)}
-                panels={
-                    selectedChat
+                panels={[
+                    // Entry-scoped, not chat-scoped — available regardless of whether a WB chat is
+                    // selected, unlike Approvals/Context/Playbook below which all need selectedChat.
+                    ...(entry?.id
+                        ? [
+                              {
+                                  id: "scribble",
+                                  icon: NotebookPen,
+                                  label: "Scribble",
+                                  title: "Scribble",
+                                  // Shortcut only — opens the same right-side Sheet the entry
+                                  // form's own "Scribble" button opens (LorebookEntryEditor.tsx's
+                                  // shared scribbleOpen state), not this rail's bottom Drawer.
+                                  onClick: onOpenScribble
+                              }
+                          ]
+                        : []),
+                    ...(selectedChat
                         ? [
                               {
                                   id: "approvals",
@@ -426,8 +448,8 @@ function WorldBuildingChatPanel({
                                   )
                               }
                           ]
-                        : []
-                }
+                        : [])
+                ]}
             />
         </div>
     );
@@ -468,6 +490,13 @@ export function LorebookEntryEditor({
     // `entry` prop everywhere below is what lets a chat-created stub actually become "the" entry
     // being edited, instead of an orphaned duplicate the open form never learns about.
     const [liveEntry, setLiveEntry] = useState<LorebookEntry | undefined>(entry);
+
+    // Scribble's Sheet lives once here (not inside a button component) so both entry points — the
+    // form-row button below and the WB chat rail's "Scribble" icon (WorldBuildingChatPanel, a
+    // sibling render in this same component's return) — open the exact same right-side panel
+    // instead of each spawning its own. The rail icon is a plain shortcut (ChatToolsRail's
+    // onClick escape hatch), not a bottom drawer like Approvals/Context/Playbook.
+    const [scribbleOpen, setScribbleOpen] = useState(false);
 
     const { data: story } = useStoryQuery(storyId || "");
     const { data: seriesList } = useSeriesQuery();
@@ -651,6 +680,12 @@ export function LorebookEntryEditor({
                                 defaultTitle={nameValue || "Untitled entry"}
                             />
                         )}
+                        {liveEntry?.id && (
+                            <Button type="button" variant="outline" size="sm" onClick={() => setScribbleOpen(true)}>
+                                <NotebookPen className="h-4 w-4 mr-2" />
+                                Scribble
+                            </Button>
+                        )}
 
                         {/* T5 FS3 — gate loosened from codexEnabled to just liveEntry.id: Sync now
                             proposes into this same tray for every category (not just
@@ -706,11 +741,24 @@ export function LorebookEntryEditor({
                     <WorldBuildingChatPanel
                         storyId={storyId as string}
                         entryId={liveEntry?.id}
+                        entry={liveEntry}
                         onEnsureEntry={ensureLiveEntry}
                         onEntryUpdated={handleEntryUpdatedFromChat}
+                        onOpenScribble={() => setScribbleOpen(true)}
                     />
                 </div>
             )}
+
+            <Sheet open={scribbleOpen} onOpenChange={setScribbleOpen}>
+                <SheetContent side="right" className="h-[100vh] w-full sm:w-[540px] md:w-[700px] lg:w-[800px] sm:max-w-full">
+                    <SheetHeader>
+                        <SheetTitle>Scribble</SheetTitle>
+                    </SheetHeader>
+                    <div className="overflow-y-auto h-[100vh]">
+                        {scribbleOpen && liveEntry?.id && <LorebookScribbleContent entry={liveEntry} storyId={storyId} />}
+                    </div>
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }

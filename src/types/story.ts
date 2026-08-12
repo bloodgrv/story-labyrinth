@@ -306,6 +306,9 @@ export interface LorebookEntry extends BaseEntity {
     // Set on Sync accept only — lets the UI detect "sheet edited since last sync" by comparing
     // against updatedAt. Not touched by a plain sheet save.
     sheetSyncedAt?: Date | null;
+    // Scribble — per-entry scratch pad, same shape/doctrine as Chapter.notes: never RAG-indexed or
+    // chat-visible, bridges to a real Notes-desk note only via an explicit one-shot "Send to Notes".
+    scribble?: ChapterNotes | null;
 }
 
 // Prompt Parser types
