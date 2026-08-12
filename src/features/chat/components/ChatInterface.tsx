@@ -454,8 +454,19 @@ export function ChatInterface({
                 // computeExtraContext below, which refreshes it per-message against the user's
                 // actual live text (this block only ever refetches on chat.title, same reasoning
                 // P0.4 S1 already established for Research's own web search).
-                outlineTreeText &&
-                    `[OUTLINE TREE — full story structure; use the id values exactly as shown when proposing edits/reorders/deletes]\n${outlineTreeText}`,
+                // Refetched fresh on every turn (unlike outlineTreeText's rejected-item exclusion,
+                // this note itself has to be repeated here every time, not just once at chat
+                // start) — a chapter/scene this chat proposed earlier and that the user then
+                // rejected simply disappears from this list; nothing else marks it "gone", so
+                // without this line the model keeps citing its own earlier proposal (title,
+                // summary, even the id) as if it still existed, since that text is still sitting
+                // right there in the chat history above.
+                isOutlineChat &&
+                    `[OUTLINE TREE — full story structure, current as of this message; use the id values exactly as shown when ` +
+                        `proposing edits/reorders/deletes. This is the live source of truth — if something you proposed earlier in ` +
+                        `this conversation (a chapter, scene, or edit) isn't listed here, the user rejected it or hasn't accepted it ` +
+                        `yet; don't treat it as created, and don't describe it as "already in the tree."]\n` +
+                        `${outlineTreeText || "(empty — no chapters or scenes yet)"}`,
                 writtenChaptersText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${writtenChaptersText}`,
                 chapterSummariesText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${chapterSummariesText}`,
                 setupSlotsText && `[PROJECT SETUP CHECKLIST — use slotKey exactly as shown when a proposal addresses one]\n${setupSlotsText}`,
