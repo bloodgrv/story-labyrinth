@@ -1,12 +1,13 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, MoreHorizontal, Upload } from "lucide-react";
+import { Download, LogOut, MoreHorizontal, Upload } from "lucide-react";
 import { type ChangeEvent, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CreateStoryDialog } from "@/features/stories/components/CreateStoryDialog";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { adminApi } from "@/services/api/client";
 import { storyExportService } from "@/services/storyExportService";
 import { logger } from "@/utils/logger";
@@ -17,6 +18,7 @@ interface StoriesToolHeaderProps {
 
 export const StoriesToolHeader = ({ onStoriesChange }: StoriesToolHeaderProps) => {
     const queryClient = useQueryClient();
+    const { currentStoryId, resetContext } = useStoryContext();
     const [isImportingDemo, setIsImportingDemo] = useState(false);
     const [confirmDemoOpen, setConfirmDemoOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +69,12 @@ export const StoriesToolHeader = ({ onStoriesChange }: StoriesToolHeaderProps) =
             <div className="flex gap-1 sm:gap-2 shrink-0">
                 <CreateStoryDialog />
                 {/* Desktop: separate buttons */}
+                {currentStoryId && (
+                    <Button variant="outline" onClick={resetContext} className="hidden sm:flex">
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Close Active Story
+                    </Button>
+                )}
                 <Button variant="outline" onClick={handleImportClick} className="hidden sm:flex">
                     <Upload className="w-4 h-4 mr-2" />
                     Import Story
@@ -90,6 +98,12 @@ export const StoriesToolHeader = ({ onStoriesChange }: StoriesToolHeaderProps) =
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                        {currentStoryId && (
+                            <DropdownMenuItem onClick={resetContext}>
+                                <LogOut className="w-4 h-4 mr-2" />
+                                Close Active Story
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={handleImportClick}>
                             <Upload className="w-4 h-4 mr-2" />
                             Import Story

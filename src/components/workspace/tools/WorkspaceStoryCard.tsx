@@ -1,8 +1,9 @@
-import { BookOpen, Edit, FolderUp, Trash2 } from "lucide-react";
+import { BookOpen, Edit, FolderUp, PenLine, Trash2 } from "lucide-react";
 import type { MouseEvent } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DownloadMenu } from "@/components/ui/DownloadMenu";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ROUTES } from "@/constants/urls";
 import { useSingleSeriesQuery } from "@/features/series/hooks/useSeriesQuery";
 import { useDeleteStoryMutation } from "@/features/stories/hooks/useStoriesQuery";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import type { Story } from "@/types/story";
 
 interface WorkspaceStoryCardProps {
@@ -23,6 +25,7 @@ export const WorkspaceStoryCard = ({ story, onEdit, onExport }: WorkspaceStoryCa
     const deleteStoryMutation = useDeleteStoryMutation();
     const { data: series } = useSingleSeriesQuery(story.seriesId);
     const navigate = useNavigate();
+    const { setCurrentStoryId, setCurrentTool } = useStoryContext();
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
     const handleDeleteClick = (e: MouseEvent) => {
@@ -49,6 +52,12 @@ export const WorkspaceStoryCard = ({ story, onEdit, onExport }: WorkspaceStoryCa
         navigate(ROUTES.DASHBOARD.ROOT(story.id));
     };
 
+    const handleOpenEditor = (e: MouseEvent) => {
+        e.stopPropagation();
+        setCurrentStoryId(story.id);
+        setCurrentTool("editor");
+    };
+
     return (
         <Card
             className="w-full cursor-pointer border-2 border-gray-300 dark:border-gray-700 hover:bg-accent hover:text-accent-foreground transition-colors shadow-sm"
@@ -66,7 +75,12 @@ export const WorkspaceStoryCard = ({ story, onEdit, onExport }: WorkspaceStoryCa
                 </CardDescription>
             </CardHeader>
             <CardContent>{story.synopsis && <p className="text-sm text-muted-foreground">{story.synopsis}</p>}</CardContent>
-            <CardFooter className="flex justify-end gap-2">
+            <CardFooter className="flex justify-between items-center gap-2">
+                <Button variant="secondary" size="sm" className="gap-1.5" onClick={handleOpenEditor}>
+                    <PenLine className="h-3.5 w-3.5" />
+                    Open Editor
+                </Button>
+                <div className="flex gap-2">
                 <ActionButton icon={BookOpen} tooltip="Read story" onClick={handleRead} />
                 <TooltipProvider>
                     <Tooltip>
@@ -83,6 +97,7 @@ export const WorkspaceStoryCard = ({ story, onEdit, onExport }: WorkspaceStoryCa
                 <ActionButton icon={Edit} tooltip="Edit story details" onClick={handleEdit} />
                 <ActionButton icon={FolderUp} tooltip="Export story as JSON" onClick={handleExport} />
                 <ActionButton icon={Trash2} tooltip="Delete story" onClick={handleDeleteClick} />
+                </div>
             </CardFooter>
             <ConfirmDialog
                 open={deleteDialogOpen}
