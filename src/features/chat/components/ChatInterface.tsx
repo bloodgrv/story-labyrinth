@@ -349,6 +349,13 @@ export function ChatInterface({
             // own confirmed chronology, not loose working notes. Compact: order + title + blurb,
             // never the full linked-entry body (design doc's own "not full linked bodies" line).
             const timelineText = context.relevantTimelinePins.map(p => `- ${p.title} (${p.when})${p.blurb ? `: ${p.blurb}` : ""}`).join("\n");
+            // Guide — only non-empty when includeGuide is on AND guideSearchService.ts's
+            // searchGuideForChat cleared its own minimum-score threshold for this turn's message.
+            // App-usage documentation, never story content — kept clearly separate from every
+            // other block here, which is all either story canon or story-adjacent working material.
+            const guideText = context.relevantGuideSections
+                .map(s => `- ${s.topicLabel}${s.subTabLabel ? ` › ${s.subTabLabel}` : ""} — ${s.heading}: ${s.excerpt}`)
+                .join("\n");
 
             // Outline chat's own always-on structured reads (P0.4 R5) — only ever non-empty for
             // chatType="outline" (chatContextService.ts only populates these two for that type).
@@ -431,6 +438,8 @@ export function ChatInterface({
                     `[PROJECT MEMORY — approved facts]\nApproved project facts/notes relevant to this conversation. Treat as established unless it conflicts with the Codex, in which case the Codex wins.\n${memoriesText}`,
                 timelineText &&
                     `[STORY TIMELINE — established chronology]\nOrdered pins from the story's Spine timeline. Treat as established unless it conflicts with the Codex, in which case the Codex wins.\n${timelineText}`,
+                guideText &&
+                    `[STORY LABYRINTH GUIDE — app usage reference, not story content]\nDocumentation about how to use this app's own features. Only cite this when the user is asking how to use the app itself, never as information about their story. Never treat as canon.\n${guideText}`,
                 outlineTreeText &&
                     `[OUTLINE TREE — full story structure; use the id values exactly as shown when proposing edits/reorders/deletes]\n${outlineTreeText}`,
                 writtenChaptersText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${writtenChaptersText}`,
@@ -453,6 +462,7 @@ export function ChatInterface({
         toggles.includeOutline,
         toggles.includeMemory,
         toggles.includeTimeline,
+        toggles.includeGuide,
         toggles.includeLorebook,
         toggles.includeChapterSummaries,
         isBrainstormChat,

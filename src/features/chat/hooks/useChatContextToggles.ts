@@ -25,6 +25,7 @@ export function useChatContextToggles(selectedChat: AIChat | null, promptType: P
     const [includeOutline, setIncludeOutline] = useState(selectedChat?.includeOutline ?? false);
     const [includeMemory, setIncludeMemory] = useState(selectedChat?.includeMemory ?? false);
     const [includeTimeline, setIncludeTimeline] = useState(selectedChat?.includeTimeline ?? false);
+    const [includeGuide, setIncludeGuide] = useState(selectedChat?.includeGuide ?? false);
     const [includeLorebook, setIncludeLorebook] = useState(selectedChat?.includeLorebook ?? false);
     const [includeChapterSummaries, setIncludeChapterSummaries] = useState(selectedChat?.includeChapterSummaries ?? false);
     const [autoInsertProse, setAutoInsertProse] = useState(selectedChat?.autoInsertProse ?? false);
@@ -44,6 +45,7 @@ export function useChatContextToggles(selectedChat: AIChat | null, promptType: P
     const toggleIncludeOutline = withUpdate("includeOutline", setIncludeOutline);
     const toggleIncludeMemory = withUpdate("includeMemory", setIncludeMemory);
     const toggleIncludeTimeline = withUpdate("includeTimeline", setIncludeTimeline);
+    const toggleIncludeGuide = withUpdate("includeGuide", setIncludeGuide);
     const toggleIncludeLorebook = withUpdate("includeLorebook", setIncludeLorebook);
     const toggleIncludeChapterSummaries = withUpdate("includeChapterSummaries", setIncludeChapterSummaries);
     const toggleAutoInsertProse = withUpdate("autoInsertProse", setAutoInsertProse);
@@ -57,6 +59,7 @@ export function useChatContextToggles(selectedChat: AIChat | null, promptType: P
         !isOutlineChat && !isResearchChat && includeOutline && "Outline",
         !isResearchChat && !isNotesChat && includeMemory && "Memory",
         !isResearchChat && !isNotesChat && includeTimeline && "Timeline",
+        includeGuide && "Guide",
         (isBrainstormChat || isResearchChat || isNotesChat) && includeLorebook && "Lorebook",
         isResearchChat && webSearchEnabled && "Web search",
         isBrainstormChat && includeChapterSummaries && "Chapter summaries",
@@ -75,6 +78,8 @@ export function useChatContextToggles(selectedChat: AIChat | null, promptType: P
         toggleIncludeMemory,
         includeTimeline,
         toggleIncludeTimeline,
+        includeGuide,
+        toggleIncludeGuide,
         includeLorebook,
         toggleIncludeLorebook,
         includeChapterSummaries,

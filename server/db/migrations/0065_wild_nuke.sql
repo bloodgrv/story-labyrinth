@@ -1,0 +1,1 @@
+ALTER TABLE `aiChats` ADD `includeGuide` integer DEFAULT false NOT NULL;

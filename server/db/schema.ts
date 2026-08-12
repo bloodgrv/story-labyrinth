@@ -185,6 +185,12 @@ export const aiChats = sqliteTable(
         // titles + blurbs, not full linked bodies). Same posture as includeMemory above: read
         // directly as chat.includeTimeline in chatContextService.ts, no separate per-item gate.
         includeTimeline: integer("includeTimeline", { mode: "boolean" }).notNull().default(false),
+        // Opt-in gate for surfacing relevant Guide (src/features/guide/content/*.mdx) sections —
+        // app-usage documentation, not story content. Searched separately from the rest of this
+        // chat's context (guideSearchService.ts, in-process word-scoring, no ragChunks row) since
+        // the guide isn't story-scoped and doesn't fit hybridSearch's required storyId partition.
+        // Available on every chat type (app-usage questions aren't tied to one desk), default off.
+        includeGuide: integer("includeGuide", { mode: "boolean" }).notNull().default(false),
         // Brainstorm-only opt-in gates (P0.4 B0-B4, docs/Chat_Panel_Integrations_Design.md §5) —
         // unlike every other chat type, lorebook search is OFF by default for Brainstorm (it's an
         // intake hub, not grounded in established Codex state the way WB/Editor/Outline are); see

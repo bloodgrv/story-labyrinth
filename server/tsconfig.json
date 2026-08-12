@@ -9,6 +9,11 @@
         "noEmit": false,
         "allowImportingTsExtensions": false
     },
-    "include": ["./**/*", "../src/data/systemPrompts.ts", "../src/types/story.ts"],
+    "include": [
+        "./**/*",
+        "../src/data/systemPrompts.ts",
+        "../src/types/story.ts",
+        "../src/features/guide/lib/guideSearchParser.ts"
+    ],
     "exclude": ["node_modules"]
 }

@@ -3,6 +3,7 @@ import type {
     ChatContext,
     ChatContextChapterPassage,
     ChatContextCodexEntry,
+    ChatContextGuideExcerpt,
     ChatContextMemoryExcerpt,
     ChatContextNoteExcerpt,
     ChatContextOutlineExcerpt,
@@ -26,6 +27,7 @@ import { search } from "./ragIndexService.js";
 import { DEFAULT_SEARCH_ENTITY_TYPES, type RagEntityType, type SearchResult } from "./ragRepository.js";
 import { fetchPage, searchWeb, type FetchedPage } from "./webSearchService.js";
 import { getSpineChronologyExcerpt } from "./storyTimelineService.js";
+import { searchGuideForChat } from "./guideSearchService.js";
 
 const RELEVANT_ENTRIES_LIMIT = 8;
 const SEARCH_POOL_SIZE = RELEVANT_ENTRIES_LIMIT * 2;
@@ -1005,6 +1007,16 @@ const resolveMemories = async (results: SearchResult[], storyId: string | null):
     return [...pinnedExcerpts, ...searchExcerpts];
 };
 
+// Gated on includeGuide only — searchGuideForChat already returns [] below its own minimum-score
+// threshold, so this stays empty on ordinary story-writing turns without any extra gating here.
+const resolveGuideSections = (query: string): ChatContextGuideExcerpt[] =>
+    searchGuideForChat(query).map(section => ({
+        topicLabel: section.topicLabel,
+        subTabLabel: section.subTabLabel ?? null,
+        heading: section.heading,
+        excerpt: section.body.slice(0, 500)
+    }));
+
 // Lets the model see whether prior proposals/handoffs from this same Brainstorm chat are still
 // sitting unresolved (status pending/opened) before proposing more (P0.4 B4).
 const resolveHandoffStatus = async (chatId: string) => {
@@ -1116,6 +1128,10 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
     // TL8 — read directly as a plain column, same posture as includeMemory (no separate per-pin
     // gate; a pin's presence on Spine is itself the "should this be visible" decision).
     const includeTimeline = chat.includeTimeline === true;
+    // Not routed through search()/entityTypes/hybridSearch — the guide isn't story-scoped and
+    // doesn't fit hybridSearch's required storyId partition (see guideSearchService.ts's own
+    // header comment). Works identically for story-scoped and story-less (e.g. Research) chats.
+    const includeGuide = chat.includeGuide === true;
     const isBrainstorm = chatType === "brainstorm";
     const isResearch = chatType === "research";
     const isNotes = chatType === "notes";
@@ -1196,7 +1212,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         playbookPackConcrete,
         playbookPackPsych,
         availableNameRegions,
-        timelinePins
+        timelinePins,
+        guideSections
     ] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
         includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
@@ -1217,7 +1234,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         ["editor", "outline", "worldbuilding", "brainstorm"].includes(chatType)
             ? resolveAvailableNameRegions(chat.storyId)
             : Promise.resolve([]),
-        includeTimeline && chat.storyId ? getSpineChronologyExcerpt(chat.storyId) : Promise.resolve([])
+        includeTimeline && chat.storyId ? getSpineChronologyExcerpt(chat.storyId) : Promise.resolve([]),
+        includeGuide ? Promise.resolve(resolveGuideSections(effectiveQuery)) : Promise.resolve([])
     ]);
 
     return {
@@ -1247,6 +1265,7 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         allNotes,
         focusedNote,
         playbookPack: { concrete: playbookPackConcrete, psych: playbookPackPsych },
-        relevantTimelinePins: timelinePins
+        relevantTimelinePins: timelinePins,
+        relevantGuideSections: guideSections
     };
 };

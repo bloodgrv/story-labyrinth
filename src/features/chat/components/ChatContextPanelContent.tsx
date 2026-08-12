@@ -117,6 +117,22 @@ export function ChatContextPanelContent({ selectedChat, promptType, toggles }: C
                 </div>
             )}
 
+            {/* Guide is available on every chat type, including Editor (which otherwise stays
+                canon-only, see the !isEditorChat block above) — app-usage questions aren't story
+                canon, so this doesn't need the same isolation. */}
+            <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border p-3">
+                <div className="flex items-center gap-2">
+                    <Switch
+                        id={`${selectedChat.id}-include-guide`}
+                        checked={toggles.includeGuide}
+                        onCheckedChange={toggles.toggleIncludeGuide}
+                    />
+                    <Label htmlFor={`${selectedChat.id}-include-guide`} className="text-sm font-normal">
+                        Include Guide (app usage help)
+                    </Label>
+                </div>
+            </div>
+
             {usesCodexTray && (
                 <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border p-3">
                     {isEditorChat && (

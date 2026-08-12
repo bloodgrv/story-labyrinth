@@ -197,6 +197,18 @@ export interface ChatContextTimelinePinExcerpt {
     when: string;
 }
 
+// Gated on this chat's own includeGuide toggle — app-usage documentation (src/features/guide/
+// content/*.mdx), not story content. Resolved by server/services/guideSearchService.ts's
+// searchGuideForChat, a standalone in-memory text search deliberately NOT routed through
+// hybridSearch/ragChunks (the guide isn't story-scoped and doesn't fit hybridSearch's required
+// storyId partition — see chatContextService.ts's getChatContext).
+export interface ChatContextGuideExcerpt {
+    topicLabel: string;
+    subTabLabel: string | null;
+    heading: string;
+    excerpt: string;
+}
+
 // Assembled context for generating a chat response or proposal: the effective system
 // prompt (chat-type framing + template hint for World-Building), this chat's own unresolved
 // Codex proposals, and Codex entries / chapter passages relevant to the current topic.
@@ -253,4 +265,6 @@ export interface ChatContext {
     playbookPack: { concrete: ChatContextPlaybookPack | null; psych: ChatContextPlaybookPack | null };
     // Empty unless the chat's includeTimeline toggle is on (TL8) — see getChatContext.
     relevantTimelinePins: ChatContextTimelinePinExcerpt[];
+    // Empty unless the chat's includeGuide toggle is on — see getChatContext.
+    relevantGuideSections: ChatContextGuideExcerpt[];
 }

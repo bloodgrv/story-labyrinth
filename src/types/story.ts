@@ -87,6 +87,9 @@ export interface AIChat extends BaseEntity {
     // TL8, docs/Story_Timeline_Design.md — opt-in gate for the compact Spine chronology block.
     // Same posture as includeMemory above. Defaults false server-side.
     includeTimeline?: boolean;
+    // Opt-in gate for surfacing relevant Guide (app documentation, not story content) sections —
+    // available on every chat type, default false. See chatContextService.ts's getChatContext.
+    includeGuide?: boolean;
     // Brainstorm-only opt-in gates (P0.4 B0-B4, docs/Chat_Panel_Integrations_Design.md §5) —
     // lorebook search and chapter titles+summaries are OFF by default for Brainstorm, unlike
     // every other chat type. Ignored for any other chatType. Defaults false server-side.
