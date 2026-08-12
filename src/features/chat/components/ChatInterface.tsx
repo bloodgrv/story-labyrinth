@@ -37,7 +37,7 @@ import {
     useUpdateOutlineItemMutation
 } from "@/features/outline/hooks/useOutlineQuery";
 import { brainstormApi, chatsApi, deskTransfersApi, lorebookApi } from "@/services/api/client";
-import type { ChapterSelectionTarget } from "@/types/rework";
+import type { ChapterSelectionTarget, SheetFieldReworkTarget } from "@/types/rework";
 import type { AIChat, ChatMessage, LorebookEntry, Prompt, PromptParserConfig } from "@/types/story";
 import type { ChatContext } from "@/types/worldbuilding";
 import { ChatSystemPromptControl } from "./ChatSystemPromptControl";
@@ -520,6 +520,13 @@ export function ChatInterface({
                     `state with only this one item's value changed — leave every other category/item untouched, copying it ` +
                     `forward from the current Codex state shown in context.\nCURRENT VALUE: ${selection}`
                 );
+            case "lorebook-sheet-field":
+                return (
+                    `[LOREBOOK SHEET SPAN REWORK]\nThe user has highlighted this passage in the entry's Lore Sheet` +
+                    `${activeRework.target.section ? ` (under the "${activeRework.target.section}" section)` : ""} to rework. Reply ` +
+                    `with a \`\`\`sheet-span-proposal containing ONLY the replacement text for SELECTION — not the whole sheet, ` +
+                    `not BEFORE/AFTER.\n${beforeLabel}\nSELECTION: ${selection}\n${afterLabel}`
+                );
             case "outline-item":
                 return (
                     `[OUTLINE ITEM REWORK]\nThe user wants to rework this outline item as a whole. Neighbor context is in ` +
@@ -546,6 +553,8 @@ export function ChatInterface({
             case "lorebook-field":
             case "lorebook-structured-field":
                 return "Talk through the change below — the model's reply will propose a Codex change reviewed in the tray, not replace this text directly.";
+            case "lorebook-sheet-field":
+                return "Talk through the change below — Accept will splice the model's reply back into just this span of the Lore Sheet.";
             case "outline-item":
                 return "Talk through the change below — the model's reply will propose an outline change reviewed as a card, not replace this text directly.";
             case "note-item":
@@ -630,6 +639,12 @@ export function ChatInterface({
     // additionally chains the existing Sync call right after.
     const [sheetProposals, setSheetProposals] = useState<Record<string, string>>({});
     const [syncingSheetProposal, setSyncingSheetProposal] = useState<string | null>(null);
+
+    // T9, docs/Lore_Sheet_Inline_Rework_Design.md — sub-span sibling to sheetProposals above. Each
+    // record carries the FocusTarget active when it was generated (or null for a stray reply with
+    // no matching rework in progress, mirroring proseProposals' own target-capture pattern), since
+    // Accept needs the captured selectionStart/selectionEnd/text to splice safely.
+    const [sheetSpanProposals, setSheetSpanProposals] = useState<Record<string, { text: string; target: SheetFieldReworkTarget | null }>>({});
 
     // NG6 — same ephemeral-state posture as psychProposals above. No accept/reject dismissal to
     // track: NameProposalCard itself runs the real generate call and owns its own results state.
@@ -820,6 +835,14 @@ export function ChatInterface({
         onPsychProposal: (messageId, proposal) => setPsychProposals(prev => ({ ...prev, [messageId]: proposal })),
         onPlaceSheetProposal: (messageId, proposal) => setPlaceSheetProposals(prev => ({ ...prev, [messageId]: proposal })),
         onSheetProposal: (messageId, proposal) => setSheetProposals(prev => ({ ...prev, [messageId]: proposal })),
+        onSheetSpanProposal: (messageId, proposal) => {
+            // Only a "lorebook-sheet-field" rework turn produces a splice-able target — a stray
+            // sheet-span-proposal with no matching activeRework (e.g. the model emitted one
+            // unprompted) still shows a card, but Accept has nothing to splice against and degrades
+            // (see handleAcceptSheetSpan below), same posture as onProseProposal's target capture.
+            const target = activeRework && activeRework.target.kind === "lorebook-sheet-field" ? activeRework.target : null;
+            setSheetSpanProposals(prev => ({ ...prev, [messageId]: { text: proposal, target } }));
+        },
         onMapSketchProposal: (messageId, proposal) => setMapSketchProposals(prev => ({ ...prev, [messageId]: proposal })),
         onNameProposal: (messageId, proposal) => setNameProposals(prev => ({ ...prev, [messageId]: proposal })),
         onTimelinePinProposal: (messageId, items) => setTimelinePinProposals(prev => ({ ...prev, [messageId]: items })),
@@ -1096,6 +1119,44 @@ export function ChatInterface({
         if (error) toast.error(error.message || "Couldn't sync the sheet");
         setSyncingSheetProposal(null);
         dismissSheetProposal(messageId);
+    };
+
+    const dismissSheetSpanProposal = (messageId: string) =>
+        setSheetSpanProposals(prev => {
+            const next = { ...prev };
+            delete next[messageId];
+            return next;
+        });
+
+    // T9, IR4 — unlike handleAcceptSheet's wholesale replace, this splices only the reworked span
+    // back into the CURRENT sheetBody (fetched fresh from entryLookup, not the possibly-stale value
+    // captured at selection time). Re-checks the captured text still matches at the recorded
+    // offsets first; if the sheet was edited since capture (by the user, or by a whole-sheet
+    // sheet-proposal landing in between), degrades with a toast instead of guessing at a new
+    // splice point — the same exact-match-or-degrade doctrine RagIssueMarkNode's highlight match
+    // already uses (docs/Lore_Sheet_Inline_Rework_Design.md §3 risk #1). No target (a stray reply
+    // with no matching rework in progress) degrades the same way.
+    const handleAcceptSheetSpan = (messageId: string) => {
+        const record = sheetSpanProposals[messageId];
+        const target = record?.target;
+        if (!record || !target) {
+            toast.error("Couldn't apply this edit — the original selection is no longer available.");
+            dismissSheetSpanProposal(messageId);
+            return;
+        }
+        const currentSheetBody = entryLookup.get(target.entryId)?.sheetBody ?? "";
+        const { selectionStart, selectionEnd, text } = target;
+        if (currentSheetBody.slice(selectionStart, selectionEnd) !== text) {
+            toast.error("The Lore Sheet changed since this rework started — couldn't safely apply the edit.");
+            dismissSheetSpanProposal(messageId);
+            return;
+        }
+        const spliced = currentSheetBody.slice(0, selectionStart) + record.text + currentSheetBody.slice(selectionEnd);
+        void updateLorebookMutation.mutateAsync({ id: target.entryId, data: { sheetBody: spliced } }).then(updated => {
+            onEntryUpdated?.(updated);
+        });
+        setActiveRework(null);
+        dismissSheetSpanProposal(messageId);
     };
 
     const dismissMapSketchProposal = (messageId: string) =>
@@ -1553,6 +1614,7 @@ export function ChatInterface({
                     const psychProposal = psychProposals[messageId];
                     const placeSheetProposal = placeSheetProposals[messageId];
                     const sheetProposal = sheetProposals[messageId];
+                    const sheetSpanProposal = sheetSpanProposals[messageId];
                     const mapSketchProposal = mapSketchProposals[messageId];
                     const nameProposal = storyId ? nameProposals[messageId] : undefined;
                     const timelinePinProposalsForMessage = storyId ? timelinePinProposals[messageId] : undefined;
@@ -1564,6 +1626,7 @@ export function ChatInterface({
                         !psychProposal &&
                         !placeSheetProposal &&
                         !sheetProposal &&
+                        !sheetSpanProposal &&
                         !mapSketchProposal &&
                         !nameProposal &&
                         !timelinePinProposalsForMessage?.length
@@ -1628,6 +1691,14 @@ export function ChatInterface({
                                     onAcceptAndSync={() => void handleAcceptSheetAndSync(messageId)}
                                     onReject={() => dismissSheetProposal(messageId)}
                                     isSyncing={syncingSheetProposal === messageId}
+                                />
+                            )}
+                            {isWorldBuildingChat && sheetSpanProposal && (
+                                <ProseProposalCard
+                                    text={sheetSpanProposal.text}
+                                    replacesSelection
+                                    onAccept={() => handleAcceptSheetSpan(messageId)}
+                                    onReject={() => dismissSheetSpanProposal(messageId)}
                                 />
                             )}
                             {isWorldBuildingChat && mapSketchProposal && (

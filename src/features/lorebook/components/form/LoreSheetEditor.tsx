@@ -9,18 +9,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { lorebookApi } from "@/services/api/client";
 import type { CreateEntryForm, LorebookCategory } from "./entryFormUtils";
+import { LoreSheetReworkButton } from "./LoreSheetReworkButton";
 import { appendMissingSections, appendSection, getSheetTemplate, parseSheetHeadings } from "./sheetTemplates";
 
 interface LoreSheetEditorProps {
     control: Control<CreateEntryForm>;
     category: LorebookCategory;
+    // T9 — only needed for the "Rework in chat" sub-span trigger below (anchors to this entry's WB
+    // chat, same reasoning as RawEntryFields' description-field button). Undefined for a brand-new
+    // unsaved entry, which just disables the button.
+    entryId?: string;
+    storyId?: string;
 }
 
 // Sheet-first primary editing surface (T5 FS1, docs/Lore_Sheet_And_Sync_Design.md §7b) — markdown
 // `sheetBody` + a sticky per-category section outline + "Insert template". This is the SoT
 // artifact; structured Codex/description fields stay a derived projection produced by the
 // separate Sync loop (FS3+, not built yet) — this component never writes anywhere but sheetBody.
-export function LoreSheetEditor({ control, category }: LoreSheetEditorProps) {
+export function LoreSheetEditor({ control, category, entryId, storyId }: LoreSheetEditorProps) {
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const sheetBody = useWatch({ control, name: "sheetBody" }) ?? "";
     const name = useWatch({ control, name: "name" });
@@ -100,6 +106,7 @@ export function LoreSheetEditor({ control, category }: LoreSheetEditorProps) {
                     <div className="flex items-center justify-between">
                         <span className="text-sm font-semibold text-muted-foreground">Lore Sheet</span>
                         <div className="flex gap-2">
+                            <LoreSheetReworkButton entryId={entryId} storyId={storyId} textareaRef={textareaRef} />
                             <Button
                                 type="button"
                                 variant="outline"

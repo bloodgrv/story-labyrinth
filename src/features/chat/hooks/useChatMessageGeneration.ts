@@ -25,6 +25,7 @@ import type { ParsedPsychProposal } from "../services/parsePsychProposal";
 import { parsePsychProposal } from "../services/parsePsychProposal";
 import { parsePlaceSheetProposal } from "../services/parsePlaceSheetProposal";
 import { parseSheetProposal } from "../services/parseSheetProposal";
+import { parseSheetSpanProposal } from "../services/parseSheetSpanProposal";
 import { parseMapSketchProposal } from "../services/parseMapSketchProposal";
 import { parseShuttleProposal } from "../services/parseShuttleProposal";
 import type { ParsedTimelinePinProposalItem } from "../services/parseTimelinePinProposal";
@@ -83,6 +84,10 @@ interface UseChatMessageGenerationParams {
     // chatContextService.ts's SHEET_PROPOSAL_INSTRUCTIONS). Not persisted server-side — ephemeral
     // until Accept (or Accept & Sync) replaces the anchor entry's sheetBody wholesale.
     onSheetProposal?: (messageId: string, proposal: string) => void;
+    // Called when a reply contains a ```sheet-span-proposal block (T9, any anchored WB chat — see
+    // chatContextService.ts's SHEET_SPAN_PROPOSAL_INSTRUCTIONS). Not persisted server-side —
+    // ephemeral until Accept splices it into just the captured span of the anchor entry's sheetBody.
+    onSheetSpanProposal?: (messageId: string, proposal: string) => void;
     // Called when a reply contains a ```timeline-pin-proposal block (WB "timeline"-template chats
     // only, TL7 — see chatContextService.ts's TIMELINE_PIN_INSTRUCTIONS). Not persisted server-side
     // — ephemeral until each item is individually accepted (creates a real pin) or rejected.
@@ -145,6 +150,7 @@ export const useChatMessageGeneration = ({
     onPlaceSheetProposal,
     onMapSketchProposal,
     onSheetProposal,
+    onSheetSpanProposal,
     onNoteSplitProposal,
     onShuttleProposal,
     onNameProposal,
@@ -214,7 +220,8 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterPsychStrip, psychProposal } = parsePsychProposal(afterSplitStrip);
                 const { cleanedContent: afterPlaceSheetStrip, placeSheetProposal } = parsePlaceSheetProposal(afterPsychStrip);
                 const { cleanedContent: afterSheetStrip, sheetProposal } = parseSheetProposal(afterPlaceSheetStrip);
-                const { cleanedContent: afterMapSketchStrip, mapSketchProposal } = parseMapSketchProposal(afterSheetStrip);
+                const { cleanedContent: afterSheetSpanStrip, sheetSpanProposal } = parseSheetSpanProposal(afterSheetStrip);
+                const { cleanedContent: afterMapSketchStrip, mapSketchProposal } = parseMapSketchProposal(afterSheetSpanStrip);
                 const { cleanedContent: afterShuttleStrip, proposal: shuttleProposal } = parseShuttleProposal(afterMapSketchStrip);
                 const { cleanedContent: afterNameStrip, proposal: nameProposal } = parseNameProposal(afterShuttleStrip);
                 const { cleanedContent, timelinePinProposals } = parseTimelinePinProposal(afterNameStrip);
@@ -282,6 +289,7 @@ export const useChatMessageGeneration = ({
                 if (psychProposal && assistantMessage) onPsychProposal?.(assistantMessage.id, psychProposal);
                 if (placeSheetProposal && assistantMessage) onPlaceSheetProposal?.(assistantMessage.id, placeSheetProposal);
                 if (sheetProposal && assistantMessage) onSheetProposal?.(assistantMessage.id, sheetProposal);
+                if (sheetSpanProposal && assistantMessage) onSheetSpanProposal?.(assistantMessage.id, sheetSpanProposal);
                 if (mapSketchProposal && assistantMessage) onMapSketchProposal?.(assistantMessage.id, mapSketchProposal);
                 if (shuttleProposal && assistantMessage) onShuttleProposal?.(assistantMessage.id, shuttleProposal);
                 if (nameProposal && assistantMessage) onNameProposal?.(assistantMessage.id, nameProposal);
@@ -317,6 +325,7 @@ export const useChatMessageGeneration = ({
             onPlaceSheetProposal,
             onMapSketchProposal,
             onSheetProposal,
+            onSheetSpanProposal,
             onNoteSplitProposal,
             onShuttleProposal,
             onNameProposal,

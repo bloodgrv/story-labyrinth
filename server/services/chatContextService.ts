@@ -607,6 +607,27 @@ const SHEET_PROPOSAL_INSTRUCTIONS = (
     );
 };
 
+// T9, docs/Lore_Sheet_Inline_Rework_Design.md — sibling to SHEET_PROPOSAL_INSTRUCTIONS above, a
+// deliberately distinct fence (not a reuse of sheet-proposal — see that doc's §2.5/§3 risk #2 on
+// why overloading the whole-sheet fence with conditional "just this bit" instructions risks the
+// model reverting to its well-reinforced whole-sheet habit). Always present alongside the
+// whole-sheet instructions when anchored to an entry (same posture as SHEET_PROPOSAL_INSTRUCTIONS
+// itself), but only actually fires when the client-side rework context (ChatInterface.tsx's
+// reworkContext, "lorebook-sheet-field" case) marks a turn with the "[LOREBOOK SHEET SPAN REWORK]"
+// tag below — outside of that, the model should keep using sheet-proposal as instructed above.
+const SHEET_SPAN_PROPOSAL_INSTRUCTIONS = (entryName: string): string =>
+    `Separately, the user can highlight one specific passage inside this entry's Lore Sheet and ask you to rework ` +
+    `just that passage — you'll see a message marked "[LOREBOOK SHEET SPAN REWORK]" with BEFORE/SELECTION/AFTER ` +
+    "context when this happens. In that case ONLY, reply with a fenced block containing ONLY the replacement " +
+    "text for SELECTION — not the whole sheet, not BEFORE/AFTER, and no `## Heading` line unless the original " +
+    "selection already included one:\n\n" +
+    "```sheet-span-proposal\n" +
+    "replacement text...\n" +
+    "```\n\n" +
+    "Propose at most one sheet-span-proposal per reply, and never emit both sheet-proposal and " +
+    `sheet-span-proposal in the same reply. Outside of a "[LOREBOOK SHEET SPAN REWORK]" message, ignore this and ` +
+    `keep using sheet-proposal (the entire sheet) as instructed above for ${entryName}.`;
+
 // Assemble the effective system prompt for a chat: chat-type framing + template hint (World-
 // Building only). Extend the framing constants above — not the template catalogue — when
 // adding further global system instructions.
@@ -655,7 +676,8 @@ const buildSystemPrompt = (
     // targeted-field extras, unaffected by this). Timeline chats are never entry-anchored (see
     // TIMELINE_PIN_INSTRUCTIONS' own comment), so anchorEntry is always undefined there in practice.
     const sheetAddendum = anchorEntry
-        ? `\n\n${SHEET_PROPOSAL_INSTRUCTIONS(anchorEntry.entryId, anchorEntry.name, anchorEntry.category, anchorEntry.sheetBody)}`
+        ? `\n\n${SHEET_PROPOSAL_INSTRUCTIONS(anchorEntry.entryId, anchorEntry.name, anchorEntry.category, anchorEntry.sheetBody)}` +
+          `\n\n${SHEET_SPAN_PROPOSAL_INSTRUCTIONS(anchorEntry.name)}`
         : "";
     if (templateSlug === "character_codex" && includePsychModule)
         return `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}`;

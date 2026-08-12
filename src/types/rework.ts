@@ -39,6 +39,21 @@ export type FocusTarget =
           text: string;
       }
     | {
+          // T9 — sub-span rework of the Lore Sheet's sheetBody textarea, sibling to "lorebook-field"
+          // above but splicing on Accept instead of routing through a codex-proposal (see
+          // docs/Lore_Sheet_Inline_Rework_Design.md). selectionStart/selectionEnd + text are the
+          // same plain-textarea capture shape lorebook-field uses; section is the `## Heading` the
+          // selection falls under (null if it's before any heading) — captureSheetSelection
+          // rejects a selection that spans two different sections (v1 scope, see the design doc's
+          // risk #3), so this is always a single section or none.
+          kind: "lorebook-sheet-field";
+          entryId: string;
+          selectionStart: number;
+          selectionEnd: number;
+          text: string;
+          section: string | null;
+      }
+    | {
           kind: "outline-item";
           outlineItemId: string;
           text: string;
@@ -60,6 +75,10 @@ export type FocusTarget =
 // Lorebook/Outline rework never produces a prose-proposal to apply this way (see their own Accept
 // paths — plain codex-proposal / outline-proposal approval, no client-side replace step).
 export type ChapterSelectionTarget = Extract<FocusTarget, { kind: "chapter-selection" }>;
+
+// Narrowed alias for the Lore Sheet sub-span case (T9) — ChatInterface.tsx's Accept-splice handler
+// needs the selectionStart/selectionEnd/section fields, not the full FocusTarget union.
+export type SheetFieldReworkTarget = Extract<FocusTarget, { kind: "lorebook-sheet-field" }>;
 
 // Local before/selection/after context window around a FocusTarget, injected into the bound
 // chat's context alongside its normal context pack (docs/Chat_Panel_Integrations_Design.md §2.1).

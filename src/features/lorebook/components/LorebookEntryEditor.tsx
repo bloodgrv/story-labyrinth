@@ -647,7 +647,7 @@ export function LorebookEntryEditor({
                         {/* Sheet-first default surface (T5 FS1) — replaces the retired Natural View
                             toggle. Structured/machine fields (category, tags, importance, raw
                             description, raw Codex state, level/scope) moved into Advanced below. */}
-                        <LoreSheetEditor control={form.control} category={selectedCategory} />
+                        <LoreSheetEditor control={form.control} category={selectedCategory} entryId={liveEntry?.id} storyId={storyId} />
 
                         <div className="flex justify-end">
                             <SheetSyncButton
