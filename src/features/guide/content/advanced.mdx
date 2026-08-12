@@ -41,10 +41,13 @@ Series provide a powerful way to organise interconnected stories that share worl
 Navigate to the Series page from the home screen. Click "Create New Series" and provide a name and optional description. The description helps you remember what connects the stories in this series.
 
 **2. Adding Stories to a Series**
-From the series dashboard, click "Create New Story". Stories created this way automatically belong to the series. You can also assign existing standalone stories to a series by editing the story's details.
+Series membership is always set from a story's own details, not from the Series page. When creating a new story, pick a series from the "Series" dropdown in the Create New Story dialog. To move an existing story into a series (or out of one), click the edit icon on its card in Stories and change the "Series" field there.
 
-**3. Accessing Series Lorebook**
-The series dashboard includes a Lorebook tab. Entries created at the series level are accessible to all stories in the series, perfect for recurring characters, shared locations, or universal world rules.
+**3. Setting Book Order**
+Once a story belongs to a series, it appears listed on that series' card (both the Series tab in the workspace sidebar and the standalone Series page) with a book number. Drag a story's grip handle up or down to reorder it — the numbers update immediately and persist. Stories that haven't been manually ordered yet sort by creation date. Each row also has a small pen icon that jumps straight into that story's Editor.
+
+**4. Accessing Series Lorebook**
+There's no separate series-level Lorebook screen — series-level entries just show up automatically inside every member story's own Lorebook tool, alongside that story's own entries, marked with a "Series" level badge. To put an entry at series level (so every book in the series can see it), open it in the Lorebook entry editor, expand "Advanced," and set Level to "Series."
 
 ### Series Lorebook Strategy
 
@@ -111,7 +114,7 @@ Alongside bold/italic/underline, the chapter editor's toolbar supports bulleted,
 "Download as EPUB (Kindle)" (Stories page or a chapter's download menu) produces a Kindle-ready EPUB, not just a generic ebook file:
 
 - **Front matter:** a title page (title + author) and a generated copyright line, followed by an auto-generated table of contents. The story synopsis is **not** included in the book body — it stays on the story record.
-- **Chapter titles:** uses your chapter's title if it has one, otherwise falls back to "Chapter {number}".
+- **Chapter titles:** uses your chapter's title if it has one, otherwise falls back to `Chapter {number}`.
 - **Scene breaks:** put an empty line, `***`, `* * *`, or `---` on its own line (or insert a horizontal rule from the toolbar) between scenes — it renders as a centered `* * *` break in the exported book, and the paragraph right after it won't get the usual first-line indent.
 - **Typography:** trade-style paragraph indent, minimal Kindle-native styling, no embedded fonts — your Kindle's own reading font is used.
 - **Before you export:** if something looks off (no chapters, everything empty, a missing title/author, or a very large embedded image), you'll see a dismissible warning — it's just a heads-up, never a hard block. Click "Export anyway" to continue.
