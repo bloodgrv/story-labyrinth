@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, MessageSquare, Paperclip, Plus, RefreshCcw, SlidersHorizontal, Inbox, Wand2 } from "lucide-react";
+import { AlertCircle, Inbox, Library, MessageSquare, Paperclip, Plus, RefreshCcw, SlidersHorizontal, Wand2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,6 +15,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useBrainstormChecklistQuery } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
+import { ContextSelector } from "@/features/brainstorm/components/ContextSelector";
+import { useContextSelection } from "@/features/brainstorm/hooks/useContextSelection";
+import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
 import { ChatInterface } from "@/features/chat/components/ChatInterface";
 import { ChatList } from "@/features/chat/components/ChatList";
@@ -27,6 +30,8 @@ import { useChatListCollapse } from "@/features/chat/hooks/useChatListCollapse";
 import { useChatProposalsQuery } from "@/features/chat/hooks/useCodexProposalsQuery";
 import { useChatsByStoryQuery, useCreateChatMutation } from "@/features/chat/hooks/useChatQuery";
 import type { ParsedLoreSuggestion } from "@/features/chat/services/parseLoreSuggestions";
+import { useHierarchicalLorebookQuery } from "@/features/lorebook/hooks/useLorebookQuery";
+import { getFilteredEntries as getFilteredLorebookEntries } from "@/features/lorebook/utils/lorebookFilters";
 import { OutlineImportCard } from "@/features/outline/components/OutlineImportCard";
 import { outlineImportKeys, useUploadOutlineImportMutation } from "@/features/outline/hooks/useOutlineImportQuery";
 import { useOutlineQuery } from "@/features/outline/hooks/useOutlineQuery";
@@ -101,6 +106,18 @@ export function OutlineChatRail({ storyId, collapsed, onCollapsedChange }: Outli
     // T10 CR7 — single source of truth for the Context & memory toggles, shared with ChatInterface
     // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
     const contextToggles = useChatContextToggles(selectedChat, "outline");
+    // Added on user request, mirroring WB's own "Story Context" rail panel (LorebookEntryEditor.tsx)
+    // — same single-source-of-truth pattern as contextToggles above, for the manual chapter/
+    // lorebook-entry picker (ContextSelector), so this rail's own panel and ChatInterface's
+    // generate() payload read the same state instead of two independent copies.
+    const contextSelection = useContextSelection();
+    const { data: chapters = [] } = useChaptersByStoryQuery(storyId);
+    const { data: lorebookEntries = [] } = useHierarchicalLorebookQuery(storyId);
+    const getFilteredEntries = () => getFilteredLorebookEntries(lorebookEntries, false);
+    const handleContextItemSelect = (itemId: string) => {
+        const item = getFilteredEntries().find(e => e.id === itemId);
+        if (item) contextSelection.addItem(item);
+    };
     // Mounted here (not just inside CodexProposalTray/ShuttleTray) so the "Approvals" icon's
     // pending-count badge stays live while its drawer — and those tray components — are unmounted.
     // Same pattern NotesChatRail.tsx's CR3 used; shares each tray's own query cache key.
@@ -265,6 +282,8 @@ export function OutlineChatRail({ storyId, collapsed, onCollapsedChange }: Outli
                                 onLoreSuggestions={suggestions => setLoreSuggestions(prev => [...prev, ...suggestions])}
                                 contextToggles={contextToggles}
                                 contextPanelMode="external"
+                                contextSelection={contextSelection}
+                                storyContextPanelMode="external"
                             />
                         </ErrorBoundary>
                     </div>
@@ -367,6 +386,49 @@ export function OutlineChatRail({ storyId, collapsed, onCollapsedChange }: Outli
                                               {contextToggles.armedLabels.join(" · ")}
                                           </Badge>
                                       ) : undefined
+                              },
+                              {
+                                  id: "story-context",
+                                  icon: Library,
+                                  label: "Story Context",
+                                  title: "Story Context",
+                                  content: (
+                                      <ContextSelector
+                                          includeFullContext={contextSelection.includeFullContext}
+                                          contextOpen={contextSelection.contextOpen}
+                                          selectedSummaries={contextSelection.selectedSummaries}
+                                          selectedItems={contextSelection.selectedItems}
+                                          selectedChapterContent={contextSelection.selectedChapterContent}
+                                          chapters={chapters}
+                                          lorebookEntries={lorebookEntries}
+                                          onToggleFullContext={contextSelection.toggleFullContext}
+                                          onToggleContextOpen={contextSelection.toggleContextOpen}
+                                          onToggleSummary={contextSelection.toggleSummary}
+                                          onItemSelect={handleContextItemSelect}
+                                          onRemoveItem={contextSelection.removeItem}
+                                          onChapterContentSelect={contextSelection.addChapterContent}
+                                          onRemoveChapterContent={contextSelection.removeChapterContent}
+                                          getFilteredEntries={getFilteredEntries}
+                                          hideHeader
+                                      />
+                                  ),
+                                  badge: contextSelection.includeFullContext ? (
+                                      <Badge variant="secondary" className="font-normal ml-2">
+                                          Full context
+                                      </Badge>
+                                  ) : (
+                                      (() => {
+                                          const count =
+                                              contextSelection.selectedSummaries.length +
+                                              contextSelection.selectedItems.length +
+                                              contextSelection.selectedChapterContent.length;
+                                          return count > 0 ? (
+                                              <Badge variant="secondary" className="font-normal ml-2">
+                                                  {count} items
+                                              </Badge>
+                                          ) : undefined;
+                                      })()
+                                  )
                               },
                               {
                                   id: "playbook",

@@ -137,10 +137,11 @@ interface ChatInterfaceProps {
     // contextPanelMode above, for the older, separate "Story Context" structured-context picker
     // (ContextSelector: Include Full Context / Chapter Summaries / Chapter Content / Lorebook
     // Entries — not part of the Context & memory toggle bucket CR4 migrated). WB's
-    // WorldBuildingChatPanel calls useContextSelection itself and passes the instance here so its
-    // own "Story Context" rail panel and this component's generate() payload read the same state
-    // instead of two independent copies. Absent for every other host (this selector has always
-    // been WB-only, see showContextSelector below).
+    // WorldBuildingChatPanel and Outline's OutlineChatRail each call useContextSelection
+    // themselves and pass the instance here so their own "Story Context" rail panel and this
+    // component's generate() payload read the same state instead of two independent copies.
+    // Absent for every other host (this selector is only offered where planning/drafting benefits
+    // from manually attaching specific chapters/entries — see showContextSelector below).
     contextSelection?: UseContextSelectionReturn;
     // "external" suppresses this component's own inline <ContextSelector> render entirely — the
     // host's rail panel renders it instead. Defaults to "inline" (unchanged behavior).
@@ -188,9 +189,12 @@ export function ChatInterface({
     // see chatContextService.ts and DECISIONS.md's chat-context notes.
     const isEditorChat = promptType === "editor";
     // Outline diverges from Editor on some axes (still shows the Notes/Memory toggles, still uses
-    // the Codex tray) but agrees on others (no manual context selector, no manual full-context
-    // toggles — both get an always-on structured context pack from chatContextService.ts instead).
-    // See docs/Chat_Panel_Integrations_Design.md §4 (P0.4 R5).
+    // the Codex tray) but agrees on others (no manual full-context toggles — both get an always-on
+    // structured context pack from chatContextService.ts instead). See
+    // docs/Chat_Panel_Integrations_Design.md §4 (P0.4 R5). Unlike Editor/Brainstorm/Research/Notes
+    // below, Outline *does* get the manual Story Context selector (chapters/lorebook entries to
+    // pull in verbatim while planning) — added on user request, OutlineChatRail.tsx's own
+    // "Story Context" rail panel, same external-render posture as WB's.
     const isOutlineChat = promptType === "outline";
     // Brainstorm agrees with Outline on "no manual context selector" (its own toggle switches
     // below replace it) but never uses the Codex tray — it has no Codex write path at all, only
@@ -206,7 +210,7 @@ export function ChatInterface({
     // replace it. Never uses the Codex tray — no Codex/outline/prose write path, only
     // note-proposal/note-split-proposal/promote (P0.4 K0-K5, docs/Chat_Panel_Integrations_Design.md §7).
     const isNotesChat = promptType === "notes";
-    const showContextSelector = !isEditorChat && !isOutlineChat && !isBrainstormChat && !isResearchChat && !isNotesChat;
+    const showContextSelector = !isEditorChat && !isBrainstormChat && !isResearchChat && !isNotesChat;
     const forceStructuredContextOff = isEditorChat || isOutlineChat || isBrainstormChat || isResearchChat || isNotesChat;
     const usesCodexTray = isEditorChat || promptType === "worldbuilding" || isOutlineChat;
 
