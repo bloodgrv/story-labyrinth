@@ -55,7 +55,7 @@ export const sidebarButtons: { id: DrawerType; icon: LucideIcon; label: string; 
     { id: "matchedTags", icon: Tags, label: "Tags", title: "Matched Tags" },
     { id: "chapterOutline", icon: BookOpen, label: "Outline", title: "Chapter Outline" },
     { id: "chapterPOV", icon: User, label: "POV", title: "Edit POV" },
-    { id: "chapterNotes", icon: StickyNote, label: "Notes", title: "Chapter Notes" },
+    { id: "chapterNotes", icon: StickyNote, label: "Scribble", title: "Scribble" },
     { id: "chapterBeats", icon: ListChecks, label: "Beats", title: "Concrete Beats" },
     { id: "ragScanner", icon: ScanSearch, label: "Scanner", title: "RAG Scanner" },
     { id: "chapterHistory", icon: History, label: "History", title: "Chapter History" }
