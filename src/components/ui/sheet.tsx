@@ -87,4 +87,6 @@ const SheetDescription = React.forwardRef<
 ));
 SheetDescription.displayName = SheetPrimitive.Description.displayName;
 
-export { Sheet, SheetContent, SheetHeader, SheetTitle };
+const SheetClose = SheetPrimitive.Close;
+
+export { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle };

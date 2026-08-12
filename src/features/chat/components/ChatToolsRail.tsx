@@ -1,28 +1,28 @@
 import { ChevronLeft, ChevronRight, type LucideIcon, MessagesSquare } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { SimpleSheet } from "@/components/SimpleSheet";
 import { cn } from "@/lib/utils";
 
-// One entry in the rail's icon column that opens a modal drawer (Approvals/Context/Playbook —
-// Axis 3 of docs/Chat_Chrome_Declutter_Design.md). The "Chats" bucket (Axis 2) is deliberately
-// NOT one of these — it's handled by the separate chats* props below, mirroring
-// EditorToolsPanel.tsx's own split between its mapped sidebarButtons (modal SimpleDrawer) and its
-// hand-written, non-modal "Chats" button.
+// One entry in the rail's icon column that opens a modal right-side Sheet (Approvals/Context/
+// Playbook — Axis 3 of docs/Chat_Chrome_Declutter_Design.md, originally bottom drawers to match
+// Editor's own; both switched to Sheets 2026-08-12 per explicit user preference). The "Chats"
+// bucket (Axis 2) is deliberately NOT one of these — it's handled by the separate chats* props
+// below, mirroring EditorToolsPanel.tsx's own split between its mapped sidebarButtons (modal
+// SimpleSheet) and its hand-written, non-modal "Chats" button.
 export interface ChatToolsRailPanel {
     id: string;
     icon: LucideIcon;
     label: string;
     title: string;
     description?: ReactNode;
-    // Rendered inside this panel's drawer body while it's the open one. Omit and supply `onClick`
-    // instead for a plain shortcut button (e.g. Lorebook's "Scribble" — opens its own right-side
-    // Sheet elsewhere, not this rail's shared bottom Drawer) that just needs to sit in the icon
-    // column looking like every other rail button, without joining the single-open-panel/Drawer
-    // system at all.
+    // Rendered inside this panel's shared Sheet body while it's the open one. Omit and supply
+    // `onClick` instead for a plain shortcut button (e.g. Lorebook's "Scribble" — opens its own,
+    // separate right-side Sheet elsewhere) that just needs to sit in the icon column looking like
+    // every other rail button, without joining this rail's single-open-panel Sheet at all.
     content?: ReactNode;
-    // Escape hatch: fires instead of the normal onTogglePanel(id) drawer-toggle when present. Such
-    // a panel's `id` never ends up in openPanelId (nothing calls onTogglePanel for it), so it never
+    // Escape hatch: fires instead of the normal onTogglePanel(id) toggle when present. Such a
+    // panel's `id` never ends up in openPanelId (nothing calls onTogglePanel for it), so it never
     // matches openPanel below and `content` is never required.
     onClick?: () => void;
     // Small chip/count rendered on the closed rail icon — pending-count badge for Approvals,
@@ -61,9 +61,9 @@ interface ChatToolsRailProps {
     hostExtras?: ReactNode;
 }
 
-// Shared icon-rail + single-open-modal-drawer shell for the five non-Editor chat hosts
+// Shared icon-rail + single-open-modal-Sheet shell for the five non-Editor chat hosts
 // (World-Building, Outline, Notes, Research, Brainstorm) — generalizes EditorToolsPanel.tsx's own
-// two-mechanism pattern (icon rail + SimpleDrawer, plus one non-modal Chats toggle) so each host
+// two-mechanism pattern (icon rail + SimpleSheet, plus one non-modal Chats toggle) so each host
 // stops hand-rolling its own always-visible chrome. See docs/Chat_Chrome_Declutter_Design.md
 // (T10) — this is CR0: the shell is built and typed here but not yet imported by any host. CR1+
 // wires it in one host at a time (rollout order per Axis 6: Notes -> Outline -> Brainstorm ->
@@ -132,20 +132,9 @@ export function ChatToolsRail({
             </aside>
 
             {openPanel && (
-                <Drawer open onOpenChange={open => !open && onClosePanel()}>
-                    <DrawerContent className="max-h-[80vh]">
-                        <DrawerHeader>
-                            <DrawerTitle>{openPanel.title}</DrawerTitle>
-                            {openPanel.description && <DrawerDescription>{openPanel.description}</DrawerDescription>}
-                        </DrawerHeader>
-                        <div className="px-4 overflow-y-auto max-h-[60vh]">{openPanel.content}</div>
-                        <DrawerFooter>
-                            <DrawerClose asChild>
-                                <Button variant="outline">Close</Button>
-                            </DrawerClose>
-                        </DrawerFooter>
-                    </DrawerContent>
-                </Drawer>
+                <SimpleSheet open onClose={onClosePanel} title={openPanel.title} description={openPanel.description}>
+                    {openPanel.content}
+                </SimpleSheet>
             )}
         </>
     );
