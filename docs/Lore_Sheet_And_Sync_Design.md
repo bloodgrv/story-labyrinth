@@ -1,10 +1,10 @@
 # Lore Sheet + Sync Loop (T5) — Design
 
 **Project:** Story Labyrinth  
-**Status:** **Design locked 2026-08-08** (grill) — **not started**  
-**Priority:** **P3** until promoted  
+**Status:** ✅ **Shipped in full 2026-08-09** (FS0–FS8) — design locked 2026-08-08  
+**Priority:** **P3 done** (do not re-plan as unstarted)  
 **Talk list:** **T5**  
-**Slices:** **FS0–FS8**  
+**Slices:** **FS0–FS8** — all ✅  
 **Audience:** Claude Code (implementation) + Hermes (architecture)  
 **Related:** Natural View (retired by this design), `documentImportService.ts`, Codex propose/tray, place sheet L0–L5, `docs/Maps_V2_Sketch_Design.md`, `docs/Story_Timeline_Design.md`, `docs/Notes_Org_Browse_Design.md`, `docs/Chat_Panel_Integrations_Design.md`, `docs/CURRENT_BACKLOG.md`
 
@@ -182,36 +182,38 @@ Update `buildLorebookEntryText` in `ragIndexService.ts` accordingly; reindex on 
 
 | ID | Work | Depends |
 |----|------|---------|
-| **FS0** | Schema: `sheetBody` text nullable (+ optional `sheetSyncedAt` / dirty flag if implementer wants cheap dirty UX); Drizzle types; API CRUD pass-through | — |
-| **FS1** | Category templates; sheet editor (outline + insert); default sheet-first UI; retire Natural View; seed on create + lazy open hook | FS0 |
-| **FS2** | Deterministic reverse compile; optional Improve-sheet AI | FS1 |
-| **FS3** | `sheet_sync` hybrid parse → Codex tray proposals; description A3 narrative compile; conflict merge rules | FS0–FS1 |
-| **FS4** | `sheet-proposal` fence; WB skeleton inject; Accept & Sync chain | FS3 |
-| **FS6** | RAG C1 + placeState de-dupe in `buildLorebookEntryText`; reindex hooks | FS0, FS3 |
-| **FS5** | Cross-desk: map layout-brief pending card; timeline pending pins; note link pointer + stub offer | FS3 |
-| **FS7** | Document import writes sheetBody + structured | FS1, FS3 |
-| **FS8** | Diff UX, empty states, soft notices, template polish | FS3–FS5 |
+| **FS0** | ✅ Schema: `sheetBody` text nullable (+ optional `sheetSyncedAt` / dirty flag if implementer wants cheap dirty UX); Drizzle types; API CRUD pass-through | — |
+| **FS1** | ✅ Category templates; sheet editor (outline + insert); default sheet-first UI; retire Natural View; seed on create + lazy open hook | FS0 |
+| **FS2** | ✅ Deterministic reverse compile; optional Improve-sheet AI | FS1 |
+| **FS3** | ✅ `sheet_sync` hybrid parse → Codex tray proposals; description A3 narrative compile; conflict merge rules | FS0–FS1 |
+| **FS4** | ✅ `sheet-proposal` fence; WB skeleton inject; Accept & Sync chain | FS3 |
+| **FS6** | ✅ RAG C1 + placeState de-dupe in `buildLorebookEntryText`; reindex hooks | FS0, FS3 |
+| **FS5** | ✅ Cross-desk: map layout-brief pending card; timeline pending pins; note link pointer + stub offer | FS3 |
+| **FS7** | ✅ Document import writes sheetBody + structured | FS1, FS3 |
+| **FS8** | ✅ Diff UX, empty states, soft notices, template polish | FS3–FS5 |
 
-**Recommended build order:** FS0 → FS1 → FS2 → FS3 → FS4 → FS6 → FS5 → FS7 → FS8.
+**Build order (completed):** FS0 → FS1 → FS2 → FS3 → FS4 → FS6 → FS5 → FS7 → FS8.
 
 ---
 
-## 11. Acceptance criteria (when promoted)
+## 11. Acceptance criteria
 
-- [ ] Every category can create/edit a Lore Sheet with seeded headings  
-- [ ] Natural View is gone; no regression on tags/level/Codex history in Advanced  
-- [ ] Sync never silent-writes Codex/description; tray Accept required  
-- [ ] Character Maisy-shaped sections map correctly to Codex + narrative description  
-- [ ] Location Sync updates placeState; Place Codex when tracking; map card does not mutate scene without Accept  
-- [ ] Event/timeline Sync can create **pending** pins only  
-- [ ] Note category can link to Notes desk without cloning body  
-- [ ] RAG uses sheetBody path when present; anchored WB sees sheet  
-- [ ] Lazy migration produces a non-empty sheet from an old description+Codex entry  
-- [ ] Document import lands a sheet + structured draft  
+- [x] Every category can create/edit a Lore Sheet with seeded headings  
+- [x] Natural View is gone; no regression on tags/level/Codex history in Advanced  
+- [x] Sync never silent-writes Codex/description; tray Accept required  
+- [x] Character Maisy-shaped sections map correctly to Codex + narrative description  
+- [x] Location Sync updates placeState; Place Codex when tracking; map card does not mutate scene without Accept  
+- [x] Event/timeline Sync can create **pending** pins only  
+- [x] Note category can link to Notes desk without cloning body  
+- [x] RAG uses sheetBody path when present; anchored WB sees sheet  
+- [x] Lazy migration produces a non-empty sheet from an old description+Codex entry  
+- [x] Document import lands a sheet + structured draft  
 
 ---
 
 ## 12. Document history
 
 - **2026-08-06** — T5 parked on talk list / backlog (freeform sheets + write-back; maps split to Maps v2).  
-- **2026-08-08** — Full grill locked (Axes 1–10). This doc created. P3 FS0–FS8. Not started until promote.
+- **2026-08-08** — Full grill locked (Axes 1–10). This doc created. P3 FS0–FS8. Not started until promote.  
+- **2026-08-09** — User-promoted and **shipped FS0–FS8 in full** (see `DECISIONS.md` Lore Sheet entries).  
+- **2026-08-10** — Doc/talk-list/backlog header hygiene: status → shipped (locks unchanged).
