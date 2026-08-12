@@ -31,6 +31,9 @@ interface LorebookBrowsePanelProps {
     isImportingDocument: boolean;
     onOpenEntry: (entry: LorebookEntry) => void;
     onNewEntry: () => void;
+    // Full, unfiltered-by-category entry list for this scope — threaded down to
+    // LorebookEntryList's "All categories" search toggle. See its own prop comment.
+    allEntries?: LorebookEntry[];
     // Folders (B9, docs/Folders_Org_Design.md) — scope undefined (no story/series id) means the
     // sidebar simply doesn't render (global entries have no folder tree).
     folderProps: {
@@ -60,7 +63,8 @@ export function LorebookBrowsePanel({
     isImportingDocument,
     onOpenEntry,
     onNewEntry,
-    folderProps
+    folderProps,
+    allEntries
 }: LorebookBrowsePanelProps) {
     const updateLorebookMutation = useUpdateLorebookMutation();
     // DraggableLeaf spreads pointer listeners across the whole card/row (no dedicated drag
@@ -221,6 +225,7 @@ export function LorebookBrowsePanel({
                                         showLevel={true}
                                         onOpenEntry={onOpenEntry}
                                         folders={folderProps.folders}
+                                        crossCategoryEntries={allEntries}
                                     />
                                 ) : (
                                     <div className="text-center text-muted-foreground py-12">No {selectedCategory} entries yet</div>

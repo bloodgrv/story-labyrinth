@@ -17,10 +17,15 @@ interface LorebookEntryRowProps {
     onDelete: () => void;
     // Folder path crumb (B9, docs/Folders_Org_Design.md) — e.g. ["Cast", "Antagonists"].
     folderPath?: string[];
+    // Cross-category search results (LorebookEntryList's "All categories" toggle) lose the
+    // implicit category context a single category tab normally provides — show a category badge
+    // in that case only, so the row view stays uncluttered everywhere else.
+    showCategory?: boolean;
 }
 
 // Compact list row for Lorebook Browse's "List" density mode — see docs/Lorebook_Browse_Density_Design.md.
-// Thumb · name · level badge · importance · up to 3 tag chips. No category chip, no description.
+// Thumb · name · level badge · importance · up to 3 tag chips. No category chip (unless
+// showCategory), no description.
 export function LorebookEntryRow({
     entry,
     showLevel,
@@ -28,7 +33,8 @@ export function LorebookEntryRow({
     onOpen,
     onToggleDisabled,
     onDelete,
-    folderPath
+    folderPath,
+    showCategory
 }: LorebookEntryRowProps) {
     const visibleTags = entry.tags?.slice(0, MAX_VISIBLE_TAGS) ?? [];
     const hiddenTagCount = (entry.tags?.length ?? 0) - visibleTags.length;
@@ -54,6 +60,11 @@ export function LorebookEntryRow({
                 />
             )}
             {showLevel && <LevelBadge level={entry.level} />}
+            {showCategory && (
+                <Badge variant="outline" className="shrink-0 text-xs capitalize">
+                    {entry.category}
+                </Badge>
+            )}
             <span className="truncate font-medium text-sm">{entry.name}</span>
             {folderPath && folderPath.length > 0 && (
                 <span className="hidden shrink-0 truncate text-xs text-muted-foreground/70 sm:inline max-w-[140px]">

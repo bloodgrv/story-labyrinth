@@ -693,3 +693,19 @@
         padding-right: env(safe-area-inset-right, 0);
     }
 }
+
+/* Brief landing cue after GuideSearch scrolls to a matched heading */
+@keyframes guide-search-flash {
+    0%,
+    100% {
+        background-color: transparent;
+    }
+    25%,
+    75% {
+        background-color: hsl(var(--primary) / 0.15);
+    }
+}
+.guide-search-highlight {
+    animation: guide-search-flash 1.5s ease-in-out;
+    border-radius: 0.25rem;
+}

@@ -38,11 +38,17 @@ interface LorebookEntryListProps {
     // callers that don't use folders, in which case entries just render without a crumb or drag
     // handle, unchanged from pre-B9 behavior.
     folders?: OrgFolder[];
+    // Full, unfiltered-by-category entry list for this scope (LorebookPage's own `entries`, before
+    // its category filter) — when provided, an "All categories" toggle appears next to the search
+    // box so a large lorebook can be searched without first guessing which category tab an entry
+    // is in. Omitted entirely by callers that don't have that superset handy, in which case the
+    // toggle just doesn't render (unchanged pre-existing behavior).
+    crossCategoryEntries?: LorebookEntry[];
 }
 
 type SortOption = "name" | "category" | "importance" | "created";
 
-const lorebookMatchesSearch = (entry: LorebookEntry, term: string) =>
+export const lorebookMatchesSearch = (entry: LorebookEntry, term: string) =>
     [entry.name, entry.description, ...(entry.tags || [])].some(field => field?.toLowerCase().includes(term));
 
 export function LorebookEntryList({
@@ -51,19 +57,26 @@ export function LorebookEntryList({
     showLevel = false,
     editableFilter,
     onOpenEntry,
-    folders
+    folders,
+    crossCategoryEntries
 }: LorebookEntryListProps) {
     const deleteMutation = useDeleteLorebookMutation();
     const updateMutation = useUpdateLorebookMutation();
     const [sortBy, setSortBy] = useState<SortOption>("name");
     const [deletingEntry, setDeletingEntry] = useState<LorebookEntry | null>(null);
     const [showDisabled, setShowDisabled] = useState(false);
+    const [searchAllCategories, setSearchAllCategories] = useState(false);
     const [view, setView] = useLorebookBrowseView(allEntries.length);
 
     const visibleEntries = useMemo(
         () => allEntries.filter(entry => showDisabled || !entry.isDisabled),
         [allEntries, showDisabled]
     );
+
+    const searchScopeEntries = useMemo(() => {
+        if (!searchAllCategories || !crossCategoryEntries) return visibleEntries;
+        return crossCategoryEntries.filter(entry => showDisabled || !entry.isDisabled);
+    }, [searchAllCategories, crossCategoryEntries, visibleEntries, showDisabled]);
 
     const sortEntries = (entries: LorebookEntry[]) =>
         [...entries].sort((a, b) => {
@@ -103,7 +116,7 @@ export function LorebookEntryList({
     };
 
     return (
-        <SearchFilter items={visibleEntries} predicate={lorebookMatchesSearch} placeholder="Search entries...">
+        <SearchFilter items={searchScopeEntries} predicate={lorebookMatchesSearch} placeholder="Search entries...">
             {({ filteredItems, searchInput }) => {
                 const sortedEntries = sortEntries(filteredItems);
                 return (
@@ -111,6 +124,18 @@ export function LorebookEntryList({
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             {searchInput}
                             <div className="flex gap-2 items-center">
+                                {crossCategoryEntries && (
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="search-all-categories"
+                                            checked={searchAllCategories}
+                                            onCheckedChange={setSearchAllCategories}
+                                        />
+                                        <Label htmlFor="search-all-categories" className="font-medium">
+                                            All categories
+                                        </Label>
+                                    </div>
+                                )}
                                 <div className="flex items-center space-x-2">
                                     <Switch
                                         id="show-disabled"
@@ -177,6 +202,7 @@ export function LorebookEntryList({
                                                 onToggleDisabled={() => toggleDisabled(entry)}
                                                 onDelete={() => setDeletingEntry(entry)}
                                                 folderPath={folders ? getFolderPath(folders, entry.folderId) : undefined}
+                                                showCategory={searchAllCategories}
                                             />
                                         </DraggableLeaf>
                                     );

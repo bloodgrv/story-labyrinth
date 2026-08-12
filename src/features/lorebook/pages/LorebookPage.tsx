@@ -288,6 +288,7 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                     onCategoryChange={handleCategoryChange}
                     categoryCounts={categoryCounts}
                     entriesByCategory={entriesByCategory}
+                    allEntries={entries}
                     isLoading={isLoading}
                     onRefresh={() => void refetchEntries()}
                     isRefreshing={isRefreshing}

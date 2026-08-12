@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GuideSearch } from "./GuideSearch";
 import { GuideProvider, mdxComponents } from "./mdx";
 import AdvancedGuide from "../content/advanced.mdx";
 import BasicsGuide from "../content/basics.mdx";
@@ -25,6 +26,7 @@ export function GuideTabs() {
 
     return (
         <Tabs defaultValue="basics" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <GuideSearch onSelectTopic={setActiveTab} />
             <TabsList className="flex flex-wrap h-auto justify-start gap-1 mb-8">
                 <TabsTrigger value="basics">Basics Guide</TabsTrigger>
                 <TabsTrigger value="settings-nav">Settings & Navigation</TabsTrigger>
