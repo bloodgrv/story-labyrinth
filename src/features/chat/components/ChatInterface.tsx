@@ -742,6 +742,22 @@ export function ChatInterface({
         onOutlineProposals: (messageId, proposals) => {
             if (!storyId) return;
             const rest: NonCreateOutlineProposal[] = [];
+            // Sequential per-parent order counters, seeded from the current outline (siblingCount +
+            // 1, matching OutlinePage.tsx's manual "Add Chapter" convention) and bumped for each
+            // create so multiple siblings proposed in the same reply don't collide. A raw
+            // `Date.now()` here previously leaked into the UI as the displayed chapter/scene number
+            // (e.g. "1786572555602. The Drop" — OutlineChapterCard.tsx/OutlineSceneRow.tsx render
+            // `{item.order}. {item.title}`), since `order` is a real display position, not just a
+            // sort key.
+            const nextOrderByParent = new Map<string, number>();
+            const nextOrder = (parentId: string | null): number => {
+                const key = parentId ?? "";
+                const current =
+                    nextOrderByParent.get(key) ??
+                    outlineItemsForLookup.filter(item => (item.parentId ?? null) === parentId).length + 1;
+                nextOrderByParent.set(key, current + 1);
+                return current;
+            };
             for (const proposal of proposals) {
                 if (proposal.type === "create") {
                     // Same "persist immediately as a row" convention the retired bulk-Generate
@@ -749,9 +765,7 @@ export function ChatInterface({
                     // the existing "AI Suggested" badge + Accept/Reject controls
                     // (OutlineChapterCard.tsx/OutlineSceneRow.tsx). When autoAcceptOutline is on,
                     // land it "confirmed" directly instead — same end state as an instant manual
-                    // accept, skipping the badge entirely (P0.4 R6). `order: Date.now()` keeps
-                    // successive AI creates in the order the model proposed them, appended after
-                    // any existing items; the user can drag-reorder freely after accepting.
+                    // accept, skipping the badge entirely (P0.4 R6).
                     createOutlineItemMutation.mutate({
                         storyId,
                         parentId: proposal.parentId,
@@ -759,7 +773,7 @@ export function ChatInterface({
                         title: proposal.title,
                         summary: proposal.summary,
                         wordCountTarget: proposal.wordCountTarget,
-                        order: Date.now(),
+                        order: nextOrder(proposal.parentId),
                         source: "ai_suggested",
                         status: toggles.autoAcceptOutline ? "confirmed" : "pending",
                         chapterId: null
