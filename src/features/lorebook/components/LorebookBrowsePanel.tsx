@@ -1,4 +1,5 @@
-import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Download, Loader2, Plus, RefreshCw, Upload } from "lucide-react";
 import type { ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LorebookFolderSidebar } from "@/features/folders/components/LorebookFolderSidebar";
+import { useReorderFoldersMutation } from "@/features/folders/hooks/useFoldersQuery";
 import type { OrgFolder } from "@/types/folders";
 import type { LorebookEntry } from "@/types/story";
 import { useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
@@ -67,23 +69,67 @@ export function LorebookBrowsePanel({
     allEntries
 }: LorebookBrowsePanelProps) {
     const updateLorebookMutation = useUpdateLorebookMutation();
+    const reorderFoldersMutation = useReorderFoldersMutation();
     // DraggableLeaf spreads pointer listeners across the whole card/row (no dedicated drag
     // handle), so the default zero-distance PointerSensor treats the sub-pixel movement in an
     // ordinary click as a drag start and swallows the click before LorebookEntryCard/Row's
-    // onClick ever fires. A small activation distance lets real clicks through.
-    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: POINTER_ACTIVATION_CONSTRAINT }));
+    // onClick ever fires. A small activation distance lets real clicks through. KeyboardSensor
+    // is for the folder-reorder SortableContexts (LorebookFolderTreeRow/Sidebar) — DraggableLeaf
+    // itself has no keyboard equivalent, unaffected.
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: POINTER_ACTIVATION_CONSTRAINT }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
 
     // Drag an entry (LorebookEntryList's DraggableLeaf) onto a folder row or "Unfiled" (both
     // FolderDropZone in LorebookFolderSidebar) to file it — folder-onto-folder reparenting goes
     // through the "Move to…" dialog instead (B9 plan decision #7), so this only ever sees
     // lorebook-entry drags landing on a lorebook-folder target.
+    //
+    // Folder-onto-folder SAME-PARENT drags (LorebookFolderTreeRow's own useSortable, "sort:" id
+    // namespace) reorder siblings — cross-parent drops are deliberately ignored here too (same
+    // B9 plan decision #7 reasoning above), so this never reparents, only reorders.
+    //
+    // A folder row registers TWO overlapping droppable targets on the same physical element:
+    // FolderDropZone ("lorebook-folder", for entry-filing) and the row's own useSortable
+    // ("lorebook-folder-sort", for reordering). dnd-kit's default collision detection can resolve
+    // `over` to EITHER one regardless of which gesture is actually in progress (verified live —
+    // a folder-sort drag consistently resolved `over` to the FolderDropZone registration, not the
+    // sortable one), so both branches below normalize `over` to "which folder row" first, rather
+    // than trusting its exact type to match the active drag's own type.
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (!over) return;
-        const activeData = active.data.current as { type?: string; leafId?: string } | undefined;
-        const overData = over.data.current as { type?: string; targetFolderId?: string | null } | undefined;
-        if (activeData?.type !== "lorebook-entry" || overData?.type !== "lorebook-folder") return;
-        updateLorebookMutation.mutate({ id: activeData.leafId as string, data: { folderId: overData.targetFolderId ?? null } });
+        const activeData = active.data.current as
+            | { type?: string; leafId?: string; folderId?: string; parentId?: string | null }
+            | undefined;
+        const overData = over.data.current as
+            | { type?: string; targetFolderId?: string | null; folderId?: string; parentId?: string | null }
+            | undefined;
+
+        const overFolderId: string | null | undefined =
+            overData?.type === "lorebook-folder" ? overData.targetFolderId
+            : overData?.type === "lorebook-folder-sort" ? overData.folderId
+            : undefined;
+
+        if (activeData?.type === "lorebook-entry" && overFolderId !== undefined) {
+            updateLorebookMutation.mutate({ id: activeData.leafId as string, data: { folderId: overFolderId ?? null } });
+            return;
+        }
+
+        if (activeData?.type === "lorebook-folder-sort" && overFolderId) {
+            if (activeData.folderId === overFolderId) return;
+            const overFolder = folderProps.folders.find(f => f.id === overFolderId);
+            if (!overFolder || overFolder.parentId !== activeData.parentId) return;
+            const siblings = folderProps.folders
+                .filter(f => f.parentId === activeData.parentId)
+                .sort((a, b) => a.order - b.order);
+            const oldIndex = siblings.findIndex(f => f.id === activeData.folderId);
+            const newIndex = siblings.findIndex(f => f.id === overFolderId);
+            if (oldIndex === -1 || newIndex === -1) return;
+            const reordered = arrayMove(siblings, oldIndex, newIndex);
+            reorderFoldersMutation.mutate(reordered.map((f, index) => ({ id: f.id, order: index })));
+        }
     };
 
     return (

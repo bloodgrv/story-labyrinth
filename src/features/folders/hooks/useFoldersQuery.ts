@@ -46,6 +46,19 @@ export const useMoveFolderMutation = () => {
     });
 };
 
+// Bulk sibling reorder (drag-to-reorder, LorebookBrowsePanel.tsx's handleDragEnd) — same-parent
+// only, mirrors useReorderOutlineMutation's shape. Reparenting a folder to a different parent
+// stays on useMoveFolderMutation/"Move to…" — see docs/Folders_Org_Design.md's own decision to
+// keep reorder and reparent as separate gestures (OutlineTree.tsx precedent).
+export const useReorderFoldersMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (updates: Array<{ id: string; order: number }>) => foldersApi.reorder(updates),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: folderKeys.all }),
+        onError: (error: Error) => toast.error(error.message || "Failed to reorder folders")
+    });
+};
+
 export const useDeleteFolderMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({

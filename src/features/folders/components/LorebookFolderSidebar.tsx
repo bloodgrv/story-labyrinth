@@ -1,3 +1,4 @@
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { FolderPlus } from "lucide-react";
 import { useState } from "react";
 import {
@@ -96,19 +97,21 @@ export function LorebookFolderSidebar({
             </FolderDropZone>
 
             <div className="mt-1">
-                {tree.map(node => (
-                    <LorebookFolderTreeRow
-                        key={node.id}
-                        node={node}
-                        depth={0}
-                        selectedFolderId={selectedFolderId}
-                        onSelect={onSelectFolder}
-                        onNewSubfolder={parentId => setCreatingUnder(parentId)}
-                        onRename={setRenamingId}
-                        onMoveTo={setMovingId}
-                        onDelete={setDeletingId}
-                    />
-                ))}
+                <SortableContext items={tree.map(node => `sort:${node.id}`)} strategy={verticalListSortingStrategy}>
+                    {tree.map(node => (
+                        <LorebookFolderTreeRow
+                            key={node.id}
+                            node={node}
+                            depth={0}
+                            selectedFolderId={selectedFolderId}
+                            onSelect={onSelectFolder}
+                            onNewSubfolder={parentId => setCreatingUnder(parentId)}
+                            onRename={setRenamingId}
+                            onMoveTo={setMovingId}
+                            onDelete={setDeletingId}
+                        />
+                    ))}
+                </SortableContext>
             </div>
 
             {selectedFolderId && (
