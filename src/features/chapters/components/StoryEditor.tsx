@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useWorkspace } from "@/components/workspace/context/WorkspaceContext";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useBrainstormChecklistQuery } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
 import { ChapterVersionsPanel } from "@/features/chapter-versions/components/ChapterVersionsPanel";
 import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { EditorChatRail } from "@/features/chat/components/EditorChatRail";
+import { useChatContextToggles } from "@/features/chat/hooks/useChatContextToggles";
+import { useChatProposalsQuery } from "@/features/chat/hooks/useCodexProposalsQuery";
 import { EditorMultiView } from "@/features/editor-multiview/components/EditorMultiView";
 import { FocusSessionHud } from "@/features/focus-session/components/FocusSessionHud";
 import { useFocusSession } from "@/features/focus-session/context/FocusSessionContext";
@@ -12,6 +15,7 @@ import { useFocusSessionShortcut } from "@/features/focus-session/hooks/useFocus
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { cn } from "@/lib/utils";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
+import type { AIChat } from "@/types/story";
 import { type DrawerType, EditorToolsPanel } from "./EditorToolsPanel";
 
 export function StoryEditor() {
@@ -20,6 +24,14 @@ export function StoryEditor() {
     // — starts collapsed so the Editor Chats list/tray (fixed-width) isn't fighting the chat
     // interface's own minimum width for room in the same narrow rail by default.
     const [chatRailCollapsed, setChatRailCollapsed] = useState(true);
+    // Lifted here (rather than inside EditorChatRail) so the sibling EditorToolsPanel can show
+    // Approvals/Context & memory as its own rail Sheets, matching the other 5 chat hosts' own
+    // ChatToolsRail treatment — both siblings need the same selectedChat/contextToggles instance.
+    const [selectedEditorChat, setSelectedEditorChat] = useState<AIChat | null>(null);
+    const [editorComposerSeedText, setEditorComposerSeedText] = useState<string | null>(null);
+    const editorContextToggles = useChatContextToggles(selectedEditorChat, "editor");
+    const { data: pendingEditorCodexProposals = [] } = useChatProposalsQuery(selectedEditorChat?.id, "pending");
+    const { data: activeEditorShuttleItems = [] } = useBrainstormChecklistQuery(selectedEditorChat?.id, "active");
     const { currentChapterId, currentStoryId } = useStoryContext();
     const { data: currentChapter } = useChapterQuery(currentChapterId || "");
     const { rightSidebar, toggleRightSidebar, isMaximised } = useWorkspace();
@@ -75,6 +87,10 @@ export function StoryEditor() {
                             storyId={currentStoryId}
                             anchorChapterId={currentChapterId ?? undefined}
                             collapsed={chatRailCollapsed}
+                            selectedChat={selectedEditorChat}
+                            onChatUpdate={setSelectedEditorChat}
+                            contextToggles={editorContextToggles}
+                            composerSeedText={editorComposerSeedText}
                         />
                     </ResizablePanel>
                 </ResizablePanelGroup>
@@ -103,6 +119,10 @@ export function StoryEditor() {
                     onToggleCollapsed={toggleRightSidebar}
                     chatRailCollapsed={chatRailCollapsed}
                     onToggleChatRail={() => setChatRailCollapsed(v => !v)}
+                    selectedEditorChat={selectedEditorChat}
+                    contextToggles={editorContextToggles}
+                    approvalsCount={pendingEditorCodexProposals.length + activeEditorShuttleItems.length}
+                    onAnswerHere={setEditorComposerSeedText}
                 />
             )}
         </div>

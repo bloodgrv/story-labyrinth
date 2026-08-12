@@ -3,15 +3,18 @@ import {
     ChevronLeft,
     ChevronRight,
     History,
+    Inbox,
     ListChecks,
     type LucideIcon,
     Menu,
     MessagesSquare,
     ScanSearch,
+    SlidersHorizontal,
     StickyNote,
     Tags,
     User
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { DownloadMenu } from "@/components/ui/DownloadMenu";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,9 +31,13 @@ import { ChapterPOVEditor } from "@/features/chapters/components/ChapterPOVEdito
 import { ConcreteBeatsPanel } from "@/features/chapters/components/ConcreteBeatsPanel";
 import { MatchedTagEntries } from "@/features/chapters/components/MatchedTagEntries";
 import { ChapterHistoryDrawer } from "@/features/chapter-history/components/ChapterHistoryDrawer";
+import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
+import { CodexProposalTray } from "@/features/chat/components/CodexProposalTray";
+import { ShuttleTray } from "@/features/chat/components/ShuttleTray";
+import type { ChatContextToggles } from "@/features/chat/hooks/useChatContextToggles";
 import { ChapterScannerDrawer } from "@/features/rag-scanner/components/ChapterScannerDrawer";
 import { cn } from "@/lib/utils";
-import type { Chapter } from "@/types/story";
+import type { AIChat, Chapter } from "@/types/story";
 
 export type DrawerType =
     | "matchedTags"
@@ -40,6 +47,8 @@ export type DrawerType =
     | "chapterBeats"
     | "ragScanner"
     | "chapterHistory"
+    | "approvals"
+    | "context"
     | null;
 
 export const sidebarButtons: { id: DrawerType; icon: LucideIcon; label: string; title: string }[] = [
@@ -49,7 +58,13 @@ export const sidebarButtons: { id: DrawerType; icon: LucideIcon; label: string; 
     { id: "chapterNotes", icon: StickyNote, label: "Scribble", title: "Scribble" },
     { id: "chapterBeats", icon: ListChecks, label: "Beats", title: "Concrete Beats" },
     { id: "ragScanner", icon: ScanSearch, label: "Scanner", title: "RAG Scanner" },
-    { id: "chapterHistory", icon: History, label: "History", title: "Chapter History" }
+    { id: "chapterHistory", icon: History, label: "History", title: "Chapter History" },
+    // Editor's own chat's Approvals (Codex+Shuttle trays) and Context & memory — mirrors the
+    // Approvals/Context buckets ChatToolsRail already gives WB/Outline/Notes/Research/Brainstorm.
+    // Only shown once a chat is selected (filtered in the render loop below, not here) since both
+    // need selectedEditorChat/contextToggles that StoryEditor.tsx lifts from EditorChatRail.
+    { id: "approvals", icon: Inbox, label: "Approvals", title: "Approvals" },
+    { id: "context", icon: SlidersHorizontal, label: "Context", title: "Context & memory" }
 ];
 
 interface EditorToolsPanelProps {
@@ -66,6 +81,14 @@ interface EditorToolsPanelProps {
     // since both fighting for width at once is what was clipping the chat list's text/tabs.
     chatRailCollapsed: boolean;
     onToggleChatRail: () => void;
+    // Approvals/Context & memory for Editor's own chat — lifted up to StoryEditor.tsx (the shared
+    // parent of this panel and EditorChatRail) since both siblings need the same
+    // selectedChat/contextToggles instance. Null selectedEditorChat hides both buttons entirely,
+    // same as the other 5 hosts' panels only existing once a chat is selected.
+    selectedEditorChat: AIChat | null;
+    contextToggles: ChatContextToggles;
+    approvalsCount: number;
+    onAnswerHere: (text: string) => void;
 }
 
 // The right-rail tool sidebar (Tags/Outline/POV/Notes/Beats) plus its drawers/sheet, and the
@@ -84,8 +107,37 @@ export function EditorToolsPanel({
     collapsed,
     onToggleCollapsed,
     chatRailCollapsed,
-    onToggleChatRail
+    onToggleChatRail,
+    selectedEditorChat,
+    contextToggles,
+    approvalsCount,
+    onAnswerHere
 }: EditorToolsPanelProps) {
+    // Approvals/Context depend on a selected chat existing at all — filtered out here (not from
+    // the static sidebarButtons array, shared with the mobile menu below) rather than shown
+    // disabled, same posture the other 5 hosts' panels array already uses.
+    const visibleSidebarButtons = sidebarButtons.filter(
+        b => (b.id === "approvals" || b.id === "context" ? !!selectedEditorChat : true)
+    );
+    const approvalsBadge =
+        approvalsCount > 0 ? (
+            <Badge variant="secondary" className="font-normal ml-2">
+                {approvalsCount} pending
+            </Badge>
+        ) : undefined;
+    const approvalsCompactBadge =
+        approvalsCount > 0 ? (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                {approvalsCount}
+            </span>
+        ) : undefined;
+    const contextBadge =
+        contextToggles.armedLabels.length > 0 ? (
+            <Badge variant="secondary" className="font-normal ml-2">
+                {contextToggles.armedLabels.join(" · ")}
+            </Badge>
+        ) : undefined;
+
     return (
         <>
             {/* Mobile floating menu for editor tools */}
@@ -97,7 +149,7 @@ export function EditorToolsPanel({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" side="top" className="mb-2">
-                        {sidebarButtons.map(({ id, icon: Icon, title }) => (
+                        {visibleSidebarButtons.map(({ id, icon: Icon, title }) => (
                             <DropdownMenuItem key={id} onClick={() => onToggleDrawer(id)}>
                                 <Icon className="h-4 w-4 mr-2" />
                                 {title}
@@ -125,19 +177,26 @@ export function EditorToolsPanel({
                         {!collapsed && <span className="ml-2">Chats</span>}
                     </Button>
 
-                    {sidebarButtons.map(({ id, icon: Icon, label, title }) => (
-                        <Button
-                            key={id}
-                            variant={openDrawer === id ? "default" : "outline"}
-                            size="sm"
-                            className={cn("mx-2", collapsed ? "justify-center px-0 w-8" : "justify-start")}
-                            onClick={() => onToggleDrawer(id)}
-                            title={title}
-                        >
-                            <Icon className="h-4 w-4 shrink-0" />
-                            {!collapsed && <span className="ml-2">{label}</span>}
-                        </Button>
-                    ))}
+                    {visibleSidebarButtons.map(({ id, icon: Icon, label, title }) => {
+                        const badge = id === "approvals" ? approvalsBadge : id === "context" ? contextBadge : undefined;
+                        const compactBadge = id === "approvals" ? approvalsCompactBadge : undefined;
+                        return (
+                            <Button
+                                key={id}
+                                variant={openDrawer === id ? "default" : "outline"}
+                                size="sm"
+                                className={cn("mx-2 relative", collapsed ? "justify-center px-0 w-8" : "justify-start")}
+                                onClick={() => onToggleDrawer(id)}
+                                title={title}
+                            >
+                                <Icon className="h-4 w-4 shrink-0" />
+                                {!collapsed && <span className="ml-2">{label}</span>}
+                                {collapsed
+                                    ? (compactBadge ?? (badge && <span className="absolute top-0.5 right-0.5 h-2 w-2 rounded-full bg-primary" />))
+                                    : badge}
+                            </Button>
+                        );
+                    })}
 
                     {currentChapterId && !collapsed && (
                         <DownloadMenu
@@ -189,6 +248,27 @@ export function EditorToolsPanel({
 
             <SimpleSheet open={openDrawer === "chapterPOV"} onClose={onCloseDrawer} title="Edit Chapter POV" description="Change the point of view character and perspective for this chapter.">
                 {currentChapter && <ChapterPOVEditor chapter={currentChapter} onClose={onCloseDrawer} />}
+            </SimpleSheet>
+
+            <SimpleSheet open={openDrawer === "approvals"} onClose={onCloseDrawer} title="Approvals">
+                {selectedEditorChat && (
+                    <div className="space-y-0">
+                        <CodexProposalTray chatId={selectedEditorChat.id} />
+                        <ShuttleTray
+                            chatId={selectedEditorChat.id}
+                            storyId={currentStoryId ?? ""}
+                            fromDesk={selectedEditorChat.chatType ?? "editor"}
+                            fromChatTitleSnapshot={selectedEditorChat.title}
+                            onAnswerHere={onAnswerHere}
+                        />
+                    </div>
+                )}
+            </SimpleSheet>
+
+            <SimpleSheet open={openDrawer === "context"} onClose={onCloseDrawer} title="Context & memory">
+                {selectedEditorChat && (
+                    <ChatContextPanelContent selectedChat={selectedEditorChat} promptType="editor" toggles={contextToggles} />
+                )}
             </SimpleSheet>
 
             {/* Replace the Chapter Notes Drawer with this Sheet */}

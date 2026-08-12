@@ -9,8 +9,7 @@ import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import type { AIChat } from "@/types/story";
 import { ChatInterface } from "./ChatInterface";
 import { ChatList } from "./ChatList";
-import { CodexProposalTray } from "./CodexProposalTray";
-import { ShuttleTray } from "./ShuttleTray";
+import type { ChatContextToggles } from "../hooks/useChatContextToggles";
 import { useChatsByStoryQuery, useCreateChatMutation } from "../hooks/useChatQuery";
 
 const ChatErrorFallback = (error: Error, resetError: () => void) => (
@@ -49,21 +48,33 @@ interface EditorChatRailProps {
     // EditorToolsPanel, so one control collapses the whole right-hand rail (tools icons +
     // this chat list/tray column) together rather than adding a second, separate toggle.
     collapsed?: boolean;
+    // Lifted to StoryEditor.tsx (single render site) so its sibling EditorToolsPanel can show
+    // Approvals/Context & memory as its own rail Sheets, matching the other 5 chat hosts —
+    // both need the same selectedChat/contextToggles instance this rail used to own alone.
+    selectedChat: AIChat | null;
+    onChatUpdate: (chat: AIChat | null) => void;
+    contextToggles: ChatContextToggles;
+    // Chat Shuttle's "Answer here" (moved to EditorToolsPanel's Approvals Sheet along with the
+    // CodexProposalTray/ShuttleTray it seeds from) — StoryEditor.tsx owns the state now.
+    composerSeedText?: string | null;
 }
 
-// Docked chat companion for the Editor and Outline tools (chatType="editor", shared between
-// both — CLAUDE.md's "Main Editor Chat" is one context, not split per-tool). Multiple named
-// chats per story (not a single unbounded thread) so context stays manageable per chapter/arc.
-export function EditorChatRail({ storyId, enableProseProposals = true, anchorChapterId, collapsed = false }: EditorChatRailProps) {
-    const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
+// Docked chat companion for the Editor tool (chatType="editor"). Multiple named chats per story
+// (not a single unbounded thread) so context stays manageable per chapter/arc.
+export function EditorChatRail({
+    storyId,
+    enableProseProposals = true,
+    anchorChapterId,
+    collapsed = false,
+    selectedChat,
+    onChatUpdate,
+    contextToggles,
+    composerSeedText
+}: EditorChatRailProps) {
     // Tracks which chat a captured rework payload belongs to, not just the payload itself — so
     // if the user manually switches chats via ChatList right after a rework resolves (or any
     // other reason selectedChat changes), a stale rework never gets applied to the wrong chat.
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
-    // Chat Shuttle's "Answer here" action (H3, docs/Chat_Shuttle_Design.md) seeds this chat's own
-    // composer — same pattern OutlineChatRail/WorldBuildingChatPanel already use for Guided Setup/
-    // pendingChatComposerSeed, just not previously needed in this rail.
-    const [composerSeedText, setComposerSeedText] = useState<string | null>(null);
     const createMutation = useCreateChatMutation();
     // Same query ChatList already runs internally (chatKeys.byStory(storyId, "editor")) — React
     // Query dedupes the request, this just gives this component a copy of the list too, needed
@@ -103,7 +114,7 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
                 },
                 {
                     onSuccess: newChat => {
-                        setSelectedChat(newChat);
+                        onChatUpdate(newChat);
                         setInitialRework({ chatId: newChat.id, payload });
                     }
                 }
@@ -115,14 +126,14 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
             (a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()
         )[0];
         if (candidates.length > 1) toast.info(`Continuing in "${mostRecent.title}"`);
-        setSelectedChat(mostRecent);
+        onChatUpdate(mostRecent);
         setInitialRework({ chatId: mostRecent.id, payload });
     }, [pendingRework, storyId, chats, chatsLoading, createMutation]);
 
     const handleCreateNewChat = () => {
         createMutation.mutate(
             { storyId, chatType: "editor", title: `New Chat ${new Date().toLocaleString()}`, anchorChapterId: anchorChapterId ?? null },
-            { onSuccess: newChat => setSelectedChat(newChat) }
+            { onSuccess: newChat => onChatUpdate(newChat) }
         );
     };
 
@@ -142,10 +153,12 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
                             storyId={storyId}
                             promptType="editor"
                             selectedChat={selectedChat}
-                            onChatUpdate={setSelectedChat}
+                            onChatUpdate={onChatUpdate}
                             enableProseProposals={enableProseProposals}
                             initialRework={initialRework?.chatId === selectedChat.id ? initialRework.payload : null}
                             initialComposerText={composerSeedText}
+                            contextToggles={contextToggles}
+                            contextPanelMode="external"
                         />
                     </ErrorBoundary>
                 ) : (
@@ -165,7 +178,7 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
                         title={anchorChapter ? `Editor Chats — ${anchorChapter.title}` : "Editor Chats"}
                         emptyLabel="No editor chats yet"
                         selectedChat={selectedChat}
-                        onSelectChat={setSelectedChat}
+                        onSelectChat={onChatUpdate}
                         renderNewChatAction={renderNewChatButton}
                         // Strict chapter scoping — only this chapter's chats show, so the list
                         // doesn't mix every chapter's chats together. Falls back to unfiltered only
@@ -173,16 +186,6 @@ export function EditorChatRail({ storyId, enableProseProposals = true, anchorCha
                         filterPredicate={chat => !anchorChapterId || chat.anchorChapterId === anchorChapterId}
                         side="right"
                     />
-                    {selectedChat && <CodexProposalTray chatId={selectedChat.id} />}
-                    {selectedChat && (
-                        <ShuttleTray
-                            chatId={selectedChat.id}
-                            storyId={storyId}
-                            fromDesk={selectedChat.chatType ?? "editor"}
-                            fromChatTitleSnapshot={selectedChat.title}
-                            onAnswerHere={setComposerSeedText}
-                        />
-                    )}
                 </div>
             )}
         </div>
