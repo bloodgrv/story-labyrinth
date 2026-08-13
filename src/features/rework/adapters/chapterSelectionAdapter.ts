@@ -124,21 +124,35 @@ export const applyChapterSelectionReplace = (target: ChapterSelectionTarget, new
     if (!editor) return "not-found";
 
     let result: ApplyReworkResult = "selection-changed";
-    editor.update(() => {
-        const anchorNode = $getNodeByKey(target.anchorKey);
-        const focusNode = $getNodeByKey(target.focusKey);
-        if (!anchorNode || !focusNode) return;
+    let scrollKey: string | null = null;
+    editor.update(
+        () => {
+            const anchorNode = $getNodeByKey(target.anchorKey);
+            const focusNode = $getNodeByKey(target.focusKey);
+            if (!anchorNode || !focusNode) return;
 
-        const selection = $createRangeSelection();
-        selection.anchor.set(target.anchorKey, target.anchorOffset, "text");
-        selection.focus.set(target.focusKey, target.focusOffset, "text");
+            const selection = $createRangeSelection();
+            selection.anchor.set(target.anchorKey, target.anchorOffset, "text");
+            selection.focus.set(target.focusKey, target.focusOffset, "text");
 
-        if (selection.getTextContent() !== target.text) return;
+            if (selection.getTextContent() !== target.text) return;
 
-        $setSelection(selection);
-        selection.insertText(newText);
-        result = "replaced";
-    });
+            $setSelection(selection);
+            selection.insertText(newText);
+            result = "replaced";
+
+            const updatedSelection = $getSelection();
+            const topLevel = $isRangeSelection(updatedSelection) ? updatedSelection.anchor.getNode().getTopLevelElement() : null;
+            scrollKey = topLevel?.getKey() ?? null;
+        },
+        {
+            // onUpdate fires once the DOM has been reconciled, so the element actually exists to scroll to.
+            onUpdate: () => {
+                if (!scrollKey) return;
+                editor.getElementByKey(scrollKey)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+        }
+    );
 
     if (result === "selection-changed") insertProposedProse(editor, newText);
     return result;

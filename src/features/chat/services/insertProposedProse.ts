@@ -5,16 +5,28 @@ import { $createParagraphNode, $createTextNode, $getRoot, $getSelection, $isRang
 // "after a specific node" to "after the selection's top-level block"), otherwise appended to the
 // end of the document. See lexicalEditorUtils.ts for the Scene Beat precedent this extends.
 export const insertProposedProse = (editor: LexicalEditor, text: string): void => {
-    editor.update(() => {
-        const paragraphNode = $createParagraphNode();
-        paragraphNode.append($createTextNode(text));
+    let insertedKey: string | null = null;
 
-        const selection = $getSelection();
-        const anchorElement = $isRangeSelection(selection) ? selection.anchor.getNode().getTopLevelElement() : null;
+    editor.update(
+        () => {
+            const paragraphNode = $createParagraphNode();
+            paragraphNode.append($createTextNode(text));
 
-        if (anchorElement) anchorElement.insertAfter(paragraphNode);
-        else $getRoot().append(paragraphNode);
+            const selection = $getSelection();
+            const anchorElement = $isRangeSelection(selection) ? selection.anchor.getNode().getTopLevelElement() : null;
 
-        paragraphNode.selectEnd();
-    });
+            if (anchorElement) anchorElement.insertAfter(paragraphNode);
+            else $getRoot().append(paragraphNode);
+
+            paragraphNode.selectEnd();
+            insertedKey = paragraphNode.getKey();
+        },
+        {
+            // onUpdate fires once the DOM has been reconciled, so the element actually exists to scroll to.
+            onUpdate: () => {
+                if (!insertedKey) return;
+                editor.getElementByKey(insertedKey)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+        }
+    );
 };
