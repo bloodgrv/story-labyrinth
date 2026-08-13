@@ -763,13 +763,16 @@ export function ChatInterface({
             // `Date.now()` here previously leaked into the UI as the displayed chapter/scene number
             // (e.g. "1786572555602. The Drop" — OutlineChapterCard.tsx/OutlineSceneRow.tsx render
             // `{item.order}. {item.title}`), since `order` is a real display position, not just a
-            // sort key.
+            // sort key. Sibling count must exclude rejected items — outlineItemsForLookup (unlike
+            // the tree the model sees) includes every status, so without this a story with a few
+            // rejected drafts started numbering brand-new chapters "9." instead of "1." even though
+            // the tree only shows the one real chapter.
             const nextOrderByParent = new Map<string, number>();
             const nextOrder = (parentId: string | null): number => {
                 const key = parentId ?? "";
                 const current =
                     nextOrderByParent.get(key) ??
-                    outlineItemsForLookup.filter(item => (item.parentId ?? null) === parentId).length + 1;
+                    outlineItemsForLookup.filter(item => (item.parentId ?? null) === parentId && item.status !== "rejected").length + 1;
                 nextOrderByParent.set(key, current + 1);
                 return current;
             };
