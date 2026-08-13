@@ -12,13 +12,14 @@ import { CSS } from "@dnd-kit/utilities";
 import { attemptPromise } from "@jfdi/attempt";
 import { toPng } from "html-to-image";
 import { Download, Flag, GripVertical, LayoutGrid, Loader2, Rows3 } from "lucide-react";
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Switch } from "@/components/ui/switch";
 import { groupPinsByTier, sortPins } from "@/features/story-timeline/lib/sortPins";
+import { cn } from "@/lib/utils";
 import type { StoryTimeline, TimelinePin } from "@/types/storyTimeline";
 import { useCreatePinMutation, useDeletePinMutation, useUpdatePinMutation, useUpdateTimelineMutation } from "../hooks/useStoryTimelineQuery";
 import { PinCard } from "./PinCard";
@@ -61,6 +62,56 @@ function SortablePinCard({
                     </button>
                 }
             />
+        </div>
+    );
+}
+
+interface RailItem {
+    key: string;
+    content: ReactNode;
+    // "marker" gets a bigger, ringed node so the Story-start beat reads as distinct from ordinary
+    // pins without needing a second visual language.
+    variant?: "pin" | "marker";
+}
+
+// The connecting line requested for the board — previously pins were just cards in a flex row/
+// column with no drawn axis. A dot per pin plus a border-only filler between consecutive dots
+// reads as one continuous line without any coordinate math (no refs/measurement needed, so drag-
+// reorder and responsive wrapping keep working unmodified) — same "just CSS" posture other visual
+// chrome in this board (the Story-start marker's border-l/r) already uses.
+function TimelineRail({ items, orientation }: { items: RailItem[]; orientation: "horizontal" | "vertical" }) {
+    if (items.length === 0) return null;
+    const isHorizontal = orientation === "horizontal";
+
+    return (
+        <div className={isHorizontal ? "flex flex-row items-start" : "flex flex-col items-stretch"}>
+            {items.map((item, index) => (
+                <div
+                    key={item.key}
+                    className={isHorizontal ? "flex flex-row items-start shrink-0" : "flex flex-col items-stretch shrink-0"}
+                >
+                    {index > 0 && (
+                        <div
+                            className={
+                                isHorizontal
+                                    ? "w-4 sm:w-6 shrink-0 border-t-2 border-border mt-[9px]"
+                                    : "h-4 sm:h-6 shrink-0 border-l-2 border-border ml-[9px]"
+                            }
+                        />
+                    )}
+                    <div className={isHorizontal ? "flex flex-col items-center shrink-0" : "flex flex-row items-center shrink-0"}>
+                        <span
+                            className={cn(
+                                "shrink-0 rounded-full",
+                                item.variant === "marker"
+                                    ? "h-3 w-3 bg-primary ring-4 ring-primary/25"
+                                    : "h-2.5 w-2.5 border-2 border-primary bg-background"
+                            )}
+                        />
+                        <div className={isHorizontal ? "mt-2" : "ml-2"}>{item.content}</div>
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }
@@ -117,18 +168,22 @@ function TieredBoard({
                             <RelativeTierWithMarker pins={group.pins} timeline={timeline} orientation={orientation} storyId={storyId} onEdit={onEdit} onDelete={onDelete} />
                         ) : group.tier === "fuzzy" ? (
                             <SortableContext items={fuzzyPinIds}>
-                                <div className={orientation === "horizontal" ? "flex flex-row gap-3" : "flex flex-col gap-3"}>
-                                    {group.pins.map(pin => (
-                                        <SortablePinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />
-                                    ))}
-                                </div>
+                                <TimelineRail
+                                    orientation={orientation}
+                                    items={group.pins.map(pin => ({
+                                        key: pin.id,
+                                        content: <SortablePinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />
+                                    }))}
+                                />
                             </SortableContext>
                         ) : (
-                            <div className={orientation === "horizontal" ? "flex flex-row gap-3" : "flex flex-col gap-3"}>
-                                {group.pins.map(pin => (
-                                    <PinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />
-                                ))}
-                            </div>
+                            <TimelineRail
+                                orientation={orientation}
+                                items={group.pins.map(pin => ({
+                                    key: pin.id,
+                                    content: <PinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />
+                                }))}
+                            />
                         )}
                     </div>
                 ))}
@@ -339,26 +394,29 @@ function RelativeTierWithMarker({
     const before = splitIndex === -1 ? pins : pins.slice(0, splitIndex);
     const after = splitIndex === -1 ? [] : pins.slice(splitIndex);
 
-    const marker = showMarker ? (
-        <div
-            className={
-                orientation === "horizontal"
-                    ? "flex flex-col items-center justify-center px-2 border-l-2 border-r-2 border-primary/50 shrink-0"
-                    : "flex flex-row items-center gap-2 py-1 border-t-2 border-b-2 border-primary/50"
-            }
-        >
-            <Flag className="h-4 w-4 text-primary" />
-            <span className="text-xs font-medium text-primary whitespace-nowrap">Story starts</span>
-        </div>
-    ) : null;
+    const toItem = (pin: TimelinePin): RailItem => ({
+        key: pin.id,
+        content: <PinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />
+    });
 
-    const cards = (list: TimelinePin[]) => list.map(pin => <PinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />);
+    const items: RailItem[] = [
+        ...before.map(toItem),
+        ...(showMarker
+            ? [
+                  {
+                      key: "story-start-marker",
+                      variant: "marker" as const,
+                      content: (
+                          <div className={orientation === "horizontal" ? "flex flex-col items-center px-1" : "flex flex-row items-center gap-1.5"}>
+                              <Flag className="h-4 w-4 text-primary" />
+                              <span className="text-xs font-medium text-primary whitespace-nowrap">Story starts</span>
+                          </div>
+                      )
+                  }
+              ]
+            : []),
+        ...after.map(toItem)
+    ];
 
-    return (
-        <div className={orientation === "horizontal" ? "flex flex-row items-start gap-3" : "flex flex-col gap-3"}>
-            {cards(before)}
-            {marker}
-            {cards(after)}
-        </div>
-    );
+    return <TimelineRail orientation={orientation} items={items} />;
 }
