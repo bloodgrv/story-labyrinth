@@ -68,7 +68,9 @@ export class GrokOAuthProvider implements IAIProvider {
                 messages: messages.map(m => ({ role: m.role, content: m.content })),
                 temperature,
                 max_tokens: maxTokens,
-                stream: true
+                stream: true,
+                // Context/Token Meter (T4, M3) — see GrokProvider.ts's identical comment.
+                stream_options: { include_usage: true }
             },
             { signal }
         );

@@ -9,10 +9,23 @@ interface ChatCompletionChunk {
             content?: string | null;
         };
     }>;
+    // OpenAI-compatible SDKs (openai/xAI/OpenRouter) emit one final chunk with an empty `choices`
+    // array and this populated, but only when the request includes `stream_options:
+    // {include_usage: true}` (see each provider's own generate()) — same mechanism
+    // LocalAIProvider.ts already relies on for the Context/Token Meter's post-turn usage badge.
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
 }
 
 /**
- * Wraps an OpenAI-compatible async streaming response into a Web API Response with ReadableStream.
+ * Wraps an OpenAI-compatible async streaming response into a genuine SSE Web API Response —
+ * `data: {...}\n\n` lines plus a trailing `data: [DONE]`, the same wire format a raw HTTP-based
+ * provider (Local, grok-session) already sends and processStreamedResponse already expects. This
+ * used to emit bare decoded text instead, relying on a later formatStreamAsSSE() re-wrap — which
+ * only round-tripped `.content` and silently dropped the final chunk's `.usage`, since that chunk
+ * has empty `choices` and formatStreamAsSSE only ever sees plain strings by that point. Producing
+ * real SSE directly here, with `.usage` forwarded on whichever chunk carries it, is what makes the
+ * Context/Token Meter's per-turn usage badge (and the "Say ok" idle-check upstream) actually
+ * appear for openai/openrouter/grok/grok-oauth — it previously only ever showed for Local.
  */
 export const wrapOpenAIStream = async (stream: AsyncIterable<ChatCompletionChunk>): Promise<Response> =>
     new Response(
@@ -20,11 +33,25 @@ export const wrapOpenAIStream = async (stream: AsyncIterable<ChatCompletionChunk
             async start(controller) {
                 const [error] = await attemptPromise(async () => {
                     for await (const chunk of stream) {
-                        const content = chunk.choices[0]?.delta?.content;
-                        if (content)
-                            controller.enqueue(new TextEncoder().encode(content));
-
+                        const content = chunk.choices[0]?.delta?.content ?? "";
+                        const usage = chunk.usage ?? undefined;
+                        if (content || usage)
+                            controller.enqueue(
+                                new TextEncoder().encode(
+                                    formatSSEChunk(
+                                        content,
+                                        usage && typeof usage.total_tokens === "number"
+                                            ? {
+                                                  prompt_tokens: usage.prompt_tokens ?? 0,
+                                                  completion_tokens: usage.completion_tokens ?? 0,
+                                                  total_tokens: usage.total_tokens
+                                              }
+                                            : undefined
+                                    )
+                                )
+                            );
                     }
+                    controller.enqueue(new TextEncoder().encode(formatSSEDone()));
                 });
 
                 if (error)
@@ -33,7 +60,8 @@ export const wrapOpenAIStream = async (stream: AsyncIterable<ChatCompletionChunk
                     controller.close();
 
             }
-        })
+        }),
+        { headers: { "Content-Type": "text/event-stream" } }
     );
 
 /**

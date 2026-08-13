@@ -146,7 +146,8 @@ export class AIService {
             (providerType === "local" ? this.settings?.localMaxOutputTokens ?? undefined : undefined) ??
             AIService.DEFAULT_MAX_TOKENS;
 
-        // Local and grok-session already return an OpenAI-style SSE stream, so no re-wrapping needed
+        // Local and grok-session already return an OpenAI-style SSE stream (raw HTTP fetch), so no
+        // re-wrapping needed.
         if (providerType === "local" || providerType === "grok-session") {
             const provider = this.providerFactory.getProvider(providerType);
             return provider.generate(messages, modelId, temperature, effectiveMaxTokens, signal);
@@ -167,7 +168,13 @@ export class AIService {
         }
 
         if (!response) throw new Error("No response from provider");
-        return formatStreamAsSSE(response);
+
+        // The four OpenAI-SDK-based providers (openai/openrouter/grok/grok-oauth) return genuine
+        // SSE straight from wrapOpenAIStream now (streamUtils.ts) — including the final
+        // usage-bearing chunk, which formatStreamAsSSE's plain-text re-wrap used to silently drop
+        // (it only ever saw already-flattened content strings, never the SDK chunk's `.usage`).
+        // Only Gemini's wrapGeminiStream still emits bare text and needs the re-wrap.
+        return providerType === "gemini" ? formatStreamAsSSE(response) : response;
     }
 
     private ensureProviderInitialized(providerType: AIProvider): void {

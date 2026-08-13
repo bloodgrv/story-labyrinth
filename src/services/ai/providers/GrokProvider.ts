@@ -66,7 +66,11 @@ export class GrokProvider implements IAIProvider {
                 messages: messages.map(m => ({ role: m.role, content: m.content })),
                 temperature,
                 max_tokens: maxTokens,
-                stream: true
+                stream: true,
+                // Context/Token Meter (T4, M3) — xAI's API is OpenAI-compatible and honors this the
+                // same way LocalAIProvider.ts's local servers do: one final SSE chunk with `usage`
+                // populated and an empty `choices` array.
+                stream_options: { include_usage: true }
             },
             { signal }
         );
