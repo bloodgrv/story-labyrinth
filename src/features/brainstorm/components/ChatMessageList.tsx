@@ -92,21 +92,22 @@ export function ChatMessageList({
         setSelectedText(text);
     };
 
-    // Scroll to the latest message on load — deliberately NOT messagesEndRef.scrollIntoView().
-    // scrollIntoView({block: "start"}, the default) walks every scrollable ancestor it needs to,
-    // not just this list's own ScrollArea viewport — with this panel nested inside the workspace's
-    // own scrollable page chrome, that made the whole page jump on every chat load, shifting the
-    // header controls above the fold. Scrolling only this list's own Radix viewport element never
-    // touches an ancestor's scroll position.
-    useEffect(
-        () => {
-            const viewport = messagesContainerRef.current?.closest<HTMLElement>("[data-radix-scroll-area-viewport]");
-            if (viewport) viewport.scrollTop = viewport.scrollHeight;
-        },
-        [
-            /* effect dep */
-        ]
-    );
+    // Scroll to the latest message on load, and again on every new message/streaming update —
+    // deliberately NOT messagesEndRef.scrollIntoView(). scrollIntoView({block: "start"}, the
+    // default) walks every scrollable ancestor it needs to, not just this list's own ScrollArea
+    // viewport — with this panel nested inside the workspace's own scrollable page chrome, that
+    // made the whole page jump on every chat load, shifting the header controls above the fold.
+    // Scrolling only this list's own Radix viewport element never touches an ancestor's scroll
+    // position. The dependency array previously only ran this once on mount (an empty array), so
+    // it scrolled to the bottom when a chat was first opened but never again — not when a new
+    // message was sent, not while a reply streamed in, not once generation finished. `messages`
+    // is exactly the right dependency: useChatMessages.ts's memo already gives it a new reference
+    // on every relevant change (a message appended, streamingContent growing chunk by chunk), so
+    // this now follows the conversation the whole time a chat stays open, not just at open time.
+    useEffect(() => {
+        const viewport = messagesContainerRef.current?.closest<HTMLElement>("[data-radix-scroll-area-viewport]");
+        if (viewport) viewport.scrollTop = viewport.scrollHeight;
+    }, [messages]);
 
     useEffect(() => {
         const ta = editingTextareaRef.current;
