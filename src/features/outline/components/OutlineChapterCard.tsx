@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Bot, Check, ChevronDown, ChevronUp, GripVertical, MessageSquarePlus, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OutlineCharacterChips } from "@/features/outline/components/OutlineCharacterChips";
@@ -57,9 +57,20 @@ export function OutlineChapterCard({
     onMoveSceneToChapter,
     sessionStartedAt
 }: OutlineChapterCardProps) {
-    const [expanded, setExpanded] = useState(() => new Date(chapter.createdAt).getTime() > sessionStartedAt);
+    const isNewlyCreated = new Date(chapter.createdAt).getTime() > sessionStartedAt;
+    const [expanded, setExpanded] = useState(isNewlyCreated);
     const [editOpen, setEditOpen] = useState(false);
     const [addSceneOpen, setAddSceneOpen] = useState(false);
+    const cardRef = useRef<HTMLDivElement>(null);
+
+    // Mirrors the chapter-editor auto-insert scroll fix — a newly created chapter opens expanded
+    // (above) but was otherwise left wherever it landed in the list, off-screen on a long outline.
+    useEffect(() => {
+        if (isNewlyCreated) cardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        // Run once on mount only — this reflects whether the chapter was new *when the card first
+        // mounted*, not a live property to react to on every render.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const updateMutation = useUpdateOutlineItemMutation(storyId);
     const deleteMutation = useDeleteOutlineItemMutation(storyId);
@@ -125,6 +136,7 @@ export function OutlineChapterCard({
     return (
         <div ref={setNodeRef} style={style} className="space-y-2">
             <div
+                ref={cardRef}
                 className={cn(
                     "rounded-lg border p-3",
                     isPending && "border-dashed border-amber-400/60 bg-amber-500/10"
