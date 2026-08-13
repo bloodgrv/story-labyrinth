@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
-import type { PinLinkType, PinWhen, StoryTimeline, TimelineMembership, TimelinePin } from "../../src/types/storyTimeline.js";
+import type {
+    PinLinkType,
+    PinWhen,
+    StoryTimeline,
+    TimelineMembership,
+    TimelinePin,
+    TimelineSuggestSettings
+} from "../../src/types/storyTimeline.js";
 import { db, schema } from "../db/client.js";
 
 // Story Timeline (T6, TL0-TL6, docs/Story_Timeline_Design.md) — schema + CRUD, no AI propose/
@@ -464,4 +471,64 @@ export const unlinkPinsForSource = async (linkType: PinLinkType, linkId: string)
         .where(and(eq(schema.storyTimelinePins.linkType, linkType), eq(schema.storyTimelinePins.linkId, linkId)))
         .returning({ id: schema.storyTimelinePins.id });
     return rows.length;
+};
+
+// ── Suggest-pins context settings ─────────────────────────────────────────────
+// What timeline_suggest_pins draws from (TL13, docs/Story_Timeline_Design.md) — a story-side
+// panel lets a writer scope the job down to the Notes/Lorebook-category/synopsis mix they
+// actually want it reading, rather than always sweeping everything visible. Same lazy
+// get-or-create shape as ensureSpineTimeline: a story with no row yet just gets the defaults.
+
+type SuggestSettingsRow = typeof schema.storyTimelineSuggestSettings.$inferSelect;
+
+const rowToSuggestSettings = (row: SuggestSettingsRow): TimelineSuggestSettings => ({
+    storyId: row.storyId,
+    includeSynopsis: Boolean(row.includeSynopsis),
+    includeNotes: Boolean(row.includeNotes),
+    includeCategories: (row.includeCategoriesJson as string[] | null) ?? null
+});
+
+export const getTimelineSuggestSettings = async (storyId: string): Promise<TimelineSuggestSettings> => {
+    const [existing] = await db
+        .select()
+        .from(schema.storyTimelineSuggestSettings)
+        .where(eq(schema.storyTimelineSuggestSettings.storyId, storyId));
+    if (existing) return rowToSuggestSettings(existing);
+
+    const now = new Date();
+    const [row] = await db
+        .insert(schema.storyTimelineSuggestSettings)
+        .values({
+            id: randomUUID(),
+            storyId,
+            includeSynopsis: true,
+            includeNotes: true,
+            includeCategoriesJson: null,
+            createdAt: now,
+            updatedAt: now
+        })
+        .returning();
+    return rowToSuggestSettings(row);
+};
+
+export type UpdateTimelineSuggestSettingsInput = Partial<
+    Pick<TimelineSuggestSettings, "includeSynopsis" | "includeNotes" | "includeCategories">
+>;
+
+export const updateTimelineSuggestSettings = async (
+    storyId: string,
+    input: UpdateTimelineSuggestSettingsInput
+): Promise<TimelineSuggestSettings> => {
+    await getTimelineSuggestSettings(storyId); // ensures the row exists before the update below
+    const [row] = await db
+        .update(schema.storyTimelineSuggestSettings)
+        .set({
+            ...(input.includeSynopsis !== undefined ? { includeSynopsis: input.includeSynopsis } : {}),
+            ...(input.includeNotes !== undefined ? { includeNotes: input.includeNotes } : {}),
+            ...(input.includeCategories !== undefined ? { includeCategoriesJson: input.includeCategories } : {}),
+            updatedAt: new Date()
+        })
+        .where(eq(schema.storyTimelineSuggestSettings.storyId, storyId))
+        .returning();
+    return rowToSuggestSettings(row);
 };

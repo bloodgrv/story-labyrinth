@@ -11,7 +11,8 @@ export const storyTimelineKeys = {
     pins: (storyId: string) => [...storyTimelineKeys.all, "pins", storyId] as const,
     pinForLink: (storyId: string, linkType: PinLinkType, linkId: string) =>
         [...storyTimelineKeys.all, "pinForLink", storyId, linkType, linkId] as const,
-    pendingPins: (storyId: string) => [...storyTimelineKeys.all, "pendingPins", storyId] as const
+    pendingPins: (storyId: string) => [...storyTimelineKeys.all, "pendingPins", storyId] as const,
+    suggestSettings: (storyId: string) => [...storyTimelineKeys.all, "suggestSettings", storyId] as const
 };
 
 export const useTimelinesQuery = (storyId: string | null) =>
@@ -188,6 +189,25 @@ export const useSuggestTimelinePinsMutation = () => {
             );
         },
         onError: (error: Error) => toast.error(error.message || "Failed to queue timeline pin suggestions")
+    });
+};
+
+// TL13 — story-side context controls for timeline_suggest_pins. Get is get-or-create server-side,
+// so this always resolves to a value (no "not found" branch needed by callers).
+export const useTimelineSuggestSettingsQuery = (storyId: string | null) =>
+    useQuery({
+        queryKey: storyTimelineKeys.suggestSettings(storyId ?? ""),
+        queryFn: () => storyTimelineApi.getSuggestSettings(storyId as string),
+        enabled: !!storyId
+    });
+
+export const useUpdateTimelineSuggestSettingsMutation = (storyId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: Parameters<typeof storyTimelineApi.updateSuggestSettings>[1]) =>
+            storyTimelineApi.updateSuggestSettings(storyId, data),
+        onSuccess: updated => queryClient.setQueryData(storyTimelineKeys.suggestSettings(storyId), updated),
+        onError: (error: Error) => toast.error(error.message || "Failed to update timeline suggest settings")
     });
 };
 

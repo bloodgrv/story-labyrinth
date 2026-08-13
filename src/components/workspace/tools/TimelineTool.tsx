@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { PendingPinsPanel } from "@/features/story-timeline/components/PendingPinsPanel";
 import { TimelineBoard } from "@/features/story-timeline/components/TimelineBoard";
+import { TimelineSuggestContextPanel } from "@/features/story-timeline/components/TimelineSuggestContextPanel";
 import { TimelineSwitcher } from "@/features/story-timeline/components/TimelineSwitcher";
 import {
     usePendingPinsQuery,
@@ -100,12 +101,19 @@ export function TimelineTool() {
                     </Button>
                 )}
             </div>
-            <div className="flex-1 min-h-0">
-                {viewMode === "pending" ? (
-                    <PendingPinsPanel storyId={currentStoryId} />
-                ) : (
-                    <TimelineBoard storyId={currentStoryId} timeline={activeTimeline} pins={pinsForActiveTimeline} />
-                )}
+            <div className="flex-1 min-h-0 flex">
+                <div className="flex-1 min-w-0">
+                    {viewMode === "pending" ? (
+                        <PendingPinsPanel storyId={currentStoryId} />
+                    ) : (
+                        <TimelineBoard storyId={currentStoryId} timeline={activeTimeline} pins={pinsForActiveTimeline} />
+                    )}
+                </div>
+                {/* TL13 — always-open (not a toggled drawer): the RAG Scanner drawer precedent is
+                    per-chapter drill-down chrome; this is the story-wide config behind the
+                    owner-only "Suggest pins" trigger above, worth keeping visible rather than
+                    hidden behind another click. */}
+                <TimelineSuggestContextPanel storyId={currentStoryId} />
             </div>
         </div>
     );

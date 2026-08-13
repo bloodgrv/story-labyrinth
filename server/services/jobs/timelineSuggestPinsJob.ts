@@ -1,10 +1,10 @@
 import type { AgentJob } from "../../../src/types/agentJob.js";
 import type { PinWhenKind } from "../../../src/types/storyTimeline.js";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db, schema } from "../../db/client.js";
 import { buildClientForFeature } from "../aiClientFactory.js";
 import { extractTextFromLexical } from "../entityDetector.js";
-import { getSpineChronologyExcerpt, listPendingPinsForStory, proposeAiSuggestedPin } from "../storyTimelineService.js";
+import { getSpineChronologyExcerpt, getTimelineSuggestSettings, listPendingPinsForStory, proposeAiSuggestedPin } from "../storyTimelineService.js";
 import { listVisibleEntriesForStory } from "../storyGraphRepository.js";
 
 // timeline_suggest_pins (TL11B, docs/Story_Timeline_Design.md) — reads a story's visible lorebook
@@ -86,12 +86,23 @@ export const runTimelineSuggestPinsJob = async (job: AgentJob): Promise<{ storyI
     if (!job.storyId) throw new Error("timeline_suggest_pins job requires storyId");
     const storyId = job.storyId;
 
-    const [visibleEntries, noteRows] = await Promise.all([
+    const settings = await getTimelineSuggestSettings(storyId);
+
+    const [visibleEntries, noteRows, storyRow] = await Promise.all([
         listVisibleEntriesForStory(storyId),
-        db.select().from(schema.notes).where(eq(schema.notes.storyId, storyId)).limit(MAX_NOTES)
+        settings.includeNotes
+            ? db.select().from(schema.notes).where(eq(schema.notes.storyId, storyId)).orderBy(desc(schema.notes.updatedAt)).limit(MAX_NOTES)
+            : Promise.resolve([]),
+        settings.includeSynopsis
+            ? db.select({ title: schema.stories.title, synopsis: schema.stories.synopsis }).from(schema.stories).where(eq(schema.stories.id, storyId))
+            : Promise.resolve([])
     ]);
 
-    const enabledEntries = visibleEntries.filter(e => !e.isDisabled);
+    // null = unrestricted (every category); [] is a distinct, meaningful "none selected" — not
+    // the same as null, so a writer can deliberately turn off Lorebook entirely without it
+    // silently falling back to "everything."
+    const categoryFilter = settings.includeCategories === null ? null : new Set(settings.includeCategories);
+    const enabledEntries = visibleEntries.filter(e => !e.isDisabled && (!categoryFilter || categoryFilter.has(e.category)));
     const sources: CandidateSource[] = [
         ...[...enabledEntries]
             .sort((a, b) => a.name.localeCompare(b.name))
@@ -101,6 +112,11 @@ export const runTimelineSuggestPinsJob = async (job: AgentJob): Promise<{ storyI
     ].filter(s => s.text.trim().length > 0);
 
     if (sources.length === 0) return { storyId, proposedCount: 0 };
+
+    // Background only, never a candidate source of its own — the synopsis helps the model read
+    // ambiguous beats correctly (tone, setting, who's who) without being something it proposes
+    // pins FROM directly (it has no [index], so it can never be hallucinated as a sourceIndex).
+    const storyContextBlock = storyRow[0]?.synopsis ? `${storyRow[0].title}: ${storyRow[0].synopsis}` : null;
 
     const [existingPins, pendingPins] = await Promise.all([getSpineChronologyExcerpt(storyId), listPendingPinsForStory(storyId)]);
     const existingSummaryLines = [
@@ -117,6 +133,7 @@ export const runTimelineSuggestPinsJob = async (job: AgentJob): Promise<{ storyI
 
     const sourcesBlock = sources.map((s, i) => `[${i}] ${s.label}: ${s.text.slice(0, MAX_TEXT_CHARS)}`).join("\n");
     const existingBlock = existingSummaryLines.length > 0 ? existingSummaryLines.join("\n") : "(none yet)";
+    const contextSection = storyContextBlock ? `=== STORY CONTEXT (background only, not a source to propose from) ===\n${storyContextBlock}\n\n` : "";
 
     const completion = await client.chat.completions.create({
         model,
@@ -124,7 +141,7 @@ export const runTimelineSuggestPinsJob = async (job: AgentJob): Promise<{ storyI
             { role: "system", content: SYSTEM_PROMPT },
             {
                 role: "user",
-                content: `=== SOURCES ===\n${sourcesBlock}\n\n=== ALREADY RECORDED (do not repeat) ===\n${existingBlock}`
+                content: `${contextSection}=== SOURCES ===\n${sourcesBlock}\n\n=== ALREADY RECORDED (do not repeat) ===\n${existingBlock}`
             }
         ],
         temperature: 0,

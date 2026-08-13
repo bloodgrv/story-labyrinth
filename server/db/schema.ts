@@ -709,6 +709,25 @@ export const storyTimelineMemberships = sqliteTable(
     })
 );
 
+// Story-scoped (not per-timeline) — timeline_suggest_pins always proposes onto Spine regardless
+// of which named timeline is currently open, so these settings follow the story, not a specific
+// timeline. One row per story, get-or-create on first read (same lazy pattern as
+// ensureSpineTimeline), so a story with no row yet just gets the defaults.
+export const storyTimelineSuggestSettings = sqliteTable("storyTimelineSuggestSettings", {
+    id: text("id").primaryKey(),
+    storyId: text("storyId")
+        .notNull()
+        .unique()
+        .references(() => stories.id, { onDelete: "cascade" }),
+    includeSynopsis: integer("includeSynopsis", { mode: "boolean" }).notNull().default(true),
+    includeNotes: integer("includeNotes", { mode: "boolean" }).notNull().default(true),
+    // JSON string[] of lorebook categories to draw from — null/empty means "all categories", same
+    // "no filter set = unrestricted" convention as storyTimelinePins having no linkType/linkId.
+    includeCategoriesJson: text("includeCategoriesJson", { mode: "json" }).$type<string[] | null>(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+});
+
 // Org Folders table — cosmetic-only user filing for lorebook entries and chat sessions (B9,
 // docs/Folders_Org_Design.md). One shared "folder engine" table for both leaf kinds rather than
 // two near-identical tables — `kind` selects which of the scope columns below are meaningful.

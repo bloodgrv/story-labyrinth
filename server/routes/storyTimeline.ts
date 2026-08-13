@@ -8,13 +8,15 @@ import {
     deletePin,
     deleteTimeline,
     getPinForLink,
+    getTimelineSuggestSettings,
     listPendingPinsForStory,
     listPinsForStory,
     listTimelinesForStory,
     rejectPin,
     removeMembership,
     updatePin,
-    updateTimeline
+    updateTimeline,
+    updateTimelineSuggestSettings
 } from "../services/storyTimelineService.js";
 
 // Story Timeline (T6, TL0-TL4, docs/Story_Timeline_Design.md) — in-world chronology board,
@@ -213,6 +215,34 @@ router.delete("/timeline-pins/:id/memberships/:timelineId", async (req, res) => 
         return;
     }
     res.json({ success: true });
+});
+
+// TL13 — story-side context controls for timeline_suggest_pins (docs/Story_Timeline_Design.md).
+// GET is get-or-create (mirrors ensureSpineTimeline's lazy pattern), so a story with no row yet
+// still returns the defaults rather than 404ing.
+router.get("/stories/:storyId/timeline-suggest-settings", async (req, res) => {
+    const [error, result] = await attemptPromise(() => getTimelineSuggestSettings(req.params.storyId));
+    if (error) {
+        res.status(500).json({ error: "Failed to load timeline suggest settings", details: error.message });
+        return;
+    }
+    res.json(result);
+});
+
+router.patch("/stories/:storyId/timeline-suggest-settings", async (req, res) => {
+    const { includeSynopsis, includeNotes, includeCategories } = req.body as Record<string, unknown>;
+    const [error, result] = await attemptPromise(() =>
+        updateTimelineSuggestSettings(req.params.storyId, {
+            includeSynopsis: typeof includeSynopsis === "boolean" ? includeSynopsis : undefined,
+            includeNotes: typeof includeNotes === "boolean" ? includeNotes : undefined,
+            includeCategories: includeCategories === undefined ? undefined : (includeCategories as string[] | null)
+        })
+    );
+    if (error) {
+        res.status(400).json({ error: "Failed to update timeline suggest settings", details: error.message });
+        return;
+    }
+    res.json(result);
 });
 
 export default router;

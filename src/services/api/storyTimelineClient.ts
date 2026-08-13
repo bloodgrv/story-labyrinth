@@ -1,4 +1,12 @@
-import type { PinLinkType, PinWhenKind, StoryTimeline, TimelineMembership, TimelineOrientation, TimelinePin } from "@/types/storyTimeline";
+import type {
+    PinLinkType,
+    PinWhenKind,
+    StoryTimeline,
+    TimelineMembership,
+    TimelineOrientation,
+    TimelinePin,
+    TimelineSuggestSettings
+} from "@/types/storyTimeline";
 import { fetchJSON } from "./apiFactory";
 
 // Story Timeline (T6, TL0-TL6, docs/Story_Timeline_Design.md) — mirrors storyMapsClient.ts's
@@ -60,5 +68,12 @@ export const storyTimelineApi = {
     // TL11B — pending review, mirrors storyGraphClient.ts's own pending/approve/reject shape.
     listPendingPins: (storyId: string) => fetchJSON<{ pending: TimelinePin[] }>(`/stories/${storyId}/timeline-pins/pending`),
     approvePin: (id: string) => fetchJSON<TimelinePin>(`/timeline-pins/${id}/approve`, { method: "POST" }),
-    rejectPin: (id: string) => fetchJSON<TimelinePin>(`/timeline-pins/${id}/reject`, { method: "POST" })
+    rejectPin: (id: string) => fetchJSON<TimelinePin>(`/timeline-pins/${id}/reject`, { method: "POST" }),
+
+    // TL13 — story-side context controls for timeline_suggest_pins. Get is get-or-create server-side.
+    getSuggestSettings: (storyId: string) => fetchJSON<TimelineSuggestSettings>(`/stories/${storyId}/timeline-suggest-settings`),
+    updateSuggestSettings: (
+        storyId: string,
+        data: Partial<Pick<TimelineSuggestSettings, "includeSynopsis" | "includeNotes" | "includeCategories">>
+    ) => fetchJSON<TimelineSuggestSettings>(`/stories/${storyId}/timeline-suggest-settings`, { method: "PATCH", body: JSON.stringify(data) })
 };

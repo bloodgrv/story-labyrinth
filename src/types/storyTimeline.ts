@@ -62,3 +62,14 @@ export interface TimelineMembership {
     laneId: string | null;
     createdAt: Date;
 }
+
+// Story-scoped (not per-timeline) context controls for the timeline_suggest_pins job — it always
+// proposes onto Spine regardless of which named timeline is open, so these settings follow the
+// story rather than a specific timeline. includeCategories: null/empty means "all categories",
+// same "no filter set = unrestricted" convention storyTimelinePins already uses for linkType/linkId.
+export interface TimelineSuggestSettings {
+    storyId: string;
+    includeSynopsis: boolean;
+    includeNotes: boolean;
+    includeCategories: string[] | null;
+}

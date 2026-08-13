@@ -316,7 +316,11 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
         <div className="h-full flex flex-col gap-4 p-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
                 <h2 className="text-lg font-semibold">{timeline.title}</h2>
-                <div className="flex items-center gap-2">
+                {/* flex-wrap here is load-bearing, not decorative — this row's own button group has
+                    no wrap of its own; without it, a narrower column (e.g. the Suggest Pins Context
+                    rail eating into this panel's width) makes the whole group overflow past its
+                    container instead of dropping extra controls to a second line. */}
+                <div className="flex items-center gap-2 flex-wrap">
                     <StoryStartControl storyId={storyId} timeline={timeline} pins={pins} />
                     <label className="flex items-center gap-1.5 text-sm px-2">
                         <Switch
