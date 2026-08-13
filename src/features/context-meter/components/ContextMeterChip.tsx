@@ -47,7 +47,7 @@ export function ContextMeterChip({ estimate }: ContextMeterChipProps) {
                     <span>
                         {formatK(total)}
                         {limit ? ` / ${formatK(limit)}` : ""} tokens (est.)
-                        {pctLeft !== null ? ` · ${pctLeft}% left` : ""}
+                        {pctLeft !== null ? ` · context ${pctLeft}% left` : ""}
                     </span>
                     <ChevronDown className="h-3 w-3" />
                 </button>
