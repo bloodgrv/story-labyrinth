@@ -51,7 +51,7 @@ export function OutlineChapterCard({
     characters,
     onMoveSceneToChapter
 }: OutlineChapterCardProps) {
-    const [expanded, setExpanded] = useState(true);
+    const [expanded, setExpanded] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [addSceneOpen, setAddSceneOpen] = useState(false);
 
