@@ -41,6 +41,11 @@ interface OutlineChapterCardProps {
     storyId: string;
     characters: LorebookEntry[];
     onMoveSceneToChapter: (sceneId: string, newChapterId: string) => void;
+    // Timestamp captured once when the outline tree first mounted (OutlineTree.tsx) — a chapter
+    // created after that (a fresh "Add Chapter" or an AI outline-proposal landing) opens expanded
+    // by default so the user sees it immediately; anything that already existed at page-load
+    // stays collapsed instead of every chapter re-expanding on every refresh.
+    sessionStartedAt: number;
 }
 
 export function OutlineChapterCard({
@@ -49,9 +54,10 @@ export function OutlineChapterCard({
     allChapters,
     storyId,
     characters,
-    onMoveSceneToChapter
+    onMoveSceneToChapter,
+    sessionStartedAt
 }: OutlineChapterCardProps) {
-    const [expanded, setExpanded] = useState(false);
+    const [expanded, setExpanded] = useState(() => new Date(chapter.createdAt).getTime() > sessionStartedAt);
     const [editOpen, setEditOpen] = useState(false);
     const [addSceneOpen, setAddSceneOpen] = useState(false);
 

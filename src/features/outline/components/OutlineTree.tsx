@@ -13,7 +13,7 @@ import {
     sortableKeyboardCoordinates,
     verticalListSortingStrategy
 } from "@dnd-kit/sortable";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { OutlineChapterCard } from "@/features/outline/components/OutlineChapterCard";
 import { useReorderOutlineMutation } from "@/features/outline/hooks/useOutlineQuery";
 import { groupOutlineItems } from "@/features/outline/utils/groupOutlineItems";
@@ -35,6 +35,13 @@ interface OutlineTreeProps {
 export function OutlineTree({ storyId, items, characters }: OutlineTreeProps) {
     const { chapters, scenesByChapter } = useMemo(() => groupOutlineItems(items), [items]);
     const reorderMutation = useReorderOutlineMutation(storyId);
+    // Chapter cards default to collapsed on mount (see OutlineChapterCard.tsx) so a page
+    // refresh doesn't re-expand every chapter's scene list — but a chapter created after this
+    // tree first mounted (a fresh "Add Chapter" or an AI outline-proposal landing) should still
+    // open expanded so the user actually sees what just got added, without needing an extra
+    // click. One timestamp captured once per page load, compared against each chapter's own
+    // createdAt in OutlineChapterCard's expanded-state initializer.
+    const sessionStartedAt = useRef(Date.now()).current;
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -73,6 +80,7 @@ export function OutlineTree({ storyId, items, characters }: OutlineTreeProps) {
                             storyId={storyId}
                             characters={characters}
                             onMoveSceneToChapter={handleMoveSceneToChapter}
+                            sessionStartedAt={sessionStartedAt}
                         />
                     ))}
                 </div>
