@@ -399,7 +399,7 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                     onAction={() => { setEditingPin(null); setFormOpen(true); }}
                 />
             ) : laneGroups ? (
-                <div ref={boardRef} className="flex flex-col gap-6 overflow-y-auto bg-background">
+                <div ref={boardRef} className="flex-1 min-h-0 flex flex-col gap-6 overflow-y-auto bg-background">
                     {laneGroups.map(lane => (
                         <div key={lane.label} className="border-b pb-4 last:border-b-0">
                             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{lane.label}</div>
@@ -408,7 +408,13 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                     ))}
                 </div>
             ) : (
-                <div ref={boardRef} className="bg-background">
+                // flex-1 min-h-0 is load-bearing: without it this child has no bounded height to
+                // scroll within (a flex item's default min-height is its content size, not its
+                // parent's available space), so tall content — vertical orientation especially,
+                // now that the rail can run much taller with RAIL_BLEED + zoomed-out spacing —
+                // just grows past the panel and gets silently clipped by MainContent.tsx's own
+                // overflow-hidden instead of ever getting a scrollbar here.
+                <div ref={boardRef} className="flex-1 min-h-0 overflow-y-auto bg-background">
                     <TieredBoard storyId={storyId} pins={pins} timeline={timeline} orientation={orientation} zoom={zoom} onEdit={handleEdit} onDelete={handleDelete} />
                 </div>
             )}
