@@ -17,7 +17,6 @@ import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Switch } from "@/components/ui/switch";
 import { groupPinsByTier, sortPins } from "@/features/story-timeline/lib/sortPins";
 import { cn } from "@/lib/utils";
 import type { StoryTimeline, TimelinePin } from "@/types/storyTimeline";
@@ -322,13 +321,6 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                     container instead of dropping extra controls to a second line. */}
                 <div className="flex items-center gap-2 flex-wrap">
                     <StoryStartControl storyId={storyId} timeline={timeline} pins={pins} />
-                    <label className="flex items-center gap-1.5 text-sm px-2">
-                        <Switch
-                            checked={timeline.swimlanesEnabled}
-                            onCheckedChange={checked => updateTimelineMutation.mutate({ id: timeline.id, data: { swimlanesEnabled: checked } })}
-                        />
-                        Swimlanes
-                    </label>
                     {pins.length > 0 && (
                         <div className="flex items-center gap-0.5 rounded-md border px-0.5">
                             <Button
