@@ -22,6 +22,7 @@ import { useContextEstimate } from "@/features/context-meter/hooks/useContextEst
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { getFilteredEntries as getFilteredLorebookEntries } from "@/features/lorebook/utils/lorebookFilters";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { extractPlainTextFromLexical } from "@/utils/lexicalUtils";
 import { applyChapterSelectionReplace } from "@/features/rework/adapters/chapterSelectionAdapter";
 import { ReworkCard } from "@/features/rework/components/ReworkCard";
 import type { InitialReworkPayload } from "@/features/rework/pendingReworkStore";
@@ -211,7 +212,12 @@ export function ChatInterface({
     // note-proposal/note-split-proposal/promote (P0.4 K0-K5, docs/Chat_Panel_Integrations_Design.md §7).
     const isNotesChat = promptType === "notes";
     const showContextSelector = !isEditorChat && !isBrainstormChat && !isResearchChat && !isNotesChat;
-    const forceStructuredContextOff = isEditorChat || isOutlineChat || isBrainstormChat || isResearchChat || isNotesChat;
+    // Outline removed from this list along with showContextSelector above — leaving it here was a
+    // real bug (not caught until a user reported toggling Chapter Summaries/Chapter Content in the
+    // new "Story Context" panel and seeing no difference in the reply): the panel rendered and
+    // looked interactive, but every selection was silently zeroed out of the generate() payload
+    // below before it ever reached the model.
+    const forceStructuredContextOff = isEditorChat || isBrainstormChat || isResearchChat || isNotesChat;
     const usesCodexTray = isEditorChat || promptType === "worldbuilding" || isOutlineChat;
 
     const { entries: lorebookEntries } = useLorebookContext();
@@ -437,6 +443,30 @@ export function ChatInterface({
                 .map(formatPack)
                 .join("\n\n");
 
+            // "Story Context" picker (ContextSelector) — see the sections.push comment below for
+            // why this has to be folded into codexContext directly rather than sent as a separate
+            // additionalContext field. includeFullContext mirrors BrainstormContextResolver's own
+            // "full" branch: every chapter's summary + every lorebook entry, but NOT full chapter
+            // content (that stays opt-in-only even under "full" — pulling every written chapter's
+            // entire prose into every turn would blow the context budget on a multi-chapter story).
+            const storyContextChapterSummariesText = includeFullContext
+                ? chapters.map(c => `- ${c.title}: ${c.summary ?? "(no summary)"}`).join("\n")
+                : selectedSummaries
+                      .map(id => chapters.find(c => c.id === id))
+                      .filter((c): c is NonNullable<typeof c> => !!c)
+                      .map(c => `- ${c.title}: ${c.summary ?? "(no summary)"}`)
+                      .join("\n");
+            const storyContextChapterContentText = selectedChapterContent
+                .map(id => chapters.find(c => c.id === id))
+                .filter((c): c is NonNullable<typeof c> => !!c)
+                .map(c => `- ${c.title}:\n${extractPlainTextFromLexical(c.content)}`)
+                .join("\n\n");
+            const storyContextLorebookText = includeFullContext
+                ? getFilteredLorebookEntries(lorebookEntries, false)
+                      .map(e => `- ${e.name} (${e.category}): ${e.description ?? ""}`)
+                      .join("\n")
+                : selectedItems.map(e => `- ${e.name} (${e.category}): ${e.description ?? ""}`).join("\n");
+
             const sections = [
                 context.systemPrompt,
                 context.projectSynopsis && `Project synopsis:\n${context.projectSynopsis}`,
@@ -477,6 +507,27 @@ export function ChatInterface({
                 handoffStatusText && `[YOUR OWN PENDING PROPOSALS/HANDOFFS]\n${handoffStatusText}`,
                 allNotesText && `[ALL STORY NOTES — titles/types only; use the id values exactly as shown if referencing one]\n${allNotesText}`,
                 focusedNoteText && `[FOCUSED NOTE — currently open in the Notes tool, treat as current]\n${focusedNoteText}`,
+                // The "Story Context" picker (ContextSelector, WB/Outline's own rail panel) was
+                // wired to send its picks via additionalContext.selectedChapterContent/etc., but
+                // neither the "worldbuilding-system" nor "outline-system" prompt template actually
+                // interpolates the {{brainstorm_context}} variable that data resolves into
+                // (BrainstormResolvers.ts) — that resolver is for a separate, older Brainstorm-only
+                // prompt path. So the toggles rendered, looked live, and were silently discarded
+                // before reaching the model. Folding the picks directly into codexContext here
+                // (same mechanism every other block on this list already uses) is what actually
+                // gets them into the prompt. Full chapter content — the real written prose — is
+                // called out as the highest-authority source, since the model otherwise only ever
+                // sees a chapter's short DB summary.
+                showContextSelector &&
+                    storyContextChapterSummariesText &&
+                    `[STORY CONTEXT — chapter summaries manually attached by the user]\n${storyContextChapterSummariesText}`,
+                showContextSelector &&
+                    storyContextChapterContentText &&
+                    `[STORY CONTEXT — full chapter content manually attached by the user; this is the actual written prose, ` +
+                        `the highest-authority source for "what's already written" in these chapters]\n${storyContextChapterContentText}`,
+                showContextSelector &&
+                    storyContextLorebookText &&
+                    `[STORY CONTEXT — lorebook entries manually attached by the user]\n${storyContextLorebookText}`,
                 playbookPackText
             ].filter(Boolean);
             setCodexContext(sections.join("\n\n"));
@@ -509,7 +560,17 @@ export function ChatInterface({
         // Character Guided Playbook Packs (Hybrid D) — same B5 bug class fixed once already for
         // style/psych above: this must be in the deps too, or toggling arm after the chat was
         // first selected would leave the next message's context silently stale.
-        selectedChat.usePlaybookPack
+        selectedChat.usePlaybookPack,
+        // Story Context picker (ContextSelector) — same staleness class as the toggles above:
+        // without these, changing a selection wouldn't refetch/rebuild codexContext until
+        // something else happened to refire this effect.
+        showContextSelector,
+        includeFullContext,
+        selectedSummaries,
+        selectedItems,
+        selectedChapterContent,
+        chapters,
+        lorebookEntries
     ]);
 
     // Context/Token Meter (T4) — M2. contextWindowOverride only applies to Local (design decision
