@@ -11,7 +11,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable } 
 import { CSS } from "@dnd-kit/utilities";
 import { attemptPromise } from "@jfdi/attempt";
 import { toPng } from "html-to-image";
-import { Download, Flag, GripVertical, LayoutGrid, Loader2, Rows3 } from "lucide-react";
+import { Download, Flag, GripVertical, LayoutGrid, Loader2, Rows3, ZoomIn, ZoomOut } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,9 @@ import { TimelineOverviewStrip } from "./TimelineOverviewStrip";
 
 const tierLabel = { civil: "Dated", relative: "Relative to Story-start", fuzzy: "Unordered / fuzzy" };
 const UNASSIGNED_LANE = "__unassigned__";
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2.5;
+const ZOOM_STEP = 0.25;
 
 // Drag-reorder target within the fuzzy tier only — civil/relative tiers sort by their own computed
 // values, not manualOrder (sortPins.ts's tiered pipeline), so dragging only makes sense there.
@@ -74,44 +77,65 @@ interface RailItem {
     variant?: "pin" | "marker";
 }
 
+// Distance in px between dot centers at zoom = 1 — TimelineBoard's zoom control scales this
+// directly, so "zoom in" means more breathing room per pin, "zoom out" means more of the rail
+// visible/more pins per screen, without any coordinate math (dots aren't tied to real time
+// values, just even spacing — same posture as the drag-reorder fuzzy tier, which has no real
+// time value to position by either).
+const RAIL_BASE_GAP = 32;
+// How far the line itself overshoots past the first/last dot, so it visibly runs off both ends
+// rather than starting/stopping exactly at the outermost pin.
+const RAIL_BLEED = 64;
+
 // The connecting line requested for the board — previously pins were just cards in a flex row/
-// column with no drawn axis. A dot per pin plus a border-only filler between consecutive dots
-// reads as one continuous line without any coordinate math (no refs/measurement needed, so drag-
-// reorder and responsive wrapping keep working unmodified) — same "just CSS" posture other visual
-// chrome in this board (the Story-start marker's border-l/r) already uses.
-function TimelineRail({ items, orientation }: { items: RailItem[]; orientation: "horizontal" | "vertical" }) {
+// column with no drawn axis. A background line (absolutely positioned, so it doesn't need to
+// know where any dot actually is) plus a dot per pin reads as "pins sitting on one continuous
+// line" without any coordinate math — no refs/measurement needed, so drag-reorder and responsive
+// wrapping keep working unmodified.
+function TimelineRail({ items, orientation, zoom }: { items: RailItem[]; orientation: "horizontal" | "vertical"; zoom: number }) {
     if (items.length === 0) return null;
     const isHorizontal = orientation === "horizontal";
+    const gapPx = Math.round(RAIL_BASE_GAP * zoom);
+
+    // Vertical rows are intentionally NOT each individually centered: a row's own width varies
+    // with its card content, so centering each row would drag its dot off the shared line by a
+    // different amount every time. Instead every row gets the same fixed-width dot gutter and
+    // stays left-aligned within it, which keeps every dot at the exact same x — that's what the
+    // line (at that same fixed offset) then runs through. Only the whole rail block is centered
+    // (w-fit + mx-auto) within the panel.
+    const dot = (variant: RailItem["variant"]) => (
+        <span
+            className={cn(
+                "shrink-0 rounded-full ring-4 ring-background",
+                variant === "marker" ? "h-4 w-4 bg-primary" : "h-3.5 w-3.5 border-2 border-primary bg-background"
+            )}
+        />
+    );
 
     return (
-        <div className={isHorizontal ? "flex flex-row items-start" : "flex flex-col items-stretch"}>
-            {items.map((item, index) => (
-                <div
-                    key={item.key}
-                    className={isHorizontal ? "flex flex-row items-start shrink-0" : "flex flex-col items-stretch shrink-0"}
-                >
-                    {index > 0 && (
-                        <div
-                            className={
-                                isHorizontal
-                                    ? "w-4 sm:w-6 shrink-0 border-t-2 border-border mt-[9px]"
-                                    : "h-4 sm:h-6 shrink-0 border-l-2 border-border ml-[9px]"
-                            }
-                        />
-                    )}
-                    <div className={isHorizontal ? "flex flex-col items-center shrink-0" : "flex flex-row items-center shrink-0"}>
-                        <span
-                            className={cn(
-                                "shrink-0 rounded-full",
-                                item.variant === "marker"
-                                    ? "h-3 w-3 bg-primary ring-4 ring-primary/25"
-                                    : "h-2.5 w-2.5 border-2 border-primary bg-background"
-                            )}
-                        />
-                        <div className={isHorizontal ? "mt-2" : "ml-2"}>{item.content}</div>
-                    </div>
-                </div>
-            ))}
+        <div className={isHorizontal ? "relative pt-9 pb-1" : "relative py-9 w-fit mx-auto"}>
+            <div
+                className={isHorizontal ? "absolute h-1.5 rounded-full bg-primary/40" : "absolute w-1.5 rounded-full bg-primary/40"}
+                style={isHorizontal ? { top: 40, left: -RAIL_BLEED, right: -RAIL_BLEED } : { left: 9, top: -RAIL_BLEED, bottom: -RAIL_BLEED }}
+            />
+            <div
+                className={isHorizontal ? "relative flex flex-row items-start" : "relative flex flex-col items-start"}
+                style={{ gap: `${gapPx}px` }}
+            >
+                {items.map(item =>
+                    isHorizontal ? (
+                        <div key={item.key} className="flex flex-col items-center shrink-0">
+                            {dot(item.variant)}
+                            <div className="mt-3">{item.content}</div>
+                        </div>
+                    ) : (
+                        <div key={item.key} className="flex flex-row items-center shrink-0">
+                            <div className="w-6 flex justify-center shrink-0">{dot(item.variant)}</div>
+                            <div className="ml-3">{item.content}</div>
+                        </div>
+                    )
+                )}
+            </div>
         </div>
     );
 }
@@ -124,6 +148,7 @@ function TieredBoard({
     pins,
     timeline,
     orientation,
+    zoom,
     onEdit,
     onDelete
 }: {
@@ -131,6 +156,7 @@ function TieredBoard({
     pins: TimelinePin[];
     timeline: StoryTimeline;
     orientation: "horizontal" | "vertical";
+    zoom: number;
     onEdit: (pin: TimelinePin) => void;
     onDelete: (pin: TimelinePin) => void;
 }) {
@@ -156,7 +182,7 @@ function TieredBoard({
     };
 
     const containerClass = orientation === "horizontal" ? "flex flex-row gap-6 overflow-x-auto pb-4" : "flex flex-col gap-6 overflow-y-auto";
-    const groupClass = orientation === "horizontal" ? "flex flex-row items-start gap-3 shrink-0" : "flex flex-col items-stretch gap-3";
+    const groupClass = orientation === "horizontal" ? "flex flex-row items-start gap-3 shrink-0" : "flex flex-col items-center gap-3";
 
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -165,11 +191,20 @@ function TieredBoard({
                     <div key={`${group.tier}-${groupIndex}`} className={groupClass}>
                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide shrink-0">{tierLabel[group.tier]}</span>
                         {group.tier === "relative" ? (
-                            <RelativeTierWithMarker pins={group.pins} timeline={timeline} orientation={orientation} storyId={storyId} onEdit={onEdit} onDelete={onDelete} />
+                            <RelativeTierWithMarker
+                                pins={group.pins}
+                                timeline={timeline}
+                                orientation={orientation}
+                                zoom={zoom}
+                                storyId={storyId}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                            />
                         ) : group.tier === "fuzzy" ? (
                             <SortableContext items={fuzzyPinIds}>
                                 <TimelineRail
                                     orientation={orientation}
+                                    zoom={zoom}
                                     items={group.pins.map(pin => ({
                                         key: pin.id,
                                         content: <SortablePinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />
@@ -179,6 +214,7 @@ function TieredBoard({
                         ) : (
                             <TimelineRail
                                 orientation={orientation}
+                                zoom={zoom}
                                 items={group.pins.map(pin => ({
                                     key: pin.id,
                                     content: <PinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />
@@ -206,6 +242,7 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
     const [editingPin, setEditingPin] = useState<TimelinePin | null>(null);
     const [deletingPin, setDeletingPin] = useState<TimelinePin | null>(null);
     const [isExportingImage, setIsExportingImage] = useState(false);
+    const [zoom, setZoom] = useState(1);
     const boardRef = useRef<HTMLDivElement>(null);
     const createMutation = useCreatePinMutation(storyId);
     const updateMutation = useUpdatePinMutation(storyId);
@@ -288,6 +325,31 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                         />
                         Swimlanes
                     </label>
+                    {pins.length > 0 && (
+                        <div className="flex items-center gap-0.5 rounded-md border px-0.5">
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                disabled={zoom <= ZOOM_MIN}
+                                onClick={() => setZoom(z => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100))}
+                                title="Zoom out — more of the rail per screen"
+                            >
+                                <ZoomOut className="h-3.5 w-3.5" />
+                            </Button>
+                            <span className="text-xs text-muted-foreground w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                disabled={zoom >= ZOOM_MAX}
+                                onClick={() => setZoom(z => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100))}
+                                title="Zoom in — more room per pin"
+                            >
+                                <ZoomIn className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+                    )}
                     {!timeline.swimlanesEnabled && (
                         <div className="flex rounded-md border overflow-hidden">
                             <Button
@@ -341,13 +403,13 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                     {laneGroups.map(lane => (
                         <div key={lane.label} className="border-b pb-4 last:border-b-0">
                             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{lane.label}</div>
-                            <TieredBoard storyId={storyId} pins={lane.pins} timeline={timeline} orientation="horizontal" onEdit={handleEdit} onDelete={handleDelete} />
+                            <TieredBoard storyId={storyId} pins={lane.pins} timeline={timeline} orientation="horizontal" zoom={zoom} onEdit={handleEdit} onDelete={handleDelete} />
                         </div>
                     ))}
                 </div>
             ) : (
                 <div ref={boardRef} className="bg-background">
-                    <TieredBoard storyId={storyId} pins={pins} timeline={timeline} orientation={orientation} onEdit={handleEdit} onDelete={handleDelete} />
+                    <TieredBoard storyId={storyId} pins={pins} timeline={timeline} orientation={orientation} zoom={zoom} onEdit={handleEdit} onDelete={handleDelete} />
                 </div>
             )}
 
@@ -379,6 +441,7 @@ function RelativeTierWithMarker({
     pins,
     timeline,
     orientation,
+    zoom,
     onEdit,
     onDelete
 }: {
@@ -386,6 +449,7 @@ function RelativeTierWithMarker({
     pins: TimelinePin[];
     timeline: StoryTimeline;
     orientation: "horizontal" | "vertical";
+    zoom: number;
     onEdit: (pin: TimelinePin) => void;
     onDelete: (pin: TimelinePin) => void;
 }) {
@@ -418,5 +482,5 @@ function RelativeTierWithMarker({
         ...after.map(toItem)
     ];
 
-    return <TimelineRail orientation={orientation} items={items} />;
+    return <TimelineRail orientation={orientation} zoom={zoom} items={items} />;
 }
