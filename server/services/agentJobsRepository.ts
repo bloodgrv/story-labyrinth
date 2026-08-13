@@ -237,12 +237,10 @@ export const listJobs = async (params: ListJobsParams): Promise<AgentJob[]> => {
         .select()
         .from(schema.agentJobs)
         .where(conditions.length ? and(...conditions) : undefined)
-        .orderBy(schema.agentJobs.createdAt)
+        .orderBy(desc(schema.agentJobs.createdAt))
         .limit(Math.min(params.limit ?? 50, 200));
 
-    // orderBy(createdAt) above is ascending; reverse for "most recent first" without a second
-    // desc() import — small list (<=200 rows), reverse is cheap.
-    return rows.map(rowToJob).reverse();
+    return rows.map(rowToJob);
 };
 
 // User retry API (design doc §3.2): only valid from 'failed'. Resets attempts so it gets a full
