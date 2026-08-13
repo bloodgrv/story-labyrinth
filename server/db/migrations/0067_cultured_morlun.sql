@@ -1,0 +1,2 @@
+ALTER TABLE `storyTimelineSuggestSettings` ADD `includeChapterSummaryIdsJson` text DEFAULT '[]' NOT NULL;--> statement-breakpoint
+ALTER TABLE `storyTimelineSuggestSettings` ADD `includeChapterContentIdsJson` text DEFAULT '[]' NOT NULL;

@@ -72,4 +72,9 @@ export interface TimelineSuggestSettings {
     includeSynopsis: boolean;
     includeNotes: boolean;
     includeCategories: string[] | null;
+    // "Story Context" chapter picks (ContextSelector.tsx's chat-side pattern, persisted per-story
+    // instead of per-message) — chapter ids whose summary, or full text, feed the job as sources.
+    // Unlike includeCategories, empty here means "none picked," not "unrestricted."
+    includeChapterSummaryIds: string[];
+    includeChapterContentIds: string[];
 }

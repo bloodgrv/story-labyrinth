@@ -724,6 +724,13 @@ export const storyTimelineSuggestSettings = sqliteTable("storyTimelineSuggestSet
     // JSON string[] of lorebook categories to draw from — null/empty means "all categories", same
     // "no filter set = unrestricted" convention as storyTimelinePins having no linkType/linkId.
     includeCategoriesJson: text("includeCategoriesJson", { mode: "json" }).$type<string[] | null>(),
+    // "Story Context" (the panel's own naming, matching ContextSelector.tsx's chat-side "Story
+    // Context" bucket) — manual chapter picks, same shape as that component's Chapter Summaries/
+    // Chapter Content sub-pickers but persisted per-story instead of per-message. Unlike
+    // includeCategoriesJson, empty here means "none picked" (the job never read chapter data at
+    // all before this setting existed, so the default has to be a no-op, not "everything").
+    includeChapterSummaryIdsJson: text("includeChapterSummaryIdsJson", { mode: "json" }).$type<string[]>().notNull().default([]),
+    includeChapterContentIdsJson: text("includeChapterContentIdsJson", { mode: "json" }).$type<string[]>().notNull().default([]),
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
 });

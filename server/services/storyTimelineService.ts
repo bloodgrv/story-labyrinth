@@ -485,7 +485,9 @@ const rowToSuggestSettings = (row: SuggestSettingsRow): TimelineSuggestSettings 
     storyId: row.storyId,
     includeSynopsis: Boolean(row.includeSynopsis),
     includeNotes: Boolean(row.includeNotes),
-    includeCategories: (row.includeCategoriesJson as string[] | null) ?? null
+    includeCategories: (row.includeCategoriesJson as string[] | null) ?? null,
+    includeChapterSummaryIds: (row.includeChapterSummaryIdsJson as string[] | null) ?? [],
+    includeChapterContentIds: (row.includeChapterContentIdsJson as string[] | null) ?? []
 });
 
 export const getTimelineSuggestSettings = async (storyId: string): Promise<TimelineSuggestSettings> => {
@@ -504,6 +506,8 @@ export const getTimelineSuggestSettings = async (storyId: string): Promise<Timel
             includeSynopsis: true,
             includeNotes: true,
             includeCategoriesJson: null,
+            includeChapterSummaryIdsJson: [],
+            includeChapterContentIdsJson: [],
             createdAt: now,
             updatedAt: now
         })
@@ -512,7 +516,10 @@ export const getTimelineSuggestSettings = async (storyId: string): Promise<Timel
 };
 
 export type UpdateTimelineSuggestSettingsInput = Partial<
-    Pick<TimelineSuggestSettings, "includeSynopsis" | "includeNotes" | "includeCategories">
+    Pick<
+        TimelineSuggestSettings,
+        "includeSynopsis" | "includeNotes" | "includeCategories" | "includeChapterSummaryIds" | "includeChapterContentIds"
+    >
 >;
 
 export const updateTimelineSuggestSettings = async (
@@ -526,6 +533,8 @@ export const updateTimelineSuggestSettings = async (
             ...(input.includeSynopsis !== undefined ? { includeSynopsis: input.includeSynopsis } : {}),
             ...(input.includeNotes !== undefined ? { includeNotes: input.includeNotes } : {}),
             ...(input.includeCategories !== undefined ? { includeCategoriesJson: input.includeCategories } : {}),
+            ...(input.includeChapterSummaryIds !== undefined ? { includeChapterSummaryIdsJson: input.includeChapterSummaryIds } : {}),
+            ...(input.includeChapterContentIds !== undefined ? { includeChapterContentIdsJson: input.includeChapterContentIds } : {}),
             updatedAt: new Date()
         })
         .where(eq(schema.storyTimelineSuggestSettings.storyId, storyId))

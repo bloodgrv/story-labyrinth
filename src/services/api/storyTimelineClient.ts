@@ -74,6 +74,11 @@ export const storyTimelineApi = {
     getSuggestSettings: (storyId: string) => fetchJSON<TimelineSuggestSettings>(`/stories/${storyId}/timeline-suggest-settings`),
     updateSuggestSettings: (
         storyId: string,
-        data: Partial<Pick<TimelineSuggestSettings, "includeSynopsis" | "includeNotes" | "includeCategories">>
+        data: Partial<
+            Pick<
+                TimelineSuggestSettings,
+                "includeSynopsis" | "includeNotes" | "includeCategories" | "includeChapterSummaryIds" | "includeChapterContentIds"
+            >
+        >
     ) => fetchJSON<TimelineSuggestSettings>(`/stories/${storyId}/timeline-suggest-settings`, { method: "PATCH", body: JSON.stringify(data) })
 };

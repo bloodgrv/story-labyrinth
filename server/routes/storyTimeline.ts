@@ -230,12 +230,17 @@ router.get("/stories/:storyId/timeline-suggest-settings", async (req, res) => {
 });
 
 router.patch("/stories/:storyId/timeline-suggest-settings", async (req, res) => {
-    const { includeSynopsis, includeNotes, includeCategories } = req.body as Record<string, unknown>;
+    const { includeSynopsis, includeNotes, includeCategories, includeChapterSummaryIds, includeChapterContentIds } = req.body as Record<
+        string,
+        unknown
+    >;
     const [error, result] = await attemptPromise(() =>
         updateTimelineSuggestSettings(req.params.storyId, {
             includeSynopsis: typeof includeSynopsis === "boolean" ? includeSynopsis : undefined,
             includeNotes: typeof includeNotes === "boolean" ? includeNotes : undefined,
-            includeCategories: includeCategories === undefined ? undefined : (includeCategories as string[] | null)
+            includeCategories: includeCategories === undefined ? undefined : (includeCategories as string[] | null),
+            includeChapterSummaryIds: Array.isArray(includeChapterSummaryIds) ? (includeChapterSummaryIds as string[]) : undefined,
+            includeChapterContentIds: Array.isArray(includeChapterContentIds) ? (includeChapterContentIds as string[]) : undefined
         })
     );
     if (error) {

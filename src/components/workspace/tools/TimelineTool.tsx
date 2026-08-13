@@ -1,5 +1,6 @@
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
+import { SimpleSheet } from "@/components/SimpleSheet";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
@@ -27,6 +28,7 @@ export function TimelineTool() {
     const { data: pins = [], isLoading: pinsLoading } = useTimelinePinsQuery(currentStoryId);
     const [activeTimelineId, setActiveTimelineIdState] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<"board" | "pending">("board");
+    const [contextPanelOpen, setContextPanelOpen] = useState(false);
     const isOwner = useIsOwner();
     const pendingQuery = usePendingPinsQuery(currentStoryId);
     const suggestMutation = useSuggestTimelinePinsMutation();
@@ -109,12 +111,32 @@ export function TimelineTool() {
                         <TimelineBoard storyId={currentStoryId} timeline={activeTimeline} pins={pinsForActiveTimeline} />
                     )}
                 </div>
-                {/* TL13 — always-open (not a toggled drawer): the RAG Scanner drawer precedent is
-                    per-chapter drill-down chrome; this is the story-wide config behind the
-                    owner-only "Suggest pins" trigger above, worth keeping visible rather than
-                    hidden behind another click. */}
-                <TimelineSuggestContextPanel storyId={currentStoryId} />
+                {/* TL13 — same icon-rail + slide-out-Sheet shell every other tool uses
+                    (EditorToolsPanel.tsx/ChatToolsRail.tsx), not a hand-rolled always-open column —
+                    a single-bucket rail here since Timeline has no "Chats" concept to dock beside it. */}
+                <aside className="hidden md:flex flex-col border-l bg-muted/20 w-12">
+                    <div className="flex-1 py-2">
+                        <Button
+                            variant={contextPanelOpen ? "default" : "outline"}
+                            size="sm"
+                            className="mx-2 justify-center px-0 w-8"
+                            onClick={() => setContextPanelOpen(open => !open)}
+                            title="Suggest Pins Context"
+                        >
+                            <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                        </Button>
+                    </div>
+                </aside>
             </div>
+
+            <SimpleSheet
+                open={contextPanelOpen}
+                onClose={() => setContextPanelOpen(false)}
+                title="Suggest Pins Context"
+                description={'What "Suggest pins" reads from this story.'}
+            >
+                <TimelineSuggestContextPanel storyId={currentStoryId} />
+            </SimpleSheet>
         </div>
     );
 }

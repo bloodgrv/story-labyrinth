@@ -19,14 +19,18 @@ import { listVisibleEntriesForStory } from "../storyGraphRepository.js";
 const MAX_ENTRIES = 40;
 const MAX_NOTES = 20;
 const MAX_TEXT_CHARS = 240;
+// Chapter text/summaries are manually picked (not swept), so they get a much larger allowance
+// than the generic 240-char cap other sources share — a chronology beat is often buried well
+// past the first couple sentences of a chapter.
+const MAX_CHAPTER_TEXT_CHARS = 4000;
 
 type CandidateSource = { label: string; text: string };
 
 const WHEN_KINDS: PinWhenKind[] = ["relative", "fuzzy", "civil"];
 
-const SYSTEM_PROMPT = `You suggest chronology beats (timeline pins) for a fiction story, from its lorebook entries and notes.
-You are given a numbered list of sources (character/location/faction/item descriptions and writer's notes) and a list
-of chronology beats already recorded so you don't repeat them.
+const SYSTEM_PROMPT = `You suggest chronology beats (timeline pins) for a fiction story, from its lorebook entries, notes, and chapters.
+You are given a numbered list of sources (character/location/faction/item descriptions, writer's notes, and chapter
+summaries/text) and a list of chronology beats already recorded so you don't repeat them.
 
 For each beat you can support directly from the text (not invented, not inferred from genre convention), propose one
 pin. Prefer specificity: use "civil" only for a real calendar date/year stated in the text, "relative" for a beat
@@ -87,15 +91,17 @@ export const runTimelineSuggestPinsJob = async (job: AgentJob): Promise<{ storyI
     const storyId = job.storyId;
 
     const settings = await getTimelineSuggestSettings(storyId);
+    const pickedChapterIds = new Set([...settings.includeChapterSummaryIds, ...settings.includeChapterContentIds]);
 
-    const [visibleEntries, noteRows, storyRow] = await Promise.all([
+    const [visibleEntries, noteRows, storyRow, chapterRows] = await Promise.all([
         listVisibleEntriesForStory(storyId),
         settings.includeNotes
             ? db.select().from(schema.notes).where(eq(schema.notes.storyId, storyId)).orderBy(desc(schema.notes.updatedAt)).limit(MAX_NOTES)
             : Promise.resolve([]),
         settings.includeSynopsis
             ? db.select({ title: schema.stories.title, synopsis: schema.stories.synopsis }).from(schema.stories).where(eq(schema.stories.id, storyId))
-            : Promise.resolve([])
+            : Promise.resolve([]),
+        pickedChapterIds.size > 0 ? db.select().from(schema.chapters).where(eq(schema.chapters.storyId, storyId)) : Promise.resolve([])
     ]);
 
     // null = unrestricted (every category); [] is a distinct, meaningful "none selected" — not
@@ -103,12 +109,29 @@ export const runTimelineSuggestPinsJob = async (job: AgentJob): Promise<{ storyI
     // silently falling back to "everything."
     const categoryFilter = settings.includeCategories === null ? null : new Set(settings.includeCategories);
     const enabledEntries = visibleEntries.filter(e => !e.isDisabled && (!categoryFilter || categoryFilter.has(e.category)));
+
+    const chaptersById = new Map(chapterRows.map(c => [c.id, c]));
+    const pickedChaptersInOrder = (ids: string[]) =>
+        ids
+            .map(id => chaptersById.get(id))
+            .filter((c): c is (typeof chapterRows)[number] => !!c)
+            .sort((a, b) => a.order - b.order);
+
     const sources: CandidateSource[] = [
         ...[...enabledEntries]
             .sort((a, b) => a.name.localeCompare(b.name))
             .slice(0, MAX_ENTRIES)
-            .map(e => ({ label: `${e.name} (${e.category})`, text: e.description ?? "" })),
-        ...noteRows.map(n => ({ label: `Note: ${n.title}`, text: extractTextFromLexical(n.content) }))
+            .map(e => ({ label: `${e.name} (${e.category})`, text: (e.description ?? "").slice(0, MAX_TEXT_CHARS) })),
+        ...noteRows.map(n => ({ label: `Note: ${n.title}`, text: extractTextFromLexical(n.content).slice(0, MAX_TEXT_CHARS) })),
+        // "Story Context" (ContextSelector.tsx's chat-side naming) — chapters manually picked in
+        // the Suggest Pins Context panel, not swept like everything else above.
+        ...pickedChaptersInOrder(settings.includeChapterSummaryIds)
+            .filter(c => c.summary)
+            .map(c => ({ label: `Chapter ${c.order}: ${c.title} (summary)`, text: (c.summary as string).slice(0, MAX_TEXT_CHARS) })),
+        ...pickedChaptersInOrder(settings.includeChapterContentIds).map(c => ({
+            label: `Chapter ${c.order}: ${c.title} (full text)`,
+            text: extractTextFromLexical(c.content).slice(0, MAX_CHAPTER_TEXT_CHARS)
+        }))
     ].filter(s => s.text.trim().length > 0);
 
     if (sources.length === 0) return { storyId, proposedCount: 0 };
@@ -131,7 +154,7 @@ export const runTimelineSuggestPinsJob = async (job: AgentJob): Promise<{ storyI
         );
     const { client, model } = connection;
 
-    const sourcesBlock = sources.map((s, i) => `[${i}] ${s.label}: ${s.text.slice(0, MAX_TEXT_CHARS)}`).join("\n");
+    const sourcesBlock = sources.map((s, i) => `[${i}] ${s.label}: ${s.text}`).join("\n");
     const existingBlock = existingSummaryLines.length > 0 ? existingSummaryLines.join("\n") : "(none yet)";
     const contextSection = storyContextBlock ? `=== STORY CONTEXT (background only, not a source to propose from) ===\n${storyContextBlock}\n\n` : "";
 
