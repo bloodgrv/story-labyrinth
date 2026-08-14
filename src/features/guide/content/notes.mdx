@@ -39,6 +39,16 @@ The search box matches both **title and body** across the whole desk by default,
 
 Thin, optional chips — add them from a note's own tab (next to its title/type) or filter by them from Browse. Tags are a plain-string convenience, not a taxonomy system: no colors, no hierarchy, no AI involvement, and (like folders) never appended to what gets indexed or sent to a chat.
 
-## 5. Everything else is unchanged
+## 5. The Notes chat and its Approvals tray
 
-Pin, arm (**Include in AI chats**), delete, rename, change type, the optional Notes chat rail, Import dump, and AI note-proposal/split/promote all work exactly as before — this pass only changed how you *find* and *file* notes, not how they're written or read by the AI.
+Notes has its own chat, opened from the icon rail (Chats), with a different context model from every other chat type: it always reads **every note's title and type** regardless of that note's own **Include in AI chats** toggle (a desk privilege, not an opt-in leak), plus the **full body** of whichever note you currently have open. That's the one deliberate exception to this app's usual "opt-in only" context doctrine.
+
+The chat's **Approvals** panel has three sections, all following the same "Accept/Open performs the write but only Mark done clears it" pattern as Brainstorm's tray:
+
+| Section | What it's for |
+| --- | --- |
+| **Splits** | A pasted dump the model split into several note drafts — **Accept all** creates every one of them at once |
+| **Promote** | A synopsis rewrite (**Accept**), or a handoff to World-Building/Outline (**Open**, seeds the destination like any other handoff) |
+
+- **Rework in chat** on a note — reworks the *whole* note (title/body), not a sub-span (the WYSIWYG editor has no plain-text offsets to capture a selection). Accept updates that same note in place.
+- **Import dump** — paste or upload a block of loose text and the chat splits it into candidate notes, landing in the Splits section above for review.

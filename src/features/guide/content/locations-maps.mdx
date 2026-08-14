@@ -13,7 +13,9 @@ World-Building chats opened on a **Location** template walk through a focused in
 
 ## 2. The Place Sheet
 
-Every location entry has a **Place sheet** section in its editor — *"A lightweight structured summary — not tracked Codex state. Fill in whatever's known; the rest can come from a World-Building chat later."* Fields: **Scale**, **Biome / climate**, **Holder**, **Danger level**, **Floor** (for nested locations, e.g. "2F"), **Landmarks**, **Exits summary**, **Layout** (markdown/ASCII), and **Image brief**.
+Every location entry has a **Place sheet** section in its editor — *"A lightweight structured summary — not tracked Codex state. Fill in whatever's known; the rest can come from a World-Building chat later."* Fields: **Scale**, **Biome / climate**, **Holder**, **Danger level**, **Floor**, **Landmarks**, **Exits summary**, **Layout** (markdown/ASCII), and **Image brief**.
+
+**Floor** is a free-text label (e.g. "Ground Floor", "2F", "Sub-basement"), not a structural link — a multi-floor building is represented as separate location entries, one per floor, each with its own Floor label. There's no dedicated parent/child field connecting them; the usual way to tie them together is a **Located In** or **Part Of** edge in the Relationship Graph (see the Relationships Guide) pointing each floor entry back at the building as a whole.
 
 You can fill these in by hand, or a World-Building chat can propose them for you — they show up as a card you Accept or Reject before anything is saved, same as every other chat proposal in this app.
 

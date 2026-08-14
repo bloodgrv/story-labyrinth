@@ -187,6 +187,9 @@ The prompt parser automatically integrates context from your story:
 
 This context helps the AI generate content that's consistent with your story world.
 
+> [!NOTE]
+> **Proposal fences aren't prompt variables.** Several chat types (World-Building, Outline, Story Timeline, Notes, Brainstorm) have their own system-prompt instructions telling the model to emit structured proposal blocks — Lore Sheet drafts, place-sheet fields, psych profiles, timeline pins, note splits, chat handoffs, and more — which render as Accept/Reject cards instead of plain text. These are separate from the `{{variable}}` system on this page: they're baked into that chat type's own framing, not something you write into a custom prompt yourself.
+
 ### Variable Edge Cases & Fallbacks
 
 When a variable has no value, it's replaced with an empty string:
