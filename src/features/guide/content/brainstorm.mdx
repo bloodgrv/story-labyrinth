@@ -1,101 +1,62 @@
 # Brainstorm Guide
 
-Learn how to use the brainstorming features to develop ideas, explore plot possibilities, and overcome writer's block with AI-assisted conversations.
+An intake and orientation hub for a story, not a structure desk or a lore factory. Brainstorm is where you talk through a premise before it's ready for the Outline, World-Building, or Notes — a chat-based space for exploring ideas, then handing the good ones off to the desk that actually owns them.
 
-## What is Brainstorming?
-
-The Brainstorm feature provides a chat-based interface for conversing with AI about your story. Unlike the Editor Chat, which can generate prose directly into your chapters, brainstorming helps you explore ideas, develop characters, plan plot points, and work through creative challenges through natural conversation.
-
-### Key Benefits
-
-- Develop character backstories and motivations
-- Explore plot alternatives and "what if" scenarios
-- Work through plot holes and inconsistencies
-- Generate world-building details on demand
-- Overcome writer's block with AI suggestions
-
-### Context Awareness
-
-- Access to your lorebook entries
-- Chapter summaries for continuity
-- Full chapter content when needed
-- Chat history maintained across sessions
-- Customisable context selection
+> [!NOTE]
+> Brainstorm never writes directly into your Outline, Lorebook, or chapter prose. Everything it produces lands as a proposal you explicitly Accept or Open — see §3 below.
 
 ---
 
-## 1. Accessing Brainstorm
+## 1. Starting a Brainstorm chat
 
-Navigate to your story dashboard and click on the "Brainstorm" tab. You'll see a sidebar with your chat sessions and a main area for conversation.
+_Path: **Brainstorm** in the left sidebar_
 
-*Path: Dashboard → [Your Story] → Brainstorm*
-
-## 2. Creating a Chat Session
-
-Each brainstorming session is a separate chat that maintains its own conversation history.
-
-1. Click the **Create New Chat** button
-2. A new chat appears in the sidebar with a timestamp
-3. You can rename chats for better organisation
-4. Create multiple chats for different aspects of your story
+Opening the tool auto-selects your most recent Brainstorm chat, or creates one if this is your first visit. Use **New Chat** (in the Chats column) for a fresh session — e.g. one chat per major idea you're exploring, so you can find it again later.
 
 > [!TIP]
-> Create separate chats for different purposes: "Character Development", "Plot Planning", "World Building", etc. This helps you find relevant conversations later.
+> If a story has no chapters or lorebook entries yet, its card on the Stories page offers a **Start in Brainstorm** shortcut — the fastest way into a brand-new project.
 
-## 3. Selecting a Prompt and Model
+## 2. Guided setup
 
-Before starting a conversation, choose the AI prompt and model to use.
+The composer header offers a **Guided setup** button plus a style dropdown, for when you want a structured interview instead of a blank "so what's your story about?":
 
-**Prompt Selection:**
-Choose from system prompts or your custom brainstorm-type prompts. Different prompts can be optimised for different tasks (character development, plot analysis, world-building, etc.).
+| Style | What it asks for |
+| --- | --- |
+| **Light** | Quick — just the essentials of your idea |
+| **Standard** | Walks through premise, genre, characters, and setting |
+| **Grill-me** | A full guided interview — premise, genre, protagonist, setting, and central conflict, pushed until they're solid |
 
-**Model Selection:**
-Select an AI model from your configured providers (OpenAI, OpenRouter, or Local). Different models have different strengths—experiment to find what works best for your brainstorming style.
+Clicking **Guided setup** seeds the composer with an opening line matching your chosen style — it doesn't send automatically, and it isn't a scripted question-by-question wizard; the depth comes from how the model is instructed for that style, not a tracked state machine. You're always free to just type and ignore Guided setup entirely.
 
-## 4. Using Context Controls
+A **Setup checklist** in the Approvals panel (see below) tracks five fixed slots — Premise/Logline, Genre & Tone, Protagonist(s), Setting, Central Conflict & Stakes — as known or unknown. You can toggle them manually, and accepting a matching overview proposal (§3) flips one automatically.
 
-Control what context the AI has access to during your conversation.
+## 3. Proposals: overview and handoffs
 
-| Mode | Description |
-|------|-------------|
-| **Full Context Mode** | Automatically include all lorebook entries, chapter summaries, and relevant story content. Great for general discussions where you want the AI to have complete knowledge. |
-| **Selective Context Mode** | Manually choose specific lorebook entries, chapter summaries, or chapter content to include. Useful when you want focused discussions about particular elements without overwhelming the context window. |
+Brainstorm never writes directly into your project. It proposes, through two kinds of card that persist into the **Approvals** panel (inbox icon on the icon rail) the moment they appear — they don't disappear if you don't act right away:
 
-## 5. Having the Conversation
+| Kind | What it is | Action |
+| --- | --- | --- |
+| **Overview proposal** | A synopsis rewrite, a new Note, or a Project Memory entry | **Accept** performs the write |
+| **Handoff** | A packet destined for Outline, World-Building, Notes, or Research | **Open** navigates to that desk with the content pre-seeded into its composer |
 
-Type your questions or prompts in the message input area and press Send or Enter.
-
-**Example Brainstorming Questions:**
-- "What would motivate my antagonist to change sides?"
-- "How can I make this plot twist more surprising?"
-- "Generate three possible backstories for this character"
-- "What are the logical consequences of this magical system?"
-- "How should I handle the pacing in the next chapter?"
+Both kinds also get a **Mark done** button — this is the only action that actually clears an item from the Active queue. Accept/Open perform the real write or navigation but deliberately leave the card in Active, so you don't lose track of something you meant to follow up on. A **Done** tab on the same panel shows everything you've marked complete.
 
 > [!IMPORTANT]
-> The AI maintains conversation history, so you can have multi-turn discussions. Ask follow-up questions, request alternatives, or refine ideas through back-and-forth dialogue.
+> A handoff to World-Building seeds a new Lorebook entry draft; handoffs to Outline/Research seed that chat's composer with the detail text. Nothing is created automatically — you still review and send in the destination desk.
 
-## 6. Managing Chat Sessions
+## 4. Context & memory
 
-Keep your brainstorming organised with these management features:
+The **Context** panel (sliders icon) controls what Brainstorm can see: Notes, Outline, Project Memory, Lorebook, and Chapter Summaries — all opt-in toggles, all off by default. Lorebook defaults off here specifically, unlike every other chat type, since Brainstorm is meant for pre-lore idea exploration rather than working against an established world.
 
-| Feature | Description |
-|---------|-------------|
-| **Renaming Chats** | Give your chats descriptive names to find them easily later |
-| **Deleting Chats** | Remove chats you no longer need to declutter your workspace |
+## 5. Troubleshooting
+
+| Problem | What's happening |
+| --- | --- |
+| A proposal I accepted is still showing in Active | By design — Accept/Open perform the write but don't clear the queue. Click **Mark done** once you're satisfied |
+| Guided setup didn't ask me anything specific | It's prompt-driven, not a scripted interview — it seeds an opening line in your chosen style's register, then the conversation proceeds like any other chat |
+| A handoff didn't create anything in the destination | Handoffs only *seed* the destination's composer or draft — you still have to review and send/save it there |
+| The Lorebook toggle is off and I don't remember turning it off | It starts off by default for Brainstorm specifically (every other chat type defaults it on) |
 
 ---
 
-## Effective Brainstorming Strategies
-
-**Be Specific**
-Instead of "Tell me about my character," try "What psychological trauma might explain why my character avoids commitment?"
-
-**Use Lorebook Context**
-Enable full context or select relevant lorebook entries so the AI understands your story's world and characters.
-
-**Iterate and Refine**
-Don't settle for the first response. Ask for variations, alternatives, or deeper exploration of promising ideas.
-
-**Record Good Ideas in Lorebook**
-When brainstorming produces valuable insights, add them to your lorebook so they inform future AI generations.
+Brainstorm chats, checklist items, and slot statuses all save with your story like any other data.

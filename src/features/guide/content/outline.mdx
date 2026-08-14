@@ -28,29 +28,41 @@ Switch to the **Character Arcs** tab and pick a character to see every outline i
 
 ## 3. AI-Assisted Outlining
 
-Click **Generate with AI** to have a model propose the next chapters (with nested scenes) that should follow whatever you already have — your story's synopsis, main characters, and any existing chapters or outline entries are sent as context so it doesn't repeat what's already there.
+Outline has its own dedicated chat (icon rail on the right, same shell every chat-hosting tool uses) rather than a single bulk "generate" button — talk through structure, and the model proposes chapters/scenes as it goes, using your story's synopsis, characters, and existing outline as context.
 
-Suggestions never merge into your outline automatically — each appears with a dashed amber border and an "AI Suggested" badge, waiting for your decision:
+- **New chapters/scenes** the model proposes are persisted immediately as pending entries — each appears in the tree with a dashed amber border and an "AI Suggested" badge, exactly like before:
 
-| Action                     | What it does                                                     |
-| -------------------------- | ---------------------------------------------------------------- |
-| **Accept** (✓)             | Confirms this one item, making it a normal outline entry         |
-| **Edit** (pencil)          | Opens the same edit dialog as any other item — doesn't accept it |
-| **Reject** (✗)             | Discards this one suggestion                                     |
-| **Reject All Suggestions** | Discards every pending suggestion for the story at once          |
+  | Action | What it does |
+  | --- | --- |
+  | **Accept** (✓) | Confirms this one item, making it a normal outline entry |
+  | **Edit** (pencil) | Opens the same edit dialog as any other item — doesn't accept it |
+  | **Reject** (✗) | Discards this one suggestion |
+  | **Reject All Suggestions** | Discards every pending suggestion for the story at once |
 
-Accepting a suggested chapter does **not** automatically accept its suggested scenes — each is reviewed independently, so you can keep a chapter shell while rejecting or rewriting individual scenes.
+  Accepting a suggested chapter does **not** automatically accept its suggested scenes — each is reviewed independently.
 
-Outline generation uses your configured AI provider like everything else in the app. For a dedicated (e.g. faster or local) model just for this, add an override for **Outline Generation** in Settings → Feature Endpoints.
+- **Edits, reorders, and deletes** the model proposes appear as a card directly in the chat reply instead, with its own Accept/Reject — nothing changes in your outline until you click Accept.
+- **Lore suggestions** — if the conversation surfaces something that sounds like a new character/location/etc., it appears in the Approvals panel as a card with **Open in WB**. This seeds a draft entry in the Lorebook tool; Outline never creates entries directly.
+
+Every row also has its own **Rework in chat** button (pencil-in-bubble icon) — send just that chapter or scene's title/summary into the Outline chat for a targeted rewrite, without describing the whole outline from scratch.
+
+### Outline Import
+
+Attach a structure document (PDF/DOCX/MD/TXT) via the paperclip button above the composer, or the **Import structure document…** card next to the chat list. The model extracts a chapter/scene draft, shown in an editable panel before anything touches your real outline:
+
+- If your outline is currently empty, the draft extracts immediately.
+- If you already have outline items, you're asked whether to **Append** after them or **Replace all** (Replace is a hard, confirmed action).
+- The draft can also surface **cast mentions** (characters it noticed in the source document) and **arc notes** — reviewed the same Accept/Reject way, with an option to link an accepted cast mention to the character chip on its outline item once the batch itself has been accepted.
 
 ## 4. Troubleshooting
 
 | Problem                                                  | What's happening                                                                                          |
 | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| "No AI provider configured" when generating              | Set up a model in AI Settings, or a dedicated Outline Generation endpoint in Settings → Feature Endpoints |
+| "No AI provider configured" in the Outline chat          | Set up a model in Settings → Providers & keys (or a Local connection) — the Outline chat uses your global default unless you've routed it elsewhere in Feature routing |
 | A character shows "Character removed" on a chip          | The linked Lorebook entry was deleted — unlink it if you no longer need the reference                     |
 | The "Move to chapter" dropdown doesn't appear on a scene | It only shows when there's more than one chapter to move to                                               |
+| Import asked Append vs. Replace and I want to redo it    | Replace All wipes every existing outline row and link first — make sure that's really what you want before confirming |
 
 ---
 
-Outline items persist in your local database alongside the rest of your story data — no account or cloud sync required, and creating/reordering/linking all work fully offline. Only **Generate with AI** needs a reachable model endpoint.
+Outline items persist in your local database alongside the rest of your story data — no account or cloud sync required, and creating/reordering/linking all work fully offline. Only the Outline chat and Outline Import need a reachable model endpoint.

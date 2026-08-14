@@ -73,39 +73,47 @@ Creating detailed Lorebook entries is essential for building a rich story world 
 
 ### Step 1: Access the Lorebook
 
-Open a story and go to its Lorebook tool — you'll have access to global, series (if the story belongs to one), and story-level entries all from that one screen. To create at series level, set Level to "Series" when creating the entry (below); it'll then be visible from every story in that series, not just the one you created it from.
+Open a story and go to its Lorebook tool — you'll have access to global, series (if the story belongs to one), and story-level entries all from that one screen. To create at series level, set Level to "Series" in the Advanced panel (below); it'll then be visible from every story in that series, not just the one you created it from.
 
 ### Step 2: Create a New Entry
 
-Click the "New Entry" button in the top-right corner of the Lorebook page. This opens the Create Entry dialog.
+Click the "New Entry" button in the top-right corner of the Lorebook page. This opens the full entry editor directly — a wide panel with your entry form on the left and a docked World-Building chat on the right (desktop only), the same editor you get when opening any existing entry.
 
-### Step 3: Fill in the Basic Information
+### Step 3: Write the Lore Sheet
 
-Complete the following fields in the dialog:
+The entry's primary surface is the **Lore Sheet** — a free-form markdown document (`sheetBody`) organized into headed sections, one per category (Character/Location/Item/etc. each get their own section set — e.g. a Character sheet has Core Identity, Physical Appearance, Wardrobe, Personality & Temperament, Wounds, Items, Background & Lifestyle, Character Motivations). Above **Name** and an optional image, you'll find:
+
+| Control | What it does |
+|---------|---------------|
+| **Section outline** | A sticky list of the sheet's own headings — click one to jump straight to it |
+| **Insert template** | Fills in the category's standard section headings if they're missing |
+| **Improve with AI** | One-shot AI tidy pass over your current sheet text — result lands in the (unsaved) field, Update/Create is still the real save |
+| **Rework in chat** | Highlight a span inside one section and send it to the docked WB chat for a targeted rewrite — Accept splices just that span back in |
+
+A pre-existing entry with no sheet yet gets one automatically reverse-compiled from its own description/Codex/place fields the first time you open it — never a blank template, so nothing you'd already written gets orphaned.
+
+### Step 4: Sync structured fields (Character & Location only)
+
+For **Character** and **Location** entries, a **Sync structured fields** button extracts the sheet's Wardrobe/Appearance/Wounds/Items (Character) or Landmarks/Place Details (Location) sections back into the entry's structured Codex state — never silently; it lands as a pending proposal in the same Codex approval tray as any chat-suggested change, showing an **added/removed** diff for list fields and a **before → after** diff for labeled fields, so you can see exactly what would change before approving. Every category's narrative sections also compile back into the entry's plain `description` field this same way. Syncing can also offer side proposals to other desks depending on category — a location's "Layout Notes" section as a Maps layout-brief card, an event/timeline entry's When/Summary as a pending Timeline pin, or a Notes-category entry as a one-shot "create a note" offer.
+
+### Step 5: Advanced (level, category, tags, and other machine fields)
+
+Click **Advanced** to access the entry's structured/organizational fields, collapsed by default so the Lore Sheet stays the primary thing you see:
 
 | Field | Description |
 |-------|-------------|
-| **Level** | Choose the scope: Global (everywhere), Series (shared within series), or Story (specific to one story) |
-| **Series/Story** | If Level is Series or Story, select which series or story. Pre-filled when creating from a story/series context |
-| **Name** | The name of your entry (e.g., "Harry Potter"). Automatically used as a tag for matching |
-| **Category** | Select from character, location, item, event, note, synopsis, starting scenario, or timeline |
+| **Level & Series/Story** | Choose the scope: Global (everywhere), Series (shared within series), or Story (specific to one story) |
+| **Category** | character, location, item, event, note, synopsis, starting scenario, or timeline — changing this reseeds an untouched auto-generated sheet to the new category's template |
 | **Importance** | Set to major, minor, or background |
-| **Tags** | Additional tags separated by commas (e.g., "The Boy Who Lived, Gryffindor, Wizard") |
-| **Description** | Detailed description—this is the main content provided to the AI when matched |
+| **Tags** | Additional tags separated by commas — matched against your chapter text alongside the entry's own name |
+| **Description** | The raw, structured description field — normally kept in sync by the Lore Sheet's own narrative sections rather than edited here directly |
+| **Type** | Specific type within category (e.g., "Protagonist", "Villain", "Capital City") |
+| **Status** | Narrative status: active, inactive, or historical |
+| **Disable this entry** | Disabled entries won't be matched in text or included in AI context |
 
-### Step 4: Advanced Settings (Optional)
+### Step 6: Save Your Entry
 
-Click on "Advanced Settings" to access additional options:
-
-| Setting | Description |
-|---------|-------------|
-| **Type** | Specific type within category (e.g., "Protagonist", "Villain", "Capital City", "Magical Artifact"). For organisation—included in entry context |
-| **Status** | Narrative status: **active** (currently relevant), **inactive** (temporarily not in play), **historical** (past events/deceased characters). Descriptive metadata included in AI context |
-| **Disable Entry** | Toggle to disable. Disabled entries won't be matched or included in AI context |
-
-### Step 5: Save Your Entry
-
-Click the "Create" button to save your new Lorebook entry.
+Click **Create** (or **Update** on an existing entry) to save.
 
 > [!IMPORTANT]
 > Create entries for all major characters, locations, and important story elements before you start writing. This ensures the AI has a good understanding of your story world from the beginning.
@@ -142,9 +150,12 @@ Folders are a cosmetic filing layer for a single category's entries within one s
 
 ### Editing and Deleting Entries
 
-**Editing:** Click the edit icon on the entry card to open the dialog with current values pre-filled. Make changes and click "Update" to save.
+**Editing:** Click the entry card (or its edit icon) to open the same full Lore Sheet editor described in the Creating Entries tab, pre-filled with current values. Make changes and click "Update" to save.
 
 **Deleting:** Click the trash icon on the entry card and confirm the deletion.
+
+> [!TIP]
+> Any pending Codex change — whether from Sync, a chat proposal, or the "Suggest Codex updates" scan — shows a real diff against the entry's current state before you approve it: added/removed for list fields (Wardrobe, Wounds, Items), before → after for labeled fields (Appearance, custom fields).
 
 > [!WARNING]
 > Deletion is permanent and cannot be undone.
