@@ -102,11 +102,18 @@ export function LorebookSecretsPanel({ storyId, entries, onOpenEntry, onChanged 
                 </Tabs>
             </div>
 
+            <p className="text-xs text-muted-foreground -mt-1">
+                This tab is for reviewing and revealing secrets across the whole story — it can't create new ones. To
+                <strong> add a secret</strong>: open a character entry → expand <strong>Advanced</strong> → turn on
+                <strong> Track Character State</strong> → add it in the <strong>Secrets</strong> box near the bottom.
+                It'll show up here automatically.
+            </p>
+
             {rows.length === 0 ? (
                 <EmptyState
                     message={
                         filter === "all"
-                            ? "No secrets tracked yet. Add one from a character entry's Codex → Secrets section."
+                            ? "No secrets tracked yet in this story."
                             : `No ${filter} secrets.`
                     }
                 />
