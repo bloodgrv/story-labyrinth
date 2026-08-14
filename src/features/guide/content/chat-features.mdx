@@ -4,17 +4,45 @@ A few things that apply across every AI chat window — World-Building, Editor, 
 
 ---
 
-## 1. Cloud | Local Model Routing
+## 1. The icon rail
+
+Every chat host except the Editor (World-Building, Outline, Notes, Research, Brainstorm) shares the same icon rail on the right edge — a collapsible column of buttons, each opening the relevant panel as a modal sheet rather than cluttering the composer area permanently:
+
+| Icon | Panel | What's there |
+| --- | --- | --- |
+| **Chats** | Non-modal docked column (not a sheet) | Your chat list for this desk — collapsed by default |
+| **Approvals** | Modal, badge shows pending count | Codex proposals and Chat Shuttle items awaiting review, bundled together |
+| **Context** | Modal, chip shows which toggles are armed | The Notes/Outline/Memory/Lorebook/Guide/auto-insert/auto-accept toggles (§3 below) |
+| **Story Context** | Modal (Outline/WB only) | The older manual chapter/lorebook-entry picker — Include Full Context, or hand-pick specific summaries/entries/chapter text |
+| **Playbook** | Modal | Guided Setup — style dropdown + "Guided setup" button, described in each desk's own guide page |
+
+Click the collapse chevron at the bottom of the rail to shrink it to icon-only width. The Editor chat uses its own equivalent rail with the same shape — see the Advanced Guide's "editor tool rail" section for its full button list (it adds a few chapter-specific ones like Tags and Scanner).
+
+## 2. Cloud | Local Model Routing
 
 Every chat has a **Cloud** | **Local** pill at the top, next to the model dropdown. Switching modes filters the model list to just that provider group. Settings → Providers & keys has a **preferred mode** default, so a brand-new chat always starts with a real model selected instead of coming up modelless.
 
 To edit a chat's system prompt, use the **⋯** menu next to the model control → **Edit system prompt**.
 
-## 2. Context & Memory Toggles
+## 3. Context & Memory Toggles
 
-The Notes / Outline / Memory / Lorebook / auto-insert / auto-accept / shuttle toggles for a chat are tucked behind a collapsed **Context & memory** disclosure by default, to keep the composer area clean. If any of them are turned on, a small chip next to the collapsed header lists which ones (e.g. "Notes · Memory"), so you can tell at a glance without expanding it.
+Opt-in toggles live in the **Context** rail panel: Notes, Outline, Project Memory, Lorebook, Story Timeline, **Include Guide** (lets the chat answer questions about how to use the app itself), plus per-host toggles like auto-insert prose or auto-accept Codex where applicable. All default off. The rail icon shows a small chip listing which ones are armed (e.g. "Notes · Memory") so you can tell at a glance without opening the panel.
 
-## 3. Context / Token Meter
+## 4. Per-message actions
+
+Hover any message to reveal a small action bar beneath it:
+
+| Action | Where |
+| --- | --- |
+| **Copy** | Every message |
+| **Edit** | Every message — revise it in place |
+| **Regenerate** | Assistant messages — re-run the model for a new reply |
+| **Resend** | User messages — resend as-is |
+| **Delete** | Every message |
+| **Branch from here** | Every message — forks the conversation from this point into a new chat, leaving the original untouched |
+| **Save as note** | Where the host supports it — captures the message straight into your Notes |
+
+## 5. Context / Token Meter
 
 A composer chip shows an estimated size of everything that would be sent with your next message — e.g. *"12.3k / 32k tokens (est.) · 62% left"* — with a small progress bar. It's always shown for **Local** models (since local context windows are usually the tightest constraint); for other providers it only appears once a real usage count is known from an earlier reply this session.
 
@@ -23,7 +51,7 @@ Click the chip to expand a **Context breakdown (est.)** popover — the same con
 > [!TIP]
 > For **Local** models, Settings → Local lets you set a context-window override and turn on a soft warning that asks for confirmation before sending once you're near the limit. It's off by default and never blocks a send outright — it just asks first.
 
-## 4. Chat Shuttle
+## 6. Chat Shuttle
 
 If you ask a World-Building, Editor, or Outline chat something that's really a real-world fact lookup (historical details, tradecraft, "what would people actually use for X") rather than a craft/continuity question, the model won't try to answer it out of its own knowledge — it proposes shuttling the question to the **Research** desk instead. A card appears right in the chat with the question and a short scene crumb, and three actions:
 
@@ -31,16 +59,17 @@ If you ask a World-Building, Editor, or Outline chat something that's really a r
 - **Answer here** — seeds the *current* chat's composer with the question instead, if you'd rather just answer it yourself without switching tools
 - **Mark done** — dismisses the card once you've handled it
 
-Nothing is ever sent automatically — every shuttle is something you choose to open. A **Shuttles** section in the chat's sidebar keeps track of active and done shuttles for that chat; if you use Research's own "send brief back" option, a **Returned briefs** section shows what came back.
+Nothing is ever sent automatically — every shuttle is something you choose to open. Active and done shuttles for a chat live in the **Approvals** rail panel (§1), alongside any Codex proposals — not a separate sidebar section. If you use Research's own **"Send brief to origin"** option, the brief comes back into that same panel.
 
-## 5. Troubleshooting
+## 7. Troubleshooting
 
 | Problem                                       | What's happening                                                                     |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | A chat has no model selected                   | Set a preferred Cloud/Local mode in Settings → Providers & keys so new chats default correctly |
-| Notes/Outline/Memory toggles seem to have disappeared | They're collapsed behind **Context & memory** by default — click it to expand, or check the summary chip next to it |
+| Notes/Outline/Memory toggles seem to have disappeared | They live in the **Context** rail icon (§1/§3) — click it to open the panel, or check the summary chip on the icon itself |
 | Token meter chip isn't showing                 | It's always on for Local models; for other providers it only appears after the first reply of the session reports real usage |
-| A shuttle question just sits there             | Shuttles are never auto-opened or auto-answered — click **Open** or **Answer here** yourself |
+| A shuttle question just sits there             | Shuttles are never auto-opened or auto-answered — open **Approvals** and click **Open** or **Answer here** yourself |
+| I can't find the per-message action bar        | It only appears on hover, and never while that message is mid-stream |
 
 ---
 

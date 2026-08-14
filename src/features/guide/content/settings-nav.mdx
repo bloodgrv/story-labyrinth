@@ -9,9 +9,9 @@ The left sidebar was decluttered to hold only story-scoped tools; everything els
 
 ## 1. Where Things Moved
 
-The left sidebar now lists only story-scoped tools: **Stories**, **Series**, **Editor**, **Chapters**, **Outline**, **Lorebook**, **Brainstorm**, **Research**, **Notes**, **Names**, **Memory**, **Relations**, **Maps** — plus, at the bottom, **New tab** (only shown once a story is selected, see below) and a single **Settings** button.
+The left sidebar now lists only story-scoped tools: **Stories**, **Series**, **Editor**, **Chapters**, **Outline**, **Lorebook**, **Brainstorm**, **Research**, **Notes**, **Names**, **Memory**, **Relations**, **Maps**, **Timeline** — plus, at the bottom, **New tab** (only shown once a story is selected, see below) and a single **Settings** button.
 
-**Theme**, the **Guide**, **Users**, and the **RAG Scanner** used to have their own top-bar/sidebar entries. They're now sub-nav tabs inside **Settings** instead.
+**Theme**, the **Guide**, **Users**, and the **RAG Scanner** used to have their own top-bar/sidebar entries. They're now sub-nav tabs inside **Settings** instead. The bottom of the sidebar also has a **Server** button, opening a read-only server status page (`/_status`) in a new tab — useful for confirming the backend is actually up without leaving your place in the app.
 
 ## 2. Settings Layout
 
@@ -19,7 +19,7 @@ Settings is organized as a vertical sub-nav, in this order:
 
 | Tab              | What's there                                                              |
 | ----------------- | --------------------------------------------------------------------------- |
-| **Appearance**     | Theme toggle                                                                |
+| **Appearance**     | Theme toggle — 15 palettes (Light, Bone, Sepia, Mid Stone, Mid Slate, Mid Sage, Black & Sand, Dark Parchment, Midnight, Eclipse, Abyss, Ember, Forest, Matrix, System) |
 | **Providers & keys** | Chat default routing (Cloud/Local), OpenAI/OpenRouter/Gemini/Grok API keys |
 | **Local**          | Local model connection, Context Meter settings                             |
 | **Feature routing** | Per-feature model/endpoint assignment (writing vs. scanner vs. embeddings, etc.) |
@@ -39,7 +39,11 @@ The sidebar switches into selection mode: a small checkbox appears next to every
 > [!IMPORTANT]
 > Browsers only allow one `window.open()` per click unless you've told them otherwise. If you select more than one tool, Chrome and Edge will silently block every tab after the first — the app will show a warning like *"3 tabs were blocked by the browser's popup blocker. Allow popups for this site to open them all at once."* if that happens. Allow popups for this site once (via the address-bar icon or your browser's site settings) and every subsequent multi-tab open will work in one click.
 
-## 4. Troubleshooting
+## 4. Command Palette
+
+Press **Cmd/Ctrl+K** anywhere in the app to open a searchable command palette — jump straight to a story, chapter, lorebook entry, or note, or switch tools, without touching the sidebar. A handful of other global shortcuts exist too: **Cmd/Ctrl+1** through **6** switch directly to Stories/Editor/Chapters/Lorebook/Brainstorm/Notes, and **Cmd/Ctrl+[** / **]** step to the previous/next chapter while the Editor is open.
+
+## 5. Troubleshooting
 
 | Problem                                       | What's happening                                                                                             |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |

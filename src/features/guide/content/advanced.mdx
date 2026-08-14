@@ -99,11 +99,15 @@ Click the expand arrow on a chapter card to view its summary. You can:
 **Deleting Chapters**
 Click the delete icon on a chapter card and confirm. **Deletion is permanent and cannot be undone.** All chapter content, notes, and outlines are deleted.
 
-**Chapter Notes & Outlines**
-Access notes and outlines from within the chapter editor:
+**Chapter Outline & Scribble**
+Access from the editor's own icon rail (right edge):
 - **Outline:** Plan your chapter structure, scene beats, and plot points before writing
-- **Notes:** Track character arcs, continuity reminders, or revision notes for this specific chapter
-- Both persist automatically and are accessible from the editor sidebar or toolbar
+- **Scribble:** A free-form scratch pad for this chapter — continuity reminders, revision notes, anything that isn't meant to become chapter prose (the same "Scribble" pad also exists on Lorebook entries, opened from the entry editor)
+- Both persist automatically
+
+### The editor tool rail
+
+The chapter editor's full icon rail, right edge: **Tags** (matched Lorebook entries), **Outline**, **POV**, **Scribble**, **Beats** (Concrete Beats), **Scanner** (RAG Scanner, chapter-scoped), **History** (chapter content undo/restore), **Approvals** (Codex proposals + Chat Shuttle items pending review), and **Context** (the chat's Notes/Outline/Memory/Lorebook toggles). Each opens as a right-side panel — only one open at a time.
 
 ### Formatting Text
 
@@ -118,6 +122,10 @@ Alongside bold/italic/underline, the chapter editor's toolbar supports bulleted,
 - **Scene breaks:** put an empty line, `***`, `* * *`, or `---` on its own line (or insert a horizontal rule from the toolbar) between scenes — it renders as a centered `* * *` break in the exported book, and the paragraph right after it won't get the usual first-line indent.
 - **Typography:** trade-style paragraph indent, minimal Kindle-native styling, no embedded fonts — your Kindle's own reading font is used.
 - **Before you export:** if something looks off (no chapters, everything empty, a missing title/author, or a very large embedded image), you'll see a dismissible warning — it's just a heads-up, never a hard block. Click "Export anyway" to continue.
+
+### Organizing a Large Lorebook
+
+Once a category grows past a dozen or so entries, the Lorebook tool's folder sidebar helps — nested folders (up to 3 levels deep), drag-to-file, drag-to-reorder. See the Lorebook Guide's own "Organizing with Folders" section for the full walkthrough.
 
 ### Story Management
 
@@ -143,7 +151,7 @@ Click the delete icon and confirm. **This permanently deletes the story and all 
 
 ### Notes Feature
 
-The Notes feature provides story-level note-taking separate from chapter notes. Access it from the "Notes" tab in your story dashboard.
+The Notes feature provides story-level note-taking separate from a chapter's own Scribble pad. Access it from the "Notes" tab in your story dashboard.
 
 **When to Use Notes:**
 - Story-wide ideas and brainstorming
@@ -167,9 +175,9 @@ The Notes feature provides story-level note-taking separate from chapter notes. 
 7. Delete notes using the delete button when a note is selected
 
 > [!TIP]
-> **Notes vs Chapter Notes vs Lorebook:**
+> **Notes vs Scribble vs Lorebook:**
 > - **Story Notes:** General story-wide information, not tied to chapters
-> - **Chapter Notes:** Specific to one chapter, accessed from chapter editor
+> - **Scribble:** Specific to one chapter (or Lorebook entry), accessed from its own editor's icon rail
 > - **Lorebook Notes Category:** Story elements visible to AI during generation
 
 </TabsContent>
@@ -191,14 +199,14 @@ Before diving into writing, spend time building your lorebook. This upfront inve
 4. Add timeline entries for major historical events
 5. Begin writing with confidence that the AI understands your world
 
-### Chapter Planning with Notes and Outlines
+### Chapter Planning with Outline and Scribble
 
-Each chapter supports both notes and outlines. Use them to stay organised:
+Each chapter supports both an outline and a scratch pad. Use them to stay organised:
 
 | Feature | Purpose |
 |---------|---------|
-| **Chapter Outlines** | Plan scene beats, plot points, and structure before writing. Refer back as you write to stay on track. |
-| **Chapter Notes** | Track character arcs, continuity details, or revision reminders. Notes persist alongside your chapter. |
+| **Chapter Outline** | Plan scene beats, plot points, and structure before writing. Refer back as you write to stay on track. |
+| **Scribble** | Track character arcs, continuity details, or revision reminders. Persists alongside your chapter. |
 
 ### Using Brainstorming Effectively
 
@@ -222,8 +230,13 @@ Chapter summaries help the AI maintain continuity across your story. Generate su
 
 | Action | Shortcut |
 |--------|----------|
+| Open the command palette (jump to a story/chapter/entry/note, switch tools) | `Cmd/Ctrl+K` |
+| Switch to Stories / Editor / Chapters / Lorebook / Brainstorm / Notes | `Cmd/Ctrl+1` – `6` |
+| Previous / next chapter (while a chapter is open) | `Cmd/Ctrl+[` / `Cmd/Ctrl+]` |
 | Trigger @ Autocomplete | `@` |
 | Save Chapter | Auto-save |
+
+Every chat message also has its own hover action bar (Copy/Edit/Regenerate/Resend/Delete/Branch) — see the Chat Features guide's "Per-message actions" section.
 
 **Navigation Tips:**
 - Use browser back/forward for navigation
@@ -323,12 +336,10 @@ The following topics are planned for future guide updates:
 - Archiving completed projects
 
 ### Advanced Editor Features
-- Custom keyboard shortcuts
 - Editor customisation options
 - Advanced formatting techniques
 
 ### AI Model Optimisation
-- Choosing the right model for different tasks
 - Understanding temperature and token settings
 - Prompt engineering best practices
 
