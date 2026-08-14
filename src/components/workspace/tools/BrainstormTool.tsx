@@ -1,9 +1,10 @@
-import { AlertCircle, Inbox, MessageSquare, Plus, RefreshCcw, SlidersHorizontal, Wand2 } from "lucide-react";
+import { AlertCircle, Inbox, MessageSquare, Plus, RefreshCcw, SlidersHorizontal, Upload, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { BrainstormCharacterImportPanel } from "@/features/brainstorm/components/BrainstormCharacterImportPanel";
 import { BrainstormChecklistTray } from "@/features/brainstorm/components/BrainstormChecklistTray";
 import { useBrainstormChecklistQuery } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
 import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
@@ -230,6 +231,13 @@ export const BrainstormTool = () => {
                                                   {contextToggles.armedLabels.join(" · ")}
                                               </Badge>
                                           ) : undefined
+                                  },
+                                  {
+                                      id: "import-characters",
+                                      icon: Upload,
+                                      label: "Import",
+                                      title: "Import characters from a document",
+                                      content: <BrainstormCharacterImportPanel chatId={selectedChat.id} storyId={currentStoryId} />
                                   },
                                   {
                                       id: "playbook",

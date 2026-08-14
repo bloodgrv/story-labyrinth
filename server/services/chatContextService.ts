@@ -740,7 +740,40 @@ const resolveCodexEntries = async (
 // than throwing if the anchor entry (or a related target) no longer exists — anchorEntryId is a
 // plain column, not a real FK (see schema.ts's comment on it for why), so a deleted entry's id
 // can linger with no DB-level cascade to clean it up.
-const resolveAnchorAndRelated = async (anchorEntryId: string | null): Promise<ChatContextCodexEntry[]> => {
+// Secrets (2026-08-14) — the only place chapter-scoped auto-reveal is actually evaluated, since
+// this is the one codexState-forwarding path that legitimately knows which chapter (if any) the
+// current chat is anchored to (Editor chats only — resolveAnchorChapter's own comment). Manual
+// `revealed` always wins regardless of chapter; `revealedAtChapterId` only adds visibility once
+// the anchored chapter's own order has reached that chapter's order (never for a WB/other chat
+// with no anchor chapter — those get manual-only, same as the static RAG index).
+const filterRevealedSecrets = async (state: CodexState | null, anchorChapterId: string | null): Promise<CodexState | null> => {
+    if (!state?.secrets?.length) return state;
+
+    let anchorOrder: number | null = null;
+    if (anchorChapterId) {
+        const [chapterRow] = await db.select({ order: schema.chapters.order }).from(schema.chapters).where(eq(schema.chapters.id, anchorChapterId));
+        anchorOrder = chapterRow?.order ?? null;
+    }
+
+    let revealedAtOrders: Map<string, number> | null = null;
+    if (anchorOrder !== null) {
+        const chapterIds = [...new Set(state.secrets.map(s => s.revealedAtChapterId).filter((id): id is string => !!id))];
+        if (chapterIds.length > 0) {
+            const rows = await db.select({ id: schema.chapters.id, order: schema.chapters.order }).from(schema.chapters).where(inArray(schema.chapters.id, chapterIds));
+            revealedAtOrders = new Map(rows.map(r => [r.id, r.order]));
+        }
+    }
+
+    const secrets = state.secrets.filter(s => {
+        if (s.revealed) return true;
+        if (anchorOrder === null || !s.revealedAtChapterId || !revealedAtOrders) return false;
+        const revealOrder = revealedAtOrders.get(s.revealedAtChapterId);
+        return revealOrder !== undefined && anchorOrder >= revealOrder;
+    });
+    return { ...state, secrets };
+};
+
+const resolveAnchorAndRelated = async (anchorEntryId: string | null, anchorChapterId: string | null = null): Promise<ChatContextCodexEntry[]> => {
     if (!anchorEntryId) return [];
 
     const [anchorRow] = await db
@@ -761,6 +794,7 @@ const resolveAnchorAndRelated = async (anchorEntryId: string | null): Promise<Ch
         | { relationships?: Array<{ targetId: string; type: string; description?: string }> }
         | null;
     const relationships = metadata?.relationships ?? [];
+    const filteredCodexState = await filterRevealedSecrets(anchorRow.codexState as CodexState | null, anchorChapterId);
 
     const entries: ChatContextCodexEntry[] = [
         {
@@ -769,7 +803,7 @@ const resolveAnchorAndRelated = async (anchorEntryId: string | null): Promise<Ch
             category: anchorRow.category,
             excerpt: anchorRow.description,
             role: "anchor",
-            codexState: anchorRow.codexState as CodexState | null,
+            codexState: filteredCodexState,
             sheetBody: anchorRow.sheetBody
         }
     ];
@@ -1224,7 +1258,7 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         chat.storyId
             ? db.select({ synopsis: schema.stories.synopsis }).from(schema.stories).where(eq(schema.stories.id, chat.storyId))
             : Promise.resolve([]),
-        resolveAnchorAndRelated(chat.anchorEntryId),
+        resolveAnchorAndRelated(chat.anchorEntryId, chat.anchorChapterId),
         resolveAnchorChapter(chat.anchorChapterId),
         webSearchEnabled && explicitQuery ? resolveWebSearch(explicitQuery) : Promise.resolve({ results: [], pages: [] })
     ]);

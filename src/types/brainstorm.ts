@@ -1,3 +1,4 @@
+import type { DocumentImportDraft } from "./codex.js";
 import type { LorebookEntry } from "./story.js";
 
 // P0.4 B0-B4 — Brainstorm Hub (docs/Chat_Panel_Integrations_Design.md §5). Shared between
@@ -39,7 +40,12 @@ export interface BrainstormSlot {
 // separate, later-created row (not a status transition of the original "shuttle" row) with the
 // SAME origin chatId — see ShuttleTray.tsx's two sections and the design doc's tray-shape table
 // ("Return packet arrives -> No (new Active item)").
-export type BrainstormChecklistKind = "overview_proposal" | "handoff" | "note_split" | "shuttle" | "shuttle_return";
+// "character_batch" (2026-08-14) reuses the same table/service/route again — a fifth/sixth kind
+// still zero schema change, same "chatType-agnostic write path" precedent every prior addition
+// confirmed. Fires from a file-attach button (mirrors Outline chat's own OI6 attach entry point)
+// rather than a model-emitted fence — Brainstorm stays a propose/review hub either way (drafts
+// only become real entries via MultiEntryImportDialog's own explicit per-item Create).
+export type BrainstormChecklistKind = "overview_proposal" | "handoff" | "note_split" | "shuttle" | "shuttle_return" | "character_batch";
 export type BrainstormChecklistStatus = "pending" | "opened" | "done" | "dismissed";
 
 // ```overview-proposal fence payload (chatContextService.ts's OVERVIEW_PROPOSAL_INSTRUCTIONS) —
@@ -88,7 +94,21 @@ export interface ShuttleReturnPayload {
     links: { title: string; url: string }[];
 }
 
-export type BrainstormChecklistPayload = OverviewProposalPayload | HandoffPacket | NoteSplitProposalPayload | ShuttlePayload | ShuttleReturnPayload;
+// A multi-subject document import batch (2026-08-14, task 6/7's shared extraction service,
+// documentImportService.ts's importEntriesFromDocument) — attached from the Brainstorm chat's
+// own file-attach button. `filename` is display-only context for the tray card.
+export interface CharacterBatchPayload {
+    filename: string;
+    drafts: DocumentImportDraft[];
+}
+
+export type BrainstormChecklistPayload =
+    | OverviewProposalPayload
+    | HandoffPacket
+    | NoteSplitProposalPayload
+    | ShuttlePayload
+    | ShuttleReturnPayload
+    | CharacterBatchPayload;
 
 export interface BrainstormChecklistItem {
     id: string;

@@ -2,10 +2,11 @@ import { type Control, useWatch } from "react-hook-form";
 import { FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 import type { CreateEntryForm } from "./entryFormUtils";
-import { LabeledFieldsBox, StateListBox } from "./codexStateBoxes";
+import { LabeledFieldsBox, SecretsBox, StateListBox } from "./codexStateBoxes";
 
 interface CodexStateEditorProps {
     control: Control<CreateEntryForm>;
+    storyId?: string;
 }
 
 // Concrete/physical character state — wardrobe, appearance, wounds, items, custom attributes —
@@ -16,7 +17,7 @@ interface CodexStateEditorProps {
 // LabeledFieldsBox/StateListBox extracted into codexStateBoxes.tsx (L4) so
 // PlaceCodexStateEditor.tsx can reuse them with location-flavored labels — no logic here is
 // character-specific beyond which fields/titles get passed in.
-export function CodexStateEditor({ control }: CodexStateEditorProps) {
+export function CodexStateEditor({ control, storyId }: CodexStateEditorProps) {
     const codexEnabled = useWatch({ control, name: "codexEnabled" });
 
     return (
@@ -65,6 +66,7 @@ export function CodexStateEditor({ control }: CodexStateEditorProps) {
                     />
                     <StateListBox control={control} name="codexState.wounds" label="Wounds" placeholder="Add a wound..." />
                     <StateListBox control={control} name="codexState.items" label="Items" placeholder="Add an item..." />
+                    <SecretsBox control={control} storyId={storyId} />
                 </div>
             )}
         </div>

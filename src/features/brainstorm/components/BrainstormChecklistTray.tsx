@@ -4,12 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MultiEntryImportDialog } from "@/features/lorebook/components/MultiEntryImportDialog";
 import { useCreateNoteMutation } from "@/features/notes/hooks/useNotesQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useUpdateStoryMutation } from "@/features/stories/hooks/useStoriesQuery";
 import { agentMemoriesApi, deskTransfersApi } from "@/services/api/client";
 import { AGENT_MEMORY_CATEGORIES, type AgentMemoryCategory } from "@/types/agentMemory";
-import type { BrainstormChecklistItem, HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
+import type { BrainstormChecklistItem, CharacterBatchPayload, HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
 import { useBrainstormChecklistQuery, useUpdateChecklistStatusMutation } from "../hooks/useBrainstormChecklistQuery";
 import { useSetSlotStatusMutation } from "../hooks/useBrainstormSlotsQuery";
 import { SlotChecklistPanel } from "./SlotChecklistPanel";
@@ -33,6 +34,7 @@ const overviewSummary = (payload: OverviewProposalPayload): { label: string; bod
 // scope, mirroring CodexProposalTray.tsx.
 export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: BrainstormChecklistTrayProps) {
     const [statusTab, setStatusTab] = useState<"active" | "done">("active");
+    const [openBatchItem, setOpenBatchItem] = useState<BrainstormChecklistItem | null>(null);
     const { data: items = [] } = useBrainstormChecklistQuery(chatId, statusTab);
     const updateStatus = useUpdateChecklistStatusMutation();
     const updateStory = useUpdateStoryMutation();
@@ -42,6 +44,7 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
 
     const overviewItems = items.filter(i => i.kind === "overview_proposal");
     const handoffItems = items.filter(i => i.kind === "handoff");
+    const characterBatchItems = items.filter(i => i.kind === "character_batch");
     const isBusy = updateStatus.isPending || updateStory.isPending || createNote.isPending;
 
     const markDone = (id: string) => updateStatus.mutate({ id, status: "done" });
@@ -114,9 +117,15 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
 
     const renderChecklistCard = (item: BrainstormChecklistItem) => {
         const isOverview = item.kind === "overview_proposal";
+        const isCharacterBatch = item.kind === "character_batch";
         const { label, body } = isOverview
             ? overviewSummary(item.payload as OverviewProposalPayload)
-            : { label: `Handoff → ${(item.payload as HandoffPacket).destination}`, body: (item.payload as HandoffPacket).summary };
+            : isCharacterBatch
+              ? {
+                    label: `${(item.payload as CharacterBatchPayload).drafts.length} entries found`,
+                    body: (item.payload as CharacterBatchPayload).filename
+                }
+              : { label: `Handoff → ${(item.payload as HandoffPacket).destination}`, body: (item.payload as HandoffPacket).summary };
 
         return (
             <Card key={item.id} className={item.status !== "pending" ? "opacity-80" : undefined}>
@@ -140,6 +149,18 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
                                 <Button size="sm" onClick={() => handleAcceptOverview(item)} disabled={isBusy}>
                                     <Check className="h-4 w-4 mr-1" />
                                     Accept
+                                </Button>
+                            ) : isCharacterBatch ? (
+                                <Button
+                                    size="sm"
+                                    onClick={() => {
+                                        setOpenBatchItem(item);
+                                        if (item.status === "pending") updateStatus.mutate({ id: item.id, status: "opened" });
+                                    }}
+                                    disabled={isBusy}
+                                >
+                                    <ExternalLink className="h-4 w-4 mr-1" />
+                                    Review
                                 </Button>
                             ) : (
                                 <Button size="sm" onClick={() => handleOpenHandoff(item)} disabled={isBusy}>
@@ -186,10 +207,24 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
                 ) : (
                     handoffItems.map(renderChecklistCard)
                 )}
+                <p className="px-1 pt-2 text-xs font-medium text-muted-foreground">Character imports</p>
+                {characterBatchItems.length === 0 ? (
+                    <p className="p-2 text-center text-xs text-muted-foreground">No {statusTab} character imports.</p>
+                ) : (
+                    characterBatchItems.map(renderChecklistCard)
+                )}
             </div>
 
             <p className="px-3 pt-2 text-xs font-medium text-muted-foreground">Setup checklist</p>
             <SlotChecklistPanel storyId={storyId} />
+
+            <MultiEntryImportDialog
+                key={openBatchItem?.id ?? "none"}
+                storyId={storyId}
+                open={openBatchItem !== null}
+                onOpenChange={open => !open && setOpenBatchItem(null)}
+                initialDrafts={openBatchItem ? (openBatchItem.payload as CharacterBatchPayload).drafts : []}
+            />
         </div>
     );
 }

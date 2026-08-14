@@ -337,6 +337,10 @@ export function ChatInterface({
                 if (state.wounds?.length) lines.push(`  Wounds: ${state.wounds.map(i => i.value).join("; ")}`);
                 if (state.items?.length) lines.push(`  Items: ${state.items.map(i => i.value).join("; ")}`);
                 if (state.customFields?.length) lines.push(`  Custom fields: ${state.customFields.map(f => `${f.label}: ${f.value}`).join("; ")}`);
+                // Server already stripped every unrevealed secret before this payload was ever
+                // sent (chatContextService.ts's filterRevealedSecrets) — anything present here is
+                // safe to surface as an established fact, same as any other codex field.
+                if (state.secrets?.length) lines.push(`  Secrets (revealed): ${state.secrets.map(s => s.value).join("; ")}`);
                 return lines.length ? `\n${lines.join("\n")}` : "";
             };
             // entryId is included so "use the entryId from the Codex context below"

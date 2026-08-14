@@ -16,10 +16,14 @@ export type StoryGraphEdgeType =
     | "involved_in"
     | "mentions"
     | "contradicts"
+    | "alias_of"
     | "other";
 
 // Concrete/factual types only — deliberately no psychological, power-dynamic, or corruption
-// types (design doc §4.3's explicit non-goal).
+// types (design doc §4.3's explicit non-goal). "alias_of" (added 2026-08-14) fits this doctrine —
+// it's a factual identity relationship ("this entry is a cover/alter-ego of that entry"), not a
+// psychological one. Directed from the alias/cover entry TO the "real" underlying entry (e.g.
+// "Elizabeth Hartley" --alias_of--> "Lizbet Anderson"), matching every other directional type here.
 export const STORY_GRAPH_EDGE_TYPES: StoryGraphEdgeType[] = [
     "knows",
     "allied_with",
@@ -35,6 +39,7 @@ export const STORY_GRAPH_EDGE_TYPES: StoryGraphEdgeType[] = [
     "involved_in",
     "mentions",
     "contradicts",
+    "alias_of",
     "other"
 ];
 
@@ -53,6 +58,7 @@ export const STORY_GRAPH_EDGE_TYPE_LABELS: Record<StoryGraphEdgeType, string> = 
     involved_in: "Involved In",
     mentions: "Mentions",
     contradicts: "Contradicts",
+    alias_of: "Alias / Cover Of",
     other: "Other"
 };
 

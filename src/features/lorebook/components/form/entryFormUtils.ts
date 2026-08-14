@@ -8,7 +8,7 @@ export const EMPTY_PLACE_STATE: PlaceState = {};
 export type LorebookLevel = LorebookEntry["level"];
 export type LorebookCategory = LorebookEntry["category"];
 
-export const EMPTY_CODEX_STATE: CodexState = { wardrobe: [], appearance: [], wounds: [], items: [], customFields: [] };
+export const EMPTY_CODEX_STATE: CodexState = { wardrobe: [], appearance: [], wounds: [], items: [], customFields: [], secrets: [] };
 
 const hasCodexContent = (state: CodexState): boolean =>
     state.wardrobe.length > 0 ||
@@ -93,7 +93,10 @@ export const getDefaultFormValues = (
 ): CreateEntryForm => {
     const defaultLevel: LorebookLevel = entry?.level || (seriesId ? "series" : "story");
     const defaultScopeId = entry?.scopeId || seriesId || storyId || "";
-    const codexState = entry?.codexState ?? draft?.codexState ?? EMPTY_CODEX_STATE;
+    // `secrets` is spread in explicitly since it's optional on CodexState (2026-08-14) — an
+    // existing saved entry from before this feature has a real codexState object with no
+    // `secrets` key at all, and useFieldArray on "codexState.secrets" needs a defined array.
+    const codexState: CodexState = { ...(entry?.codexState ?? draft?.codexState ?? EMPTY_CODEX_STATE), secrets: entry?.codexState?.secrets ?? draft?.codexState?.secrets ?? [] };
     const resolvedCategory: LorebookCategory = entry?.category || draft?.category || defaultCategory || "character";
     // Lore Sheet seed (T5 FS1/FS2/FS7) — an existing entry's own sheetBody always wins. Otherwise:
     // an existing entry that predates this feature (entry.sheetBody null/empty) gets FS2's

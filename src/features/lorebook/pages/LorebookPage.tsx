@@ -284,6 +284,7 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
             ) : (
                 <LorebookBrowsePanel
                     seriesId={seriesId}
+                    storyId={storyId}
                     selectedCategory={selectedCategory}
                     onCategoryChange={handleCategoryChange}
                     categoryCounts={categoryCounts}

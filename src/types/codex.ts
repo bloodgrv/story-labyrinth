@@ -11,6 +11,21 @@ export interface CodexCustomField {
     value: string;
 }
 
+// A fact the writer wants tracked but NOT surfaced into AI-generated prose/context until it's
+// meant to be known — e.g. a spy's real identity behind a cover story. `revealed` is the always-
+// authoritative manual gate (2026-08-14 design: "manual toggle + chapter-scoped reveal" — manual
+// wins, chapter-scoping is additive, never the other way around). `revealedAtChapterId` is an
+// optional convenience: once a chapter-aware AI surface (Editor chat, RAG Scanner) is generating
+// for a chapter at or past that chapter's order, the secret is treated as revealed there too,
+// without requiring the writer to remember to flip the manual toggle mid-draft. Never auto-set by
+// any AI proposal flow — a secret only ever becomes revealed through explicit user action.
+export interface CodexSecretItem {
+    id: string;
+    value: string;
+    revealed: boolean;
+    revealedAtChapterId: string | null;
+}
+
 // Physical state snapshot stored per lorebook entry.
 // `appearance` is labeled fields (Hair/Facial Features/Physique/etc — see a reference character
 // sheet's "Physical Appearance" section), same shape as customFields, not a flat list like
@@ -24,6 +39,9 @@ export interface CodexState {
     wounds: CodexStateItem[];
     items: CodexStateItem[];
     customFields: CodexCustomField[];
+    // Optional (not every existing CodexState literal in this codebase sets it) — always treat a
+    // missing array as empty, never as "unknown"/undefined-is-different-from-empty.
+    secrets?: CodexSecretItem[];
 }
 
 // AI-extracted draft entry from an uploaded PDF/DOCX/MD/TXT reference document (see

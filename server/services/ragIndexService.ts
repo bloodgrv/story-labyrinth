@@ -34,6 +34,14 @@ const formatCodexState = (state: CodexState | null): string => {
     section("Items", state.items);
     labeledFields(state.customFields);
 
+    // Secrets (2026-08-14) — the RAG index is a static per-entry blob, computed once on save, not
+    // per-request, so it has no way to know "which chapter is this search happening for." Only
+    // the manual `revealed` gate applies here — never the chapter-scoped auto-reveal, which needs
+    // request-time chapter context and is handled separately in chatContextService.ts's anchor-
+    // entry resolution instead. An unrevealed secret must NEVER reach this function's output.
+    const revealedSecrets = (state.secrets ?? []).filter(s => s.revealed);
+    if (revealedSecrets.length) lines.push(`Secrets (revealed): ${revealedSecrets.map(s => s.value).join("; ")}`);
+
     return lines.join("\n");
 };
 

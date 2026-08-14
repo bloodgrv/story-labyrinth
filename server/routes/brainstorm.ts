@@ -50,17 +50,20 @@ router.post("/checklist", async (req, res) => {
         res.status(400).json({ error: "chatId, storyId, and payload are required" });
         return;
     }
-    // "note_split" (P0.4 K2/K3) and "shuttle"/"shuttle_return" (Chat Shuttle H0) reuse this same
-    // generic table/route — see NotesChecklistTray.tsx / ShuttleTray.tsx.
+    // "note_split" (P0.4 K2/K3), "shuttle"/"shuttle_return" (Chat Shuttle H0), and
+    // "character_batch" (2026-08-14, MultiEntryImportDialog.tsx's Brainstorm entry point) all
+    // reuse this same generic table/route — see NotesChecklistTray.tsx / ShuttleTray.tsx /
+    // BrainstormChecklistTray.tsx.
     if (
         kind !== "overview_proposal" &&
         kind !== "handoff" &&
         kind !== "note_split" &&
         kind !== "shuttle" &&
-        kind !== "shuttle_return"
+        kind !== "shuttle_return" &&
+        kind !== "character_batch"
     ) {
         res.status(400).json({
-            error: "kind must be one of: overview_proposal, handoff, note_split, shuttle, shuttle_return"
+            error: "kind must be one of: overview_proposal, handoff, note_split, shuttle, shuttle_return, character_batch"
         });
         return;
     }

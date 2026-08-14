@@ -13,6 +13,7 @@ import type { LorebookEntry } from "@/types/story";
 import { useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
 import { CATEGORIES, type LorebookCategory } from "./form";
 import { LorebookEntryList } from "./LorebookEntryList";
+import { MultiEntryImportDialog } from "./MultiEntryImportDialog";
 
 // Must be a stable reference — useSensor/useSensors re-memoize on options identity, and a fresh
 // object literal every render defeats that memoization (dnd-kit's own internal effects then see
@@ -21,6 +22,7 @@ const POINTER_ACTIVATION_CONSTRAINT = { distance: 8 };
 
 interface LorebookBrowsePanelProps {
     seriesId?: string;
+    storyId?: string;
     selectedCategory: LorebookCategory;
     onCategoryChange: (category: LorebookCategory) => void;
     categoryCounts: Record<LorebookCategory, number>;
@@ -53,6 +55,7 @@ interface LorebookBrowsePanelProps {
 // max-lines limit once the open-tabs strip and document-import wiring were added.
 export function LorebookBrowsePanel({
     seriesId,
+    storyId,
     selectedCategory,
     onCategoryChange,
     categoryCounts,
@@ -196,6 +199,7 @@ export function LorebookBrowsePanel({
                         disabled={isImportingDocument}
                         onChange={onImport}
                     />
+                    <MultiEntryImportDialog storyId={storyId} seriesId={seriesId} onCreated={onRefresh} />
                     <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3" onClick={onNewEntry} title="New Entry">
                         <Plus className="w-4 h-4" />
                         <span className="hidden sm:inline ml-2">New Entry</span>

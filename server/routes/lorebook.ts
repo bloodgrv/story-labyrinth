@@ -6,7 +6,7 @@ import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { parseJson } from "../lib/json.js";
 import { normalizeAppearance } from "../services/codexService.js";
-import { importEntryFromDocument } from "../services/documentImportService.js";
+import { importEntriesFromDocument, importEntryFromDocument } from "../services/documentImportService.js";
 import { generateLorebookImage } from "../services/grokImageService.js";
 import {
     deleteLorebookImage,
@@ -397,6 +397,32 @@ export default createCrudRouter({
                 }
 
                 res.json({ draft });
+            })
+        );
+
+        // POST /lorebook/import/document/batch - Multi-subject variant (2026-08-14) - identifies
+        // every distinct character/location/item the document describes in real detail and
+        // returns one draft per subject, instead of importEntryFromDocument's "pick the single
+        // most central subject." Same "nothing persisted here" doctrine - the client reviews and
+        // selects which drafts to actually create.
+        router.post(
+            "/import/document/batch",
+            upload.single("file"),
+            asyncHandler(async (req, res) => {
+                const { file } = req;
+                if (!file) {
+                    res.status(400).json({ error: "No file uploaded" });
+                    return;
+                }
+
+                const [error, result] = await attemptPromise(() => importEntriesFromDocument(file.buffer, file.originalname));
+
+                if (error) {
+                    res.status(400).json({ error: error.message });
+                    return;
+                }
+
+                res.json(result);
             })
         );
 

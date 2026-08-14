@@ -2,6 +2,10 @@ import type { DocumentImportDraft } from "@/types/codex";
 import type { GlobalLorebookExport, LorebookEntry } from "@/types/story";
 import { fetchJSON, uploadFile } from "./apiFactory";
 
+export interface DocumentImportBatchResult {
+    drafts: DocumentImportDraft[];
+}
+
 export interface ImproveSheetResult {
     success: boolean;
     sheetBody?: string;
@@ -54,6 +58,10 @@ export const lorebookApi = {
     // (unlike other uploadFile callers) since this one includes a third-party LLM call that can
     // genuinely hang with no error otherwise — see apiFactory.ts's uploadFile doc comment.
     importDocument: (file: File) => uploadFile<{ draft: DocumentImportDraft }>("/lorebook/import/document", file, 120_000),
+    // Multi-subject variant (2026-08-14) — a document describing several characters/locations
+    // returns one draft per subject instead of picking one. Longer timeout than the single-entry
+    // path — the extraction call itself allows a much larger max_tokens for multi-entry output.
+    importDocumentBatch: (file: File) => uploadFile<DocumentImportBatchResult>("/lorebook/import/document/batch", file, 180_000),
     uploadImage: (entryId: string, file: File) => uploadFile<LorebookEntry>(`/lorebook/${entryId}/image`, file),
     removeImage: (entryId: string) => fetchJSON<LorebookEntry>(`/lorebook/${entryId}/image`, { method: "DELETE" }),
     // AI-generates a portrait from the entry's own saved description (see grokImageService.ts).

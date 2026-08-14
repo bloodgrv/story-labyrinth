@@ -1,10 +1,13 @@
-import { Plus, X } from "lucide-react";
+import { Eye, EyeOff, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { type Control, useFieldArray } from "react-hook-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
+import { cn } from "@/lib/utils";
 import type { CreateEntryForm } from "./entryFormUtils";
 
 // Shared codexState field-array primitives — extracted out of CodexStateEditor.tsx (L4,
@@ -135,6 +138,103 @@ export function LabeledFieldsBox({ control, name, title, emptyHint, labelPlaceho
                     }}
                 />
                 <Button type="button" size="icon" variant="outline" onClick={addField} title={`Add to ${title}`}>
+                    <Plus className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+interface SecretsBoxProps {
+    control: Control<CreateEntryForm>;
+    storyId?: string;
+}
+
+// Secrets (2026-08-14) — facts tracked here but excluded from AI-generated prose/context until
+// revealed. Unlike the flat boxes above, each row carries its own reveal state: a manual toggle
+// (always authoritative — see filterRevealedSecrets in chatContextService.ts) plus an optional
+// "reveal at chapter" picker that auto-includes the secret once a chapter-aware AI surface
+// (Editor chat, RAG Scanner) is generating for that chapter or later. The chapter field is purely
+// a convenience — it never substitutes for flipping "Revealed" if the writer wants a secret
+// visible everywhere immediately, and it does nothing at all in a non-chapter-anchored surface
+// (WB chat, RAG search) where only the manual toggle is ever consulted.
+export function SecretsBox({ control, storyId }: SecretsBoxProps) {
+    const { fields, append, remove, update } = useFieldArray({ control, name: "codexState.secrets", keyName: "fieldId" });
+    const [draft, setDraft] = useState("");
+    const chaptersQuery = useChaptersByStoryQuery(storyId ?? "");
+    const chapters = [...(chaptersQuery.data ?? [])].sort((a, b) => a.order - b.order);
+
+    const addSecret = () => {
+        if (!draft.trim()) return;
+        append({ id: crypto.randomUUID(), value: draft.trim(), revealed: false, revealedAtChapterId: null });
+        setDraft("");
+    };
+
+    return (
+        <div className="border rounded-md p-3 space-y-2">
+            <FormLabel>Secrets</FormLabel>
+            <p className="text-xs text-muted-foreground">
+                Never surfaced into AI-generated prose or chat context until revealed — flip "Revealed" yourself, or
+                set "Reveal at chapter" so it's automatically visible once that chapter (or later) is being written.
+            </p>
+            {fields.length === 0 && <p className="text-xs text-muted-foreground">None yet</p>}
+            {fields.map((field, index) => (
+                <div key={field.fieldId} className="flex items-start gap-2 border rounded p-2">
+                    <button
+                        type="button"
+                        onClick={() => update(index, { ...field, revealed: !field.revealed })}
+                        title={field.revealed ? "Revealed — click to hide again" : "Hidden — click to reveal now"}
+                        className={cn(
+                            "mt-0.5 shrink-0 rounded p-1",
+                            field.revealed ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                        )}
+                    >
+                        {field.revealed ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </button>
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                        <p className="text-sm break-words">{field.value}</p>
+                        <div className="flex items-center gap-2">
+                            <Badge variant={field.revealed ? "default" : "secondary"} className="text-[10px]">
+                                {field.revealed ? "Revealed" : "Hidden"}
+                            </Badge>
+                            {storyId && (
+                                <Select
+                                    value={field.revealedAtChapterId ?? "__none__"}
+                                    onValueChange={value => update(index, { ...field, revealedAtChapterId: value === "__none__" ? null : value })}
+                                >
+                                    <SelectTrigger className="h-6 text-xs w-44">
+                                        <SelectValue placeholder="Reveal at chapter..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="__none__">No auto-reveal chapter</SelectItem>
+                                        {chapters.map(chapter => (
+                                            <SelectItem key={chapter.id} value={chapter.id}>
+                                                Ch. {chapter.order}: {chapter.title}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        </div>
+                    </div>
+                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => remove(index)} title="Remove secret">
+                        <X className="h-3 w-3" />
+                    </Button>
+                </div>
+            ))}
+            <div className="flex gap-2">
+                <Input
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    placeholder="Add a secret — e.g. 'Elizabeth Hartley is Lizbet Anderson's CIA cover identity'"
+                    onKeyDown={e => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            addSecret();
+                        }
+                    }}
+                />
+                <Button type="button" size="icon" variant="outline" onClick={addSecret} title="Add secret">
                     <Plus className="h-4 w-4" />
                 </Button>
             </div>

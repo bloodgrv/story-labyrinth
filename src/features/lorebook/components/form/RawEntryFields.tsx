@@ -76,7 +76,7 @@ export function RawEntryFields({ control, tagInput, selectedCategory, entryId, s
                 )}
             />
 
-            {selectedCategory === "character" && <CodexStateEditor control={control} />}
+            {selectedCategory === "character" && <CodexStateEditor control={control} storyId={storyId} />}
             {selectedCategory === "location" && !codexEnabled && <PlaceSheetFields control={control} />}
             {/* PlaceCodexStateEditor renders unconditionally for locations (mirrors CodexStateEditor's
                 own always-rendered pattern for character) — its "Track Place State" switch is the

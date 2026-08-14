@@ -234,3 +234,89 @@ export const importEntryFromDocument = async (buffer: Buffer, filename: string):
     if (!text.trim()) throw new Error("No extractable text found in this file.");
     return extractEntryFromText(text, image);
 };
+
+// 2026-08-14 — multi-subject batch import. importEntryFromDocument above is deliberately
+// unchanged (its system prompt's own "pick the single most central subject" instruction stays
+// the single-entry default) — this is a distinct entry point for the real gap found live: a
+// reference document describing several characters (a "character bible") collapsed to one
+// picked entry, silently dropping the rest. Same "not persisted here" doctrine — the route
+// returns drafts for the user to review/select before any are actually created.
+const DOCUMENT_IMPORT_BATCH_SYSTEM_PROMPT = `You are extracting MULTIPLE structured Lorebook entries from a reference document for a fiction-writing app (e.g. a "character bible" describing several people, or a world document describing several locations/factions).
+
+Identify EVERY distinct character, location, item, or named organization/faction the document describes in real detail (not just mentioned in passing) and return ONE JSON object per subject. If the document only really describes one subject, return an array with a single element — don't invent extra ones.
+
+Return ONLY a valid JSON array, no prose, no markdown fences. Each element shaped exactly like:
+{
+  "name": string,
+  "category": "character"|"location"|"item"|"event"|"note"|"synopsis"|"starting scenario"|"timeline",
+  "description": string,
+  "tags": string[],
+  "wardrobe": string[],
+  "appearance": [{"label": string, "value": string}],
+  "wounds": string[],
+  "items": string[],
+  "customFields": [{"label": string, "value": string}]
+}
+
+Rules (same as the single-subject extraction):
+- "description" is the full narrative profile for THAT subject only, in flowing prose — personality, backstory, relationships, physical appearance, narrative context. Don't blend two subjects' content into one description.
+- "wardrobe"/"appearance"/"wounds"/"items"/"customFields" follow the single-subject rules exactly — empty arrays if nothing described for that subject.
+- An organization/faction with real described structure (e.g. its own background/hierarchy/history) counts as its own subject (category "note" or "location" as fits) — don't fold it into one of the characters' descriptions instead.
+- If you cannot find a clear name for a subject, use "Untitled Entry".
+- Cap at 20 subjects — if the document genuinely describes more, extract the 20 most substantively described.`;
+
+export interface DocumentImportBatchResult {
+    drafts: DocumentImportDraft[];
+}
+
+export const importEntriesFromDocument = async (buffer: Buffer, filename: string): Promise<DocumentImportBatchResult> => {
+    const [text, image] = await Promise.all([extractTextFromFile(buffer, filename), extractImageFromFile(buffer, filename)]);
+    if (!text.trim()) throw new Error("No extractable text found in this file.");
+
+    const connection = await buildClientForFeature("document_import");
+    if (!connection)
+        throw new Error(
+            "No AI provider configured. Set up a model in AI Settings (Feature Endpoints → Document Import) before importing a document."
+        );
+    const { client, model } = connection;
+
+    const completion = await client.chat.completions.create({
+        model,
+        messages: [
+            { role: "system", content: DOCUMENT_IMPORT_BATCH_SYSTEM_PROMPT },
+            { role: "user", content: text.slice(0, 20000) }
+        ],
+        temperature: 0,
+        max_tokens: 8192
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "[]";
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error("The model did not return a parseable result. Try again or use a different model.");
+
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(match[0]);
+    } catch {
+        throw new Error("The model's response wasn't valid JSON. Try again or use a different model.");
+    }
+    if (!Array.isArray(parsed)) throw new Error("Expected a JSON array of entries.");
+
+    // Same "type-guard filter, don't throw on individual bad fields" tolerance as toDraft itself
+    // — one malformed element shouldn't sink the whole batch. The document's one embedded image
+    // (if any) attaches only to the first draft — there's no reliable way to know which subject
+    // it actually depicts, and attaching it to every draft would be worse (a random character
+    // portrait duplicated onto an org/location entry).
+    const drafts = parsed
+        .map((item, index) => {
+            try {
+                return toDraft(item, index === 0 ? image : null);
+            } catch {
+                return null;
+            }
+        })
+        .filter((d): d is DocumentImportDraft => d !== null);
+
+    if (drafts.length === 0) throw new Error("No entries could be extracted from this document.");
+    return { drafts };
+};

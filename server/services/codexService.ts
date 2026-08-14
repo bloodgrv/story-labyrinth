@@ -241,8 +241,14 @@ export const approvePendingChange = async (
     // class of data-loss bug already fixed once for entry metadata (see entryFormUtils.ts's
     // buildSubmitData spread). Any key present in proposedState overwrites; any key absent is kept
     // from the entry's current state.
-    if (pending.proposedState !== null)
-        changes.codexState = { ...(toCodexState(existing.codexState) ?? EMPTY_CODEX_STATE), ...pending.proposedState };
+    // `secrets` is deliberately never taken from a proposal, regardless of what the AI (or a
+    // future "Edit First" tray edit) included — the existing entry's own secrets always win, so a
+    // secret can only ever be created, edited, or revealed through the entry's own direct save
+    // path, never as a side effect of an ordinary codex-proposal Approve.
+    if (pending.proposedState !== null) {
+        const currentState = toCodexState(existing.codexState) ?? EMPTY_CODEX_STATE;
+        changes.codexState = { ...currentState, ...pending.proposedState, secrets: currentState.secrets };
+    }
     if (pending.proposedTags !== null) changes.tags = pending.proposedTags;
     if (pending.proposedNeedsFleshingOut !== null) changes.needsFleshingOut = pending.proposedNeedsFleshingOut;
 
