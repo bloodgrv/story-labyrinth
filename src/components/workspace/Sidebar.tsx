@@ -27,6 +27,7 @@ import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
+import { usePendingPinsQuery } from "@/features/story-timeline/hooks/useStoryTimelineQuery";
 import { useStoryContext, type WorkspaceTool } from "@/features/stories/context/StoryContext";
 import { isDarkThemeId, useTheme } from "@/lib/theme-provider";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,12 @@ export const Sidebar = () => {
     const { leftSidebar, toggleLeftSidebar } = useWorkspace();
     const { theme } = useTheme();
     const collapsed = leftSidebar.collapsed;
+    // Dot on the Timeline nav icon when AI-suggested pins are awaiting review, so it's visible
+    // from anywhere in the workspace, not just once you've already opened the Timeline tool's own
+    // Pending tab (which shows the count instead — this is presence-only, by design, since the
+    // nav icon has no room for a number without crowding the label at the expanded width).
+    const pendingPinsQuery = usePendingPinsQuery(currentStoryId);
+    const hasPendingTimelinePins = (pendingPinsQuery.data?.pending.length ?? 0) > 0;
     const monogramSrc = isDarkThemeId(theme) ? "/brand/sl-monogram.png" : "/brand/sl-monogram-light.png";
     const visibleTools = tools;
     const navigate = useNavigate();
@@ -162,7 +169,7 @@ export const Sidebar = () => {
                                     <Button
                                         variant={isActive ? "secondary" : "ghost"}
                                         className={cn(
-                                            "w-full gap-2",
+                                            "w-full gap-2 relative",
                                             collapsed ? "justify-center px-0" : "justify-start",
                                             isDisabled && "opacity-50 cursor-not-allowed",
                                             isActive && "raycast-rail-active"
@@ -173,9 +180,20 @@ export const Sidebar = () => {
                                                 : handleToolClick(tool.id, tool.requiresStory)
                                         }
                                         disabled={isDisabled}
-                                        title={collapsed ? tool.label : undefined}
+                                        title={
+                                            collapsed
+                                                ? tool.id === "story-timeline" && hasPendingTimelinePins
+                                                    ? `${tool.label} — pins awaiting review`
+                                                    : tool.label
+                                                : undefined
+                                        }
                                     >
-                                        <Icon className="h-4 w-4 shrink-0" />
+                                        <span className="relative shrink-0">
+                                            <Icon className="h-4 w-4" />
+                                            {tool.id === "story-timeline" && hasPendingTimelinePins && (
+                                                <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
+                                            )}
+                                        </span>
                                         {!collapsed && <span className="text-sm">{tool.label}</span>}
                                     </Button>
                                 </div>
@@ -294,7 +312,12 @@ export const Sidebar = () => {
                                 onClick={() => handleToolClick(tool.id, tool.requiresStory)}
                                 disabled={isDisabled}
                             >
-                                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                                <span className="relative shrink-0">
+                                    <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                                    {tool.id === "story-timeline" && hasPendingTimelinePins && (
+                                        <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
+                                    )}
+                                </span>
                                 <span className="text-[10px] sm:text-xs truncate max-w-[40px] sm:max-w-none">
                                     {tool.label}
                                 </span>

@@ -11,17 +11,18 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable } 
 import { CSS } from "@dnd-kit/utilities";
 import { attemptPromise } from "@jfdi/attempt";
 import { toPng } from "html-to-image";
-import { Download, Flag, GripVertical, LayoutGrid, Loader2, Rows3, ZoomIn, ZoomOut } from "lucide-react";
+import { Download, Flag, GripVertical, LayoutGrid, Loader2, Minimize2, Rows3, ZoomIn, ZoomOut } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { groupPinsByTier, sortPins } from "@/features/story-timeline/lib/sortPins";
 import { cn } from "@/lib/utils";
 import type { StoryTimeline, TimelinePin } from "@/types/storyTimeline";
 import { useCreatePinMutation, useDeletePinMutation, useUpdatePinMutation, useUpdateTimelineMutation } from "../hooks/useStoryTimelineQuery";
-import { PinCard } from "./PinCard";
+import { PinCard, whenLabel } from "./PinCard";
 import { PinFormDialog } from "./PinFormDialog";
 import { StoryStartControl } from "./StoryStartControl";
 import { TimelineOverviewStrip } from "./TimelineOverviewStrip";
@@ -31,6 +32,10 @@ const UNASSIGNED_LANE = "__unassigned__";
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.5;
 const ZOOM_STEP = 0.25;
+// Below this zoom, pins auto-collapse to dots even without the manual Compact toggle — "zoom out"
+// already means "fit more of the rail on screen," so folding cards down to dots at the same
+// threshold is the same intent, not a separate behavior to reason about.
+const COMPACT_AUTO_ZOOM_THRESHOLD = 0.75;
 
 // Drag-reorder target within the fuzzy tier only — civil/relative tiers sort by their own computed
 // values, not manualOrder (sortPins.ts's tiered pipeline), so dragging only makes sense there.
@@ -74,6 +79,10 @@ interface RailItem {
     // "marker" gets a bigger, ringed node so the Story-start beat reads as distinct from ordinary
     // pins without needing a second visual language.
     variant?: "pin" | "marker";
+    // Present only for real pin items (not the Story-start marker) — what compact mode collapses
+    // down to and shows in the hover tooltip. The marker stays permanently expanded: it's a single
+    // fixed landmark, not one of "lots of pins" that compacting is meant to help with.
+    compactLabel?: { title: string; when: string };
 }
 
 // Distance in px between dot centers at zoom = 1 — TimelineBoard's zoom control scales this
@@ -91,10 +100,32 @@ const RAIL_BLEED = 64;
 // know where any dot actually is) plus a dot per pin reads as "pins sitting on one continuous
 // line" without any coordinate math — no refs/measurement needed, so drag-reorder and responsive
 // wrapping keep working unmodified.
-function TimelineRail({ items, orientation, zoom }: { items: RailItem[]; orientation: "horizontal" | "vertical"; zoom: number }) {
+function TimelineRail({
+    items,
+    orientation,
+    zoom,
+    compact
+}: {
+    items: RailItem[];
+    orientation: "horizontal" | "vertical";
+    zoom: number;
+    compact: boolean;
+}) {
+    // Per-pin expand override within compact mode — click a dot to reveal that one card, click
+    // again (or its dot) to fold it back. Local UI state only, not persisted: re-opening the board
+    // or toggling zoom/Compact resets it, same posture as everything else on this board that isn't
+    // saved data (drag state, dialog open-ness).
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     if (items.length === 0) return null;
     const isHorizontal = orientation === "horizontal";
     const gapPx = Math.round(RAIL_BASE_GAP * zoom);
+    const toggleExpanded = (key: string) =>
+        setExpandedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
 
     // Vertical rows are intentionally NOT each individually centered: a row's own width varies
     // with its card content, so centering each row would drag its dot off the shared line by a
@@ -112,30 +143,55 @@ function TimelineRail({ items, orientation, zoom }: { items: RailItem[]; orienta
     );
 
     return (
-        <div className={isHorizontal ? "relative pt-9 pb-1" : "relative py-9 w-fit mx-auto"}>
-            <div
-                className={isHorizontal ? "absolute h-1.5 rounded-full bg-primary/40" : "absolute w-1.5 rounded-full bg-primary/40"}
-                style={isHorizontal ? { top: 40, left: -RAIL_BLEED, right: -RAIL_BLEED } : { left: 9, top: -RAIL_BLEED, bottom: -RAIL_BLEED }}
-            />
-            <div
-                className={isHorizontal ? "relative flex flex-row items-start" : "relative flex flex-col items-start"}
-                style={{ gap: `${gapPx}px` }}
-            >
-                {items.map(item =>
-                    isHorizontal ? (
-                        <div key={item.key} className="flex flex-col items-center shrink-0">
-                            {dot(item.variant)}
-                            <div className="mt-3">{item.content}</div>
-                        </div>
-                    ) : (
-                        <div key={item.key} className="flex flex-row items-center shrink-0">
-                            <div className="w-6 flex justify-center shrink-0">{dot(item.variant)}</div>
-                            <div className="ml-3">{item.content}</div>
-                        </div>
-                    )
-                )}
+        <TooltipProvider delayDuration={150}>
+            <div className={isHorizontal ? "relative pt-9 pb-1" : "relative py-9 w-fit mx-auto"}>
+                <div
+                    className={isHorizontal ? "absolute h-1.5 rounded-full bg-primary/40" : "absolute w-1.5 rounded-full bg-primary/40"}
+                    style={isHorizontal ? { top: 40, left: -RAIL_BLEED, right: -RAIL_BLEED } : { left: 9, top: -RAIL_BLEED, bottom: -RAIL_BLEED }}
+                />
+                <div
+                    className={isHorizontal ? "relative flex flex-row items-start" : "relative flex flex-col items-start"}
+                    style={{ gap: `${gapPx}px` }}
+                >
+                    {items.map(item => {
+                        const collapsible = compact && !!item.compactLabel;
+                        const isExpanded = expandedIds.has(item.key);
+                        const showContent = !collapsible || isExpanded;
+                        const dotNode = collapsible ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleExpanded(item.key)}
+                                        className="cursor-pointer"
+                                        aria-label={isExpanded ? `Collapse ${item.compactLabel!.title}` : `Expand ${item.compactLabel!.title}`}
+                                    >
+                                        {dot(item.variant)}
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side={isHorizontal ? "top" : "right"}>
+                                    <div className="font-medium">{item.compactLabel!.title}</div>
+                                    <div className="opacity-80">{item.compactLabel!.when}</div>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : (
+                            dot(item.variant)
+                        );
+                        return isHorizontal ? (
+                            <div key={item.key} className="flex flex-col items-center shrink-0">
+                                {dotNode}
+                                {showContent && <div className="mt-3">{item.content}</div>}
+                            </div>
+                        ) : (
+                            <div key={item.key} className="flex flex-row items-center shrink-0">
+                                <div className="w-6 flex justify-center shrink-0">{dotNode}</div>
+                                {showContent && <div className="ml-3">{item.content}</div>}
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
-        </div>
+        </TooltipProvider>
     );
 }
 
@@ -148,6 +204,7 @@ function TieredBoard({
     timeline,
     orientation,
     zoom,
+    compact,
     onEdit,
     onDelete
 }: {
@@ -156,6 +213,7 @@ function TieredBoard({
     timeline: StoryTimeline;
     orientation: "horizontal" | "vertical";
     zoom: number;
+    compact: boolean;
     onEdit: (pin: TimelinePin) => void;
     onDelete: (pin: TimelinePin) => void;
 }) {
@@ -180,7 +238,13 @@ function TieredBoard({
         if (error) toast.error("Failed to reorder pins");
     };
 
-    const containerClass = orientation === "horizontal" ? "flex flex-row gap-6 overflow-x-auto pb-4" : "flex flex-col gap-6 overflow-y-auto";
+    // Vertical orientation deliberately has NO overflow-y-auto here — the outer wrapper
+    // (TimelineBoard's boardRef container) already owns vertical scrolling for that case.
+    // Adding it here too created two nested vertical scroll regions on the same axis: the
+    // outer one (correct, full panel height) and this one (redundant, short/broken — only
+    // covered the delta between its own content height and its collapsed layout height).
+    // Horizontal keeps its own overflow-x-auto since the outer wrapper only scrolls y.
+    const containerClass = orientation === "horizontal" ? "flex flex-row gap-6 overflow-x-auto pb-4" : "flex flex-col gap-6";
     const groupClass = orientation === "horizontal" ? "flex flex-row items-start gap-3 shrink-0" : "flex flex-col items-center gap-3";
 
     return (
@@ -195,6 +259,7 @@ function TieredBoard({
                                 timeline={timeline}
                                 orientation={orientation}
                                 zoom={zoom}
+                                compact={compact}
                                 storyId={storyId}
                                 onEdit={onEdit}
                                 onDelete={onDelete}
@@ -204,9 +269,11 @@ function TieredBoard({
                                 <TimelineRail
                                     orientation={orientation}
                                     zoom={zoom}
+                                    compact={compact}
                                     items={group.pins.map(pin => ({
                                         key: pin.id,
-                                        content: <SortablePinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />
+                                        content: <SortablePinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />,
+                                        compactLabel: { title: pin.title, when: whenLabel(pin) }
                                     }))}
                                 />
                             </SortableContext>
@@ -214,9 +281,11 @@ function TieredBoard({
                             <TimelineRail
                                 orientation={orientation}
                                 zoom={zoom}
+                                compact={compact}
                                 items={group.pins.map(pin => ({
                                     key: pin.id,
-                                    content: <PinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />
+                                    content: <PinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />,
+                                    compactLabel: { title: pin.title, when: whenLabel(pin) }
                                 }))}
                             />
                         )}
@@ -242,6 +311,10 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
     const [deletingPin, setDeletingPin] = useState<TimelinePin | null>(null);
     const [isExportingImage, setIsExportingImage] = useState(false);
     const [zoom, setZoom] = useState(1);
+    // Manual override for compact mode — auto-engages at low zoom (COMPACT_AUTO_ZOOM_THRESHOLD)
+    // regardless of this flag, but this lets pins collapse to dots at any zoom level too.
+    const [compactMode, setCompactMode] = useState(false);
+    const isCompact = compactMode || zoom <= COMPACT_AUTO_ZOOM_THRESHOLD;
     const boardRef = useRef<HTMLDivElement>(null);
     const createMutation = useCreatePinMutation(storyId);
     const updateMutation = useUpdatePinMutation(storyId);
@@ -346,6 +419,18 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                             </Button>
                         </div>
                     )}
+                    {pins.length > 0 && (
+                        <Button
+                            size="sm"
+                            variant={compactMode ? "default" : "outline"}
+                            className="gap-1.5"
+                            onClick={() => setCompactMode(v => !v)}
+                            title="Compact — collapse pins to dots (also engages automatically at low zoom); hover a dot for its title, click to expand"
+                        >
+                            <Minimize2 className="h-3.5 w-3.5" />
+                            Compact
+                        </Button>
+                    )}
                     {!timeline.swimlanesEnabled && (
                         <div className="flex rounded-md border overflow-hidden">
                             <Button
@@ -399,7 +484,7 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                     {laneGroups.map(lane => (
                         <div key={lane.label} className="border-b pb-4 last:border-b-0">
                             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{lane.label}</div>
-                            <TieredBoard storyId={storyId} pins={lane.pins} timeline={timeline} orientation="horizontal" zoom={zoom} onEdit={handleEdit} onDelete={handleDelete} />
+                            <TieredBoard storyId={storyId} pins={lane.pins} timeline={timeline} orientation="horizontal" zoom={zoom} compact={isCompact} onEdit={handleEdit} onDelete={handleDelete} />
                         </div>
                     ))}
                 </div>
@@ -411,7 +496,7 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                 // just grows past the panel and gets silently clipped by MainContent.tsx's own
                 // overflow-hidden instead of ever getting a scrollbar here.
                 <div ref={boardRef} className="flex-1 min-h-0 overflow-y-auto bg-background">
-                    <TieredBoard storyId={storyId} pins={pins} timeline={timeline} orientation={orientation} zoom={zoom} onEdit={handleEdit} onDelete={handleDelete} />
+                    <TieredBoard storyId={storyId} pins={pins} timeline={timeline} orientation={orientation} zoom={zoom} compact={isCompact} onEdit={handleEdit} onDelete={handleDelete} />
                 </div>
             )}
 
@@ -444,6 +529,7 @@ function RelativeTierWithMarker({
     timeline,
     orientation,
     zoom,
+    compact,
     onEdit,
     onDelete
 }: {
@@ -452,6 +538,7 @@ function RelativeTierWithMarker({
     timeline: StoryTimeline;
     orientation: "horizontal" | "vertical";
     zoom: number;
+    compact: boolean;
     onEdit: (pin: TimelinePin) => void;
     onDelete: (pin: TimelinePin) => void;
 }) {
@@ -462,7 +549,8 @@ function RelativeTierWithMarker({
 
     const toItem = (pin: TimelinePin): RailItem => ({
         key: pin.id,
-        content: <PinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />
+        content: <PinCard key={pin.id} storyId={storyId} pin={pin} onEdit={onEdit} onDelete={onDelete} />,
+        compactLabel: { title: pin.title, when: whenLabel(pin) }
     });
 
     const items: RailItem[] = [
@@ -484,5 +572,5 @@ function RelativeTierWithMarker({
         ...after.map(toItem)
     ];
 
-    return <TimelineRail orientation={orientation} zoom={zoom} items={items} />;
+    return <TimelineRail orientation={orientation} zoom={zoom} compact={compact} items={items} />;
 }
