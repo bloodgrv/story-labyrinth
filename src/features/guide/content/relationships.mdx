@@ -1,0 +1,49 @@
+# Relationships Guide
+
+A visual graph of the concrete, factual connections between your Lorebook entries — who knows whom, who's allied with whom, who owns what. Nodes are entries; edges are typed, directional relationships between them.
+
+> [!NOTE]
+> Edges are a fixed 15-value allowlist of concrete/factual types (Knows, Allied With, Opposed To, Member Of, Located In, Owns, Holds, Works At, Related To, Part Of, Caused, Involved In, Mentions, Contradicts, Other) — no psychological or power-dynamic types. This matches the app's standing "keep psychological/thematic tracking out of scope" posture.
+
+---
+
+## 1. Views
+
+_Path: **Relations** in the left sidebar (requires a story to be open)_
+
+| Tab | What it shows |
+| --- | --- |
+| **Ego view** | A 1- or 2-hop neighborhood centered on one entry — defaults to the alphabetically-first entry in your story, matching the Lorebook tool's own default sort |
+| **Full graph** | Every node and active edge in the story at once |
+| **Pending** | AI-suggested or manually-proposed edges awaiting your Approve/Reject (badge shows the count) |
+
+Use the search box to jump Ego view to a different entry, or click any node to open its side panel — showing its Outgoing and Incoming edges, an **Open entry** button (jumps to that entry in the Lorebook tool), and **Add relationship**.
+
+In Full graph, drag a node to reposition it — positions are saved per node and persist across reloads. **Reset layout** (visible once you've dragged something) clears saved positions back to the automatic grid. Ego view's layout is never saved — it's a ring computed fresh around whichever entry is centered, so there's nothing stable to persist.
+
+## 2. Creating relationships
+
+Click **Add relationship** from a node's side panel, or drag from one node to another directly on the canvas, to open the edge dialog: pick the two entries, an edge type from the fixed allowlist, and an optional label/description.
+
+A **Propose for review** toggle in that same dialog creates the edge as `pending` instead of immediately active — useful if you want a second look before it counts, same posture as any other AI-suggested edge (see below).
+
+## 3. Suggest relationships (AI)
+
+Owners can click **Suggest relationships** on the toolbar to have the AI scan the story's lorebook entries (capped at 60) and propose edges it can support from their descriptions — these always land as `pending`, reviewed exactly like a manually-proposed one.
+
+## 4. Pending edge review
+
+The **Pending** tab lists every `pending` edge (AI-suggested or manually proposed) with **Approve** / **Reject** actions. Approving re-checks for a conflicting active edge of the same type between the same two entries at that moment — if one now exists, you get a clean error instead of a crash, and you'll need to reject the redundant proposal.
+
+## 5. Troubleshooting
+
+| Problem | What's happening |
+| --- | --- |
+| A banner about "legacy relationships" appears above the graph | Older `metadata.relationships` data from before this tool existed — it's been migrated in as real edges already; the banner is just informational |
+| Approving a pending edge fails with a conflict error | An active edge of that same type already exists between the same two entries — reject the pending one instead, or edit the existing active edge |
+| My dragged node position didn't stick | Only **Full graph** view persists dragged positions — Ego view's layout is always recomputed relative to whichever entry is centered |
+| Suggest relationships found nothing | It only proposes what the entries' own descriptions directly support — vague or empty descriptions give it nothing to work with |
+
+---
+
+Edges save with your story like any other data. Deleting a Lorebook entry cascade-deletes its incident edges automatically.

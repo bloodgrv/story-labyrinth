@@ -10,11 +10,14 @@ import ConcreteBeatsGuide from "../content/concrete-beats.mdx";
 import FocusSessionsGuide from "../content/focus-sessions.mdx";
 import LocationsMapsGuide from "../content/locations-maps.mdx";
 import LorebookGuide from "../content/lorebook.mdx";
+import MemoryGuide from "../content/memory.mdx";
 import MultiViewGuide from "../content/multiview.mdx";
 import NameGeneratorGuide from "../content/name-generator.mdx";
 import NotesGuide from "../content/notes.mdx";
 import OutlineGuide from "../content/outline.mdx";
 import PromptGuide from "../content/prompts.mdx";
+import RelationshipsGuide from "../content/relationships.mdx";
+import ResearchGuide from "../content/research.mdx";
 import SettingsNavGuide from "../content/settings-nav.mdx";
 import StoryTimelineGuide from "../content/story-timeline.mdx";
 import TtsGuide from "../content/tts.mdx";
@@ -34,8 +37,11 @@ export function GuideTabs() {
                 <TabsTrigger value="lorebook">Lorebook Guide</TabsTrigger>
                 <TabsTrigger value="locations-maps">Locations & Maps</TabsTrigger>
                 <TabsTrigger value="story-timeline">Story Timeline</TabsTrigger>
+                <TabsTrigger value="relationships">Relationships</TabsTrigger>
+                <TabsTrigger value="memory">Memory</TabsTrigger>
                 <TabsTrigger value="prompts">Prompt Guide</TabsTrigger>
                 <TabsTrigger value="chat-features">Chat Features</TabsTrigger>
+                <TabsTrigger value="research">Research</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
                 <TabsTrigger value="brainstorm">Brainstorm Guide</TabsTrigger>
                 <TabsTrigger value="tts">Text-to-Speech</TabsTrigger>
@@ -82,6 +88,18 @@ export function GuideTabs() {
                 </GuideProvider>
             </TabsContent>
 
+            <TabsContent value="relationships" className="space-y-4">
+                <GuideProvider>
+                    <RelationshipsGuide components={mdxComponents} />
+                </GuideProvider>
+            </TabsContent>
+
+            <TabsContent value="memory" className="space-y-4">
+                <GuideProvider>
+                    <MemoryGuide components={mdxComponents} />
+                </GuideProvider>
+            </TabsContent>
+
             <TabsContent value="prompts" className="space-y-4">
                 <GuideProvider>
                     <PromptGuide components={mdxComponents} />
@@ -91,6 +109,12 @@ export function GuideTabs() {
             <TabsContent value="chat-features" className="space-y-4">
                 <GuideProvider>
                     <ChatFeaturesGuide components={mdxComponents} />
+                </GuideProvider>
+            </TabsContent>
+
+            <TabsContent value="research" className="space-y-4">
+                <GuideProvider>
+                    <ResearchGuide components={mdxComponents} />
                 </GuideProvider>
             </TabsContent>
 

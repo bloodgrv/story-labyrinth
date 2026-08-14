@@ -6,11 +6,14 @@ import concreteBeatsRaw from "../content/concrete-beats.mdx?raw";
 import focusSessionsRaw from "../content/focus-sessions.mdx?raw";
 import locationsMapsRaw from "../content/locations-maps.mdx?raw";
 import lorebookRaw from "../content/lorebook.mdx?raw";
+import memoryRaw from "../content/memory.mdx?raw";
 import multiviewRaw from "../content/multiview.mdx?raw";
 import nameGeneratorRaw from "../content/name-generator.mdx?raw";
 import notesRaw from "../content/notes.mdx?raw";
 import outlineRaw from "../content/outline.mdx?raw";
 import promptsRaw from "../content/prompts.mdx?raw";
+import relationshipsRaw from "../content/relationships.mdx?raw";
+import researchRaw from "../content/research.mdx?raw";
 import settingsNavRaw from "../content/settings-nav.mdx?raw";
 import storyTimelineRaw from "../content/story-timeline.mdx?raw";
 import ttsRaw from "../content/tts.mdx?raw";
@@ -28,8 +31,11 @@ const RAW_BY_TOPIC_ID: Record<string, string> = {
     lorebook: lorebookRaw,
     "locations-maps": locationsMapsRaw,
     "story-timeline": storyTimelineRaw,
+    relationships: relationshipsRaw,
+    memory: memoryRaw,
     prompts: promptsRaw,
     "chat-features": chatFeaturesRaw,
+    research: researchRaw,
     notes: notesRaw,
     brainstorm: brainstormRaw,
     tts: ttsRaw,
