@@ -1,17 +1,20 @@
 import { attemptPromise } from "@jfdi/attempt";
-import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
+import { EMPTY_CODEX_STATE } from "@/features/lorebook/components/form/entryFormUtils";
 import { cn } from "@/lib/utils";
 import { codexApi } from "@/services/api/client";
 import type { CodexSecretItem, CodexState } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
+import { randomUUID } from "@/utils/crypto";
 
 interface LorebookSecretsPanelProps {
     storyId?: string;
@@ -36,6 +39,52 @@ export function LorebookSecretsPanel({ storyId, entries, onOpenEntry, onChanged 
     const [busyId, setBusyId] = useState<string | null>(null);
     const chaptersQuery = useChaptersByStoryQuery(storyId ?? "");
     const chapterById = new Map((chaptersQuery.data ?? []).map(c => [c.id, c]));
+
+    // Quick-add (2026-08-14 follow-up) — a real shortcut, not a placeholder: picks a character
+    // entry and writes a new secret straight into its codexState via the same codexApi calls the
+    // per-entry SecretsBox uses (enabling Codex tracking first if this entry hasn't got it on
+    // yet, same as LorebookEntryEditor.tsx's own handleSubmit does for a brand-new entry). Still
+    // nudges toward the entry's own editor when the secret is really "about" that character's
+    // established facts — this form only ever takes free text, with no access to the rest of that
+    // entry's Codex state to cross-reference against while writing it.
+    const [addOpen, setAddOpen] = useState(false);
+    const [addEntryId, setAddEntryId] = useState<string>("");
+    const [addValue, setAddValue] = useState("");
+    const [isAdding, setIsAdding] = useState(false);
+    const characterEntries = [...entries].filter(e => e.category === "character").sort((a, b) => a.name.localeCompare(b.name));
+
+    const addSecret = async () => {
+        const entry = entries.find(e => e.id === addEntryId);
+        if (!entry || !addValue.trim()) return;
+        setIsAdding(true);
+
+        if (!entry.codexEnabled) {
+            const [enableError] = await attemptPromise(() => codexApi.enable(entry.id, { sourceType: "user" }));
+            if (enableError) {
+                setIsAdding(false);
+                toast.error(enableError.message || "Failed to enable Codex tracking for this entry");
+                return;
+            }
+        }
+
+        const baseState = entry.codexState ?? EMPTY_CODEX_STATE;
+        const nextState: CodexState = {
+            ...baseState,
+            secrets: [...(baseState.secrets ?? []), { id: randomUUID(), value: addValue.trim(), revealed: false, revealedAtChapterId: null }]
+        };
+        const [error] = await attemptPromise(() =>
+            codexApi.recordState(entry.id, { changes: { codexState: nextState }, sourceType: "user" })
+        );
+        setIsAdding(false);
+        if (error) {
+            toast.error(error.message || "Failed to add secret");
+            return;
+        }
+        setAddValue("");
+        setAddEntryId("");
+        setAddOpen(false);
+        onChanged();
+    };
 
     const rows: SecretRow[] = entries
         .filter(e => e.category === "character" && e.codexEnabled && (e.codexState?.secrets?.length ?? 0) > 0)
@@ -93,21 +142,61 @@ export function LorebookSecretsPanel({ storyId, entries, onOpenEntry, onChanged 
                         </Badge>
                     )}
                 </div>
-                <Tabs value={filter} onValueChange={value => setFilter(value as typeof filter)}>
-                    <TabsList>
-                        <TabsTrigger value="all">All</TabsTrigger>
-                        <TabsTrigger value="hidden">Hidden</TabsTrigger>
-                        <TabsTrigger value="revealed">Revealed</TabsTrigger>
-                    </TabsList>
-                </Tabs>
+                <div className="flex items-center gap-2">
+                    <Tabs value={filter} onValueChange={value => setFilter(value as typeof filter)}>
+                        <TabsList>
+                            <TabsTrigger value="all">All</TabsTrigger>
+                            <TabsTrigger value="hidden">Hidden</TabsTrigger>
+                            <TabsTrigger value="revealed">Revealed</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                    <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAddOpen(v => !v)}>
+                        {addOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                        Add secret
+                    </Button>
+                </div>
             </div>
 
-            <p className="text-xs text-muted-foreground -mt-1">
-                This tab is for reviewing and revealing secrets across the whole story — it can't create new ones. To
-                <strong> add a secret</strong>: open a character entry → expand <strong>Advanced</strong> → turn on
-                <strong> Track Character State</strong> → add it in the <strong>Secrets</strong> box near the bottom.
-                It'll show up here automatically.
-            </p>
+            {addOpen && (
+                <div className="border rounded p-3 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                        Quick-add for a character you already have in mind. If this secret is really about facts
+                        you're already establishing for that character (appearance, wardrobe, backstory), it's often
+                        better to add it <strong>from that entry's own Codex</strong> instead — you'll have the rest
+                        of their state right there to write it consistently against.
+                    </p>
+                    <div className="flex gap-2 flex-wrap">
+                        <Select value={addEntryId} onValueChange={setAddEntryId}>
+                            <SelectTrigger className="w-56">
+                                <SelectValue placeholder="Choose a character..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {characterEntries.map(entry => (
+                                    <SelectItem key={entry.id} value={entry.id}>
+                                        {entry.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Input
+                            value={addValue}
+                            onChange={e => setAddValue(e.target.value)}
+                            placeholder="Secret text..."
+                            className="flex-1 min-w-[200px]"
+                            onKeyDown={e => {
+                                if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    void addSecret();
+                                }
+                            }}
+                        />
+                        <Button size="sm" onClick={() => void addSecret()} disabled={!addEntryId || !addValue.trim() || isAdding}>
+                            {isAdding && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                            Add
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {rows.length === 0 ? (
                 <EmptyState
