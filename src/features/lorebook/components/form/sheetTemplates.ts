@@ -20,6 +20,7 @@ const SHEET_TEMPLATES: Record<LorebookCategory, SheetSection[]> = {
         { heading: "Background & Lifestyle" },
         { heading: "Friends & Family", optional: true },
         { heading: "Character Motivations" },
+        { heading: "Sexuality", optional: true },
         { heading: "Wounds / Marks", optional: true },
         { heading: "Items / Possessions", optional: true }
     ],

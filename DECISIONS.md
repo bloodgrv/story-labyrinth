@@ -2244,3 +2244,17 @@ Doc: `docs/Lore_Sheet_And_Sync_Design.md` §6e/§5d/§10 (FS8: "Diff UX, empty s
 `npx tsc --noEmit` clean for both client and server throughout.
 
 **T5 (Lore Sheet + Sync Loop) is now fully shipped, FS0-FS8.**
+
+---
+
+## Lore Sheet — New "Sexuality" Character Section (2026-08-14)
+
+User request, direct: add a "Sexuality" heading to the Character Lore Sheet's section outline. Added `{ heading: "Sexuality", optional: true }` to `sheetTemplates.ts`'s character pack, positioned between "Character Motivations" and "Wounds / Marks" (mirrors the source PP6 playbook packs' own placement of their "Sexuality & Power Dynamics" material near the end of the sheet, after personality/motivation content and before the purely physical/concrete trailing sections).
+
+**Also added the matching entry to `sheetSyncService.ts`'s `CHARACTER_SECTIONS` map (`sexuality: { kind: "narrative" }`), not just the client-side template.** Confirmed by reading the sync loop's own section-processing code first: `syncSheetToCodex` does `const role = sectionConfig[section.heading.toLowerCase()]; if (!role || !section.content) return;` — a heading present in the sheet but absent from `CHARACTER_SECTIONS` is silently dropped from Sync entirely (not even folded into the narrative `description` compile), the same "real gap" class of bug FS3's own file header flagged and fixed for the six non-character/location categories. Marked narrative (compiles into `description` alongside Personality & Temperament/Background & Lifestyle/Character Motivations) rather than any structured Codex target, consistent with CLAUDE.md's Codex-is-concrete-state-only boundary — this section is characterization prose, not wardrobe/wounds/items list data.
+
+`reverseCompileSheet.ts` and `LoreSheetEditor.tsx`'s outline rendering needed no changes — both are already fully generic over `getSheetTemplate(category)`, so the new optional section just works: omitted on reverse-compile when there's no source data (same as every other optional section), shown as an "Add ... section" affordance in the outline until content exists.
+
+`docs/Lore_Sheet_And_Sync_Design.md` §3's character section-map table updated to match (a pre-existing minor doc/code drift was noticed in passing — the table was already missing the code's "Friends & Family" section — left alone, out of scope for this change).
+
+**Verification:** `npx tsc --noEmit` clean (client + server). Live-verified in the Browser pane against the real dev DB (Alexandra, demo story): the outline showed `+ Sexuality` positioned correctly right after Character Motivations and before Wounds/Marks; clicking it inserted a real `## Sexuality` heading into the sheet body at the right position. Confirmed via network inspection that the insert is unsaved client-only form state (no PUT fired) — a page reload discarded it cleanly, leaving the real entry untouched.

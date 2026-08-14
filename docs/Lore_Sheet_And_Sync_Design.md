@@ -68,6 +68,7 @@
 | **Personality & Temperament** | Narrative compile → `description` |
 | **Background & Lifestyle** | Narrative compile → `description` |
 | **Character Motivations** | Narrative compile → `description` |
+| **Sexuality** (optional, added 2026-08-14) | Narrative compile → `description` |
 | **Wounds / Marks** (optional) | `codexState.wounds` |
 | **Items / Possessions** (optional) | `codexState.items` |
 

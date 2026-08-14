@@ -82,6 +82,7 @@ const CHARACTER_SECTIONS: Record<string, SectionRole> = {
     "background & lifestyle": { kind: "narrative" },
     "friends & family": { kind: "narrative" },
     "character motivations": { kind: "narrative" },
+    sexuality: { kind: "narrative" },
     "wounds / marks": { kind: "stringList", target: "wounds" },
     "items / possessions": { kind: "stringList", target: "items" }
 };
