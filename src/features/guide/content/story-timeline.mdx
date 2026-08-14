@@ -36,7 +36,9 @@ Chapters, Lorebook entries (any category), and notes all have a **Place on timel
 ## 3. Board layout
 
 - **H | V toggle** — horizontal or vertical board orientation, per timeline.
-- **Swimlanes** — group pins into writer-defined lane rows (a character name, a POV thread, whatever you type into a pin's lane field) instead of one flat strip. Swimlanes force horizontal layout; the H|V toggle hides while they're on.
+- **Swimlanes** — the waves icon on the icon rail (right edge of the tool). Groups pins into writer-defined lane rows (a character name, a POV thread, whatever you type into a pin's lane field) instead of one flat strip. Swimlanes force horizontal layout; the H|V toggle hides while they're on.
+- **Zoom** — the +/- control next to Story-start. Spaces pins further apart (zoom in) or packs more of the rail into view (zoom out), from 50% to 250%.
+- **Compact** — collapses every pin card down to just its dot on the rail, for boards with a lot of pins. Toggle it manually (button next to Zoom), or it engages automatically once you zoom out past 75%. Hover a collapsed dot for its title and "when"; click it to expand just that one card back inline, click again to re-collapse.
 - **Overview strip** — a compact row of ticks above the board, one per pin, grouped by tier. Click a tick to jump straight to that pin on the board below — useful once a board has more pins than fit on screen at once.
 - **Export as image** — downloads the current board as a PNG. Illustration only; it's never re-imported, so drawing over it or archiving it doesn't affect your real data.
 
@@ -46,7 +48,10 @@ World-Building chats opened on the **Timeline** template can propose new pins in
 
 ### Suggest pins
 
-Owners can also click **Suggest pins** on the Timeline toolbar to have the AI scan the story's Lorebook entries and notes for chronology beats the text implies but nothing has recorded yet. Suggestions never land on the board directly — they go to the **Pending** tab for Approve/Reject, same review step every other AI-suggested lane in this app (Relationship Graph edges, Codex updates) uses.
+Owners can also use the icon rail on the right edge of the Timeline tool to have the AI scan the story for chronology beats the text implies but nothing has recorded yet:
+
+- **Suggest pins** (sparkle icon) — runs the scan. Suggestions never land on the board directly — they go to the **Pending** tab (inbox icon, badge shows the count) for Approve/Reject, same review step every other AI-suggested lane in this app (Relationship Graph edges, Codex updates) uses. A dot also appears on the **Timeline** icon in the left sidebar itself whenever a story has pins waiting in Pending, so you don't have to open the tool to notice.
+- **Suggest Pins Context** (sliders icon) — controls what the scan actually reads: the story synopsis, which Lorebook categories are in scope, whether Notes are included, and per-chapter — each chapter can be included as just its summary, or as full chapter text (the picker for full text is a dedicated "Chapter Content" add-list, separate from the summary toggles). Nothing is read unless it's switched on here.
 
 ## 5. Chat context and the Scanner
 
@@ -60,8 +65,10 @@ Owners can also click **Suggest pins** on the Timeline toolbar to have the AI sc
 | A pin I deleted a timeline's source for is still there | By design — "Place on timeline" pins unlink rather than delete when their source chapter/entry/note goes away |
 | Removing a pin's last timeline membership fails | A pin must always belong to at least one timeline — delete the pin itself instead |
 | "Suggest pins" proposals don't show up on the board | They land in the **Pending** tab first — Approve them there to add them to Spine |
+| "Suggest pins" didn't pick up something my chapter clearly states | Check **Suggest Pins Context** (sliders icon) — that chapter needs to be switched on there (as a summary or full text) before the scan will read it at all |
 | Chat doesn't seem to know about my chronology | Check the chat's "Context & memory" section for the **Include Story Timeline** toggle — it's off by default |
 | Export as image seems to hang | Rare timeout on some machines/environments; it fails cleanly after 15 seconds — just retry |
+| Missed the dot on the Timeline sidebar icon | It only shows presence, not a count — open the tool's own **Pending** tab (inbox icon) to see how many and review them |
 
 ---
 

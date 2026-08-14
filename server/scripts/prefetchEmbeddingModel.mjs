@@ -1,9 +1,10 @@
 // Downloads the local in-process embedding model's ONNX weights + tokenizer into a fixed
-// cache directory during `docker build`, so the running container never needs to reach
-// huggingface.co at runtime (this project is LAN/Tailscale/local-first — see
-// docs/Local_Embeddings_Design.md). The runtime code (localEmbeddingService.ts) points at the
-// same cache dir with env.allowRemoteModels = false, so it's satisfied entirely from what this
-// script already downloaded here.
+// cache directory, so the running process never needs to reach huggingface.co at runtime (this
+// project is LAN/Tailscale/local-first — see docs/Local_Embeddings_Design.md). The runtime code
+// (localEmbeddingService.ts) points at the same cache dir with env.allowRemoteModels = false, so
+// it's satisfied entirely from what this script already downloaded here. Run explicitly during
+// `docker build` (see Dockerfile); for a non-Docker build, package.json's "prebuild" script runs
+// this automatically before `npm run build`.
 //
 // MODEL_ID/DTYPE/CACHE_DIR are duplicated (not imported) from
 // server/services/localEmbeddingService.ts — this is a plain, pre-build .mjs script that runs

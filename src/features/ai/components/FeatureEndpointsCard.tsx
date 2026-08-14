@@ -109,7 +109,7 @@ function FeatureEndpointRow({ featureKey, override, allModels, isSaving, onSave,
                     )}
                     {provider === "local-inprocess" ? (
                         <span className="text-sm text-muted-foreground w-56">
-                            {LOCAL_INPROCESS_MODEL_ID} — baked into the Docker image, no endpoint needed
+                            {LOCAL_INPROCESS_MODEL_ID} — weights prefetched at build time, no endpoint needed
                         </span>
                     ) : (
                         <ModelCombobox
