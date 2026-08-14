@@ -1,8 +1,8 @@
 # Character Guided Playbook Packs (Hybrid D) — Design
 
 **Project:** Story Labyrinth (`E:\StoryNexus-Fork`)  
-**Status:** **Mechanics locked 2026-07-19 (grill)** — **not implemented**  
-**Starter pack document *content*:** **still designing** (not locked; ship placeholders or empty shells until content lock)  
+**Status:** **Mechanics locked 2026-07-19 (grill) — implemented (PP0-PP5, 2026-07-24).**  
+**Starter pack document *content*:** **Content locked 2026-08-14 (PP6).** Real interview-question prose shipped for all four packs — see §8.  
 **Priority:** **P3** until promoted  
 **Audience:** Claude Code (implementation) + Hermes (architecture)  
 **Related:** `docs/Chat_Panel_Integrations_Design.md` §1 (WB guided-start + psych module); `docs/Notes_Outline_Chat_Bridges_Design.md` (Notes SoT, non-canon packets); `docs/Folders_Org_Design.md` (cosmetic folders — Playbooks folder may reuse folder engine for Notes); `docs/CURRENT_BACKLOG.md`
@@ -168,22 +168,20 @@ No forced checklist UI (“3/12 questions answered”) in v1. No scanner enforce
 
 ---
 
-## 8. Starter documents — intentionally unlocked
+## 8. Starter documents — Content locked 2026-08-14
 
-**Status: designing (human content work, not mechanics).**
-
-Expected shipped set (keys locked; **bodies TBD**):
+Bodies live in `src/data/playbookPackContent.ts` (one exported constant per key+style), wired into `seedShippedPlaybookPacks()` in `server/services/playbookPackService.ts`. Adapted from three user-supplied character-creation questionnaires (Light / Normal / Extreme), reorganized into this app's three Guided-setup style tiers, with a new "Sexuality & Power Dynamics" section added/scaled per tier (user-confirmed erotic/power-dynamic-aware framing for the concrete packs) and a new narrative-interview-voice `character_psych` pack (MBTI axes + Enneagram type/wing/instinct + freeform blurb cues) that didn't exist in the source material.
 
 | Key | Style | Role |
 |-----|--------|------|
-| `character_codex` | `light` | Short concrete coverage |
-| `character_codex` | `standard` | Full concrete sheet curriculum |
-| `character_codex` | `grill` | Deep concrete + follow-up pressure examples |
-| `character_psych` | `any` | MBTI / Enneagram / blurb interview cues when psych ON |
+| `character_codex` | `light` | Short concrete coverage — role/basics/appearance/health/relationships/personality/sexuality, one pass each, no follow-ups |
+| `character_codex` | `standard` | Full concrete + narrative sheet — adds speech/body language, history, personal, and a fuller power-dynamics section |
+| `character_codex` | `grill` | Deep concrete + narrative sheet with deliberate follow-up pressure prompts baked into each section, plus the deepest power-dynamics/intimacy section |
+| `character_psych` | `any` | Narrative-interview-voice MBTI/Enneagram/freeform-blurb cue sheet — functions as an interviewer's script, not a bullet quiz |
 
-Content design may add house voice, erotic/power-dynamic-aware angles, skip rules, etc. **Do not treat draft starter text in chat as locked** until explicitly locked into this doc or a `docs/playbook-starters/` (or seed) file set.
+**Copy-on-edit still applies**: editing any shipped pack in-app forks it to a global/story override; the shipped row stays resettable to this content. A one-time boot-time upgrade (`seedShippedPlaybookPacks`) replaced any already-seeded PP1 placeholder shell with this real content — detected by exact match against the old placeholder body, so a genuinely user-edited shipped row (which copy-on-edit never touches in place) was never at risk of being overwritten.
 
-When content is locked: add files under e.g. `server/db/seedPlaybookPacks/` or `docs/playbook-starters/` and point seed job at them; update this section to **Content locked \<date\>**.
+**PP6 is done.** All acceptance criteria in §10 that were gated on "starter content" are now satisfied for real, not just placeholder-shell-satisfied.
 
 ---
 

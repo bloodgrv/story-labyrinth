@@ -1512,6 +1512,22 @@ Implements `docs/Character_Guided_Playbook_Packs_Design.md` (mechanics locked 20
 
 ---
 
+## Character Guided Playbook Packs — PP6 (Starter Content), Load-Bearing Decisions
+
+Closes out the one deferred piece of PP0-PP5 above: real interview-question prose for the four shipped packs, replacing the placeholder shell body (`"_This pack is a shell..._"`) that had shipped since PP1. Design doc §8 was explicitly left "designing" pending human content decisions — this pass made those decisions with the user directly (`AskUserQuestion`) before writing anything.
+
+**Source material was three user-supplied files** (`Light/Normal/Extreme character creation questions.md`, general-purpose questionnaires not written for this app) mapped directly onto the app's three Guided-setup style tiers: Light→`light`, Normal→`standard`, Extreme→`grill`. Adapted rather than reused verbatim — reorganized into the app's own section-heading convention, and each tier's closing "Sexuality" section was expanded into "Sexuality & Power Dynamics" (grill's gets the deepest treatment, including explicit follow-up-pressure prompts consistent with that tier's own "push past the first answer" framing) per the user's confirmed choice to bake erotic/power-dynamic-aware angles directly into the concrete-coverage packs, rather than keeping them genre-neutral.
+
+**`character_psych` had no source material at all** (none of the three files covered MBTI/Enneagram) — written fresh as a narrative-interview-voice cue sheet per the user's confirmed preference (an interviewer's script with framing/transitions, not a bullet quiz), covering the four MBTI axes, Enneagram type/wing/instinct, and freeform-blurb prompts, closing with an explicit instruction to land the answers in the psych profile's blurb field. Reiterates the existing psych-module boundary inline (`psych-proposal` only, never `codex-proposal`, never scanner-enforced) since this pack is the one place a model reads instructions about where its answers should and shouldn't go.
+
+**Content lives in a new `src/data/playbookPackContent.ts`** (one exported string constant per key+style), imported into `playbookPackService.ts`'s `SHIPPED_PACKS` array — mirrors `src/data/systemPrompts.ts`'s existing "inline data module imported by the seed function" precedent rather than reading markdown files from disk at boot (design doc §8's own alternative suggestion), since this project already has that exact pattern for shipped content and a second mechanism wasn't warranted for four short strings.
+
+**Boot-time seed upgrade, not just future-inserts:** `seedShippedPlaybookPacks()` previously only inserted rows genuinely missing from the DB — any dev/prod instance that had already booted once under PP1 would keep its placeholder-shell rows forever, since nothing re-checked already-seeded content. Added a second pass that detects a shipped row still holding the exact old placeholder string and updates it to the new real body. Safe specifically because copy-on-edit (PP0-PP5's own design) never mutates a shipped row in place — a user's real edit always forks to a new global/story row instead — so "body === old placeholder" can only mean "never touched since PP1 seeded it," never "user wrote something that happens to match."
+
+**Verification:** `npx tsc --noEmit -p server/tsconfig.json` clean. Live-verified against the real dev DB using the `server-only`/`client-only` launch configs (not plain `npm run dev`) per the known `tsx watch`-under-`concurrently` boot gotcha (`dev_environment_gotchas` memory) — the combined-process preview genuinely never brought the Express half up this session, confirming the memory's fix still applies. Boot log confirmed `"Upgraded 4 shipped playbook pack(s) from placeholder shell to real content"`; a direct authenticated `GET /api/playbook-packs/` confirmed all four rows now carry real bodies (1394/2425/4672/2286 bytes for light/standard/grill/psych respectively) instead of the ~250-byte placeholder.
+
+---
+
 ## Per-Message Action Bar — P1.5 MB1-MB4, Load-Bearing Decisions
 
 Closes out P1.5 (MB0 — Copy — had already shipped 2026-07-25). Adds Delete (both roles), Edit (both roles, previously assistant-only UI that was never actually wired up), and Regenerate (assistant only) to `ChatMessageList.tsx`'s per-message hover toolbar, wired through `ChatInterface.tsx` — the one shared component every chat type (WB/Editor/Outline/Research/Notes/Brainstorm) renders through, so this shipped once for all six.

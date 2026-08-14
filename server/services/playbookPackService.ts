@@ -3,6 +3,12 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { extractTextFromFile } from "./documentImportService.js";
 import type { PlaybookKey, PlaybookPack, PlaybookScope, PlaybookStyle } from "../../src/types/playbookPack.js";
+import {
+    CHARACTER_CODEX_LIGHT,
+    CHARACTER_CODEX_STANDARD,
+    CHARACTER_CODEX_GRILL,
+    CHARACTER_PSYCH_ANY
+} from "../../src/data/playbookPackContent.js";
 
 // Character Guided Playbook Packs (Hybrid D), docs/Character_Guided_Playbook_Packs_Design.md.
 // Packs are pure human-authored/imported curriculum documents, read/injected into chat context
@@ -193,41 +199,59 @@ const SHIPPED_PLACEHOLDER_BODY =
     "_This pack is a shell — interview question content hasn't been authored yet. " +
     "Edit this pack (it will copy to a global override) or import your own `.md`/`.txt` file to replace it._";
 
-const SHIPPED_PACKS: { playbookKey: string; style: string; title: string }[] = [
-    { playbookKey: "character_codex", style: "light", title: "Character — Light Coverage (shipped)" },
-    { playbookKey: "character_codex", style: "standard", title: "Character — Standard Coverage (shipped)" },
-    { playbookKey: "character_codex", style: "grill", title: "Character — Grill-me Coverage (shipped)" },
-    { playbookKey: "character_psych", style: "any", title: "Character — Psych Module Interview Cues (shipped)" }
+// PP6 (2026-08-14): real starter content, adapted from three user-supplied character-creation
+// questionnaires — see src/data/playbookPackContent.ts for the full trail/doctrine notes.
+const SHIPPED_PACKS: { playbookKey: string; style: string; title: string; body: string }[] = [
+    { playbookKey: "character_codex", style: "light", title: "Character — Light Coverage (shipped)", body: CHARACTER_CODEX_LIGHT },
+    { playbookKey: "character_codex", style: "standard", title: "Character — Standard Coverage (shipped)", body: CHARACTER_CODEX_STANDARD },
+    { playbookKey: "character_codex", style: "grill", title: "Character — Grill-me Coverage (shipped)", body: CHARACTER_CODEX_GRILL },
+    { playbookKey: "character_psych", style: "any", title: "Character — Psych Module Interview Cues (shipped)", body: CHARACTER_PSYCH_ANY }
 ];
 
-// Idempotent, insert-only — same idiom as seedCoreNamePools()/seedSystemPrompts(). Only inserts
-// a shipped row that's genuinely missing; never overwrites a shipped row a user has since edited
-// via copy-on-edit (copy-on-edit never touches the shipped row itself, so this check is simply
-// "does a shipped row for this key+style exist yet").
+// Idempotent, insert-only for genuinely-missing rows — same idiom as seedCoreNamePools()/
+// seedSystemPrompts(). Never overwrites a shipped row a user has since edited via copy-on-edit
+// (copy-on-edit never touches the shipped row itself, so a real user edit is never a placeholder
+// match below). Separately, upgrades any shipped row still sitting on the old PP1 placeholder
+// body to the PP6 real content (2026-08-14) — safe because the only thing that ever wrote a
+// shipped row's body in place was this same seed function.
 export const seedShippedPlaybookPacks = async (): Promise<void> => {
     const existing = await db.select().from(schema.playbookPacks).where(eq(schema.playbookPacks.packScope, "shipped"));
-    const existingKeys = new Set(existing.map(row => `${row.playbookKey}:${row.style}`));
+    const existingByKey = new Map(existing.map(row => [`${row.playbookKey}:${row.style}`, row]));
 
-    const missing = SHIPPED_PACKS.filter(pack => !existingKeys.has(`${pack.playbookKey}:${pack.style}`));
-    if (missing.length === 0) {
-        console.log(`Shipped playbook packs already exist (${existing.length} found), nothing new to seed`);
-        return;
+    const missing = SHIPPED_PACKS.filter(pack => !existingByKey.has(`${pack.playbookKey}:${pack.style}`));
+    const now = new Date();
+
+    if (missing.length > 0) {
+        await db.insert(schema.playbookPacks).values(
+            missing.map(pack => ({
+                id: randomUUID(),
+                playbookKey: pack.playbookKey,
+                style: pack.style,
+                packScope: "shipped" as const,
+                storyId: null,
+                title: pack.title,
+                body: pack.body,
+                sourcePackId: null,
+                createdAt: now,
+                updatedAt: now
+            }))
+        );
+        console.log(`Seeded ${missing.length} shipped playbook pack(s)`);
     }
 
-    const now = new Date();
-    await db.insert(schema.playbookPacks).values(
-        missing.map(pack => ({
-            id: randomUUID(),
-            playbookKey: pack.playbookKey,
-            style: pack.style,
-            packScope: "shipped" as const,
-            storyId: null,
-            title: pack.title,
-            body: SHIPPED_PLACEHOLDER_BODY,
-            sourcePackId: null,
-            createdAt: now,
-            updatedAt: now
-        }))
-    );
-    console.log(`Seeded ${missing.length} shipped playbook pack shell(s)`);
+    const staleShells = SHIPPED_PACKS.filter(pack => {
+        const row = existingByKey.get(`${pack.playbookKey}:${pack.style}`);
+        return row && row.body === SHIPPED_PLACEHOLDER_BODY;
+    });
+    for (const pack of staleShells) {
+        const row = existingByKey.get(`${pack.playbookKey}:${pack.style}`)!;
+        await db.update(schema.playbookPacks).set({ body: pack.body, updatedAt: now }).where(eq(schema.playbookPacks.id, row.id));
+    }
+    if (staleShells.length > 0) {
+        console.log(`Upgraded ${staleShells.length} shipped playbook pack(s) from placeholder shell to real content`);
+    }
+
+    if (missing.length === 0 && staleShells.length === 0) {
+        console.log(`Shipped playbook packs already up to date (${existing.length} found)`);
+    }
 };
