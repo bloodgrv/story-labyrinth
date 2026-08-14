@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { aiService } from "@/services/ai/AIService";
 import { agentJobsApi } from "@/services/api/agentJobsClient";
 import { adminApi, featureEndpointsApi } from "@/services/api/client";
-import type { FeatureEndpoint, FeatureKey } from "@/types/aiSettings";
+import type { FeatureEndpoint, FeatureEndpoints, FeatureKey } from "@/types/aiSettings";
 import type { AIProvider, AISettings, ChatMode } from "@/types/story";
 
 export const aiSettingsKeys = {
@@ -34,6 +34,25 @@ export const useSetFeatureEndpointMutation = () => {
         },
         onError: (error: Error) => {
             toast.error(`Failed to save feature endpoint: ${error.message}`);
+        }
+    });
+};
+
+// "Apply to all features" global-default picker (FeatureEndpointsCard.tsx) — one bulk PUT rather
+// than N sequential per-feature calls. Caller is responsible for building the full replacement
+// map (e.g. every FEATURE_KEY except "embedding" pointed at the chosen provider/model, embedding's
+// own entry left untouched) since this mutation just writes whatever map it's given.
+export const useSetAllFeatureEndpointsMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (endpoints: FeatureEndpoints) => featureEndpointsApi.setAll(endpoints),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: aiSettingsKeys.featureEndpoints() });
+            toast.success("Applied to all features");
+        },
+        onError: (error: Error) => {
+            toast.error(`Failed to apply global default: ${error.message}`);
         }
     });
 };

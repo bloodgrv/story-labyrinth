@@ -14,7 +14,16 @@ export const featureEndpointsApi = {
             body: JSON.stringify(endpoint)
         }),
     removeFeature: (feature: FeatureKey) =>
-        fetchJSON<FeatureEndpoints>(`/admin/feature-endpoints/${feature}`, { method: "DELETE" })
+        fetchJSON<FeatureEndpoints>(`/admin/feature-endpoints/${feature}`, { method: "DELETE" }),
+    // Full-replace bulk write — the server route already existed (PUT /admin/feature-endpoints)
+    // for symmetry with GET, just had no client method yet. Used by the "apply to all features"
+    // global-default picker (FeatureEndpointsCard.tsx) to set every feature's override in one
+    // request instead of one PUT per feature key.
+    setAll: (endpoints: FeatureEndpoints) =>
+        fetchJSON<FeatureEndpoints>("/admin/feature-endpoints", {
+            method: "PUT",
+            body: JSON.stringify(endpoints)
+        })
 };
 
 // Admin/Migration API

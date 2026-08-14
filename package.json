@@ -13,6 +13,7 @@
         "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
         "dev:server": "cross-env NODE_ENV=development PORT=3001 NODE_OPTIONS=--use-system-ca tsx watch server/index.ts",
         "dev:client": "vite",
+        "prebuild": "node server/scripts/prefetchEmbeddingModel.mjs",
         "build": "tsc && tsc --project server/tsconfig.json && vite build",
         "start": "cross-env NODE_ENV=production NODE_OPTIONS=--use-system-ca node dist/server/server/index.js",
         "db:generate": "drizzle-kit generate",

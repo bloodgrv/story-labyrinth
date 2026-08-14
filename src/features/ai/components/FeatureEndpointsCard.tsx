@@ -10,9 +10,10 @@ import {
     useFeatureEndpointsQuery,
     useRebuildEmbeddingIndexMutation,
     useRemoveFeatureEndpointMutation,
+    useSetAllFeatureEndpointsMutation,
     useSetFeatureEndpointMutation
 } from "@/features/ai/hooks/useAISettingsQuery";
-import { FEATURE_KEYS, FEATURE_LABELS, type FeatureEndpoint, type FeatureKey, type FeatureProvider } from "@/types/aiSettings";
+import { FEATURE_KEYS, FEATURE_LABELS, type FeatureEndpoint, type FeatureEndpoints, type FeatureKey, type FeatureProvider } from "@/types/aiSettings";
 import type { AIModel } from "@/types/story";
 
 const PROVIDER_LABELS: Record<FeatureProvider, string> = {
@@ -128,6 +129,102 @@ function FeatureEndpointRow({ featureKey, override, allModels, isSaving, onSave,
     );
 }
 
+interface GlobalDefaultApplyRowProps {
+    featureEndpoints: FeatureEndpoints;
+    allModels: AIModel[];
+    isSaving: boolean;
+    onApply: (endpoints: FeatureEndpoints) => void;
+}
+
+// "Set global default" bulk picker — one provider/model choice, applied as an explicit
+// per-feature override to every feature at once, rather than making someone open all 17 rows
+// below and repeat the same Save click. Embeddings is deliberately excluded (never included in
+// `applyTargets`, never touched by Apply): it's a different kind of feature — "local-inprocess"
+// is a valid choice there and nowhere else, and its own row/model selection stays independent so
+// a broad "switch everything" action can never accidentally clobber it. This does NOT change the
+// underlying global-default *resolution* (aiClientFactory.ts's local -> openai -> openrouter ->
+// grok -> grok-oauth priority chain, unaffected) — it just writes the same explicit override
+// FeatureEndpointRow's own Save button would, to every applicable feature in one request.
+function GlobalDefaultApplyRow({ featureEndpoints, allModels, isSaving, onApply }: GlobalDefaultApplyRowProps) {
+    const [provider, setProvider] = useState<FeatureProvider>("local");
+    const [modelId, setModelId] = useState<string | undefined>(undefined);
+    const [apiUrl, setApiUrl] = useState("");
+    const [confirmOpen, setConfirmOpen] = useState(false);
+
+    const providerModels = allModels.filter(m => m.provider === provider);
+
+    const handleProviderChange = (value: string) => {
+        setProvider(value as FeatureProvider);
+        setModelId(undefined);
+    };
+
+    const applyTargets = FEATURE_KEYS.filter(key => key !== "embedding");
+
+    const handleConfirm = () => {
+        if (!modelId) return;
+        const endpoint: FeatureEndpoint = {
+            provider,
+            model: modelId,
+            apiUrl: provider === "local" && apiUrl.trim() ? apiUrl.trim() : undefined
+        };
+        const next: FeatureEndpoints = { ...featureEndpoints };
+        for (const key of applyTargets) next[key] = endpoint;
+        onApply(next);
+        setConfirmOpen(false);
+    };
+
+    return (
+        <div className="mb-4 pb-4 border-b">
+            <p className="text-sm font-medium mb-2">Set global default</p>
+            <p className="text-sm text-muted-foreground mb-3">
+                Pick a provider and model, then apply it to every feature below at once — except Embeddings, which
+                keeps its own separate setting (it's the only feature "Local (in-process)" is valid for).
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+                <Select value={provider} onValueChange={handleProviderChange}>
+                    <SelectTrigger className="w-44">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {PROVIDERS.map(p => (
+                            <SelectItem key={p} value={p}>
+                                {PROVIDER_LABELS[p]}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                {provider === "local" && (
+                    <Input
+                        value={apiUrl}
+                        onChange={e => setApiUrl(e.target.value)}
+                        placeholder="http://192.168.1.5:1234/v1 (optional)"
+                        className="w-64"
+                    />
+                )}
+                <ModelCombobox
+                    models={providerModels}
+                    value={modelId}
+                    onValueChange={setModelId}
+                    placeholder="Select model"
+                    className="w-56"
+                />
+                <Button size="sm" onClick={() => setConfirmOpen(true)} disabled={!modelId || isSaving}>
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply to all features"}
+                </Button>
+            </div>
+
+            <ConfirmDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                title="Apply to all features?"
+                description={`Sets every feature except Embeddings to ${PROVIDER_LABELS[provider]} / ${modelId ?? ""}, overwriting any per-feature overrides currently configured below.`}
+                confirmLabel="Apply"
+                onConfirm={handleConfirm}
+            />
+        </div>
+    );
+}
+
 interface FeatureEndpointsCardProps {
     // Reuses SettingsPage.tsx's already-loaded model catalogue (useAISettingsQuery) rather than
     // fetching it again here.
@@ -141,6 +238,7 @@ interface FeatureEndpointsCardProps {
 export function FeatureEndpointsCard({ allModels }: FeatureEndpointsCardProps) {
     const { data: featureEndpoints = {} } = useFeatureEndpointsQuery();
     const setMutation = useSetFeatureEndpointMutation();
+    const setAllMutation = useSetAllFeatureEndpointsMutation();
     const removeMutation = useRemoveFeatureEndpointMutation();
     const rebuildMutation = useRebuildEmbeddingIndexMutation();
     const [confirmRebuildOpen, setConfirmRebuildOpen] = useState(false);
@@ -156,6 +254,14 @@ export function FeatureEndpointsCard({ allModels }: FeatureEndpointsCardProps) {
                     machine, or point Document Import at a specific provider. Anything left on "Global default" uses
                     whichever provider above is configured first.
                 </p>
+
+                <GlobalDefaultApplyRow
+                    featureEndpoints={featureEndpoints}
+                    allModels={allModels}
+                    isSaving={setAllMutation.isPending}
+                    onApply={endpoints => setAllMutation.mutate(endpoints)}
+                />
+
                 <div className="divide-y">
                     {FEATURE_KEYS.map(key => (
                         <FeatureEndpointRow
