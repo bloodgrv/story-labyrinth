@@ -2,7 +2,7 @@ import { Clock } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { usePinForLinkQuery, useCreatePinMutation, useUpdatePinMutation } from "@/features/story-timeline/hooks/useStoryTimelineQuery";
-import type { PinLinkType, PinWhenKind } from "@/types/storyTimeline";
+import type { PinLinkType, PinManuscriptStatus, PinWhenKind } from "@/types/storyTimeline";
 import { PinFormDialog } from "./PinFormDialog";
 
 interface PlaceOnTimelineButtonProps {
@@ -35,6 +35,7 @@ export function PlaceOnTimelineButton({ storyId, linkType, linkId, defaultTitle,
         relativeOffsetYears: number | null;
         fuzzyPhrase: string | null;
         civilDate: string | null;
+        manuscriptStatus: PinManuscriptStatus;
     }) => {
         if (existingPin) updateMutation.mutate({ id: existingPin.id, data: values }, { onSuccess: () => setOpen(false) });
         else createMutation.mutate({ ...values, linkType, linkId }, { onSuccess: () => setOpen(false) });

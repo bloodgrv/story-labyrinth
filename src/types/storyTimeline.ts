@@ -12,6 +12,9 @@ export type PinLinkType = "chapter" | "lorebook" | "note";
 // created "active" directly.
 export type PinStatus = "active" | "pending" | "rejected";
 export type PinSource = "user" | "ai_suggested";
+// Explicit, user-set, decoupled from linkType/linkId — see server/db/schema.ts's own comment for
+// why this isn't inferred from prose tense or from having/not-having a chapter link.
+export type PinManuscriptStatus = "planned" | "written";
 
 // Same shape as storyTimelinePins' flat when-fields, reused for storyStartManualWhenJson
 // (storyStartMode="manual_time" — a writer-set anchor with no backing chapter or pin).
@@ -48,6 +51,7 @@ export interface TimelinePin extends PinWhen {
     linkId: string | null;
     status: PinStatus;
     source: PinSource;
+    manuscriptStatus: PinManuscriptStatus;
     createdAt: Date;
     updatedAt: Date;
     // Resolved server-side alongside the pin list so "Place on timeline" buttons and the board can

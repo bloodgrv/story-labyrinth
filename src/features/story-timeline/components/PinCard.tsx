@@ -1,9 +1,11 @@
-import { BookOpen, Calendar, FileEdit, StickyNote, Trash2 } from "lucide-react";
+import { BookOpen, Calendar, FileEdit, PenLine, StickyNote, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { cn } from "@/lib/utils";
 import type { TimelinePin } from "@/types/storyTimeline";
+import { useUpdatePinMutation } from "../hooks/useStoryTimelineQuery";
 import { PinMembershipPopover } from "./PinMembershipPopover";
 
 const linkIcon = { chapter: FileEdit, lorebook: BookOpen, note: StickyNote };
@@ -37,6 +39,10 @@ interface PinCardProps {
 // same one-shot StoryContext navigation pointers every other cross-tool jump in this app uses.
 export function PinCard({ storyId, pin, onEdit, onDelete, dragHandle }: PinCardProps) {
     const { setCurrentChapterId, setCurrentTool, setPendingLorebookEntryId, setPendingNoteId } = useStoryContext();
+    const updateMutation = useUpdatePinMutation(storyId);
+
+    const toggleManuscriptStatus = () =>
+        updateMutation.mutate({ id: pin.id, data: { manuscriptStatus: pin.manuscriptStatus === "written" ? "planned" : "written" } });
 
     const handleOpenLink = () => {
         if (!pin.linkType || !pin.linkId) return;
@@ -76,6 +82,20 @@ export function PinCard({ storyId, pin, onEdit, onDelete, dragHandle }: PinCardP
                     <Calendar className="h-3 w-3" />
                     {whenLabel(pin)}
                 </div>
+                <button
+                    type="button"
+                    onClick={toggleManuscriptStatus}
+                    title="Click to toggle"
+                    className={cn(
+                        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium w-fit",
+                        pin.manuscriptStatus === "written"
+                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                            : "bg-muted text-muted-foreground"
+                    )}
+                >
+                    <PenLine className="h-2.5 w-2.5" />
+                    {pin.manuscriptStatus === "written" ? "Written" : "Planned"}
+                </button>
                 {pin.blurb && <p className="text-xs text-muted-foreground line-clamp-2">{pin.blurb}</p>}
                 {LinkIcon && (
                     <Button variant="outline" size="sm" className="h-6 text-xs w-full justify-start gap-1.5" onClick={handleOpenLink}>

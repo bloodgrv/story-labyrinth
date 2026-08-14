@@ -55,6 +55,7 @@ const rowToPin = (row: PinRow, memberships: TimelineMembership[]): TimelinePin =
     linkId: row.linkId ?? null,
     status: (row.status as TimelinePin["status"]) ?? "active",
     source: (row.source as TimelinePin["source"]) ?? "user",
+    manuscriptStatus: (row.manuscriptStatus as TimelinePin["manuscriptStatus"]) ?? "planned",
     createdAt: row.createdAt as unknown as Date,
     updatedAt: row.updatedAt as unknown as Date,
     memberships
@@ -212,6 +213,9 @@ export type CreatePinInput = {
     linkId?: string | null;
     // Defaults to the story's spine timeline if omitted.
     timelineId?: string;
+    // Defaults to "planned" at the DB level; callers that genuinely know better (PinFormDialog's
+    // own chapter-link default) pass it explicitly.
+    manuscriptStatus?: TimelinePin["manuscriptStatus"];
 };
 
 export const createPin = async (input: CreatePinInput): Promise<TimelinePin> => {
@@ -233,6 +237,7 @@ export const createPin = async (input: CreatePinInput): Promise<TimelinePin> => 
             manualOrder: maxOrder + 1,
             linkType: input.linkType ?? null,
             linkId: input.linkId ?? null,
+            manuscriptStatus: input.manuscriptStatus ?? "planned",
             createdAt: now,
             updatedAt: now
         })
@@ -290,6 +295,7 @@ export const proposeAiSuggestedPin = async (input: ProposeAiSuggestedPinInput): 
             linkId: input.linkId ?? null,
             status: "pending",
             source: "ai_suggested",
+            manuscriptStatus: input.manuscriptStatus ?? "planned",
             createdAt: now,
             updatedAt: now
         })
@@ -350,7 +356,10 @@ export const rejectPin = async (id: string): Promise<TimelinePin> => {
 };
 
 export type UpdatePinInput = Partial<
-    Pick<TimelinePin, "title" | "blurb" | "whenKind" | "relativeOffsetYears" | "fuzzyPhrase" | "civilDate" | "manualOrder">
+    Pick<
+        TimelinePin,
+        "title" | "blurb" | "whenKind" | "relativeOffsetYears" | "fuzzyPhrase" | "civilDate" | "manualOrder" | "manuscriptStatus"
+    >
 >;
 
 export const updatePin = async (id: string, input: UpdatePinInput): Promise<TimelinePin> => {

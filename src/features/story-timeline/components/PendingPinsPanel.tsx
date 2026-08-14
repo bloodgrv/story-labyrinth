@@ -44,6 +44,9 @@ export function PendingPinsPanel({ storyId }: PendingPinsPanelProps) {
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Calendar className="h-3 w-3" />
                             {whenLabel(pin)}
+                            <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+                                {pin.manuscriptStatus === "written" ? "Written" : "Planned"}
+                            </span>
                         </div>
                         {pin.blurb && <p className="text-xs text-muted-foreground">{pin.blurb}</p>}
                         <div className="flex items-center gap-2">

@@ -1,5 +1,6 @@
 import type {
     PinLinkType,
+    PinManuscriptStatus,
     PinWhenKind,
     StoryTimeline,
     TimelineMembership,
@@ -44,6 +45,7 @@ export const storyTimelineApi = {
             linkType?: PinLinkType | null;
             linkId?: string | null;
             timelineId?: string;
+            manuscriptStatus?: PinManuscriptStatus;
         }
     ) => fetchJSON<TimelinePin>(`/stories/${storyId}/timeline-pins`, { method: "POST", body: JSON.stringify(data) }),
     updatePin: (
@@ -56,6 +58,7 @@ export const storyTimelineApi = {
             fuzzyPhrase: string | null;
             civilDate: string | null;
             manualOrder: number;
+            manuscriptStatus: PinManuscriptStatus;
         }>
     ) => fetchJSON<TimelinePin>(`/timeline-pins/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     deletePin: (id: string) => fetchJSON<{ success: boolean }>(`/timeline-pins/${id}`, { method: "DELETE" }),

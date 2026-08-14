@@ -23,6 +23,7 @@ export type FeatureKey =
     | "graph_suggest_edges" // Suggest Relationship Graph edges from a story's lorebook (P1.2 G1.5+, graphSuggestEdgesJob.ts)
     | "outline_import" // Normalize an uploaded structure document into a chapter->scene draft (outlineImportService.ts)
     | "timeline_suggest_pins" // Suggest Story Timeline pins from a story's lorebook/notes (TL11B, timelineSuggestPinsJob.ts)
+    | "timeline_extract_pins" // Extract multiple dated beats from a single timeline/event entry's Lore Sheet (timelineExtractPinsService.ts)
     | "sheet_migrate" // Optional "Improve sheet with AI" tidy pass over a Lore Sheet (T5 FS2, sheetMigrateService.ts)
     | "sheet_sync"; // "Sync structured fields" — LLM row/list extraction inside Lore Sheet sections (T5 FS3, sheetSyncService.ts)
 
@@ -73,6 +74,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
     graph_suggest_edges: "Relationship Graph (Suggest Edges)",
     outline_import: "Outline Import",
     timeline_suggest_pins: "Story Timeline (Suggest Pins)",
+    timeline_extract_pins: "Story Timeline (Extract Pins from Entry)",
     sheet_migrate: "Lore Sheet (Improve with AI)",
     sheet_sync: "Lore Sheet (Sync to Codex)"
 };
@@ -93,6 +95,7 @@ export const FEATURE_KEYS: FeatureKey[] = [
     "graph_suggest_edges",
     "outline_import",
     "timeline_suggest_pins",
+    "timeline_extract_pins",
     "sheet_migrate",
     "sheet_sync"
 ];

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { PinLinkType, PinWhenKind, TimelinePin } from "@/types/storyTimeline";
+import type { PinLinkType, PinManuscriptStatus, PinWhenKind, TimelinePin } from "@/types/storyTimeline";
 
 export interface PinFormValues {
     title: string;
@@ -14,6 +14,7 @@ export interface PinFormValues {
     relativeOffsetYears: string;
     fuzzyPhrase: string;
     civilDate: string;
+    manuscriptStatus: PinManuscriptStatus;
 }
 
 const emptyValues: PinFormValues = {
@@ -22,7 +23,8 @@ const emptyValues: PinFormValues = {
     whenKind: "fuzzy",
     relativeOffsetYears: "",
     fuzzyPhrase: "",
-    civilDate: ""
+    civilDate: "",
+    manuscriptStatus: "planned"
 };
 
 const pinToValues = (pin: TimelinePin): PinFormValues => ({
@@ -31,7 +33,8 @@ const pinToValues = (pin: TimelinePin): PinFormValues => ({
     whenKind: pin.whenKind,
     relativeOffsetYears: pin.relativeOffsetYears != null ? String(pin.relativeOffsetYears) : "",
     fuzzyPhrase: pin.fuzzyPhrase ?? "",
-    civilDate: pin.civilDate ?? ""
+    civilDate: pin.civilDate ?? "",
+    manuscriptStatus: pin.manuscriptStatus
 });
 
 const linkLabel: Record<PinLinkType, string> = { chapter: "Chapter", lorebook: "Lorebook entry", note: "Note" };
@@ -51,6 +54,7 @@ interface PinFormDialogProps {
         relativeOffsetYears: number | null;
         fuzzyPhrase: string | null;
         civilDate: string | null;
+        manuscriptStatus: PinManuscriptStatus;
     }) => void;
     isSubmitting?: boolean;
 }
@@ -64,8 +68,10 @@ export function PinFormDialog({ open, onOpenChange, pin, initialTitle, link, onS
     useEffect(() => {
         if (!open) return;
         if (pin) setValues(pinToValues(pin));
-        else setValues({ ...emptyValues, title: initialTitle ?? "" });
-    }, [open, pin, initialTitle]);
+        // A brand-new pin linked to a chapter is the one case the UI genuinely knows better than
+        // the general "planned" default — it's being placed on content that already exists.
+        else setValues({ ...emptyValues, title: initialTitle ?? "", manuscriptStatus: link?.linkType === "chapter" ? "written" : "planned" });
+    }, [open, pin, initialTitle, link?.linkType]);
 
     const handleSubmit = () => {
         if (!values.title.trim()) return;
@@ -75,7 +81,8 @@ export function PinFormDialog({ open, onOpenChange, pin, initialTitle, link, onS
             whenKind: values.whenKind,
             relativeOffsetYears: values.whenKind === "relative" && values.relativeOffsetYears !== "" ? Number(values.relativeOffsetYears) : null,
             fuzzyPhrase: values.whenKind === "fuzzy" ? values.fuzzyPhrase.trim() || null : null,
-            civilDate: values.whenKind === "civil" ? values.civilDate.trim() || null : null
+            civilDate: values.whenKind === "civil" ? values.civilDate.trim() || null : null,
+            manuscriptStatus: values.manuscriptStatus
         });
     };
 
@@ -112,6 +119,22 @@ export function PinFormDialog({ open, onOpenChange, pin, initialTitle, link, onS
                         rows={2}
                         placeholder="Short note — full detail lives in the linked source"
                     />
+                </div>
+
+                <div className="space-y-2">
+                    <Label>Manuscript status</Label>
+                    <Select
+                        value={values.manuscriptStatus}
+                        onValueChange={(value: PinManuscriptStatus) => setValues(v => ({ ...v, manuscriptStatus: value }))}
+                    >
+                        <SelectTrigger>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="planned">Planned — not written yet</SelectItem>
+                            <SelectItem value="written">Written — already in the manuscript</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 <div className="space-y-2">

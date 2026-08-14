@@ -19,6 +19,7 @@ import { indexLorebookEntry, removeEntityFromIndex } from "../services/ragIndexS
 import { improveSheetWithAI } from "../services/sheetMigrateService.js";
 import { syncSheetToCodex } from "../services/sheetSyncService.js";
 import { deleteEdgesForEntity } from "../services/storyGraphService.js";
+import { extractPinsFromEntry } from "../services/timelineExtractPinsService.js";
 import { deleteMapEdgesForEntity, deleteMapLayoutForEntity } from "../services/storyMapService.js";
 import { unlinkMapsForLocation } from "../services/storyMapsService.js";
 import { unlinkPinsForSource } from "../services/storyTimelineService.js";
@@ -186,6 +187,28 @@ export default createCrudRouter({
                     return;
                 }
                 const result = await syncSheetToCodex(req.params.id, sheetBody, category);
+                res.json(result);
+            })
+        );
+
+        // POST /lorebook/:id/timeline/extract-pins - "Extract pins" (2026-08-14 follow-up to T6/T5)
+        // - multi-beat LLM extraction of a timeline/event entry's full sheetBody into several
+        // pending Story Timeline pins, reviewed via the existing Pending tab. Separate from Sync's
+        // own single-pin cross-desk lane above (which stays a "quick single pin" default, capped at
+        // one per entry) — this is the dedicated action for a dense multi-beat document.
+        router.post(
+            "/:id/timeline/extract-pins",
+            asyncHandler(async (req, res) => {
+                const { sheetBody, category } = req.body as { sheetBody?: string; category?: string };
+                if (!sheetBody || !sheetBody.trim()) {
+                    res.json({ success: false, message: "The Lore Sheet is empty — write something first" });
+                    return;
+                }
+                if (!category) {
+                    res.json({ success: false, message: "Missing category" });
+                    return;
+                }
+                const result = await extractPinsFromEntry(req.params.id, sheetBody, category);
                 res.json(result);
             })
         );

@@ -127,10 +127,8 @@ router.get("/stories/:storyId/timeline-pins/by-link/:linkType/:linkId", async (r
 });
 
 router.post("/stories/:storyId/timeline-pins", async (req, res) => {
-    const { title, blurb, whenKind, relativeOffsetYears, fuzzyPhrase, civilDate, linkType, linkId, timelineId } = req.body as Record<
-        string,
-        unknown
-    >;
+    const { title, blurb, whenKind, relativeOffsetYears, fuzzyPhrase, civilDate, linkType, linkId, timelineId, manuscriptStatus } =
+        req.body as Record<string, unknown>;
     if (typeof title !== "string" || !title.trim()) {
         res.status(400).json({ error: "title is required" });
         return;
@@ -151,7 +149,8 @@ router.post("/stories/:storyId/timeline-pins", async (req, res) => {
             civilDate: (civilDate as string | null | undefined) ?? null,
             linkType: (linkType as "chapter" | "lorebook" | "note" | null | undefined) ?? null,
             linkId: (linkId as string | null | undefined) ?? null,
-            timelineId: timelineId as string | undefined
+            timelineId: timelineId as string | undefined,
+            manuscriptStatus: manuscriptStatus === "written" ? "written" : manuscriptStatus === "planned" ? "planned" : undefined
         })
     );
     if (error) {
@@ -162,7 +161,10 @@ router.post("/stories/:storyId/timeline-pins", async (req, res) => {
 });
 
 router.patch("/timeline-pins/:id", async (req, res) => {
-    const { title, blurb, whenKind, relativeOffsetYears, fuzzyPhrase, civilDate, manualOrder } = req.body as Record<string, unknown>;
+    const { title, blurb, whenKind, relativeOffsetYears, fuzzyPhrase, civilDate, manualOrder, manuscriptStatus } = req.body as Record<
+        string,
+        unknown
+    >;
     const [error, result] = await attemptPromise(() =>
         updatePin(req.params.id, {
             title: typeof title === "string" ? title : undefined,
@@ -171,7 +173,8 @@ router.patch("/timeline-pins/:id", async (req, res) => {
             relativeOffsetYears: relativeOffsetYears === undefined ? undefined : (relativeOffsetYears as number | null),
             fuzzyPhrase: fuzzyPhrase === undefined ? undefined : (fuzzyPhrase as string | null),
             civilDate: civilDate === undefined ? undefined : (civilDate as string | null),
-            manualOrder: typeof manualOrder === "number" ? manualOrder : undefined
+            manualOrder: typeof manualOrder === "number" ? manualOrder : undefined,
+            manuscriptStatus: manuscriptStatus === "written" ? "written" : manuscriptStatus === "planned" ? "planned" : undefined
         })
     );
     if (error) {

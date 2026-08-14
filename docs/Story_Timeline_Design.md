@@ -1,7 +1,7 @@
 # Story Timeline — Design
 
 **Project:** Story Labyrinth  
-**Status:** ✅ **Fully implemented (2026-08-07)** — all slices **TL0–TL12** shipped. See `docs/CURRENT_BACKLOG.md` Story Timeline (T6) row and `DECISIONS.md` TL* entries for the load-bearing trail.  
+**Status:** ✅ **Fully implemented (2026-08-07)** — all slices **TL0–TL12** shipped. See `docs/CURRENT_BACKLOG.md` Story Timeline (T6) row and `DECISIONS.md` TL* entries for the load-bearing trail. **2026-08-14 follow-up:** `manuscriptStatus` (planned/written) added to pins, plus a dedicated "Extract pins" action for turning one dense timeline/event entry into several pending pins — see `DECISIONS.md`'s "Story Timeline — 'Extract Pins' Action + Manuscript Status on Pins" entry.  
 **Talk list:** **T6** (closed / shipped)  
 **Related:** Place maps — L0–L5 (`Locations_And_Maps_Design.md`) + **Maps v2 sketches** (`Maps_V2_Sketch_Design.md`); lorebook `event`/`timeline` categories, WB `timeline` template, RAG scanner `timeline` issues, Chat panel doctrine (`Chat_Panel_Integrations_Design.md`), Notes bridges  
 

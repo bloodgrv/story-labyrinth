@@ -678,6 +678,14 @@ export const storyTimelinePins = sqliteTable(
         status: text("status").notNull().default("active"),
         // 'user' | 'ai_suggested', same lane as storyGraphEdges.source.
         source: text("source").notNull().default("user"),
+        // 'planned' | 'written' — explicit, user-set, decoupled from linkType/linkId on purpose: a
+        // pin can be linked to a not-yet-drafted chapter (planned) or represent something already
+        // established in prose with no chapter link at all (written). Never AI-inferred from prose
+        // tense — the model that proposes a pin has no reliable way to know whether a beat has
+        // actually been written yet, only what the source text describes. Defaults to "planned";
+        // PinFormDialog defaults its own selector to "written" when creating a pin linked to a
+        // chapter (the one case where the UI genuinely knows better), still user-overridable.
+        manuscriptStatus: text("manuscriptStatus").notNull().default("planned"),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
         updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
     },

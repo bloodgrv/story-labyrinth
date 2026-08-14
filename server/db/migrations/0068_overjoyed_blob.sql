@@ -1,0 +1,1 @@
+ALTER TABLE `storyTimelinePins` ADD `manuscriptStatus` text DEFAULT 'planned' NOT NULL;

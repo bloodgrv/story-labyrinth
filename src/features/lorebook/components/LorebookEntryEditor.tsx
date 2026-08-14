@@ -51,6 +51,7 @@ import {
     CodexHistoryPanel,
     CodexPendingChangesPanel,
     EMPTY_CODEX_STATE,
+    ExtractPinsButton,
     ImageUploadField,
     LevelScopeFields,
     LoreSheetEditor,
@@ -716,7 +717,8 @@ export function LorebookEntryEditor({
                             description, raw Codex state, level/scope) moved into Advanced below. */}
                         <LoreSheetEditor control={form.control} category={selectedCategory} entryId={liveEntry?.id} storyId={storyId} />
 
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
+                            <ExtractPinsButton control={form.control} category={selectedCategory} entryId={liveEntry?.id} />
                             <SheetSyncButton
                                 control={form.control}
                                 category={selectedCategory}

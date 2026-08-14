@@ -25,6 +25,12 @@ export interface SyncSheetResult {
     crossDeskNotice?: string;
 }
 
+export interface ExtractPinsResult {
+    success: boolean;
+    message?: string;
+    proposedCount?: number;
+}
+
 // Lorebook API — split out of client.ts (same reasoning as ttsApi/humanizerApi/etc. before it)
 // once it grew past the project's line limit adding image upload support.
 export const lorebookApi = {
@@ -67,5 +73,9 @@ export const lorebookApi = {
     // "Sync structured fields" (T5 FS3) — entry-scoped; creates a codexPendingChanges row
     // reviewed via the existing tray (CodexPendingChangesPanel.tsx), never applies directly.
     syncSheet: (entryId: string, data: { sheetBody: string; category: string }) =>
-        fetchJSON<SyncSheetResult>(`/lorebook/${entryId}/sheet/sync`, { method: "POST", body: JSON.stringify(data) })
+        fetchJSON<SyncSheetResult>(`/lorebook/${entryId}/sheet/sync`, { method: "POST", body: JSON.stringify(data) }),
+    // "Extract pins" — timeline/event entries only; multi-beat LLM extraction into several pending
+    // Story Timeline pins, reviewed via Timeline's Pending tab (never applied directly).
+    extractTimelinePins: (entryId: string, data: { sheetBody: string; category: string }) =>
+        fetchJSON<ExtractPinsResult>(`/lorebook/${entryId}/timeline/extract-pins`, { method: "POST", body: JSON.stringify(data) })
 };

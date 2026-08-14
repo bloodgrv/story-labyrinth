@@ -24,7 +24,12 @@ const MAX_TEXT_CHARS = 240;
 // past the first couple sentences of a chapter.
 const MAX_CHAPTER_TEXT_CHARS = 4000;
 
-type CandidateSource = { label: string; text: string };
+// Chapter-sourced beats are the one case this job can reasonably default to "written" — the text
+// is manuscript prose/its own summary, not background world-building or a plan. Every other
+// source (lorebook entries, notes, synopsis) defaults to "planned" (storyTimelinePins' own DB
+// default), since the model has no reliable way to know whether that material describes something
+// already drafted — see schema.ts's manuscriptStatus comment.
+type CandidateSource = { label: string; text: string; manuscriptStatus: "planned" | "written" };
 
 const WHEN_KINDS: PinWhenKind[] = ["relative", "fuzzy", "civil"];
 
@@ -121,16 +126,25 @@ export const runTimelineSuggestPinsJob = async (job: AgentJob): Promise<{ storyI
         ...[...enabledEntries]
             .sort((a, b) => a.name.localeCompare(b.name))
             .slice(0, MAX_ENTRIES)
-            .map(e => ({ label: `${e.name} (${e.category})`, text: (e.description ?? "").slice(0, MAX_TEXT_CHARS) })),
-        ...noteRows.map(n => ({ label: `Note: ${n.title}`, text: extractTextFromLexical(n.content).slice(0, MAX_TEXT_CHARS) })),
+            .map(e => ({ label: `${e.name} (${e.category})`, text: (e.description ?? "").slice(0, MAX_TEXT_CHARS), manuscriptStatus: "planned" as const })),
+        ...noteRows.map(n => ({
+            label: `Note: ${n.title}`,
+            text: extractTextFromLexical(n.content).slice(0, MAX_TEXT_CHARS),
+            manuscriptStatus: "planned" as const
+        })),
         // "Story Context" (ContextSelector.tsx's chat-side naming) — chapters manually picked in
         // the Suggest Pins Context panel, not swept like everything else above.
         ...pickedChaptersInOrder(settings.includeChapterSummaryIds)
             .filter(c => c.summary)
-            .map(c => ({ label: `Chapter ${c.order}: ${c.title} (summary)`, text: (c.summary as string).slice(0, MAX_TEXT_CHARS) })),
+            .map(c => ({
+                label: `Chapter ${c.order}: ${c.title} (summary)`,
+                text: (c.summary as string).slice(0, MAX_TEXT_CHARS),
+                manuscriptStatus: "written" as const
+            })),
         ...pickedChaptersInOrder(settings.includeChapterContentIds).map(c => ({
             label: `Chapter ${c.order}: ${c.title} (full text)`,
-            text: extractTextFromLexical(c.content).slice(0, MAX_CHAPTER_TEXT_CHARS)
+            text: extractTextFromLexical(c.content).slice(0, MAX_CHAPTER_TEXT_CHARS),
+            manuscriptStatus: "written" as const
         }))
     ].filter(s => s.text.trim().length > 0);
 
@@ -186,7 +200,8 @@ export const runTimelineSuggestPinsJob = async (job: AgentJob): Promise<{ storyI
             whenKind: candidate.whenKind,
             relativeOffsetYears: candidate.relativeOffsetYears,
             fuzzyPhrase: candidate.fuzzyPhrase,
-            civilDate: candidate.civilDate
+            civilDate: candidate.civilDate,
+            manuscriptStatus: sources[candidate.sourceIndex].manuscriptStatus
         });
         proposedCount++;
     }
