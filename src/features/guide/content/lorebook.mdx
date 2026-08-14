@@ -81,7 +81,7 @@ Click the "New Entry" button in the top-right corner of the Lorebook page. This 
 
 ### Step 3: Write the Lore Sheet
 
-The entry's primary surface is the **Lore Sheet** — a free-form markdown document (`sheetBody`) organized into headed sections, one per category (Character/Location/Item/etc. each get their own section set — e.g. a Character sheet has Core Identity, Physical Appearance, Wardrobe, Personality & Temperament, Wounds, Items, Background & Lifestyle, Character Motivations). Above **Name** and an optional image, you'll find:
+The entry's primary surface is the **Lore Sheet** — a free-form markdown document (`sheetBody`) organized into headed sections, one per category (Character/Location/Item/etc. each get their own section set — e.g. a Character sheet has Core Identity, Physical Appearance, Wardrobe, Personality & Temperament, Wounds, Items, Background & Lifestyle, Character Motivations, and an optional **Sexuality** section). Above **Name** and an optional image, you'll find:
 
 | Control | What it does |
 |---------|---------------|
@@ -94,7 +94,18 @@ A pre-existing entry with no sheet yet gets one automatically reverse-compiled f
 
 ### Step 4: Sync structured fields (Character & Location only)
 
-For **Character** and **Location** entries, a **Sync structured fields** button extracts the sheet's Wardrobe/Appearance/Wounds/Items (Character) or Landmarks/Place Details (Location) sections back into the entry's structured Codex state — never silently; it lands as a pending proposal in the same Codex approval tray as any chat-suggested change, showing an **added/removed** diff for list fields and a **before → after** diff for labeled fields, so you can see exactly what would change before approving. Every category's narrative sections also compile back into the entry's plain `description` field this same way. Syncing can also offer side proposals to other desks depending on category — a location's "Layout Notes" section as a Maps layout-brief card, an event/timeline entry's When/Summary as a pending Timeline pin, or a Notes-category entry as a one-shot "create a note" offer.
+For **Character** and **Location** entries, a **Sync structured fields** button extracts the sheet's Wardrobe/Appearance/Wounds/Items (Character) or Landmarks/Place Details (Location) sections back into the entry's structured Codex state — never silently; it lands as a pending proposal in the same Codex approval tray as any chat-suggested change, showing an **added/removed** diff for list fields and a **before → after** diff for labeled fields, so you can see exactly what would change before approving. Every category's narrative sections also compile back into the entry's plain `description` field this same way. Syncing can also offer side proposals to other desks depending on category — a location's "Layout Notes" section as a Maps layout-brief card, an event/timeline entry's When/Summary as a single pending Timeline pin, or a Notes-category entry as a one-shot "create a note" offer.
+
+For **Timeline** and **Event** entries specifically, there's a second button next to Sync — **Extract pins**. Where Sync only ever produces one pin per entry, Extract pins reads the whole sheet and proposes a separate pending pin for *every* beat it can identify — useful for a dense summary that compresses several days/scenes into one section (e.g. "Day 1: ... Day 2: ... Day 8: ..."). All extracted pins land marked **Planned** by default and wait in the Timeline tool's Pending tab for review — see the Story Timeline guide.
+
+### Secrets (Character only)
+
+Inside a character's **Advanced → Track Character State** panel, alongside Wardrobe/Wounds/Items, there's a **Secrets** box for facts you want tracked but *not* surfaced into AI-generated prose or chat context until you're ready — a spy's real identity, a hidden motive, anything meant to stay concealed until a reveal. Each secret has its own toggle:
+
+- **Hidden / Revealed** — click the eye icon to flip it. This is always the authoritative switch: a hidden secret never enters AI context anywhere, a revealed one is treated like any other established fact.
+- **Reveal at chapter…** — optionally pick a chapter. Once the Editor chat (or the RAG Scanner) is working on that chapter or later, the secret counts as revealed there automatically, without you having to remember to flip the toggle. It's purely additive — it never hides something you've already manually revealed.
+
+You can also review and reveal secrets across every character in the story at once from the **Secrets** button in the Lorebook toolbar — see "The Secrets tab" in Managing Your Lorebook.
 
 ### Step 5: Advanced (level, category, tags, and other machine fields)
 
@@ -193,6 +204,12 @@ Instead of deleting entries, you can disable them temporarily. Useful when you w
 - Disabled entries appear faded with a "Disabled" badge
 - Use the "Show Disabled" toggle to view or hide disabled entries
 
+### The Secrets tab
+
+Click **Secrets** in the Lorebook toolbar to open a story-wide view of every character's Codex secrets at once — an alternative to checking each character individually. It lists every secret with its Hidden/Revealed state, an All/Hidden/Revealed filter, and a link to jump straight to the owning character. Click the eye icon on any row to reveal or re-hide it, or use the chapter dropdown to set/change its auto-reveal chapter, right from this tab.
+
+An **Add secret** button lets you create a new one directly here too — pick a character and type the secret. It's a real shortcut, but if the secret connects to facts you're already establishing for that character (their appearance, wardrobe, backstory), it's usually better to add it from that character's own Codex instead, where you can see the rest of their state while you write it.
+
 ### Import & Export
 
 **Exporting Entries:**
@@ -210,7 +227,10 @@ Instead of deleting entries, you can disable them temporarily. Useful when you w
 *Name collisions are handled with unique suffixes. Level assignments are preserved or can be reassigned during import.*
 
 **Importing a reference document (PDF/DOCX/MD/TXT):**
-The same Import button also accepts a PDF, DOCX, Markdown, or plain-text file — pick one of those instead of a `.json` file and the AI extracts a draft entry from it (name, description, and structured Codex/place fields where it can find them) instead of doing a literal JSON import. The draft opens as its own tab — "Imported draft — review before saving" — with a fully populated Lore Sheet (reverse-compiled the same way an existing entry would be), so you can edit anything before it becomes a real entry. Embedded images in the source document are extracted too (the largest one, by area, becomes the entry's image).
+The same Import button also accepts a PDF, DOCX, Markdown, or plain-text file — pick one of those instead of a `.json` file and the AI extracts a draft entry from it (name, description, and structured Codex/place fields where it can find them) instead of doing a literal JSON import. The draft opens as its own tab — "Imported draft — review before saving" — with a fully populated Lore Sheet (reverse-compiled the same way an existing entry would be), so you can edit anything before it becomes a real entry. Embedded images in the source document are extracted too (the largest one, by area, becomes the entry's image). This path always picks the single most central subject in the document, even if it describes more than one.
+
+**Importing multiple entries from one document:**
+Use the separate **Import multiple** button (next to Import) when your reference document describes *several* characters or locations at once — a "character bible" with a profile per person, for example. It extracts one draft per subject instead of picking just one, and shows them all in a checklist dialog with a checkbox per entry — uncheck anything you don't want, then **Create N entries** to save the rest for real. An entry that's really a faction/organization with its own described structure comes back as its own Note entry rather than being folded into a character's description.
 
 > [!TIP]
 > **Import/Export Use Cases:**

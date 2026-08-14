@@ -29,6 +29,10 @@ Pins sort in three strict tiers — civil dates first, then relative-to-start, t
 
 **Story-start** defaults to Chapter One and shows as a marker on the board; you can move it to a different pin or a freeform manual time instead, per timeline.
 
+### Planned vs. Written
+
+Every pin also carries a **Planned / Written** badge — click it on the pin card to toggle. It's a separate, manually-set flag from linking: a pin can be linked to a chapter that isn't drafted yet (still Planned) or represent something already established in prose with no chapter link at all (Written). Placing a pin directly from a chapter defaults it to Written, since you're pinning content that already exists; every other path (a new pin, AI-suggested pins, Extract pins) defaults to Planned, since nothing can reliably tell from a beat's description alone whether you've actually written it yet.
+
 ### From elsewhere in the app
 
 Chapters, Lorebook entries (any category), and notes all have a **Place on timeline** button — it creates a pin linked back to that source. Deleting the source later doesn't delete the pin; it just unlinks it, so your chronology work never silently vanishes.
@@ -52,6 +56,10 @@ Owners can also use the icon rail on the right edge of the Timeline tool to have
 
 - **Suggest pins** (sparkle icon) — runs the scan. Suggestions never land on the board directly — they go to the **Pending** tab (inbox icon, badge shows the count) for Approve/Reject, same review step every other AI-suggested lane in this app (Relationship Graph edges, Codex updates) uses. A dot also appears on the **Timeline** icon in the left sidebar itself whenever a story has pins waiting in Pending, so you don't have to open the tool to notice.
 - **Suggest Pins Context** (sliders icon) — controls what the scan actually reads: the story synopsis, which Lorebook categories are in scope, whether Notes are included, and per-chapter — each chapter can be included as just its summary, or as full chapter text (the picker for full text is a dedicated "Chapter Content" add-list, separate from the summary toggles). Nothing is read unless it's switched on here.
+
+### Extract pins (from a Lorebook entry)
+
+A **Timeline** or **Event** category Lorebook entry gets its own dedicated **Extract pins** button on its Lore Sheet (next to Sync structured fields — see the Lorebook guide). Where Sync only ever proposes one pin for the whole entry, Extract pins reads the sheet and proposes a separate pin for every distinct beat it can identify — the fix for a dense multi-day summary ("Day 1: ... Day 2: ...") that would otherwise collapse into one vague pin. Results land in the same **Pending** tab as Suggest pins, marked Planned, native (unlinked) pins — link one to a specific chapter afterward with **Place on timeline** once you've written it.
 
 ## 5. Chat context and the Scanner
 
