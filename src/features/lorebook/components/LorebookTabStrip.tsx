@@ -11,12 +11,21 @@ import type { LorebookCategory } from "./form";
 // split/float controls that don't apply here.
 export type LorebookOpenTab =
     | { kind: "browse" }
+    | { kind: "secrets" }
     | { kind: "entry"; entryId: string }
     | { kind: "draft"; draftId: string; draft: DocumentImportDraft }
     | { kind: "new"; tabId: string; defaultCategory: LorebookCategory };
 
 const tabKey = (tab: LorebookOpenTab) =>
-    tab.kind === "browse" ? "browse" : tab.kind === "entry" ? tab.entryId : tab.kind === "draft" ? tab.draftId : tab.tabId;
+    tab.kind === "browse"
+        ? "browse"
+        : tab.kind === "secrets"
+          ? "secrets"
+          : tab.kind === "entry"
+            ? tab.entryId
+            : tab.kind === "draft"
+              ? tab.draftId
+              : tab.tabId;
 
 interface LorebookTabStripProps {
     tabs: LorebookOpenTab[];
@@ -35,11 +44,13 @@ export function LorebookTabStrip({ tabs, activeIndex, entries, onSelect, onClose
                     const label =
                         tab.kind === "browse"
                             ? "Browse"
-                            : tab.kind === "entry"
-                              ? (entries.find(e => e.id === tab.entryId)?.name ?? "Entry")
-                              : tab.kind === "draft"
-                                ? tab.draft.name
-                                : "New Entry";
+                            : tab.kind === "secrets"
+                              ? "Secrets"
+                              : tab.kind === "entry"
+                                ? (entries.find(e => e.id === tab.entryId)?.name ?? "Entry")
+                                : tab.kind === "draft"
+                                  ? tab.draft.name
+                                  : "New Entry";
                     return (
                         <div
                             key={tabKey(tab)}

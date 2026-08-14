@@ -1,6 +1,6 @@
 import { DndContext, type DragEndEvent, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { Download, Loader2, Plus, RefreshCw, Upload } from "lucide-react";
+import { Download, Loader2, Lock, Plus, RefreshCw, Upload } from "lucide-react";
 import type { ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,6 +35,7 @@ interface LorebookBrowsePanelProps {
     isImportingDocument: boolean;
     onOpenEntry: (entry: LorebookEntry) => void;
     onNewEntry: () => void;
+    onOpenSecrets: () => void;
     // Full, unfiltered-by-category entry list for this scope — threaded down to
     // LorebookEntryList's "All categories" search toggle. See its own prop comment.
     allEntries?: LorebookEntry[];
@@ -68,6 +69,7 @@ export function LorebookBrowsePanel({
     isImportingDocument,
     onOpenEntry,
     onNewEntry,
+    onOpenSecrets,
     folderProps,
     allEntries
 }: LorebookBrowsePanelProps) {
@@ -200,6 +202,16 @@ export function LorebookBrowsePanel({
                         onChange={onImport}
                     />
                     <MultiEntryImportDialog storyId={storyId} seriesId={seriesId} onCreated={onRefresh} />
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={onOpenSecrets}
+                        className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
+                        title="Secrets — story-wide hidden/revealed Codex secrets"
+                    >
+                        <Lock className="w-4 h-4" />
+                        <span className="hidden sm:inline ml-2">Secrets</span>
+                    </Button>
                     <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3" onClick={onNewEntry} title="New Entry">
                         <Plus className="w-4 h-4" />
                         <span className="hidden sm:inline ml-2">New Entry</span>

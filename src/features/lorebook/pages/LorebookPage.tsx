@@ -15,6 +15,7 @@ import { LorebookEntryTab } from "../components/LorebookEntryTab";
 import type { LorebookCategory } from "../components/form";
 import { LorebookImportDraftTab } from "../components/LorebookImportDraftTab";
 import { LorebookNewEntryTab } from "../components/LorebookNewEntryTab";
+import { LorebookSecretsPanel } from "../components/LorebookSecretsPanel";
 import { LorebookTabStrip, type LorebookOpenTab } from "../components/LorebookTabStrip";
 import { useLorebookPendingHandoffs } from "../hooks/useLorebookPendingHandoffs";
 import { lorebookKeys, useHierarchicalLorebookQuery, useSeriesLorebookQuery } from "../hooks/useLorebookQuery";
@@ -144,6 +145,17 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
     const openNewEntryTab = (defaultCategory: LorebookCategory) => {
         setActiveTabIndex(openTabs.length);
         setOpenTabs(prev => [...prev, { kind: "new", tabId: randomUUID(), defaultCategory }]);
+    };
+
+    // Story-wide Secrets panel (2026-08-14) — singleton tab like "browse", closable unlike it.
+    const openSecretsTab = () => {
+        const existingIdx = openTabs.findIndex(t => t.kind === "secrets");
+        if (existingIdx >= 0) {
+            setActiveTabIndex(existingIdx);
+            return;
+        }
+        setActiveTabIndex(openTabs.length);
+        setOpenTabs(prev => [...prev, { kind: "secrets" }]);
     };
 
     const closeTab = (index: number) => {
@@ -281,6 +293,13 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                         }}
                     />
                 </div>
+            ) : activeTab.kind === "secrets" ? (
+                <LorebookSecretsPanel
+                    storyId={storyId}
+                    entries={entries}
+                    onOpenEntry={openEntryTab}
+                    onChanged={() => void refetchEntries()}
+                />
             ) : (
                 <LorebookBrowsePanel
                     seriesId={seriesId}
@@ -298,6 +317,7 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                     isImportingDocument={isImportingDocument}
                     onOpenEntry={openEntryTab}
                     onNewEntry={() => openNewEntryTab(selectedCategory)}
+                    onOpenSecrets={openSecretsTab}
                     folderProps={{
                         scope: folderScope,
                         folders,
