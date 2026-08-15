@@ -7,7 +7,8 @@ import {
     CHARACTER_CODEX_LIGHT,
     CHARACTER_CODEX_STANDARD,
     CHARACTER_CODEX_GRILL,
-    CHARACTER_PSYCH_ANY
+    CHARACTER_PSYCH_ANY,
+    CHARACTER_SEXUALITY_ANY
 } from "../../src/data/playbookPackContent.js";
 
 // Character Guided Playbook Packs (Hybrid D), docs/Character_Guided_Playbook_Packs_Design.md.
@@ -205,7 +206,8 @@ const SHIPPED_PACKS: { playbookKey: string; style: string; title: string; body: 
     { playbookKey: "character_codex", style: "light", title: "Character — Light Coverage (shipped)", body: CHARACTER_CODEX_LIGHT },
     { playbookKey: "character_codex", style: "standard", title: "Character — Standard Coverage (shipped)", body: CHARACTER_CODEX_STANDARD },
     { playbookKey: "character_codex", style: "grill", title: "Character — Grill-me Coverage (shipped)", body: CHARACTER_CODEX_GRILL },
-    { playbookKey: "character_psych", style: "any", title: "Character — Psych Module Interview Cues (shipped)", body: CHARACTER_PSYCH_ANY }
+    { playbookKey: "character_psych", style: "any", title: "Character — Psych Module Interview Cues (shipped)", body: CHARACTER_PSYCH_ANY },
+    { playbookKey: "character_sexuality", style: "any", title: "Character — Sexuality Module Interview Cues (shipped)", body: CHARACTER_SEXUALITY_ANY }
 ];
 
 // Idempotent, insert-only for genuinely-missing rows — same idiom as seedCoreNamePools()/

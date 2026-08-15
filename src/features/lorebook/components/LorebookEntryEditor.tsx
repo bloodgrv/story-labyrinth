@@ -45,6 +45,7 @@ import { getTemplate } from "@/types/worldbuilding";
 import { lorebookKeys, useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
 import { LorebookScribbleContent } from "./LorebookScribbleContent";
 import { PsychProfilePanel } from "./PsychProfilePanel";
+import { SexualityProfilePanel } from "./SexualityProfilePanel";
 import type { SyncSheetResult } from "@/services/api/lorebookClient";
 import {
     AdvancedSettings,
@@ -87,6 +88,21 @@ const PSYCH_PROMPT_TEXT =
     "2. MBTI & Enneagram Profile (with explanations of why they fit)\n" +
     "3. Core Motivation vs. Core Lie (what they want vs. what they believe)\n" +
     "4. Behavioral Quirks & Speech Patterns\n" +
+    "Continue iterating and expanding the profile as we chat.";
+
+// User-authored sexuality-module prompt — exact sibling of PSYCH_PROMPT_TEXT above
+// (docs/Sexuality_Playbook_Design.md, locked decision #3): a one-shot button, never a standing
+// toggle, and (per decision #4) never auto-armed by a style change, unlike nothing else on this
+// chat — deliberate, given the sensitivity of the content.
+const SEXUALITY_PROMPT_TEXT =
+    "Act as an expert narrative designer helping me build out this character's sexuality and relationship dynamics. " +
+    "Ask me 3 questions at a time to gather information about their orientation, how they show up in a relationship " +
+    "dynamic, and what draws them in. " +
+    "After I answer, synthesize the information into a structured profile containing:\n" +
+    "1. Orientation & Identity\n" +
+    "2. Relationship Dynamic (dominant/submissive/switch, and how it actually shows up)\n" +
+    "3. Kinks & Interests\n" +
+    "4. Hard Limits (what's completely off the table)\n" +
     "Continue iterating and expanding the profile as we chat.";
 
 export interface LorebookEntryEditorProps {
@@ -248,6 +264,15 @@ function WorldBuildingChatPanel({
         if (!selectedChat) return;
         setComposerSeedText(PSYCH_PROMPT_TEXT);
         if (!selectedChat.includePsychModule) void chatsApi.update(selectedChat.id, { includePsychModule: true }).then(setSelectedChat);
+    };
+    // Exact sibling of handleAddPsychPrompt above (docs/Sexuality_Playbook_Design.md) — one click
+    // arms includeSexualityModule and seeds the composer. Deliberately never wired into
+    // handleStyleChange above (unlike psych's grill auto-nudge) — always an explicit opt-in.
+    const handleAddSexualityPrompt = () => {
+        if (!selectedChat) return;
+        setComposerSeedText(SEXUALITY_PROMPT_TEXT);
+        if (!selectedChat.includeSexualityModule)
+            void chatsApi.update(selectedChat.id, { includeSexualityModule: true }).then(setSelectedChat);
     };
     // Character Guided Playbook Packs (Hybrid D) — arm toggle (design doc §3). Only ever offered
     // for the Character template, same gate as psych module.
@@ -501,6 +526,14 @@ function WorldBuildingChatPanel({
                                                       onClick={handleAddPsychPrompt}
                                                   >
                                                       Add psych prompt
+                                                  </Button>
+                                                  <Button
+                                                      variant="outline"
+                                                      size="sm"
+                                                      className="h-auto py-1 text-xs"
+                                                      onClick={handleAddSexualityPrompt}
+                                                  >
+                                                      Add sexuality prompt
                                                   </Button>
                                                   <Button
                                                       variant="link"
@@ -768,6 +801,7 @@ export function LorebookEntryEditor({
                         {liveEntry?.codexEnabled && liveEntry.id && <CodexHistoryPanel entryId={liveEntry.id} storyId={storyId} />}
 
                         {liveEntry?.category === "character" && liveEntry.id && <PsychProfilePanel entry={liveEntry} />}
+                        {liveEntry?.category === "character" && liveEntry.id && <SexualityProfilePanel entry={liveEntry} />}
 
                         <AdvancedSettings control={form.control} open={advancedOpen} onOpenChange={setAdvancedOpen}>
                             <LevelScopeFields

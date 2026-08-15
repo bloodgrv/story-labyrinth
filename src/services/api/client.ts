@@ -184,6 +184,7 @@ export const chatsApi = {
             wbStyle?: string;
             outlineStyle?: string;
             includePsychModule?: boolean;
+            includeSexualityModule?: boolean;
             usePlaybookPack?: boolean;
             autoInsertProse?: boolean;
             autoAcceptCodex?: boolean;

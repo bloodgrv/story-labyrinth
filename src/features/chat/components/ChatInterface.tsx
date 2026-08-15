@@ -51,6 +51,7 @@ import { OutlineProposalCard } from "./OutlineProposalCard";
 import { ProposalCard } from "./ProposalCard";
 import { ProseProposalCard } from "./ProseProposalCard";
 import { PsychProposalCard } from "./PsychProposalCard";
+import { SexualityProposalCard } from "./SexualityProposalCard";
 import { PlaceSheetProposalCard } from "./PlaceSheetProposalCard";
 import { SheetProposalCard } from "./SheetProposalCard";
 import { MapSketchProposalCard } from "./MapSketchProposalCard";
@@ -73,6 +74,7 @@ import type {
     ParsedOutlineReorderProposal
 } from "../services/parseOutlineProposals";
 import type { ParsedPsychProposal } from "../services/parsePsychProposal";
+import type { ParsedSexualityProposal } from "../services/parseSexualityProposal";
 import type { ParsedTimelinePinProposalItem } from "../services/parseTimelinePinProposal";
 import type { PlaceState } from "@/types/story";
 import type { MapSketchProposal } from "@/types/storyMaps";
@@ -444,7 +446,7 @@ export function ChatInterface({
                 `Do not treat as established fact about the story world.\n` +
                 `Propose durable character facts via codex-proposal (and psych-proposal if psych module is on).\n\n` +
                 pack.body;
-            const playbookPackText = [context.playbookPack.concrete, context.playbookPack.psych]
+            const playbookPackText = [context.playbookPack.concrete, context.playbookPack.psych, context.playbookPack.sexuality]
                 .filter((p): p is NonNullable<typeof p> => p !== null)
                 .map(formatPack)
                 .join("\n\n");
@@ -563,6 +565,11 @@ export function ChatInterface({
         selectedChat.wbStyle,
         selectedChat.outlineStyle,
         selectedChat.includePsychModule,
+        // Sexuality module (docs/Sexuality_Playbook_Design.md) — exact sibling of includePsychModule
+        // above; proactively added here rather than discovering the same staleness bug class a
+        // third time (this dependency array has already been bitten by omissions twice — psych/
+        // style first, then usePlaybookPack below).
+        selectedChat.includeSexualityModule,
         // Character Guided Playbook Packs (Hybrid D) — same B5 bug class fixed once already for
         // style/psych above: this must be in the deps too, or toggling arm after the chat was
         // first selected would leave the next message's context silently stale.
@@ -716,6 +723,9 @@ export function ChatInterface({
     // noteProposals above; only ever populated for WB chats since chatContextService.ts's
     // PSYCH_MODULE_INSTRUCTIONS is only ever included in the WB system prompt.
     const [psychProposals, setPsychProposals] = useState<Record<string, ParsedPsychProposal>>({});
+    // Sibling to psychProposals above — docs/Sexuality_Playbook_Design.md, same ephemeral-state
+    // posture, only ever populated for WB chats.
+    const [sexualityProposals, setSexualityProposals] = useState<Record<string, ParsedSexualityProposal>>({});
     const updateLorebookMutation = useUpdateLorebookMutation();
 
     // L1, docs/Locations_And_Maps_Design.md — Locations template's place sheet. Same ephemeral-
@@ -989,6 +999,7 @@ export function ChatInterface({
             ).then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
         },
         onPsychProposal: (messageId, proposal) => setPsychProposals(prev => ({ ...prev, [messageId]: proposal })),
+        onSexualityProposal: (messageId, proposal) => setSexualityProposals(prev => ({ ...prev, [messageId]: proposal })),
         onPlaceSheetProposal: (messageId, proposal) => setPlaceSheetProposals(prev => ({ ...prev, [messageId]: proposal })),
         onSheetProposal: (messageId, proposal) => setSheetProposals(prev => ({ ...prev, [messageId]: proposal })),
         onSheetSpanProposal: (messageId, proposal) => {
@@ -1172,6 +1183,33 @@ export function ChatInterface({
             }
         });
         dismissPsychProposal(messageId);
+    };
+
+    const dismissSexualityProposal = (messageId: string) =>
+        setSexualityProposals(prev => {
+            const next = { ...prev };
+            delete next[messageId];
+            return next;
+        });
+
+    // Exact sibling of handleAcceptPsych above (docs/Sexuality_Playbook_Design.md) — merges into
+    // the anchor entry's existing metadata rather than replacing it wholesale, via the same
+    // generic entry-update mutation. Never goes through codexPendingChanges/codexService.
+    const handleAcceptSexuality = (messageId: string) => {
+        const proposal = sexualityProposals[messageId];
+        const entryId = selectedChat.anchorEntryId;
+        if (!proposal || !entryId) return;
+        const entry = entryLookup.get(entryId);
+        updateLorebookMutation.mutate({
+            id: entryId,
+            data: {
+                metadata: {
+                    ...entry?.metadata,
+                    sexualityProfile: { ...entry?.metadata?.sexualityProfile, ...proposal }
+                }
+            }
+        });
+        dismissSexualityProposal(messageId);
     };
 
     const dismissPlaceSheetProposal = (messageId: string) =>
@@ -1780,6 +1818,7 @@ export function ChatInterface({
                     const noteProposal = noteProposals[messageId];
                     const outlineProposalsForMessage = outlineProposals[messageId];
                     const psychProposal = psychProposals[messageId];
+                    const sexualityProposal = sexualityProposals[messageId];
                     const placeSheetProposal = placeSheetProposals[messageId];
                     const sheetProposal = sheetProposals[messageId];
                     const sheetSpanProposal = sheetSpanProposals[messageId];
@@ -1792,6 +1831,7 @@ export function ChatInterface({
                         !noteProposal &&
                         !outlineProposalsForMessage?.length &&
                         !psychProposal &&
+                        !sexualityProposal &&
                         !placeSheetProposal &&
                         !sheetProposal &&
                         !sheetSpanProposal &&
@@ -1844,6 +1884,13 @@ export function ChatInterface({
                                     proposal={psychProposal}
                                     onAccept={() => handleAcceptPsych(messageId)}
                                     onReject={() => dismissPsychProposal(messageId)}
+                                />
+                            )}
+                            {isWorldBuildingChat && sexualityProposal && (
+                                <SexualityProposalCard
+                                    proposal={sexualityProposal}
+                                    onAccept={() => handleAcceptSexuality(messageId)}
+                                    onReject={() => dismissSexualityProposal(messageId)}
                                 />
                             )}
                             {isWorldBuildingChat && placeSheetProposal && (

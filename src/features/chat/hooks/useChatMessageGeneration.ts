@@ -23,6 +23,8 @@ import { parseOverviewProposals } from "../services/parseOverviewProposals";
 import { parseProseProposal } from "../services/parseProseProposal";
 import type { ParsedPsychProposal } from "../services/parsePsychProposal";
 import { parsePsychProposal } from "../services/parsePsychProposal";
+import type { ParsedSexualityProposal } from "../services/parseSexualityProposal";
+import { parseSexualityProposal } from "../services/parseSexualityProposal";
 import { parsePlaceSheetProposal } from "../services/parsePlaceSheetProposal";
 import { parseSheetProposal } from "../services/parseSheetProposal";
 import { parseSheetSpanProposal } from "../services/parseSheetSpanProposal";
@@ -72,6 +74,7 @@ interface UseChatMessageGenerationParams {
     // P0.4 B5 — see chatContextService.ts's PSYCH_MODULE_INSTRUCTIONS). Not persisted server-side
     // — ephemeral until Accept merges it into the anchor entry's own metadata.psychProfile.
     onPsychProposal?: (messageId: string, proposal: ParsedPsychProposal) => void;
+    onSexualityProposal?: (messageId: string, proposal: ParsedSexualityProposal) => void;
     // Called when a reply contains a ```place-sheet-proposal block (WB Locations-template chats
     // only, L1 — see chatContextService.ts's PLACE_SHEET_INSTRUCTIONS). Not persisted server-side
     // — ephemeral until Accept merges it into the anchor entry's own metadata.placeState.
@@ -147,6 +150,7 @@ export const useChatMessageGeneration = ({
     onOverviewProposal,
     onHandoffPackets,
     onPsychProposal,
+    onSexualityProposal,
     onPlaceSheetProposal,
     onMapSketchProposal,
     onSheetProposal,
@@ -218,7 +222,8 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterHandoffStrip, packets: handoffPackets } = parseHandoffPackets(afterOverviewStrip);
                 const { cleanedContent: afterSplitStrip, proposal: noteSplitProposal } = parseNoteSplitProposal(afterHandoffStrip);
                 const { cleanedContent: afterPsychStrip, psychProposal } = parsePsychProposal(afterSplitStrip);
-                const { cleanedContent: afterPlaceSheetStrip, placeSheetProposal } = parsePlaceSheetProposal(afterPsychStrip);
+                const { cleanedContent: afterSexualityStrip, sexualityProposal } = parseSexualityProposal(afterPsychStrip);
+                const { cleanedContent: afterPlaceSheetStrip, placeSheetProposal } = parsePlaceSheetProposal(afterSexualityStrip);
                 const { cleanedContent: afterSheetStrip, sheetProposal } = parseSheetProposal(afterPlaceSheetStrip);
                 const { cleanedContent: afterSheetSpanStrip, sheetSpanProposal } = parseSheetSpanProposal(afterSheetStrip);
                 const { cleanedContent: afterMapSketchStrip, mapSketchProposal } = parseMapSketchProposal(afterSheetSpanStrip);
@@ -287,6 +292,7 @@ export const useChatMessageGeneration = ({
                 if (handoffPackets.length > 0 && assistantMessage) onHandoffPackets?.(assistantMessage.id, handoffPackets);
                 if (noteSplitProposal && assistantMessage) onNoteSplitProposal?.(assistantMessage.id, noteSplitProposal);
                 if (psychProposal && assistantMessage) onPsychProposal?.(assistantMessage.id, psychProposal);
+                if (sexualityProposal && assistantMessage) onSexualityProposal?.(assistantMessage.id, sexualityProposal);
                 if (placeSheetProposal && assistantMessage) onPlaceSheetProposal?.(assistantMessage.id, placeSheetProposal);
                 if (sheetProposal && assistantMessage) onSheetProposal?.(assistantMessage.id, sheetProposal);
                 if (sheetSpanProposal && assistantMessage) onSheetSpanProposal?.(assistantMessage.id, sheetSpanProposal);
@@ -322,6 +328,7 @@ export const useChatMessageGeneration = ({
             onOverviewProposal,
             onHandoffPackets,
             onPsychProposal,
+            onSexualityProposal,
             onPlaceSheetProposal,
             onMapSketchProposal,
             onSheetProposal,

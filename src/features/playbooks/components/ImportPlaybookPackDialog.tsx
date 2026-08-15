@@ -11,7 +11,8 @@ import type { PlaybookKey, PlaybookScope, PlaybookStyle } from "@/types/playbook
 
 const KEY_LABELS: Record<PlaybookKey, string> = {
     character_codex: "Character — Concrete Coverage",
-    character_psych: "Character — Psych Module"
+    character_psych: "Character — Psych Module",
+    character_sexuality: "Character — Sexuality Module"
 };
 
 interface ImportPlaybookPackDialogProps {

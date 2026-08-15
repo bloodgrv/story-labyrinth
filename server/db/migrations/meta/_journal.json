@@ -505,6 +505,13 @@
       "when": 1786762228852,
       "tag": "0071_rich_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "6",
+      "when": 1786764015697,
+      "tag": "0072_volatile_epoch",
+      "breakpoints": true
     }
   ]
 }

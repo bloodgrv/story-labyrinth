@@ -224,6 +224,13 @@ export const aiChats = sqliteTable(
         // offered to the model when the chat's own templateSlug is "character_codex" AND it has
         // an anchorEntryId (nowhere to attach a proposal otherwise) — see getChatContext.
         includePsychModule: integer("includePsychModule", { mode: "boolean" }).notNull().default(false),
+        // Sexuality module — exact sibling of includePsychModule above (docs/Sexuality_Playbook_
+        // Design.md), same gating: stored on the anchor entry's metadata.sexualityProfile, never
+        // Codex state, only offered when templateSlug is "character_codex" AND anchorEntryId is
+        // set. Default false; armed via a one-shot "Add sexuality prompt" button only — never
+        // auto-armed by a style change, unlike nothing else in this table (deliberate, per design
+        // decision #4, given the sensitivity of the content).
+        includeSexualityModule: integer("includeSexualityModule", { mode: "boolean" }).notNull().default(false),
         // P0.4 R6 — auto-insert/auto-accept toggles (docs/Chat_Panel_Integrations_Design.md doctrine
         // line 15: "No silent canon unless an explicit auto-accept/auto-insert toggle is ON"). All
         // default false, per-chat, mirror includePsychModule's pattern exactly.

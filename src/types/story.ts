@@ -105,6 +105,10 @@ export interface AIChat extends BaseEntity {
     // Opt-in for the Character template's psych module (P0.4 B5) — only meaningful for
     // worldbuilding chats whose templateSlug is "character_codex". Defaults false server-side.
     includePsychModule?: boolean;
+    // Opt-in for the Character template's sexuality module (docs/Sexuality_Playbook_Design.md) —
+    // exact sibling of includePsychModule above, same gating/defaults. One-shot "Add sexuality
+    // prompt" button arms this (LorebookEntryEditor.tsx), never auto-armed by style changes.
+    includeSexualityModule?: boolean;
     // Character Guided Playbook Packs (Hybrid D) — arm toggle for injecting a resolved
     // playbookPacks row into context. Only meaningful for worldbuilding chats whose templateSlug
     // is "character_codex". Defaults false server-side.
@@ -284,6 +288,12 @@ export interface LorebookEntry extends BaseEntity {
         // PsychProfilePanel.tsx for display). Deliberately NOT part of codexState — writing aid
         // only, never scanner-enforced, never a continuity "law" pipeline.
         psychProfile?: { mbti?: string; enneagram?: string; blurb?: string };
+        // Character template's opt-in sexuality module (docs/Sexuality_Playbook_Design.md) —
+        // exact sibling of psychProfile above: derived from a chat interview then propose→accept
+        // (ChatInterface.tsx's sexuality-proposal handling, SexualityProfilePanel.tsx for
+        // display). Deliberately NOT part of codexState — writing aid only, never scanner-
+        // enforced, never RAG-scanned. `limits` (hard limits / off-the-table) has no psych analog.
+        sexualityProfile?: { orientation?: string; dynamic?: string; kinks?: string; limits?: string; blurb?: string };
         // Location template's "light place sheet" (L0/L1, docs/Locations_And_Maps_Design.md) —
         // scale/climate/holder/danger/landmarks/exits/layout/image-brief. Same posture as
         // psychProfile: not Codex state, editable directly on the entry form (PlaceSheetFields.tsx)

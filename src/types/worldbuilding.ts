@@ -262,7 +262,11 @@ export interface ChatContext {
     // for the chat's current wbStyle. psych: character_psych/"any", only when includePsychModule is
     // also on. Either may be null (soft-success: no pack found anywhere on the ladder) — see
     // chatContextService.ts's getChatContext / resolvePlaybookPack.
-    playbookPack: { concrete: ChatContextPlaybookPack | null; psych: ChatContextPlaybookPack | null };
+    playbookPack: {
+        concrete: ChatContextPlaybookPack | null;
+        psych: ChatContextPlaybookPack | null;
+        sexuality: ChatContextPlaybookPack | null;
+    };
     // Empty unless the chat's includeTimeline toggle is on (TL8) — see getChatContext.
     relevantTimelinePins: ChatContextTimelinePinExcerpt[];
     // Empty unless the chat's includeGuide toggle is on — see getChatContext.

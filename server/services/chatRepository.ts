@@ -49,6 +49,7 @@ export type UpdateChatMetaFields = Partial<{
     wbStyle: string;
     outlineStyle: string;
     includePsychModule: boolean;
+    includeSexualityModule: boolean;
     usePlaybookPack: boolean;
     autoInsertProse: boolean;
     autoAcceptCodex: boolean;
@@ -167,6 +168,7 @@ export const updateChatMeta = async (
     if (fields.wbStyle !== undefined) updates.wbStyle = fields.wbStyle;
     if (fields.outlineStyle !== undefined) updates.outlineStyle = fields.outlineStyle;
     if (fields.includePsychModule !== undefined) updates.includePsychModule = fields.includePsychModule;
+    if (fields.includeSexualityModule !== undefined) updates.includeSexualityModule = fields.includeSexualityModule;
     if (fields.usePlaybookPack !== undefined) updates.usePlaybookPack = fields.usePlaybookPack;
     if (fields.autoInsertProse !== undefined) updates.autoInsertProse = fields.autoInsertProse;
     if (fields.autoAcceptCodex !== undefined) updates.autoAcceptCodex = fields.autoAcceptCodex;

@@ -1,0 +1,1 @@
+ALTER TABLE `aiChats` ADD `includeSexualityModule` integer DEFAULT false NOT NULL;

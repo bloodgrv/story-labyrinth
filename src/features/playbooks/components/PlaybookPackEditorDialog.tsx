@@ -12,7 +12,8 @@ import type { PlaybookKey, PlaybookPack, PlaybookStyle } from "@/types/playbookP
 
 const KEY_LABELS: Record<PlaybookKey, string> = {
     character_codex: "Character — Concrete Coverage",
-    character_psych: "Character — Psych Module"
+    character_psych: "Character — Psych Module",
+    character_sexuality: "Character — Sexuality Module"
 };
 
 interface PlaybookPackEditorDialogProps {

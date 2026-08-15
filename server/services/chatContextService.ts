@@ -465,6 +465,25 @@ const PSYCH_MODULE_INSTRUCTIONS =
     "```\n\n" +
     "Propose at most one psych-proposal per reply.";
 
+// docs/Sexuality_Playbook_Design.md — Character template's opt-in sexuality module, exact
+// sibling of PSYCH_MODULE_INSTRUCTIONS above (same gating in getChatContext, same "never Codex
+// state" posture — the ```sexuality-proposal fence is parsed client-side
+// (parseSexualityProposal.ts) into an ephemeral accept/reject card, Accept merges directly into
+// the anchor entry's own metadata.sexualityProfile via the existing generic lorebook update
+// route (ChatInterface.tsx's handleAcceptSexuality) — never through codexPendingChanges/
+// codexService). `limits` (hard limits) has no psych analog — explicitly safety-framed.
+const SEXUALITY_MODULE_INSTRUCTIONS =
+    "This character has an opt-in sexuality module enabled — a writing aid, not tracked Codex state and " +
+    "never enforced by any consistency check. Derive it from what the user actually says in this conversation, " +
+    "not assumptions — never propose a sexuality profile in your very first reply before any real interview has " +
+    "happened.\n\n" +
+    "To propose a sexuality profile (any subset of the fields — propose only what's actually been discussed), " +
+    "include a fenced block in this exact form:\n\n" +
+    "```sexuality-proposal\n" +
+    '{"orientation": "...", "dynamic": "...", "kinks": "...", "limits": "...", "blurb": "a few sentences of freeform description"}\n' +
+    "```\n\n" +
+    "Propose at most one sexuality-proposal per reply.";
+
 // L0/L1, docs/Locations_And_Maps_Design.md — the Locations & Settings template's "light place
 // sheet" (entry.metadata.placeState). Unlike PSYCH_MODULE_INSTRUCTIONS above, this is always on
 // for the locations template (no opt-in toggle) — place-sheet fields are the whole point of this
@@ -650,6 +669,7 @@ const buildSystemPrompt = (
     style?: string,
     includeMemory?: boolean,
     includePsychModule?: boolean,
+    includeSexualityModule?: boolean,
     availableNameRegions: string[] = [],
     anchorEntry?: { entryId: string; name: string; category: string; sheetBody?: string | null }
 ): string => {
@@ -692,8 +712,16 @@ const buildSystemPrompt = (
         ? `\n\n${SHEET_PROPOSAL_INSTRUCTIONS(anchorEntry.entryId, anchorEntry.name, anchorEntry.category, anchorEntry.sheetBody)}` +
           `\n\n${SHEET_SPAN_PROPOSAL_INSTRUCTIONS(anchorEntry.name)}`
         : "";
-    if (templateSlug === "character_codex" && includePsychModule)
-        return `${withStyle}\n\n${PSYCH_MODULE_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}`;
+    if (templateSlug === "character_codex" && (includePsychModule || includeSexualityModule)) {
+        // Accumulator, not competing early-returns — both modules can be armed on the same chat
+        // simultaneously (docs/Sexuality_Playbook_Design.md's own pitfall list flags this
+        // explicitly: a second `if (... ) return` here would silently let only whichever check
+        // ran first ever take effect).
+        const moduleAddendum =
+            (includePsychModule ? `\n\n${PSYCH_MODULE_INSTRUCTIONS}` : "") +
+            (includeSexualityModule ? `\n\n${SEXUALITY_MODULE_INSTRUCTIONS}` : "");
+        return `${withStyle}${moduleAddendum}${sheetAddendum}${regionsAddendum}`;
+    }
     if (templateSlug === "locations") return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}\n\n${MAP_SKETCH_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}`;
     if (templateSlug === "timeline") return `${withStyle}\n\n${TIMELINE_PIN_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}`;
     return withStyle + sheetAddendum + regionsAddendum;
@@ -1171,7 +1199,8 @@ const resolvePlaybookPackContext = async (
  *   - playbookPack: Character Guided Playbook Packs (Hybrid D) — only populated when this chat's
  *     own usePlaybookPack toggle is on AND templateSlug is "character_codex" (v1 scope). Direct
  *     ladder resolve (story -> global -> shipped), not RAG-ranked. `psych` only resolves when
- *     includePsychModule is also on.
+ *     includePsychModule is also on; `sexuality` only resolves when includeSexualityModule is
+ *     also on (docs/Sexuality_Playbook_Design.md — exact sibling of the psych lane).
  *
  * Degrades gracefully rather than failing: if the story has no indexed content, no embedding
  * endpoint is configured, or an anchor entry/chapter no longer exists, the relevant-* fields are
@@ -1217,6 +1246,7 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         : chatType === "outline" ? chat.outlineStyle
         : undefined;
     const includePsychModule = chat.includePsychModule === true && !!chat.anchorEntryId;
+    const includeSexualityModule = chat.includeSexualityModule === true && !!chat.anchorEntryId;
     // Character Guided Playbook Packs — v1 scope is Character template only (design doc §9's
     // "Location/other templates: reuse PP* patterns later"). Global chats (no storyId) still
     // resolve fine — resolvePlaybookPackContext treats null storyId as "skip the story tier".
@@ -1280,6 +1310,7 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         focusedNote,
         playbookPackConcrete,
         playbookPackPsych,
+        playbookPackSexuality,
         availableNameRegions,
         timelinePins,
         guideSections
@@ -1298,6 +1329,9 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         isNotes ? resolveFocusedNote(focusedNoteId ?? null) : Promise.resolve(null),
         usePlaybookPack && style ? resolvePlaybookPackContext(chat.storyId, "character_codex", style) : Promise.resolve(null),
         usePlaybookPack && includePsychModule ? resolvePlaybookPackContext(chat.storyId, "character_psych", "any") : Promise.resolve(null),
+        usePlaybookPack && includeSexualityModule
+            ? resolvePlaybookPackContext(chat.storyId, "character_sexuality", "any")
+            : Promise.resolve(null),
         // Only these 4 chat types' framing ever includes NAME_PROPOSAL_INSTRUCTIONS — skip the
         // query for research/notes chats, which never propose names.
         ["editor", "outline", "worldbuilding", "brainstorm"].includes(chatType)
@@ -1314,6 +1348,7 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
             style,
             includeMemory,
             includePsychModule,
+            includeSexualityModule,
             availableNameRegions,
             anchorEntries.find(e => e.role === "anchor")
         ),
@@ -1333,7 +1368,7 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         fetchedPages: webSearch.pages,
         allNotes,
         focusedNote,
-        playbookPack: { concrete: playbookPackConcrete, psych: playbookPackPsych },
+        playbookPack: { concrete: playbookPackConcrete, psych: playbookPackPsych, sexuality: playbookPackSexuality },
         relevantTimelinePins: timelinePins,
         relevantGuideSections: guideSections
     };
