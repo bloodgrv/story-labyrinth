@@ -3,27 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRecentJobsQuery, useRetryJobMutation } from "@/features/ai/hooks/useAgentJobsQuery";
-import type { AgentJob, AgentJobStatus } from "@/types/agentJob";
-
-const STATUS_VARIANT: Record<AgentJobStatus, "default" | "secondary" | "destructive" | "outline"> = {
-    queued: "outline",
-    running: "secondary",
-    completed: "default",
-    failed: "destructive"
-};
-
-const JOB_TYPE_LABELS: Record<AgentJob["jobType"], string> = {
-    reconcile_index: "Reindex reconciliation",
-    rag_scan_chapter: "Chapter scan",
-    rag_scan_story: "Story scan",
-    prune_history: "History cleanup",
-    distill_memory: "Memory distillation",
-    suggest_codex_updates: "Codex update suggestions",
-    graph_suggest_edges: "Relationship suggestions",
-    timeline_suggest_pins: "Timeline pin suggestions",
-    ai_review_quick: "AI Review (Quick)",
-    ai_review_deep: "AI Review (Deep)"
-};
+import { JOB_TYPE_LABELS, STATUS_VARIANT } from "@/features/activity/lib/jobPresentation";
+import type { AgentJob } from "@/types/agentJob";
 
 interface JobRowProps {
     job: AgentJob;

@@ -1,6 +1,6 @@
 import { AlertTriangle, ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -52,7 +52,13 @@ export default function SettingsPage() {
     const { currentStoryId } = useStoryContext();
     const [localApiUrlInput, setLocalApiUrlInput] = useState("");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [section, setSection] = useState<Section>("appearance");
+    // Supports deep links like /settings?section=logs (e.g. the Activity Stoplight's "All jobs →"
+    // footer link) — one-time initial value only, not kept in sync with the URL afterward.
+    const [searchParams] = useSearchParams();
+    const [section, setSection] = useState<Section>(() => {
+        const requested = searchParams.get("section");
+        return (SECTIONS as readonly string[]).includes(requested ?? "") ? (requested as Section) : "appearance";
+    });
 
     const { data: settings, isLoading: isLoadingSettings } = useAISettingsQuery();
 

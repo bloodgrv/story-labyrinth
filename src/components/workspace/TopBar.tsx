@@ -9,6 +9,8 @@ import {
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
+import { ActivityStoplight } from "@/features/activity/components/ActivityStoplight";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useStoriesQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { isDarkThemeId, useTheme } from "@/lib/theme-provider";
@@ -26,6 +28,7 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
 
     const currentStory = stories?.find(s => s.id === currentStoryId);
     const wordmarkSrc = isDarkThemeId(theme) ? "/brand/wordmark-dark.png" : "/brand/wordmark-light.png";
+    const isOwner = useIsOwner();
 
     return (
         <header className="border-b raycast-hairline bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 sticky top-0 z-40 safe-area-inset-top">
@@ -71,6 +74,9 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
                 {/* Actions */}
                 <TooltipProvider>
                     <div className="flex items-center gap-1 sm:gap-2">
+                        {/* Activity Stoplight - global agentJobs indicator, owner-only (jobs API is owner-gated) */}
+                        {isOwner && <ActivityStoplight />}
+
                         {/* Command Palette - hidden on mobile */}
                         <Tooltip>
                             <TooltipTrigger asChild>

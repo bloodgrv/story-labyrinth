@@ -30,6 +30,9 @@ export const useRetryJobMutation = () => {
         mutationFn: (id: string) => agentJobsApi.retry(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: agentJobsKeys.all });
+            // Activity Stoplight polls a separate query key (its own idle-poll cadence, see
+            // useActivityJobs.ts) — invalidate it too so retrying from either surface refreshes both.
+            queryClient.invalidateQueries({ queryKey: ["activityStoplight"] });
             toast.success("Job requeued");
         },
         onError: (error: Error) => toast.error(error.message || "Failed to retry job")
