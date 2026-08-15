@@ -1,0 +1,76 @@
+# AI Review
+
+A manuscript-editor pass over the chapters you pick — the kind of margin notes a human developmental/line editor would leave, not a fact check.
+
+> [!NOTE]
+> AI Review is **not** the RAG Scanner. Scanner proves things — hard contradictions against your Codex and prior chapters. AI Review is editorial judgment — dev/pacing concerns, soft continuity reads, voice drift, and (optionally) line-level prose craft. Both tools stay separate on purpose; run them both if you want full coverage.
+
+---
+
+## 1. What AI Review is (and isn't)
+
+| | AI Review | RAG Scanner |
+| --- | --- | --- |
+| Trust | Editorial judgment / awareness | Fact vs established concrete context |
+| Tags | `dev`, `continuity`, `voice`, `line` | `contradiction`, `state_mismatch`, `timeline`, `other` |
+| Lore | RAG assist for judgment, plus opt-in Memory/Timeline/cast context in Deep mode | Retrieval for proof |
+| Writes | None — findings only, no auto-edits, no Codex writes | None |
+| Output | Things to be aware of, plus an optional editorial "direction" | Evidence + a suggested fix |
+
+AI Review never edits your prose, proposes Codex changes, or auto-runs the Humanizer — findings are notes for you to act on, through the actions described below.
+
+## 2. Quick vs Deep
+
+_Path: **AI Review** in the left sidebar, or **Review this chapter** from the Editor's right rail (pre-checks the current chapter)_
+
+- **Quick** — one LLM pass over the whole chapter selection at once: chapter text, the story synopsis, and RAG hits for entities mentioned in the selection. Fast, no extra toggles.
+- **Deep** — a staged pipeline, in order:
+  1. **Map** — a short beat/function summary per chapter (internal working context, not shown as a finding).
+  2. **Cross-chapter** — compares the chapter summaries against each other for `dev`/`continuity` concerns spanning the selection.
+  3. **Voice** — reads the full chapter text specifically for `voice` drift (and `line` issues, if that toggle is on).
+  4. **Merge** — combines the cross-chapter and voice passes into one findings list for the run.
+
+  Deep costs more (several LLM calls instead of one) but reads more carefully across a larger selection — including a whole book, since the map stage keeps later stages working from compact summaries rather than every chapter's full text at once.
+
+Pick chapters with the checklist (or **Select all**), choose Quick or Deep, and hit **Run [mode] review**. Only the story owner can trigger a run.
+
+## 3. Deep mode context toggles
+
+Shown only when Deep is selected:
+
+- **Include Project Memory** — folds in your story's active, approved Project Memory facts.
+- **Include Story Timeline** — folds in the Spine timeline's chronology, for the cross-chapter pass's continuity judgment.
+- **Include line-level nitpicks** — arms the `line` tag on the voice pass (off by default — line notes are the lowest-priority tag by design).
+- **Include focused cast Codex** — auto-detects which character-category Lorebook entries actually appear in the selected chapters (by name match, not a manual picker) and includes their Codex/Lore Sheet as reference for the voice pass. Capped to a handful of the most-mentioned characters — never a full-lorebook dump, and never an unrevealed Codex secret (the same secrets filter every other AI-facing surface in this app uses).
+
+## 4. Reading & triaging findings
+
+Findings show a severity badge, a tag, and — when tied to a chapter — a link to jump straight there. Each finding has:
+
+- **Resolve** / **Dismiss** — moves it out of the Open list (findings are never deleted, only re-tabbed); **Reopen** brings a Dismissed/Resolved finding back.
+- **Open**, **Resolved**, **Dismissed** tabs, plus a tag filter, to work through a run's list.
+
+Findings are durable — re-running a review doesn't wipe out your prior triage; a new run just adds more findings alongside whatever's already there.
+
+## 5. Actions
+
+- **Open chapter** — jumps to the Editor at the finding's chapter.
+- **Copy** — a markdown block of the finding, for pasting elsewhere.
+- **Add to chapter scribble** — appends a dated block to that chapter's existing Scribble (never overwrites it).
+- **Send to Editor chat** — seeds the Editor chat composer with the finding, chapter-bound when possible. It does **not** auto-send — you review and send it yourself, then use the normal rework/Accept flow to actually revise.
+
+There's no "Save as Note" action here by design — promote a finding to Notes via Scribble's own **Send to Notes**, same as any other scribble content.
+
+## 6. Troubleshooting
+
+| Problem | What's happening |
+| --- | --- |
+| Run button is disabled | Select at least one chapter first — an empty selection can't run |
+| "Only the story owner can run a review" | Reviews spend real AI credits — running one is owner-gated, same as the RAG Scanner |
+| Deep mode toggles disappeared | They only show while Deep is selected — switch back from Quick |
+| A finding has no "Open chapter" link | The model couldn't tie that finding to a specific chapter title — it still gets kept, just without a chapter locus |
+| Findings from an old run are cluttering the Open tab | Dismiss or Resolve them — findings persist across runs on purpose, so old ones don't just disappear |
+
+---
+
+Reviews and findings save to your story like any other data — no separate export step needed beyond the normal story export.

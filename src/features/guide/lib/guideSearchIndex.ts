@@ -1,4 +1,5 @@
 import advancedRaw from "../content/advanced.mdx?raw";
+import aiReviewRaw from "../content/ai-review.mdx?raw";
 import basicsRaw from "../content/basics.mdx?raw";
 import brainstormRaw from "../content/brainstorm.mdx?raw";
 import chatFeaturesRaw from "../content/chat-features.mdx?raw";
@@ -31,6 +32,7 @@ const RAW_BY_TOPIC_ID: Record<string, string> = {
     lorebook: lorebookRaw,
     "locations-maps": locationsMapsRaw,
     "story-timeline": storyTimelineRaw,
+    "ai-review": aiReviewRaw,
     relationships: relationshipsRaw,
     memory: memoryRaw,
     prompts: promptsRaw,

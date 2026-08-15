@@ -9,7 +9,7 @@ import {
     recordJobFailure,
     recoverCrashedJobs
 } from "./agentJobsRepository.js";
-import { runAiReviewQuickJob } from "./jobs/aiReviewJobs.js";
+import { runAiReviewDeepJob, runAiReviewQuickJob } from "./jobs/aiReviewJobs.js";
 import { runSuggestCodexUpdatesJob } from "./jobs/codexCompileJob.js";
 import { runDistillMemoryJob } from "./jobs/distillMemoryJob.js";
 import { runGraphSuggestEdgesJob } from "./jobs/graphSuggestEdgesJob.js";
@@ -45,7 +45,8 @@ const HANDLERS: Record<AgentJobType, JobHandler> = {
     suggest_codex_updates: runSuggestCodexUpdatesJob,
     graph_suggest_edges: runGraphSuggestEdgesJob,
     timeline_suggest_pins: runTimelineSuggestPinsJob,
-    ai_review_quick: runAiReviewQuickJob
+    ai_review_quick: runAiReviewQuickJob,
+    ai_review_deep: runAiReviewDeepJob
 };
 
 let claimIntervalId: NodeJS.Timeout | null = null;

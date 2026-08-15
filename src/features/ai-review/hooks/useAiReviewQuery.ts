@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import { agentJobsApi, aiReviewApi } from "@/services/api/client";
 import type { AgentJobStatus } from "@/types/agentJob";
-import type { AiReviewFindingStatus, AiReviewTag } from "@/types/aiReview";
+import type { AiReviewFindingStatus, AiReviewOptions, AiReviewTag } from "@/types/aiReview";
 
 const ACTIVE_JOB_STATUSES: AgentJobStatus[] = ["queued", "running"];
 
@@ -68,6 +68,20 @@ export const useTriggerQuickReviewMutation = () => {
         onSuccess: (job, { storyId }) => {
             queryClient.invalidateQueries({ queryKey: aiReviewKeys.findingsForStoryPrefix(storyId) });
             toast.success(job.status === "running" ? "A review is already running" : "Review queued");
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to queue review")
+    });
+};
+
+// AR5 — Deep mode's staged pipeline, same trigger shape as Quick above (job queue, owner-only).
+export const useTriggerDeepReviewMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ storyId, chapterIds, options }: { storyId: string; chapterIds: string[]; options: AiReviewOptions }) =>
+            agentJobsApi.enqueue({ jobType: "ai_review_deep", storyId, payload: { chapterIds, options } }),
+        onSuccess: (job, { storyId }) => {
+            queryClient.invalidateQueries({ queryKey: aiReviewKeys.findingsForStoryPrefix(storyId) });
+            toast.success(job.status === "running" ? "A review is already running" : "Deep review queued");
         },
         onError: (error: Error) => toast.error(error.message || "Failed to queue review")
     });

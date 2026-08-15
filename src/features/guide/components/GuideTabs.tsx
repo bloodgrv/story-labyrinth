@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GuideSearch } from "./GuideSearch";
 import { GuideProvider, mdxComponents } from "./mdx";
 import AdvancedGuide from "../content/advanced.mdx";
+import AiReviewGuide from "../content/ai-review.mdx";
 import BasicsGuide from "../content/basics.mdx";
 import BrainstormGuide from "../content/brainstorm.mdx";
 import ChatFeaturesGuide from "../content/chat-features.mdx";
@@ -37,6 +38,7 @@ export function GuideTabs() {
                 <TabsTrigger value="lorebook">Lorebook Guide</TabsTrigger>
                 <TabsTrigger value="locations-maps">Locations & Maps</TabsTrigger>
                 <TabsTrigger value="story-timeline">Story Timeline</TabsTrigger>
+                <TabsTrigger value="ai-review">AI Review</TabsTrigger>
                 <TabsTrigger value="relationships">Relationships</TabsTrigger>
                 <TabsTrigger value="memory">Memory</TabsTrigger>
                 <TabsTrigger value="prompts">Prompt Guide</TabsTrigger>
@@ -85,6 +87,12 @@ export function GuideTabs() {
             <TabsContent value="story-timeline" className="space-y-4">
                 <GuideProvider>
                     <StoryTimelineGuide components={mdxComponents} />
+                </GuideProvider>
+            </TabsContent>
+
+            <TabsContent value="ai-review" className="space-y-4">
+                <GuideProvider>
+                    <AiReviewGuide components={mdxComponents} />
                 </GuideProvider>
             </TabsContent>
 

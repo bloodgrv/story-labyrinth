@@ -25,12 +25,27 @@ export interface AiReviewFinding {
     createdAt: Date;
 }
 
+// AR5 — Deep mode's optional context toggles (Quick never sets these in v1's UI, but the shape
+// isn't Deep-exclusive so a future Quick toggle wouldn't need a new column).
+export interface AiReviewOptions {
+    includeMemory?: boolean;
+    includeTimeline?: boolean;
+    includeLine?: boolean;
+    // UI toggle ("Include focused cast Codex") — the server auto-detects which character entries
+    // are actually present in the selection when this is true; there is no manual cast picker.
+    includeCast?: boolean;
+    // Populated server-side after auto-detection resolves — not set by the client. Recorded
+    // purely for audit/reproducibility of which entries actually fed a given run.
+    castEntryIds?: string[];
+}
+
 export interface AiReview {
     id: string;
     storyId: string;
     mode: AiReviewMode;
     chapterIds: string[];
     status: AiReviewStatus;
+    options: AiReviewOptions | null;
     model: string | null;
     error: string | null;
     createdAt: Date;

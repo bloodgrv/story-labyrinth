@@ -1,7 +1,7 @@
 # AI Review — Design
 
 **Project:** Story Labyrinth  
-**Status:** **Core v1 (AR0–AR4) shipped 2026-08-15** — schema, Quick review job, findings list UI + actions, Editor entry point. **AR5 (Deep staged mode) and AR6 (Guide page) still open.** See `DECISIONS.md`'s "AI Review — Core v1 (AR0–AR4)" entry.  
+**Status:** **AR0–AR6 all shipped 2026-08-15** — schema, Quick + Deep review jobs, findings list UI + actions, Editor entry point, Guide page. See `DECISIONS.md`'s "AI Review — Core v1 (AR0–AR4)" and "AI Review — Deep Mode + Guide (AR5–AR6)" entries.  
 **Talk list:** **AI Review**  
 **Backlog slices:** **AR0–AR6** (P3 until promoted)  
 **Related:** RAG Scanner (`ragScans` / factual only); chapter **Scribble** (`chapters.notes` / `ChapterNotesEditor`); Editor chat rework; Project Memory; Story Timeline; Concrete Beats; Grammar/Humanizer (stay off this desk)
@@ -189,8 +189,8 @@ Do **not** broaden Scanner’s system prompt into style/dev and call AI Review �
 | **AR2** | ✅ Findings list UI + Open/Dismiss/Resolve/Copy + status + tag filters | AR1 |
 | **AR3** | ✅ Actions: scribble append + Editor chat composer seed | AR2 |
 | **AR4** | ✅ Editor “Review this chapter” entry + sidebar registration/labels | AR1 |
-| **AR5** | Deep staged job + voice stage + richer lore opt-ins — **not started** | AR1–AR2 |
-| **AR6** | Guide page (`ai-review.mdx` or under advanced) — **not started** | AR2+ |
+| **AR5** | ✅ Deep staged job (map → cross-chapter → voice → merge) + voice stage + lore opt-ins (Memory/Timeline/line/auto-detected cast) | AR1–AR2 |
+| **AR6** | ✅ Guide page (`src/features/guide/content/ai-review.mdx`, own top-level tab) | AR2+ |
 
 **Reuse:** `jobRunner` / `agentJobs`, hybridSearch, chapter notes scribble API, Scanner list UX patterns, Editor chat seed patterns (`pendingChatComposerSeed` / rework seed precedents).  
 **Do not reuse:** `ragScanIssues` rows for craft findings.

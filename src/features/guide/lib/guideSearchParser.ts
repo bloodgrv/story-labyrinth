@@ -23,6 +23,7 @@ export const GUIDE_TOPIC_META: { id: string; label: string }[] = [
     { id: "lorebook", label: "Lorebook Guide" },
     { id: "locations-maps", label: "Locations & Maps" },
     { id: "story-timeline", label: "Story Timeline" },
+    { id: "ai-review", label: "AI Review" },
     { id: "relationships", label: "Relationships" },
     { id: "memory", label: "Memory" },
     { id: "prompts", label: "Prompt Guide" },

@@ -5,6 +5,7 @@ import type {
     AiReviewFinding,
     AiReviewFindingStatus,
     AiReviewMode,
+    AiReviewOptions,
     AiReviewSeverity,
     AiReviewStatus,
     AiReviewTag
@@ -18,6 +19,7 @@ const rowToReview = (row: typeof schema.aiReviews.$inferSelect): AiReview => ({
     mode: row.mode as AiReviewMode,
     chapterIds: (row.chapterIds as string[] | null) ?? [],
     status: row.status as AiReviewStatus,
+    options: (row.options as AiReviewOptions | null) ?? null,
     model: row.model ?? null,
     error: row.error ?? null,
     createdAt: row.createdAt as unknown as Date,
@@ -47,6 +49,7 @@ export const createReview = async (params: {
     storyId: string;
     mode: AiReviewMode;
     chapterIds: string[];
+    options?: AiReviewOptions | null;
 }): Promise<AiReview> => {
     const now = new Date();
     const [row] = await db
@@ -57,6 +60,7 @@ export const createReview = async (params: {
             mode: params.mode,
             chapterIds: params.chapterIds,
             status: "running",
+            options: params.options ?? null,
             model: null,
             error: null,
             createdAt: now,
@@ -82,6 +86,12 @@ export const failReview = async (reviewId: string, error: string): Promise<AiRev
         .where(eq(schema.aiReviews.id, reviewId))
         .returning();
     return rowToReview(row);
+};
+
+// AR5 — writes back the auto-detected cast entry ids once resolved (the review row is created
+// before that resolution happens, so this is a follow-up update, not part of createReview).
+export const updateReviewOptions = async (reviewId: string, options: AiReviewOptions): Promise<void> => {
+    await db.update(schema.aiReviews).set({ options }).where(eq(schema.aiReviews.id, reviewId));
 };
 
 export const getReview = async (reviewId: string): Promise<AiReview | null> => {

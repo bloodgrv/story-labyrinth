@@ -10,7 +10,8 @@ export type AgentJobType =
     | "suggest_codex_updates"
     | "graph_suggest_edges"
     | "timeline_suggest_pins"
-    | "ai_review_quick";
+    | "ai_review_quick"
+    | "ai_review_deep";
 // distill_memory is never auto-enqueued by jobRunner.ts's schedule tick (Phase B) — same
 // "background LLM spend must not surprise the user" reasoning as rag_scan_story. It's only
 // ever created via the manual POST /api/agent/jobs route.
@@ -25,6 +26,9 @@ export type AgentJobType =
 // ai_review_quick (AR1, docs/AI_Review_Design.md) follows the same precedent — manual trigger
 // only (see aiReviewJobs.ts). Writes aiReviews/aiReviewFindings, its own tables separate from
 // ragScans/ragScanIssues (design lock #11).
+// ai_review_deep (AR5) — same manual-trigger-only precedent, same tables. A single job type
+// covers the whole staged map->cross-chapter->voice->merge pipeline (one job row, several
+// sequential LLM calls inside the handler) rather than one job type per stage.
 
 export type AgentJobStatus = "queued" | "running" | "completed" | "failed";
 

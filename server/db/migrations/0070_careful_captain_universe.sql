@@ -1,0 +1,1 @@
+ALTER TABLE `aiReviews` ADD `options` text;

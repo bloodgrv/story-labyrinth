@@ -962,9 +962,12 @@ export const aiReviews = sqliteTable(
         storyId: text("storyId")
             .notNull()
             .references(() => stories.id, { onDelete: "cascade" }),
-        mode: text("mode").notNull(), // 'quick' | 'deep' (only 'quick' is produced pre-AR5)
+        mode: text("mode").notNull(), // 'quick' | 'deep'
         chapterIds: text("chapterIds", { mode: "json" }).notNull(), // JSON: string[] — selection at run time
         status: text("status").notNull().default("running"), // 'running' | 'completed' | 'failed'
+        // AR5 — which context toggles a run used (includeMemory/includeTimeline/includeLine/
+        // castEntryIds). Null for every pre-AR5 Quick row and any Quick run that used no toggles.
+        options: text("options", { mode: "json" }),
         model: text("model"),
         error: text("error"),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),

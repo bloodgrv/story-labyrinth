@@ -160,7 +160,9 @@ in the reference context, or null if not applicable.`;
 // mirrors chatContextService.ts's resolveMemories framing (approved facts, no per-item gate
 // beyond status: "active"), but reads every active memory rather than top-K RAG search since a
 // scan already processes the whole chapter, not a single conversational turn.
-const gatherMemoryContext = async (storyId: string): Promise<string> => {
+// Exported for services/aiReviewService.ts (AR5, Deep mode's includeMemory toggle) — same
+// formatting, no reason to duplicate it a second time.
+export const gatherMemoryContext = async (storyId: string): Promise<string> => {
     const memories = await listMemories({ storyId, status: "active" });
     if (memories.length === 0) return "";
     return memories.map(m => `[Project Memory: ${m.title} (${m.category})]\n${m.body}`).join("\n\n---\n\n");
@@ -170,7 +172,9 @@ const gatherMemoryContext = async (storyId: string): Promise<string> => {
 // shape/gating exactly). Formats the Spine chronology as ordered "when: title — blurb" lines so
 // the scanner has real reference data for "timeline"-type issues instead of only inferring order
 // from prior-chapter text.
-const gatherTimelineContext = async (storyId: string): Promise<string> => {
+// Exported for services/aiReviewService.ts (AR5, Deep mode's includeTimeline toggle) — same
+// reasoning as gatherMemoryContext above.
+export const gatherTimelineContext = async (storyId: string): Promise<string> => {
     const pins = await getSpineChronologyExcerpt(storyId);
     if (pins.length === 0) return "";
     return pins.map(p => `${p.when}: ${p.title}${p.blurb ? ` — ${p.blurb}` : ""}`).join("\n");

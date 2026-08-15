@@ -2,6 +2,7 @@ import { Loader2, ScanSearch } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,10 +10,11 @@ import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { useAppendToScribble, formatScribbleBlock } from "@/features/chapters/hooks/useAppendToScribble";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
-import type { AiReviewFindingStatus, AiReviewTag } from "@/types/aiReview";
+import type { AiReviewFindingStatus, AiReviewMode, AiReviewTag } from "@/types/aiReview";
 import {
     useReviewJobWithInvalidation,
     useStoryFindingsQuery,
+    useTriggerDeepReviewMutation,
     useTriggerQuickReviewMutation,
     useUpdateFindingStatusMutation
 } from "../hooks/useAiReviewQuery";
@@ -32,23 +34,38 @@ const TAG_OPTIONS: { value: AiReviewTag | "all"; label: string }[] = [
     { value: "line", label: "Line" }
 ];
 
+const MODES: { value: AiReviewMode; label: string }[] = [
+    { value: "quick", label: "Quick" },
+    { value: "deep", label: "Deep" }
+];
+
 interface AiReviewPanelProps {
     storyId: string;
 }
 
 // Story-wide "AI Review" sidebar tool (Sidebar.tsx "ai-review" entry, docs/AI_Review_Design.md).
-// Quick mode only this pass (AR0-AR4) — Deep's staged map/cross-chapter/voice pipeline is AR5.
+// Quick = one LLM pass; Deep = staged map -> cross-chapter -> voice -> merge pipeline (AR5),
+// with optional context toggles (Project Memory / Story Timeline / line-level nitpicks / cast
+// Codex) — Quick has none of these in v1, matching the design's "Quick: synopsis + RAG only"
+// framing.
 export function AiReviewPanel({ storyId }: AiReviewPanelProps) {
     const isOwner = useIsOwner();
     const [statusTab, setStatusTab] = useState<AiReviewFindingStatus>("open");
     const [tagFilter, setTagFilter] = useState<AiReviewTag | "all">("all");
     const [selectedChapterIds, setSelectedChapterIds] = useState<Set<string>>(new Set());
     const [triggeredJobId, setTriggeredJobId] = useState<string | null>(null);
+    const [mode, setMode] = useState<AiReviewMode>("quick");
+    const [includeMemory, setIncludeMemory] = useState(false);
+    const [includeTimeline, setIncludeTimeline] = useState(false);
+    const [includeLine, setIncludeLine] = useState(false);
+    const [includeCast, setIncludeCast] = useState(false);
     const { setCurrentChapterId, setCurrentTool, setPendingChatComposerSeed, pendingAiReviewChapterId, setPendingAiReviewChapterId } =
         useStoryContext();
 
     const { data: chapters } = useChaptersByStoryQuery(storyId);
-    const triggerMutation = useTriggerQuickReviewMutation();
+    const triggerQuickMutation = useTriggerQuickReviewMutation();
+    const triggerDeepMutation = useTriggerDeepReviewMutation();
+    const isTriggering = triggerQuickMutation.isPending || triggerDeepMutation.isPending;
     const { data: job } = useReviewJobWithInvalidation(triggeredJobId, storyId);
     const { data: findingsData, isLoading: findingsLoading } = useStoryFindingsQuery(storyId, {
         status: statusTab,
@@ -87,10 +104,15 @@ export function AiReviewPanel({ storyId }: AiReviewPanelProps) {
 
     const handleRun = () => {
         if (selectedChapterIds.size === 0) return;
-        triggerMutation.mutate(
-            { storyId, chapterIds: [...selectedChapterIds] },
-            { onSuccess: result => setTriggeredJobId(result.id) }
-        );
+        const chapterIds = [...selectedChapterIds];
+        if (mode === "quick") {
+            triggerQuickMutation.mutate({ storyId, chapterIds }, { onSuccess: result => setTriggeredJobId(result.id) });
+        } else {
+            triggerDeepMutation.mutate(
+                { storyId, chapterIds, options: { includeMemory, includeTimeline, includeLine, includeCast } },
+                { onSuccess: result => setTriggeredJobId(result.id) }
+            );
+        }
     };
 
     const goToChapter = (chapterId: string) => {
@@ -153,23 +175,69 @@ export function AiReviewPanel({ storyId }: AiReviewPanelProps) {
                     <CardTitle className="text-base">Chapters</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <Button size="sm" variant="outline" onClick={toggleSelectAll} disabled={chapterList.length === 0}>
-                            {allSelected ? "Deselect all" : "Select all"}
-                        </Button>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" onClick={toggleSelectAll} disabled={chapterList.length === 0}>
+                                {allSelected ? "Deselect all" : "Select all"}
+                            </Button>
+                            <div className="flex rounded-md border border-border overflow-hidden">
+                                {MODES.map(m => (
+                                    <button
+                                        key={m.value}
+                                        type="button"
+                                        onClick={() => setMode(m.value)}
+                                        className={
+                                            "px-3 py-1.5 text-sm " +
+                                            (mode === m.value ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground")
+                                        }
+                                    >
+                                        {m.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                         {isOwner ? (
-                            <Button onClick={handleRun} disabled={selectedChapterIds.size === 0 || triggerMutation.isPending || isJobActive}>
-                                {triggerMutation.isPending || isJobActive ? (
+                            <Button onClick={handleRun} disabled={selectedChapterIds.size === 0 || isTriggering || isJobActive}>
+                                {isTriggering || isJobActive ? (
                                     <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                                 ) : (
                                     <ScanSearch className="h-4 w-4 mr-1.5" />
                                 )}
-                                Run Quick review
+                                Run {mode === "quick" ? "Quick" : "Deep"} review
                             </Button>
                         ) : (
                             <p className="text-xs text-muted-foreground">Only the story owner can run a review.</p>
                         )}
                     </div>
+
+                    {mode === "deep" && (
+                        <div className="grid grid-cols-2 gap-2 rounded-md border border-border p-3">
+                            <div className="flex items-center gap-2">
+                                <Switch id="ar-include-memory" checked={includeMemory} onCheckedChange={setIncludeMemory} />
+                                <Label htmlFor="ar-include-memory" className="text-xs font-normal text-muted-foreground">
+                                    Include Project Memory
+                                </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Switch id="ar-include-timeline" checked={includeTimeline} onCheckedChange={setIncludeTimeline} />
+                                <Label htmlFor="ar-include-timeline" className="text-xs font-normal text-muted-foreground">
+                                    Include Story Timeline
+                                </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Switch id="ar-include-line" checked={includeLine} onCheckedChange={setIncludeLine} />
+                                <Label htmlFor="ar-include-line" className="text-xs font-normal text-muted-foreground">
+                                    Include line-level nitpicks
+                                </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Switch id="ar-include-cast" checked={includeCast} onCheckedChange={setIncludeCast} />
+                                <Label htmlFor="ar-include-cast" className="text-xs font-normal text-muted-foreground">
+                                    Include focused cast Codex
+                                </Label>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="max-h-64 overflow-y-auto divide-y rounded-md border border-border">
                         {chapterList.map(chapter => (

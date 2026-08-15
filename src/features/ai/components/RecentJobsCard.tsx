@@ -21,7 +21,8 @@ const JOB_TYPE_LABELS: Record<AgentJob["jobType"], string> = {
     suggest_codex_updates: "Codex update suggestions",
     graph_suggest_edges: "Relationship suggestions",
     timeline_suggest_pins: "Timeline pin suggestions",
-    ai_review_quick: "AI Review (Quick)"
+    ai_review_quick: "AI Review (Quick)",
+    ai_review_deep: "AI Review (Deep)"
 };
 
 interface JobRowProps {
