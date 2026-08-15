@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWorkspace } from "@/components/workspace/context/WorkspaceContext";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useBrainstormChecklistQuery } from "@/features/brainstorm/hooks/useBrainstormChecklistQuery";
@@ -32,8 +32,18 @@ export function StoryEditor() {
     const editorContextToggles = useChatContextToggles(selectedEditorChat, "editor");
     const { data: pendingEditorCodexProposals = [] } = useChatProposalsQuery(selectedEditorChat?.id, "pending");
     const { data: activeEditorShuttleItems = [] } = useBrainstormChecklistQuery(selectedEditorChat?.id, "active");
-    const { currentChapterId, currentStoryId } = useStoryContext();
+    const { currentChapterId, currentStoryId, pendingChatComposerSeed, setPendingChatComposerSeed, setPendingAiReviewChapterId, setCurrentTool } =
+        useStoryContext();
     const { data: currentChapter } = useChapterQuery(currentChapterId || "");
+
+    // AI Review's "Send to Editor chat" action (AR3, docs/AI_Review_Design.md) — same one-shot
+    // consumption posture as ResearchTool.tsx's own pendingChatComposerSeed effect, gated on a
+    // chat already being selected so the seed doesn't get lost against a still-mounting rail.
+    useEffect(() => {
+        if (!pendingChatComposerSeed || pendingChatComposerSeed.tool !== "editor" || !selectedEditorChat) return;
+        setEditorComposerSeedText(pendingChatComposerSeed.text);
+        setPendingChatComposerSeed(null);
+    }, [pendingChatComposerSeed, selectedEditorChat, setPendingChatComposerSeed]);
     const { rightSidebar, toggleRightSidebar, isMaximised } = useWorkspace();
     const { isActive: sessionActive, config: sessionConfig } = useFocusSession();
     const isDesktop = useIsDesktopViewport();
@@ -123,6 +133,14 @@ export function StoryEditor() {
                     contextToggles={editorContextToggles}
                     approvalsCount={pendingEditorCodexProposals.length + activeEditorShuttleItems.length}
                     onAnswerHere={setEditorComposerSeedText}
+                    onReviewChapter={
+                        currentChapterId
+                            ? () => {
+                                  setPendingAiReviewChapterId(currentChapterId);
+                                  setCurrentTool("ai-review");
+                              }
+                            : undefined
+                    }
                 />
             )}
         </div>

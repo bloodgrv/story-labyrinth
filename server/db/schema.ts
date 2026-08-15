@@ -951,6 +951,62 @@ export const ragScanIssues = sqliteTable(
     })
 );
 
+// AI Review table — one row per manuscript-editor review run over a chosen chapter set. Separate
+// from ragScans/ragScanIssues on purpose (docs/AI_Review_Design.md lock #11) — AI Review is
+// editorial judgment (dev/continuity/voice/line), not the factual-consistency Scanner, and must
+// not dilute the Scanner's proof-oriented trust.
+export const aiReviews = sqliteTable(
+    "aiReviews",
+    {
+        id: text("id").primaryKey(),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        mode: text("mode").notNull(), // 'quick' | 'deep' (only 'quick' is produced pre-AR5)
+        chapterIds: text("chapterIds", { mode: "json" }).notNull(), // JSON: string[] — selection at run time
+        status: text("status").notNull().default("running"), // 'running' | 'completed' | 'failed'
+        model: text("model"),
+        error: text("error"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        completedAt: integer("completedAt", { mode: "timestamp" })
+    },
+    table => ({
+        storyIdIdx: index("aireview_story_id_idx").on(table.storyId),
+        statusIdx: index("aireview_status_idx").on(table.status)
+    })
+);
+
+// AI Review Findings table — individual editorial notes from a review run.
+export const aiReviewFindings = sqliteTable(
+    "aiReviewFindings",
+    {
+        id: text("id").primaryKey(),
+        reviewId: text("reviewId")
+            .notNull()
+            .references(() => aiReviews.id, { onDelete: "cascade" }),
+        storyId: text("storyId")
+            .notNull()
+            .references(() => stories.id, { onDelete: "cascade" }),
+        chapterId: text("chapterId").references(() => chapters.id, { onDelete: "cascade" }), // primary locus, best-effort
+        tag: text("tag").notNull(), // 'dev' | 'continuity' | 'voice' | 'line'
+        severity: text("severity").notNull(), // 'low' | 'medium' | 'high'
+        title: text("title").notNull(),
+        description: text("description").notNull(),
+        excerpt: text("excerpt"),
+        excerptStart: integer("excerptStart"),
+        excerptEnd: integer("excerptEnd"),
+        direction: text("direction"),
+        status: text("status").notNull().default("open"), // 'open' | 'dismissed' | 'resolved'
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
+    },
+    table => ({
+        reviewIdIdx: index("aireviewfinding_review_id_idx").on(table.reviewId),
+        storyIdIdx: index("aireviewfinding_story_id_idx").on(table.storyId),
+        chapterIdIdx: index("aireviewfinding_chapter_id_idx").on(table.chapterId),
+        statusIdx: index("aireviewfinding_status_idx").on(table.status)
+    })
+);
+
 // Agent Jobs table — durable background job queue for the in-process job runner (jobRunner.ts).
 // Generalizes the ragScans precedent (status/progress/story-scope/polling) into one table for
 // all background job types (index reconciliation, scans, housekeeping), so this work survives a

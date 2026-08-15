@@ -19,6 +19,7 @@ export const TOOL_LABELS: Record<WorkspaceTool, string> = {
     "story-map": "Maps",
     "story-timeline": "Timeline",
     scanner: "Scanner",
+    "ai-review": "AI Review",
     users: "Users",
     playbooks: "Playbooks"
 };

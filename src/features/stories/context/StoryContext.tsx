@@ -18,6 +18,7 @@ export type WorkspaceTool =
     | "story-map"
     | "story-timeline"
     | "scanner"
+    | "ai-review"
     | "name-generator"
     | "playbooks";
 
@@ -75,6 +76,11 @@ interface StoryContextType {
     // external-open hook before this — NotesTool.tsx only tracked selectedNoteId locally).
     pendingNoteId: string | null;
     setPendingNoteId: (id: string | null) => void;
+    // AI Review (AR4, docs/AI_Review_Design.md) — Editor's "Review this chapter" entry point.
+    // Same one-shot posture as pendingTimelineFocusPinId, for jumping to the AI Review tool with
+    // the current chapter pre-checked in its multi-select, consumed once by AiReviewPanel.tsx.
+    pendingAiReviewChapterId: string | null;
+    setPendingAiReviewChapterId: (id: string | null) => void;
     // In-progress (unsent) chat composer text, keyed by chat id. Lives here rather than in
     // ChatInterface's own state because switching workspace tools (e.g. Editor -> Lorebook and
     // back) unmounts/remounts ChatInterface — a plain useState there loses whatever the user was
@@ -132,6 +138,7 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     const [pendingMapSketch, setPendingMapSketch] = useState<StoryContextType["pendingMapSketch"]>(null);
     const [pendingTimelineFocusPinId, setPendingTimelineFocusPinId] = useState<string | null>(null);
     const [pendingNoteId, setPendingNoteId] = useState<string | null>(null);
+    const [pendingAiReviewChapterId, setPendingAiReviewChapterId] = useState<string | null>(null);
     const [chatDrafts, setChatDrafts] = useState<Record<string, string>>(loadPersistedChatDrafts);
     const setChatDraft = (chatId: string, text: string) =>
         setChatDrafts(prev => (text ? { ...prev, [chatId]: text } : Object.fromEntries(Object.entries(prev).filter(([id]) => id !== chatId))));
@@ -221,6 +228,8 @@ export function StoryProvider({ children }: { children: ReactNode }) {
                 setPendingTimelineFocusPinId,
                 pendingNoteId,
                 setPendingNoteId,
+                pendingAiReviewChapterId,
+                setPendingAiReviewChapterId,
                 chatDrafts,
                 setChatDraft,
                 chapterContentRefreshToken,

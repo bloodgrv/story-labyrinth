@@ -21,6 +21,7 @@ import { fetchJSON, uploadFile } from "./apiFactory";
 export { adminApi, featureEndpointsApi } from "./adminClient";
 export { agentJobsApi } from "./agentJobsClient";
 export { agentMemoriesApi } from "./agentMemoriesClient";
+export { aiReviewApi } from "./aiReviewClient";
 export { beatsApi } from "./beatsClient";
 export { brainstormApi } from "./brainstormClient";
 export { chaptersApi } from "./chaptersClient";

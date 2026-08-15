@@ -2,6 +2,7 @@ import {
     BookOpen,
     ChevronLeft,
     ChevronRight,
+    ClipboardCheck,
     History,
     Inbox,
     ListChecks,
@@ -89,6 +90,11 @@ interface EditorToolsPanelProps {
     contextToggles: ChatContextToggles;
     approvalsCount: number;
     onAnswerHere: (text: string) => void;
+    // AI Review's "Review this chapter" entry point (AR4, docs/AI_Review_Design.md) — navigates to
+    // the AI Review tool with the current chapter pre-checked, rather than opening a drawer here
+    // (unlike ragScanner/chapterHistory above), since AI Review is a full sidebar tool, not an
+    // in-editor Sheet. Undefined hides the button (no current chapter to review).
+    onReviewChapter?: () => void;
 }
 
 // The right-rail tool sidebar (Tags/Outline/POV/Notes/Beats) plus its drawers/sheet, and the
@@ -111,7 +117,8 @@ export function EditorToolsPanel({
     selectedEditorChat,
     contextToggles,
     approvalsCount,
-    onAnswerHere
+    onAnswerHere,
+    onReviewChapter
 }: EditorToolsPanelProps) {
     // Approvals/Context depend on a selected chat existing at all — filtered out here (not from
     // the static sidebarButtons array, shared with the mobile menu below) rather than shown
@@ -155,6 +162,12 @@ export function EditorToolsPanel({
                                 {title}
                             </DropdownMenuItem>
                         ))}
+                        {onReviewChapter && (
+                            <DropdownMenuItem onClick={onReviewChapter}>
+                                <ClipboardCheck className="h-4 w-4 mr-2" />
+                                Review this chapter
+                            </DropdownMenuItem>
+                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -197,6 +210,19 @@ export function EditorToolsPanel({
                             </Button>
                         );
                     })}
+
+                    {onReviewChapter && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn("mx-2", collapsed ? "justify-center px-0 w-8" : "justify-start")}
+                            onClick={onReviewChapter}
+                            title="Review this chapter"
+                        >
+                            <ClipboardCheck className="h-4 w-4 shrink-0" />
+                            {!collapsed && <span className="ml-2">AI Review</span>}
+                        </Button>
+                    )}
 
                     {currentChapterId && !collapsed && (
                         <DownloadMenu

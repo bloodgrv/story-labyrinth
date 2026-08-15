@@ -1,5 +1,6 @@
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { cn } from "@/lib/utils";
+import { AiReviewTool } from "./tools/AiReviewTool";
 import { BrainstormTool } from "./tools/BrainstormTool";
 import { ChaptersTool } from "./tools/ChaptersTool";
 import { EditorTool } from "./tools/EditorTool";
@@ -56,6 +57,8 @@ export const MainContent = () => {
                 return <TimelineTool />;
             case "scanner":
                 return <RagScannerTool />;
+            case "ai-review":
+                return <AiReviewTool />;
             case "playbooks":
                 return <PlaybookPacksTool />;
             default:

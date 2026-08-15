@@ -9,7 +9,8 @@ export type AgentJobType =
     | "distill_memory"
     | "suggest_codex_updates"
     | "graph_suggest_edges"
-    | "timeline_suggest_pins";
+    | "timeline_suggest_pins"
+    | "ai_review_quick";
 // distill_memory is never auto-enqueued by jobRunner.ts's schedule tick (Phase B) — same
 // "background LLM spend must not surprise the user" reasoning as rag_scan_story. It's only
 // ever created via the manual POST /api/agent/jobs route.
@@ -21,6 +22,9 @@ export type AgentJobType =
 // timeline_suggest_pins (TL11B, docs/Story_Timeline_Design.md) follows the exact same precedent —
 // manual POST /api/agent/jobs only (see timelineSuggestPinsJob.ts). Produces storyTimelinePins
 // rows with status: "pending", source: "ai_suggested" — reviewed through their own Pending tab.
+// ai_review_quick (AR1, docs/AI_Review_Design.md) follows the same precedent — manual trigger
+// only (see aiReviewJobs.ts). Writes aiReviews/aiReviewFindings, its own tables separate from
+// ragScans/ragScanIssues (design lock #11).
 
 export type AgentJobStatus = "queued" | "running" | "completed" | "failed";
 
@@ -33,6 +37,9 @@ export interface AgentJobProgress {
     // find it (via getScan) and resume into the same scan at `processed` rather than starting a
     // fresh scan from chapter 0 — see ragScanJobs.ts's runRagScanStoryJob.
     scanId?: string;
+    // ai_review_quick only: the aiReviews row this attempt is writing to (same resume-after-crash
+    // rationale as scanId above).
+    reviewId?: string;
 }
 
 export interface AgentJob {

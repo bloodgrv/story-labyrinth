@@ -32,6 +32,7 @@ import outlineImportRouter from "./routes/outlineImport.js";
 import playbookPacksRouter from "./routes/playbookPacks.js";
 import promptsRouter from "./routes/prompts.js";
 import ragRouter from "./routes/rag.js";
+import aiReviewRouter from "./routes/aiReview.js";
 import seriesRouter from "./routes/series.js";
 // Import routes
 import storiesRouter from "./routes/stories.js";
@@ -154,6 +155,10 @@ app.use("/api", storyTimelineRouter);
 // as every other editor-gated write in this app.
 app.use("/api", deskTransfersRouter);
 app.use("/api/rag", ragRouter);
+// AI Review (AR1, docs/AI_Review_Design.md) — same editor-level auth as /api/rag's own
+// findings/issue routes; the LLM-spend-triggering trigger itself goes through the owner-gated
+// /api/agent/jobs queue (jobType: "ai_review_quick"), not this router.
+app.use("/api/ai-review", aiReviewRouter);
 app.use("/api/tts", ttsRouter);
 app.use("/api/humanizer", humanizerRouter);
 app.use("/api/beats", beatsRouter);

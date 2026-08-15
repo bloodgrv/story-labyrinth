@@ -13,7 +13,8 @@ const JOB_TYPES: AgentJobType[] = [
     "distill_memory",
     "suggest_codex_updates",
     "graph_suggest_edges",
-    "timeline_suggest_pins"
+    "timeline_suggest_pins",
+    "ai_review_quick"
 ];
 const JOB_STATUSES: AgentJobStatus[] = ["queued", "running", "completed", "failed"];
 
