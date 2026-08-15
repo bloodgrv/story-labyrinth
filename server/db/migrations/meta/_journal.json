@@ -498,6 +498,13 @@
       "when": 1786757165179,
       "tag": "0070_careful_captain_universe",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "6",
+      "when": 1786762228852,
+      "tag": "0071_rich_monster_badoon",
+      "breakpoints": true
     }
   ]
 }

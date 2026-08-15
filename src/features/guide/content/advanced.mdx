@@ -107,7 +107,16 @@ Access from the editor's own icon rail (right edge):
 
 ### The editor tool rail
 
-The chapter editor's full icon rail, right edge: **Tags** (matched Lorebook entries), **Outline**, **POV**, **Scribble**, **Beats** (Concrete Beats), **Scanner** (RAG Scanner, chapter-scoped), **History** (chapter content undo/restore), **Approvals** (Codex proposals + Chat Shuttle items pending review), and **Context** (the chat's Notes/Outline/Memory/Lorebook toggles). Each opens as a right-side panel — only one open at a time.
+The chapter editor's full icon rail, right edge: **Tags** (matched Lorebook entries), **Outline**, **POV**, **Scribble**, **Beats** (Concrete Beats), **Scanner** (RAG Scanner, chapter-scoped), **History** (chapter content undo/restore), **Humanize** (Manual + Auto Humanizer controls, see below), **Approvals** (Codex proposals + Chat Shuttle items pending review), and **Context** (the chat's Notes/Outline/Memory/Lorebook toggles). Each opens as a right-side panel — only one open at a time.
+
+### Humanize (Manual + Auto Humanizer)
+
+The rail's **Humanize** panel hosts two separate tools in one place:
+
+- **Manual Humanizer** — the same on-demand rewrite as the floating toolbar's Humanize button, just reachable from the rail: select text in the chapter, click **Humanize selection**, and that exact span is rewritten in place (no italic). The button is disabled with a hint until you actually have a non-empty selection.
+- **Auto Humanizer** — a separate, optional pipeline that runs automatically whenever AI-proposed prose is *accepted* into a chapter (from an Editor chat's prose proposal), not on your own typing or pasted text. When on, it locally scores the incoming text for how AI-flavored it reads, and — depending on **Mode** (only rewrite text scoring above a threshold, or always rewrite) — runs one rewrite pass before the text ever reaches the chapter, so you only ever see the final result, never a raw-then-replaced flash. **Intensity** (Light/Medium/Strong) controls how aggressive the rewrite is, **Tone** picks the register (casual/professional/academic/custom), and **Minimum characters** skips the pipeline for very short inserts. Off by default. If the configured model is unreachable, the original text is inserted unchanged and you'll see an error toast — it never blocks Accept.
+
+Both sections here bind the exact same settings as Settings → Writing tools' **Humanizer** and **Auto Humanizer** cards — change it in either place and the other reflects it immediately.
 
 ### Formatting Text
 

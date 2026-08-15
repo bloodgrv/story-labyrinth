@@ -363,6 +363,23 @@ export const humanizerSettings = sqliteTable("humanizerSettings", {
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
 });
 
+// Auto Humanizer Settings table — single global row, separate feature/table from humanizerSettings
+// above (own FeatureKey "auto_humanizer" too). A commit-time filter rather than an on-demand
+// rewrite: `mode`/`aiScoreThreshold` control when it bothers rewriting at all (see
+// server/services/aiTextDetector.ts), `intensity`/`tone`/`customToneDescription` control how.
+// See docs/Auto_Humanizer_Design.md.
+export const autoHumanizerSettings = sqliteTable("autoHumanizerSettings", {
+    id: text("id").primaryKey(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    mode: text("mode").notNull().default("threshold"), // AutoHumanizerMode: 'threshold' | 'always'
+    aiScoreThreshold: integer("aiScoreThreshold").notNull().default(60),
+    intensity: text("intensity").notNull().default("medium"), // HumanizerIntensity: 'light' | 'medium' | 'strong'
+    tone: text("tone").notNull().default("casual"), // AutoHumanizerTone
+    customToneDescription: text("customToneDescription").notNull().default(""),
+    minChars: integer("minChars").notNull().default(80),
+    createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
+});
+
 // Grammar Checker Settings table — single global row. Unlike the AI features (humanizer, beat
 // detection, etc.), LanguageTool isn't an OpenAI-compatible chat endpoint, so it doesn't go
 // through aiClientFactory/featureEndpoints — it gets its own server URL here, the same shape as

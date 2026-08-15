@@ -14,6 +14,7 @@ export type FeatureKey =
     | "worldbuilding_chat" // World-Building Chat AI calls (future)
     | "editor_chat" // Main Editor Chat AI calls (future)
     | "humanizer" // Humanize rewrite pass (humanizerService.ts)
+    | "auto_humanizer" // Auto Humanizer commit-time filter, separate from Humanizer above (autoHumanizerService.ts)
     | "beat_detection" // Concrete beat suggestion pass (beatDetector.ts)
     | "document_import" // Extract a Lorebook entry from an uploaded PDF/DOCX/MD file (documentImportService.ts)
     | "image_generation" // Generate a Lorebook entry's portrait from its description (grokImageService.ts)
@@ -66,6 +67,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
     worldbuilding_chat: "World-Building Chat",
     editor_chat: "Editor Chat",
     humanizer: "Humanizer",
+    auto_humanizer: "Auto Humanizer",
     beat_detection: "Beat Detection",
     document_import: "Document Import (Lorebook)",
     image_generation: "Image Generation (Lorebook)",
@@ -88,6 +90,7 @@ export const FEATURE_KEYS: FeatureKey[] = [
     "worldbuilding_chat",
     "editor_chat",
     "humanizer",
+    "auto_humanizer",
     "beat_detection",
     "document_import",
     "image_generation",

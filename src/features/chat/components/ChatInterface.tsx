@@ -27,6 +27,8 @@ import { applyChapterSelectionReplace } from "@/features/rework/adapters/chapter
 import { ReworkCard } from "@/features/rework/components/ReworkCard";
 import type { InitialReworkPayload } from "@/features/rework/pendingReworkStore";
 import { getActiveChapterEditor } from "@/lib/activeChapterEditorStore";
+import { useAutoHumanizerSettingsQuery } from "@/features/auto-humanizer/hooks/useAutoHumanizerSettingsQuery";
+import { useAutoHumanizeProcessMutation } from "@/features/auto-humanizer/hooks/useAutoHumanizeProcessMutation";
 import { useCreateNoteMutation, useUpdateNoteMutation } from "@/features/notes/hooks/useNotesQuery";
 import { NoteFormDialog } from "@/features/notes/components/NoteFormDialog";
 import { useUpdateLorebookMutation } from "@/features/lorebook/hooks/useLorebookQuery";
@@ -697,6 +699,10 @@ export function ChatInterface({
     // non-rework turn), so Accept knows whether to replace that captured selection or fall back
     // to the plain insert-at-cursor-or-end path — see handleAcceptProse below.
     const [proseProposals, setProseProposals] = useState<Record<string, { text: string; target: ChapterSelectionTarget | null }>>({});
+    // AH4 — tracks which prose-proposal card's Accept is currently awaiting Auto Humanizer's
+    // /process call, so ProseProposalCard can show a "Humanizing..." busy state. Only ever set
+    // for the manual-Accept path (the auto-insert toggle path has no card to show it on).
+    const [humanizingMessageId, setHumanizingMessageId] = useState<string | null>(null);
 
     // N6 (Notes_Outline_Chat_Bridges_Design.md §4) — same ephemeral-state posture as
     // proseProposals above; only ever populated for non-Editor chats since
@@ -771,14 +777,32 @@ export function ChatInterface({
     // P0.4 R6 — shared "apply" core for both the manual Accept button (handleAcceptProse below)
     // and the auto-insert path (onProseProposal callback below), so the two never drift. Pure
     // side-effecting apply, no proseProposals/dismiss bookkeeping — callers own that.
-    const applyProseProposal = (proposal: { text: string; target: ChapterSelectionTarget | null }): "applied" | "not-found" | "selection-changed" => {
+    // AH4 — Auto Humanizer's commit-time filter hooks in here, and only here: a plain insert
+    // (proposal.target === null) is the one prose-accept shape it's allowed to touch. Selection
+    // Rework Accept (proposal.target !== null) is explicitly out of scope (design decision #10 —
+    // before/after must stay visible), so it skips straight past the humanize call below.
+    const autoHumanizerSettingsQuery = useAutoHumanizerSettingsQuery();
+    const autoHumanizeMutation = useAutoHumanizeProcessMutation();
+
+    const applyProseProposal = async (proposal: {
+        text: string;
+        target: ChapterSelectionTarget | null;
+    }): Promise<"applied" | "not-found" | "selection-changed"> => {
         if (proposal.target) {
             const result = applyChapterSelectionReplace(proposal.target, proposal.text);
             return result === "replaced" ? "applied" : result;
         }
+
+        let finalText = proposal.text;
+        if (autoHumanizerSettingsQuery.data?.enabled) {
+            const result = await autoHumanizeMutation.mutateAsync(proposal.text);
+            finalText = result.text ?? proposal.text;
+            if (!result.success) toast.error(result.message ?? "Auto Humanizer failed — inserted original text");
+        }
+
         const editor = currentChapterId ? getActiveChapterEditor(currentChapterId) : null;
         if (!editor) return "not-found";
-        insertProposedProse(editor, proposal.text);
+        insertProposedProse(editor, finalText);
         return "applied";
     };
 
@@ -791,7 +815,7 @@ export function ChatInterface({
         autoAcceptCodex: toggles.autoAcceptCodex,
         onUsage: usage => setLastUsage(usage ?? null),
         onProseProposal: enableProseProposals
-            ? (messageId, proposal) => {
+            ? async (messageId, proposal) => {
                   // Only chapter-selection rework turns produce a prose-proposal Accept path —
                   // Lorebook/Outline rework replies via codex-proposal/outline-proposal instead
                   // (see reworkContext below), so a non-chapter-selection activeRework never
@@ -799,7 +823,7 @@ export function ChatInterface({
                   const target = activeRework && activeRework.target.kind === "chapter-selection" ? activeRework.target : null;
                   const record = { text: proposal, target };
                   if (toggles.autoInsertProse) {
-                      const result = applyProseProposal(record);
+                      const result = await applyProseProposal(record);
                       if (result === "applied") {
                           if (target) setActiveRework(null);
                           toast.success("Auto-inserted into chapter");
@@ -1492,11 +1516,19 @@ export function ChatInterface({
             return next;
         });
 
-    const handleAcceptProse = (messageId: string) => {
+    const handleAcceptProse = async (messageId: string) => {
         const proposal = proseProposals[messageId];
         if (!proposal) return;
 
-        const result = applyProseProposal(proposal);
+        // Busy "Humanizing..." only applies to the plain-insert path (Auto Humanizer never
+        // touches a rework target) — see applyProseProposal's own guard.
+        const willHumanize = !proposal.target && autoHumanizerSettingsQuery.data?.enabled;
+        if (willHumanize) setHumanizingMessageId(messageId);
+
+        const result = await applyProseProposal(proposal);
+
+        if (willHumanize) setHumanizingMessageId(null);
+
         if (result === "not-found") {
             toast.error(
                 proposal.target
@@ -1786,6 +1818,7 @@ export function ChatInterface({
                                 <ProseProposalCard
                                     text={proseProposal.text}
                                     replacesSelection={proseProposal.target !== null}
+                                    isBusy={humanizingMessageId === messageId}
                                     onAccept={() => handleAcceptProse(messageId)}
                                     onReject={() => dismissProseProposal(messageId)}
                                 />

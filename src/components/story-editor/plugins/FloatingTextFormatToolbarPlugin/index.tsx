@@ -14,6 +14,8 @@ import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { useEditorChapterId, useEditorStoryId } from "@/features/editor-multiview/context/EditorPaneContext";
 import { useHumanizeMutation } from "@/features/humanizer/hooks/useHumanizeMutation";
 import { useHumanizerSettingsQuery } from "@/features/humanizer/hooks/useHumanizerSettingsQuery";
+import { useAutoHumanizerSettingsQuery } from "@/features/auto-humanizer/hooks/useAutoHumanizerSettingsQuery";
+import { useAutoHumanizeProcessMutation } from "@/features/auto-humanizer/hooks/useAutoHumanizeProcessMutation";
 import { useLorebookContext } from "@/features/lorebook/context/LorebookContext";
 import { useLastUsedPrompt } from "@/features/prompts/hooks/useLastUsedPrompt";
 import { usePromptParser } from "@/features/prompts/hooks/usePromptParser";
@@ -58,6 +60,8 @@ const TextFormatFloatingToolbar = ({
     const { data: currentChapter } = useChapterQuery(currentChapterId || "");
     const { data: humanizerSettings } = useHumanizerSettingsQuery();
     const humanizeMutation = useHumanizeMutation();
+    const { data: autoHumanizerSettings } = useAutoHumanizerSettingsQuery();
+    const autoHumanizeMutation = useAutoHumanizeProcessMutation();
     const [selectedPrompt, setSelectedPrompt] = useState<Prompt | undefined>(lastUsed?.prompt);
     const [selectedModel, setSelectedModel] = useState<AllowedModel | undefined>(lastUsed?.model);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -121,16 +125,27 @@ const TextFormatFloatingToolbar = ({
             await aiService.handleStreamedResponse(
                 response,
                 token => (fullText += token),
-                () => {
+                async () => {
                     if (!fullText.trim()) {
                         toast.warning("No text returned from AI - selection preserved");
                         return;
                     }
+
+                    // AH7 — the one commit surface where Auto Humanizer deliberately keeps the
+                    // italic marking on the final inserted text (unlike Accept-prose/manual
+                    // Humanize, which are never italic) — see docs/Auto_Humanizer_Design.md's
+                    // decision #2b. Skip/fail degrades to today's raw-insert behavior unchanged.
+                    let insertText = fullText;
+                    if (autoHumanizerSettings?.enabled) {
+                        const [humanizeErr, result] = await attemptPromise(() => autoHumanizeMutation.mutateAsync(fullText));
+                        if (!humanizeErr && result.text) insertText = result.text;
+                    }
+
                     editor.update(() => {
                         const currentSelection = $getSelection();
                         if ($isRangeSelection(currentSelection)) {
                             currentSelection.formatText("italic");
-                            currentSelection.insertText(fullText);
+                            currentSelection.insertText(insertText);
                         }
                     });
                     toast.success("Text generated and inserted");

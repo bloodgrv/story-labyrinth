@@ -13,7 +13,8 @@ import {
     SlidersHorizontal,
     StickyNote,
     Tags,
-    User
+    User,
+    Wand2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DownloadMenu } from "@/components/ui/DownloadMenu";
@@ -32,6 +33,7 @@ import { ChapterPOVEditor } from "@/features/chapters/components/ChapterPOVEdito
 import { ConcreteBeatsPanel } from "@/features/chapters/components/ConcreteBeatsPanel";
 import { MatchedTagEntries } from "@/features/chapters/components/MatchedTagEntries";
 import { ChapterHistoryDrawer } from "@/features/chapter-history/components/ChapterHistoryDrawer";
+import { EditorHumanizeSheet } from "@/features/auto-humanizer/components/EditorHumanizeSheet";
 import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
 import { CodexProposalTray } from "@/features/chat/components/CodexProposalTray";
 import { ShuttleTray } from "@/features/chat/components/ShuttleTray";
@@ -48,6 +50,7 @@ export type DrawerType =
     | "chapterBeats"
     | "ragScanner"
     | "chapterHistory"
+    | "humanize"
     | "approvals"
     | "context"
     | null;
@@ -60,6 +63,7 @@ export const sidebarButtons: { id: DrawerType; icon: LucideIcon; label: string; 
     { id: "chapterBeats", icon: ListChecks, label: "Beats", title: "Concrete Beats" },
     { id: "ragScanner", icon: ScanSearch, label: "Scanner", title: "RAG Scanner" },
     { id: "chapterHistory", icon: History, label: "History", title: "Chapter History" },
+    { id: "humanize", icon: Wand2, label: "Humanize", title: "Humanize" },
     // Editor's own chat's Approvals (Codex+Shuttle trays) and Context & memory — mirrors the
     // Approvals/Context buckets ChatToolsRail already gives WB/Outline/Notes/Research/Brainstorm.
     // Only shown once a chat is selected (filtered in the render loop below, not here) since both
@@ -270,6 +274,10 @@ export function EditorToolsPanel({
                 {currentChapterId && (
                     <ChapterHistoryDrawer chapterId={currentChapterId} currentContent={currentChapter?.content} />
                 )}
+            </SimpleSheet>
+
+            <SimpleSheet open={openDrawer === "humanize"} onClose={onCloseDrawer} title="Humanize" description="De-slop selection or filter AI prose on Accept.">
+                {currentChapterId && <EditorHumanizeSheet chapterId={currentChapterId} />}
             </SimpleSheet>
 
             <SimpleSheet open={openDrawer === "chapterPOV"} onClose={onCloseDrawer} title="Edit Chapter POV" description="Change the point of view character and perspective for this chapter.">

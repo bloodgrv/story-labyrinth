@@ -33,6 +33,7 @@ import { TransfersLogCard } from "@/features/transfers/components/TransfersLogCa
 import { GrammarSettingsCard } from "@/features/grammar/components/GrammarSettingsCard";
 import { GuideTabs } from "@/features/guide/components/GuideTabs";
 import { HumanizerSettingsCard } from "@/features/humanizer/components/HumanizerSettingsCard";
+import { AutoHumanizerSettingsCard } from "@/features/auto-humanizer/components/AutoHumanizerSettingsCard";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { TtsSettingsCard } from "@/features/tts/components/TtsSettingsCard";
 import type { ChatMode } from "@/types/story";
@@ -262,6 +263,7 @@ export default function SettingsPage() {
                             <TabsContent value="writing" className="mt-0 space-y-6">
                                 <TtsSettingsCard />
                                 <HumanizerSettingsCard />
+                                <AutoHumanizerSettingsCard />
                                 <GrammarSettingsCard />
                                 <WriterPrefsCard />
                                 <PlaybookPacksSettingsCard />

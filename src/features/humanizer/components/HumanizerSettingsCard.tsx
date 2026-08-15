@@ -72,6 +72,10 @@ export function HumanizerSettingsCard() {
                     floating toolbar to rewrite it. Uses the default AI connection unless a dedicated endpoint is
                     set for it in Feature Endpoints.
                 </p>
+                <p className="text-xs text-muted-foreground">
+                    Looking for automatic filtering on AI inserts instead? See <strong>Auto Humanizer</strong>{" "}
+                    below.
+                </p>
             </CardContent>
         </Card>
     );

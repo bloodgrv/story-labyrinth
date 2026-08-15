@@ -164,6 +164,32 @@ export const buildClientForFeature = async (
 };
 
 /**
+ * Like buildClientForFeature, but never falls through to the global default — returns null
+ * unless this exact feature has its own per-feature override configured.
+ *
+ * Needed for genuine multi-tier fallback chains (e.g. Auto Humanizer's
+ * auto_humanizer-override -> humanizer-override -> global-default -> degrade, see
+ * autoHumanizerService.ts): buildClientForFeature("auto_humanizer") on its own would never
+ * return null just because auto_humanizer has no override — it silently succeeds via the global
+ * default first, so a caller chaining `?? buildClientForFeature("humanizer")` would never
+ * actually reach humanizer's override even when one exists. Confirmed live: an environment with
+ * a working humanizer-specific override and a broken global default resolved auto_humanizer's
+ * naive chain straight to the broken global connection instead of humanizer's working one.
+ */
+export const buildClientForFeatureOverrideOnly = async (
+    featureKey: FeatureKey
+): Promise<ClientAndModel | null> => {
+    const [settings] = await db.select().from(schema.aiSettings);
+    if (!settings) return null;
+
+    const endpoints = parseEndpoints(settings.featureEndpoints);
+    const override = endpoints[featureKey];
+    if (!override) return null;
+
+    return clientFromEndpoint(override, settings);
+};
+
+/**
  * Read the current per-feature endpoint map from the database.
  * Returns an empty object when no overrides are configured.
  */

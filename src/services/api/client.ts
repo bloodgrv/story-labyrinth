@@ -32,6 +32,7 @@ export { deskTransfersApi } from "./deskTransfersClient";
 export { foldersApi } from "./foldersClient";
 export { grammarApi } from "./grammarClient";
 export { humanizerApi } from "./humanizerClient";
+export { autoHumanizerApi } from "./autoHumanizerClient";
 export { lorebookApi } from "./lorebookClient";
 export { nameGeneratorApi } from "./nameGeneratorClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
