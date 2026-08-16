@@ -36,7 +36,7 @@ export function ProjectMemoryPanel({ storyId }: ProjectMemoryPanelProps) {
                         Factual, concrete facts about this project — proposed by scans or added by you, reviewed here before they're retrievable.
                     </p>
                 </div>
-                <Button onClick={() => setNewNoteOpen(true)}>
+                <Button variant="gradient" onClick={() => setNewNoteOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     New Note
                 </Button>

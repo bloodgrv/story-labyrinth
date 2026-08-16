@@ -37,7 +37,7 @@ export function MapsListPanel({ storyId, onOpenMap }: MapsListPanelProps) {
                                 draft a first pass.
                             </p>
                         </div>
-                        <Button size="sm" onClick={() => setNewMapOpen(true)}>
+                        <Button variant="gradient" size="sm" onClick={() => setNewMapOpen(true)}>
                             <Plus className="h-4 w-4 mr-2" />
                             New map
                         </Button>

@@ -80,7 +80,7 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
                     <TabsContent value="outline" className="space-y-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex gap-2">
-                                <Button size="sm" onClick={() => setAddChapterOpen(true)}>
+                                <Button variant="gradient" size="sm" onClick={() => setAddChapterOpen(true)}>
                                     <Plus className="mr-1.5 h-3.5 w-3.5" />
                                     Add Chapter
                                 </Button>

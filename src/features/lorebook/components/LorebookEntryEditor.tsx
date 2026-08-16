@@ -291,7 +291,7 @@ function WorldBuildingChatPanel({
     const renderTemplatePicker = () => (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
+                <Button variant="gradient" size="sm" className="flex items-center gap-1">
                     <Plus className="h-4 w-4" />
                     New Chat
                 </Button>

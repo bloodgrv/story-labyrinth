@@ -59,7 +59,7 @@ export function GlobalResearchChatList({ selectedChat, onSelectChat }: GlobalRes
                 <div className="p-4 border-b border-input">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="font-semibold text-foreground">Global Research Chats</h2>
-                        <Button variant="outline" size="sm" onClick={handleCreateNewChat} className="flex items-center gap-1">
+                        <Button variant="gradient" size="sm" onClick={handleCreateNewChat} className="flex items-center gap-1">
                             <Plus className="h-4 w-4" />
                             New Chat
                         </Button>

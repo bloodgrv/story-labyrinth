@@ -147,7 +147,7 @@ export function NameGeneratorFilters({
                     </div>
                 </div>
 
-                <Button onClick={onGenerate} disabled={generatePending || disabled}>
+                <Button variant="gradient" onClick={onGenerate} disabled={generatePending || disabled}>
                     {generatePending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
                     Generate
                 </Button>

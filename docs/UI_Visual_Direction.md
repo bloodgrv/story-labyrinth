@@ -102,9 +102,11 @@
 
 - [ ] Default theme after ship (user pref still wins; product default TBD)
 - [ ] Exact glow intensity dial (mock = ceiling; ship may be −20%)
-- [ ] Whether Light keeps violet Raycast primary vs ink SN Light primary for buttons only
+- [x] Rail active-item shape — **resolved 2026-08-15**: pill (gradient fill + border glow), not the left bar. See History below.
+- [x] Whether Light keeps violet Raycast primary vs ink SN Light primary for buttons only — **resolved 2026-08-15**: decoupled. `--raycast-a`/`-b` (accent/glow tokens only) now use a real violet (matching Midnight/Eclipse's own hue family), independent of `--primary` (still the ink navy, unchanged, still used by the flat default Button). Sepia's accent tokens were brightened/re-saturated the same session (was deriving straight from its dark-brown `--primary`, read muddy) — both confirmed live against Bone (the one day theme that already worked) and now read consistently. See DECISIONS.md.
 - [ ] Optional later: Obsidian density mode (chapter tree) as toggle — not default
 - [ ] **Palette candidates** — promoted 2026-07-21 (see table); further tweaks OK
+- [x] Gradient-CTA rollout scope — **resolved 2026-08-15**: rolled out from the one original Notes call site to 15 more (toolbar "create" buttons, "+ New Chat" across every chat rail, the composer Send button). See History below.
 
 ---
 
@@ -155,8 +157,11 @@ Existing **Graphite** remains another mid-brightness black-text option (~L40, da
 - 2026-07-21 — **V0 tokens shipped**: `--raycast-a`/`--raycast-b`/`--accent-glow`/`--accent-glow-strength` added to all 17 theme blocks; `--radius` tightened 0.5rem → 0.375rem  
 - 2026-07-21 — **V1 shell chrome shipped**: topbar gradient hairline, sidebar active-rail bar + glow, cmd-palette trigger hover glow, opt-in `Button variant="gradient"` (demoed on Notes' empty-state CTA)  
 - 2026-07-21 — **V2 chat/AI accents shipped**: user bubble ring+glow, Research Story/Global pill gradient underline; stopped before manuscript prose  
+- 2026-08-15 — **Sidebar rail: left-bar → pill.** Live A/B in the running app (screenshotted both) settled the open "rail active-item shape" question — `.raycast-rail-active` is now a gradient-glass pill (fill + border glow), not a left bar. New `.raycast-sidebar-hairline` added too, the vertical counterpart to the topbar's horizontal hairline, replacing the sidebar's flat `border-r`. Confirmed theme-aware by switching the live theme class at runtime (no code changes) across Ember/Light/Mid-Slate — which is also what surfaced the confirmed (not hypothetical) Light gap noted above. See `DECISIONS.md`'s "Linear+Raycast chrome — sidebar pill treatment + broader gradient-CTA rollout" entry.
+- 2026-08-15 — **Gradient CTA rolled out** from Notes' original single call site to 15 more buttons (toolbar creates, every chat rail's "+ New Chat", the shared composer Send button), user-scoped by tier via explicit confirmation. Same DECISIONS.md entry.
+- 2026-08-15 — **Light's accent color fixed** (same day, immediate user follow-up after comparing Bone/Light/Sepia live): `--raycast-a`/`-b` decoupled from `--primary` and given a real violet, matching the dark themes' own hue family — closes the "violet vs ink" open item for good. **Sepia's accent brightened/re-saturated too** (was deriving straight from a dark coffee-brown `--primary`, read muddy against Bone's working copper) — both re-verified live, now consistent with Bone. See `DECISIONS.md`'s "Linear+Raycast chrome — Light/Sepia accent-token fix" entry.
 
-*Chrome pass (V0/V1/V2) complete as of 2026-07-21. Open items above (default theme, exact glow dial, Light's button hue) are follow-ups, not blockers.*
+*Chrome pass (V0/V1/V2) complete as of 2026-07-21. Rail shape, gradient-CTA scope, and Light/Sepia's accent color all resolved 2026-08-15. Remaining open items (default theme, exact glow dial) are follow-ups, not blockers.*
 
 ---
 

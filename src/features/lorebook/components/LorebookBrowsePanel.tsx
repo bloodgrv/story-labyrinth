@@ -212,7 +212,13 @@ export function LorebookBrowsePanel({
                         <Lock className="w-4 h-4" />
                         <span className="hidden sm:inline ml-2">Secrets</span>
                     </Button>
-                    <Button size="icon" className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3" onClick={onNewEntry} title="New Entry">
+                    <Button
+                        variant="gradient"
+                        size="icon"
+                        className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
+                        onClick={onNewEntry}
+                        title="New Entry"
+                    >
                         <Plus className="w-4 h-4" />
                         <span className="hidden sm:inline ml-2">New Entry</span>
                     </Button>

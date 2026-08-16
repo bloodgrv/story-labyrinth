@@ -68,7 +68,7 @@ export function MessageInputArea({
                         <Square className="h-4 w-4" />
                     </Button>
                 ) : (
-                    <Button onClick={onSend} disabled={!input.trim() || !selectedPrompt}>
+                    <Button variant="gradient" onClick={onSend} disabled={!input.trim() || !selectedPrompt}>
                         <Send className="h-4 w-4" />
                     </Button>
                 )}

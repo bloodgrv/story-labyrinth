@@ -465,7 +465,7 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                             Export as image
                         </Button>
                     )}
-                    <Button size="sm" onClick={() => { setEditingPin(null); setFormOpen(true); }}>
+                    <Button variant="gradient" size="sm" onClick={() => { setEditingPin(null); setFormOpen(true); }}>
                         Add pin
                     </Button>
                 </div>

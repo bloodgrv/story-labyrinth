@@ -90,8 +90,16 @@
         --border: 220 13% 70%;
         --input: 220 13% 70%;
         --ring: 224 71.4% 4.1%;
-        --raycast-a: 220.9 39.3% 11%;
-        --raycast-b: 220.9 39.3% 25%;
+        /* Raycast accent tokens are deliberately decoupled from --primary here — the ink navy
+           primary reads fine as a flat button fill, but is far too dark (11% lightness) to work
+           as a glow/gradient color against a white background (confirmed live 2026-08-15, see
+           DECISIONS.md and UI_Visual_Direction.md's open items). A real violet accent, matching
+           the same hue family the dark themes (Midnight/Eclipse) already use for their own
+           --raycast-a, gives Light a genuine "Raycast primary" instead of an invisible one — the
+           doc's own long-open "violet vs ink" question, resolved in favor of violet for the
+           accent tokens specifically, leaving the flat default Button variant untouched. */
+        --raycast-a: 255 70% 55%;
+        --raycast-b: 255 65% 41%;
         --accent-glow: var(--raycast-a);
         --accent-glow-strength: 0.25;
         --chart-1: 12 76% 61%;
@@ -143,10 +151,15 @@
         --border: 30 25% 65%;
         --input: 30 25% 65%;
         --ring: 25 40% 32%;
-        --raycast-a: 25 40% 32%;
-        --raycast-b: 25 40% 46%;
+        /* Brightened/re-saturated vs. deriving straight from --primary (25 40% 32%, a dark
+           coffee-brown that read muddy rather than glowing) — closer to the theme's own
+           user-provided mid-accent swatch (#B58A61 ≈ 25° 45% 55%L), tuned down slightly for a
+           genuine warm-amber "glow" instead of a flat dark accent. Same fix motivation as
+           Light's :root tokens above (2026-08-15). */
+        --raycast-a: 25 48% 50%;
+        --raycast-b: 25 48% 36%;
         --accent-glow: var(--raycast-a);
-        --accent-glow-strength: 0.2;
+        --accent-glow-strength: 0.25;
         --sidebar-background: 33 40% 75%;
         --sidebar-foreground: 25 37% 25%;
         --sidebar-primary: 25 40% 32%;
@@ -605,20 +618,41 @@
         pointer-events: none;
     }
 
-    /* Sidebar rail: active item gets a 2px left primary bar + soft glow. */
+    /* Sidebar rail: active item is a soft gradient-glass pill (border glow + gradient wash),
+       not a left bar — user-approved 2026-08-15 live A/B against the original left-bar-only
+       treatment (see DECISIONS.md). !important needed to win over the Button component's own
+       `bg-secondary` utility class on the active item. */
     .raycast-rail-active {
+        background: linear-gradient(135deg, hsl(var(--raycast-a) / 0.22), hsl(var(--raycast-b) / 0.10)) !important;
+        box-shadow:
+            0 0 0 1px hsl(var(--raycast-a) / 0.3),
+            0 4px 20px hsl(var(--accent-glow) / calc(var(--accent-glow-strength) * 1.1)) !important;
+        color: hsl(var(--raycast-a)) !important;
+    }
+    .raycast-rail-active svg {
+        color: hsl(var(--raycast-a));
+    }
+
+    /* Sidebar/content seam: vertical gradient wash on the sidebar's right edge, mirroring
+       .raycast-hairline's horizontal treatment (topbar) rotated 90° — same "fades to
+       transparent at both ends" language instead of a flat border. */
+    .raycast-sidebar-hairline {
         position: relative;
     }
-    .raycast-rail-active::before {
+    .raycast-sidebar-hairline::after {
         content: "";
         position: absolute;
-        left: 0;
-        top: 4px;
-        bottom: 4px;
-        width: 2px;
-        border-radius: 1px;
-        background: hsl(var(--raycast-a));
-        box-shadow: 0 0 8px hsl(var(--accent-glow) / var(--accent-glow-strength));
+        top: 0;
+        bottom: 0;
+        right: -1px;
+        width: 1px;
+        background: linear-gradient(
+            180deg,
+            transparent,
+            hsl(var(--raycast-a) / 0.6) 30%,
+            hsl(var(--raycast-b) / 0.6) 70%,
+            transparent
+        );
         pointer-events: none;
     }
 

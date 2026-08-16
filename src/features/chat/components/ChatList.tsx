@@ -244,7 +244,7 @@ export function ChatList({
                                     renderNewChatAction(chats)
                                 ) : (
                                     <Button
-                                        variant="outline"
+                                        variant="gradient"
                                         size="sm"
                                         onClick={handleCreateNewChat}
                                         className="flex items-center gap-1"

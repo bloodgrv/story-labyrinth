@@ -149,7 +149,7 @@ export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
     };
 
     const renderNewChatButton = () => (
-        <Button variant="outline" size="sm" onClick={handleCreateNewChat} className="flex items-center gap-1">
+        <Button variant="gradient" size="sm" onClick={handleCreateNewChat} className="flex items-center gap-1">
             <Plus className="h-4 w-4" />
             New Chat
         </Button>
