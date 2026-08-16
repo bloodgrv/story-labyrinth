@@ -12,6 +12,7 @@ import { OutlineImportPanel } from "@/features/outline/components/OutlineImportP
 import { OutlineItemDialog } from "@/features/outline/components/OutlineItemDialog";
 import { OutlineTree } from "@/features/outline/components/OutlineTree";
 import {
+    useAcceptAllPendingOutlineMutation,
     useCreateOutlineItemMutation,
     useOutlineQuery,
     useRejectAllPendingOutlineMutation
@@ -32,6 +33,7 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
     );
 
     const createMutation = useCreateOutlineItemMutation(storyId);
+    const acceptAllMutation = useAcceptAllPendingOutlineMutation(storyId);
     const rejectAllMutation = useRejectAllPendingOutlineMutation(storyId);
     const [addChapterOpen, setAddChapterOpen] = useState(false);
     const isDesktop = useIsDesktopViewport();
@@ -84,14 +86,24 @@ export function OutlinePage({ storyId }: OutlinePageProps) {
                                 </Button>
                             </div>
                             {pendingCount > 0 && (
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => rejectAllMutation.mutate()}
-                                    disabled={rejectAllMutation.isPending}
-                                >
-                                    Reject All Suggestions ({pendingCount})
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => acceptAllMutation.mutate()}
+                                        disabled={acceptAllMutation.isPending || rejectAllMutation.isPending}
+                                    >
+                                        Accept All Suggestions ({pendingCount})
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => rejectAllMutation.mutate()}
+                                        disabled={acceptAllMutation.isPending || rejectAllMutation.isPending}
+                                    >
+                                        Reject All Suggestions ({pendingCount})
+                                    </Button>
+                                </div>
                             )}
                         </div>
 

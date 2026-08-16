@@ -153,8 +153,12 @@ const LORE_SUGGESTION_INSTRUCTIONS =
 // "memory" is only offered when the chat's own includeMemory toggle is on (mirrored by
 // buildSystemPrompt below) — same opt-in gate C1 already established, not a new concept.
 const OVERVIEW_PROPOSAL_INSTRUCTIONS = (includeMemory: boolean): string =>
-    "As the project overview takes shape, propose capturing it — never just state it in conversation as if it " +
-    "were already saved. All overview proposals require explicit user approval before they take effect.\n\n" +
+    "The instant the conversation has enough for a synopsis, a note-worthy idea, or a settled project fact — " +
+    "even a rough first pass — you MUST emit an overview-proposal fence for it in that same reply. Never just " +
+    "describe the synopsis/idea/fact in prose and wait for the user to ask you to save it; the fence IS how " +
+    "you save it (pending the user's approval — never state or imply it's already saved). If the user says " +
+    'anything like "save that", "lock it in", "capture this", or "propose it", that is an unambiguous trigger ' +
+    "— always respond with the fence, never with prose alone.\n\n" +
     "To propose the story synopsis, include a fenced block in this exact form:\n\n" +
     "```overview-proposal\n" +
     '{"proposalType": "synopsis", "content": "...", "slotKey": "premise"}\n' +
@@ -169,6 +173,9 @@ const OVERVIEW_PROPOSAL_INSTRUCTIONS = (includeMemory: boolean): string =>
           '{"proposalType": "memory", "title": "...", "body": "...", "category": "project_note", "slotKey": "protagonist"}\n' +
           "```\n\n"
         : "") +
+    "Worked example — user: \"okay I think that's the premise, let's lock it in\" — your reply: a short " +
+    'confirmation sentence, THEN on its own the fence: ```overview-proposal\n' +
+    '{"proposalType": "synopsis", "content": "A disgraced knight...", "slotKey": "premise"}\n```\n\n' +
     '"slotKey", if the proposal addresses one of the setup checklist slots shown below, must be one of: ' +
     `${BRAINSTORM_SLOTS.map(s => s.key).join(", ")} — omit it otherwise. ` +
     '"noteType" must be one of: idea, research, todo, other. Propose at most one overview-proposal per reply.';
@@ -179,12 +186,20 @@ const OVERVIEW_PROPOSAL_INSTRUCTIONS = (includeMemory: boolean): string =>
 // deep: none"). seedName/seedCategory are only read for destination "worldbuilding" (feeds the
 // existing pendingLorebookSeed pre-fill, same shape as the Outline chat's lore-suggestion, R8).
 const HANDOFF_PACKET_INSTRUCTIONS =
-    "When the conversation surfaces something ready to hand off to a more specialized chat, propose a handoff " +
-    "— never act as if it's already been sent. The user reviews and opens/sends each handoff themselves.\n\n" +
+    "The instant the conversation surfaces something ready for a more specialized chat — a roster of characters " +
+    "for World-Building, a chapter/scene structure for Outline, working material for Notes, a question for " +
+    'Research — you MUST emit a handoff-packet fence for it in that same reply, never just describe it in prose ' +
+    "and wait to be asked. Never act as if it's already been sent — the fence proposes it; the user opens/sends " +
+    'each handoff themselves. If the user says anything like "hand this off to World-Building/Outline", "send ' +
+    'this to Notes", or "let\'s formally propose this", that is an unambiguous trigger — always respond with the ' +
+    "fence, never with prose alone.\n\n" +
     "To propose one or more handoffs, include a fenced block in this exact form:\n\n" +
     "```handoff-packet\n" +
     '{"handoffs": [{"destination": "outline", "summary": "one-line summary", "detail": "longer paste-ready text for that chat"}]}\n' +
     "```\n\n" +
+    "Worked example — user: \"can you formally propose this as something I can accept?\" — your reply: a short " +
+    'confirmation sentence, THEN on its own the fence: ```handoff-packet\n' +
+    '{"handoffs": [{"destination": "worldbuilding", "summary": "Elise, the captive heiress", "detail": "...", "seedName": "Elise", "seedCategory": "character"}]}\n```\n\n' +
     '"destination" must be one of: outline (structure/spine work), worldbuilding (a specific character/location/' +
     "item worth developing — also include \"seedName\" and \"seedCategory\"), notes (working material worth " +
     'saving as-is), research (a question worth looking into). "seedCategory" must be one of: character, ' +

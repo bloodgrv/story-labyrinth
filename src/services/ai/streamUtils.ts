@@ -185,7 +185,17 @@ export const processStreamedResponse = async (
                         return;
                     }
                     const [parseError, json] = await attemptPromise(() => Promise.resolve(JSON.parse(data)));
-                    if (!parseError && json) {
+                    if (parseError) {
+                        // A non-JSON SSE payload mid-stream (e.g. a proxy/gateway timeout page
+                        // injected in place of a real chunk) used to be silently dropped here —
+                        // the loop would just keep going and eventually call onComplete() as if
+                        // generation had finished normally, leaving the user with silently
+                        // truncated output and no error. Surface it instead.
+                        logger.error("processStreamedResponse - Non-JSON SSE payload:", data, parseError);
+                        onError(new Error("The AI provider sent an invalid response mid-stream (possible timeout)."));
+                        return;
+                    }
+                    if (json) {
                         const text = json.choices[0]?.delta?.content || "";
                         if (text) onToken(text);
                         const usage = readUsage(json);

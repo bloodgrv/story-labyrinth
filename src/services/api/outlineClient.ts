@@ -12,6 +12,10 @@ export const outlineApi = {
         fetchJSON<{ success: boolean }>("/outline/reorder", { method: "PATCH", body: JSON.stringify({ updates }) }),
     rejectAllPending: (storyId: string) =>
         fetchJSON<{ success: boolean }>(`/outline/story/${storyId}/reject-all-pending`, { method: "POST" }),
+    acceptAllPending: (storyId: string) =>
+        fetchJSON<{ success: boolean; count: number }>(`/outline/story/${storyId}/accept-all-pending`, {
+            method: "POST"
+        }),
     getArc: (storyId: string, characterId: string) =>
         fetchJSON<CharacterArcEntry[]>(`/outline/story/${storyId}/arc/${characterId}`)
 };

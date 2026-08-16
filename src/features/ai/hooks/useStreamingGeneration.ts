@@ -38,7 +38,11 @@ export const useStreamingGeneration = (): UseStreamingGenerationReturn => {
         }
 
         if (!response.ok)
-            throw new Error("Failed to generate response");
+            throw new Error(
+                response.status === 504
+                    ? "Generation timed out (504 Gateway Timeout) — check that the selected model/endpoint is reachable."
+                    : `Failed to generate response (HTTP ${response.status})`
+            );
 
 
         setState({ isStreaming: true, streamedText: "", isComplete: false });
@@ -72,7 +76,7 @@ export const useStreamingGeneration = (): UseStreamingGenerationReturn => {
 
         if (error) {
             setState(prev => ({ ...prev, isStreaming: false }));
-            toast.error("Failed to stream response");
+            toast.error(error.message || "Failed to stream response");
             throw error;
         }
 

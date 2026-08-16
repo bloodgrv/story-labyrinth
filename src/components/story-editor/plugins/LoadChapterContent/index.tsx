@@ -33,6 +33,23 @@ export function LoadChapterContentPlugin(): null {
         if (!hasLoaded && currentChapter && currentChapter.id === currentChapterId)
             // Defer to microtask to avoid flushSync warning
             queueMicrotask(() => {
+                const EMPTY_DOC =
+                    '{"root":{"children":[{"children":[],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}';
+
+                // A brand-new (or otherwise never-written) chapter's content is "" — expected,
+                // not an error. JSON.parse("") throws "Unexpected end of JSON input", so route
+                // straight to the blank doc without logging or attempting a parse at all; an
+                // idle background MultiView tab reloading such a chapter (e.g. during EPUB
+                // export) shouldn't spam the console for a non-error condition.
+                if (!currentChapter.content) {
+                    const [error] = attempt(() => {
+                        editor.setEditorState(editor.parseEditorState(EMPTY_DOC), { tag: "chapter-load" });
+                        setHasLoaded(true);
+                    });
+                    if (error) logger.error("LoadChapterContent - Failed to build empty doc:", error);
+                    return;
+                }
+
                 const [error] = attempt(() => {
                     // Parse and set the editor state. Tagged "chapter-load" so
                     // SaveChapterContentPlugin can tell "the doc just got its real content
@@ -51,12 +68,7 @@ export function LoadChapterContentPlugin(): null {
 
                     // Only in case of error, try to create an empty editor state
                     const [recoveryError] = attempt(() => {
-                        editor.setEditorState(
-                            editor.parseEditorState(
-                                '{"root":{"children":[{"children":[],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}'
-                            ),
-                            { tag: "chapter-load" }
-                        );
+                        editor.setEditorState(editor.parseEditorState(EMPTY_DOC), { tag: "chapter-load" });
                         setHasLoaded(true);
                     });
                     if (recoveryError) logger.error("LoadChapterContent - Recovery failed:", recoveryError);

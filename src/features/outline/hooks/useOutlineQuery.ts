@@ -80,3 +80,16 @@ export const useRejectAllPendingOutlineMutation = (storyId: string) => {
         onError: () => toast.error("Failed to reject suggestions")
     });
 };
+
+export const useAcceptAllPendingOutlineMutation = (storyId: string) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => outlineApi.acceptAllPending(storyId),
+        onSuccess: ({ count }) => {
+            queryClient.invalidateQueries({ queryKey: outlineKeys.byStory(storyId) });
+            toast.success(`Accepted ${count} suggestion${count === 1 ? "" : "s"}`);
+        },
+        onError: () => toast.error("Failed to accept suggestions")
+    });
+};

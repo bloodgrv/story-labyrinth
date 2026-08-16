@@ -16,6 +16,9 @@ interface CreateEntryDialogProps {
     // flow and, since P0.4 R8, the Outline chat's "Open in WB" lore-suggestion handoff (see
     // LorebookPage.tsx's pendingLorebookSeed consumption). Ignored when `entry` is set.
     draftValues?: DocumentImportDraft;
+    // 2026-08-15 QA-pass B20 — lets the caller open the new entry as its own tab once Create
+    // actually saves it, instead of just closing this sheet back to whatever was open before.
+    onEntryCreated?: (entry: LorebookEntry) => void;
 }
 
 // Thin Sheet shell around LorebookEntryEditor (form + docked World-Building chat) — see
@@ -30,7 +33,8 @@ export function CreateEntryDialog({
     seriesId,
     entry,
     defaultCategory,
-    draftValues
+    draftValues,
+    onEntryCreated
 }: CreateEntryDialogProps) {
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -56,6 +60,7 @@ export function CreateEntryDialog({
                         draftValues={draftValues}
                         onSaved={() => onOpenChange(false)}
                         onCancel={() => onOpenChange(false)}
+                        onEntryCreated={onEntryCreated}
                     />
                 </div>
             </SheetContent>

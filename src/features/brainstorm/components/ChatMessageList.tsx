@@ -13,6 +13,27 @@ import { parseThinkingContent } from "@/utils/parseThinking";
 import { AssistantMessageContent } from "./AssistantMessageContent";
 import MarkdownRenderer from "./MarkdownRenderer";
 
+// 2026-08-15 QA-pass B21 — a static "Generating…" with no elapsed time could reasonably read as
+// hung during a multi-minute generation (a first-time user has no way to tell "slow" from
+// "stuck"). Own tiny component (not inline state in the list) so its 1s interval only exists
+// while an actual streaming bubble is mounted, not for the whole message list's lifetime.
+function GeneratingIndicator() {
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+    useEffect(() => {
+        const start = Date.now();
+        const interval = setInterval(() => setElapsedSeconds(Math.floor((Date.now() - start) / 1000)), 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Generating{elapsedSeconds > 0 ? ` (${elapsedSeconds}s)` : "..."}</span>
+        </div>
+    );
+}
+
 interface ChatMessageListProps {
     messages: ChatMessage[];
     editingMessageId: string | null;
@@ -155,10 +176,24 @@ export function ChatMessageList({
                             ) : (
                                 <div>
                                     {message.role === "assistant" && streamingMessageId === message.id ? (
-                                        <div className="flex items-center gap-2">
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            <span className="text-sm">Generating...</span>
-                                        </div>
+                                        // The streaming placeholder's content (useChatMessages.ts)
+                                        // already carries live streamed text — show it as it
+                                        // arrives instead of masking it behind a spinner for the
+                                        // whole generation (QA-pass B21: "no progress signal").
+                                        // Still falls back to the spinner+timer while nothing has
+                                        // streamed in yet (e.g. a reasoning model's silent think
+                                        // phase before its first visible token).
+                                        message.content ? (
+                                            <div>
+                                                <AssistantMessageContent content={message.content} />
+                                                <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                    <span>Generating…</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <GeneratingIndicator />
+                                        )
                                     ) : message.role === "assistant" ? (
                                         <>
                                             <AssistantMessageContent content={message.content} />

@@ -672,12 +672,19 @@ export function LorebookEntryEditor({
             const entryId = liveEntry?.id ?? randomUUID();
 
             if (liveEntry) await updateMutation.mutateAsync({ id: liveEntry.id, data: dataToSubmit });
-            else
-                await createMutation.mutateAsync({
+            else {
+                const created = await createMutation.mutateAsync({
                     id: entryId,
                     ...dataToSubmit,
                     storyId: storyId || data.scopeId || ""
                 } as Omit<LorebookEntry, "createdAt">);
+                // 2026-08-15 QA-pass B20 — a brand-new entry (no lazy WB-chat stub already
+                // created via ensureLiveEntry above) used to leave the caller with nothing to
+                // open, so Create silently dropped back to whichever tab/view was open before.
+                // Same "promote this tab to the real entry" signal ensureLiveEntry already sends.
+                setLiveEntry(created);
+                onEntryCreated?.(created);
+            }
 
             // Codex state is submitted separately (codexApi), not part of the base entry
             // payload above — see CodexStateEditor.tsx and CreateEntryForm's own doc comment.

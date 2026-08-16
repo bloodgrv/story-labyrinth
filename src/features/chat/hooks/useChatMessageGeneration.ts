@@ -305,7 +305,7 @@ export const useChatMessageGeneration = ({
 
             if (error) {
                 logger.error("Error during generation:", error);
-                toast.error("An error occurred during generation");
+                toast.error(error.message || "An error occurred during generation");
             }
             setIsSending(false);
         },

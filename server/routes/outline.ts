@@ -80,6 +80,30 @@ export default createCrudRouter({
             })
         );
 
+        // Bulk-confirm every still-pending AI suggestion for a story ("Accept All") — the
+        // counterpart to reject-all-pending above, added 2026-08-15 (QA-pass B19) since a large
+        // AI-generated outline (e.g. a 10-chapter/40-item tree) previously had no way to accept
+        // more than one item at a time. Re-syncs each newly-confirmed item's RAG index entry,
+        // same as the individual PUT /:id route does — bulk update can't go through that per-row
+        // hook, so it's replicated here for whichever rows have `includeInAi` set.
+        router.post(
+            "/story/:storyId/accept-all-pending",
+            asyncHandler(async (req, res) => {
+                const updated = await db
+                    .update(schema.outlineItems)
+                    .set({ status: "confirmed", updatedAt: new Date() })
+                    .where(
+                        and(
+                            eq(schema.outlineItems.storyId, req.params.storyId),
+                            eq(schema.outlineItems.status, "pending")
+                        )
+                    )
+                    .returning();
+                for (const item of updated) syncOutlineItemIndex(item);
+                res.json({ success: true, count: updated.length });
+            })
+        );
+
         // A character's ordered arc overview (Task 2) — see outlineArcService.ts.
         router.get(
             "/story/:storyId/arc/:characterId",

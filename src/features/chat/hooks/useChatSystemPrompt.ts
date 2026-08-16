@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAISettingsQuery } from "@/features/ai/hooks/useAISettingsQuery";
+import { useAISettingsQuery, useFeatureEndpointsQuery } from "@/features/ai/hooks/useAISettingsQuery";
 import { useAvailableModels } from "@/features/ai/hooks/useAvailableModels";
 import {
     getModeForProvider,
@@ -7,7 +7,16 @@ import {
     resolveModelForModeSwitch
 } from "@/features/ai/utils/resolveChatDefaultModel";
 import { usePromptsQuery } from "@/features/prompts/hooks/usePromptsQuery";
+import type { FeatureKey } from "@/types/aiSettings";
 import type { AIModel, AllowedModel, ChatMode, Prompt } from "@/types/story";
+
+// The only two chatTypes with their own Feature Routing row (see src/types/aiSettings.ts's
+// FEATURE_KEYS) — Brainstorm/Outline/Notes/Research have none, so they always fall through to
+// the mode-based default below, unchanged.
+const CHAT_FEATURE_KEYS: Partial<Record<Prompt["promptType"], FeatureKey>> = {
+    worldbuilding: "worldbuilding_chat",
+    editor: "editor_chat"
+};
 
 interface UseChatSystemPromptReturn {
     prompt: Prompt | null;
@@ -36,8 +45,11 @@ export const useChatSystemPrompt = (
     const { data: prompts = [], isLoading } = usePromptsQuery({ promptType, includeSystem: true });
     const { data: availableModels = [] } = useAvailableModels();
     const { data: aiSettings } = useAISettingsQuery();
+    const { data: featureEndpoints } = useFeatureEndpointsQuery();
 
     const prompt = prompts[0] ?? null;
+    const featureKey = CHAT_FEATURE_KEYS[promptType];
+    const featureOverrideModelId = featureKey ? featureEndpoints?.[featureKey]?.model : undefined;
 
     const [selectedModelId, setSelectedModelId] = useState<string | undefined>(lastUsedModelId);
 
@@ -61,14 +73,15 @@ export const useChatSystemPrompt = (
             mode: aiSettings.preferredMode,
             settings: aiSettings,
             lastUsedModelId: selectedModelId,
-            availableModels
+            availableModels,
+            featureOverrideModelId
         });
         if (resolved) {
             setSelectedModelId(resolved);
             persistModelId(resolved);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps -- persistModelId is a fresh closure per render, intentionally not a dep
-    }, [chatId, aiSettings, availableModels, selectedModelId]);
+    }, [chatId, aiSettings, availableModels, selectedModelId, featureOverrideModelId]);
 
     const selectedModel = useMemo<AllowedModel | null>(() => {
         const model = availableModels.find(m => m.id === selectedModelId);

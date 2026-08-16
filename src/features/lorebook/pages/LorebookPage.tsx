@@ -278,7 +278,11 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                         storyId={storyId}
                         seriesId={seriesId}
                         defaultCategory={activeTab.defaultCategory}
-                        onSaved={() => closeTab(activeTabIndex)}
+                        // No-op on success: onEntryCreated below already promotes this tab in
+                        // place to a real entry tab (2026-08-15 QA-pass B20) — closing it here
+                        // too would just immediately discard the tab it was just promoted to.
+                        // Cancel still explicitly closes since nothing was ever saved there.
+                        onSaved={() => {}}
                         onCancel={() => closeTab(activeTabIndex)}
                         // A WB chat started before the user hit "Create" lazily creates a real
                         // stub entry to anchor to (LorebookEntryEditor.tsx's ensureLiveEntry) —
@@ -340,6 +344,11 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                 seriesId={seriesId}
                 defaultCategory={selectedCategory}
                 draftValues={activeDraftSeed ?? undefined}
+                onEntryCreated={created => {
+                    setIsCreateDialogOpen(false);
+                    setActiveDraftSeed(null);
+                    openEntryTab(created);
+                }}
             />
         </div>
     );

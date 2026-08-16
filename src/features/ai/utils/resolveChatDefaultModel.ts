@@ -84,18 +84,35 @@ interface ResolveChatDefaultModelParams {
     settings: AISettings;
     lastUsedModelId: string | undefined;
     availableModels: AIModel[];
+    // Settings → Providers & Keys → Feature Endpoints' override for this chat type's Feature
+    // Routing row (World-Building Chat / Editor Chat), if any — the model id it names, exactly as
+    // it appears in `availableModels` (FeatureEndpointsCard.tsx's own model picker is drawn from
+    // that same catalogue, so this is always a real id when the override exists and its provider
+    // is still configured). Chat types with no Feature Routing row (Brainstorm/Outline/Notes/
+    // Research) simply never pass one.
+    featureOverrideModelId?: string;
 }
 
 // M5/M6 — initial resolution for a chat (new chat, or opening an existing one). Keeps
 // lastUsedModelId as-is whenever it's still a real model in the catalogue (M6), regardless of the
 // global preferred mode; only falls back to the mode's default when there's nothing valid to keep.
+//
+// 2026-08-15 QA fix: previously fell straight through to computeModeDefaultModelId/CLOUD_PRIORITY
+// no matter what Feature Routing said for this chat type — job-queue AI calls already checked
+// their feature override first (server/services/aiClientFactory.ts's buildClientForFeature), live
+// chat never did. featureOverrideModelId now gets the same override-then-fallback priority,
+// directly below lastUsedModelId (an explicit prior choice still wins over routing).
 export function resolveChatDefaultModel({
     mode,
     settings,
     lastUsedModelId,
-    availableModels
+    availableModels,
+    featureOverrideModelId
 }: ResolveChatDefaultModelParams): string | undefined {
     if (lastUsedModelId && availableModels.some(m => m.id === lastUsedModelId)) return lastUsedModelId;
+
+    if (featureOverrideModelId && availableModels.some(m => m.id === featureOverrideModelId))
+        return featureOverrideModelId;
 
     return computeModeDefaultModelId(mode, settings);
 }

@@ -32,5 +32,12 @@ export const generateHumanizedText = async (
     const rewritten = completion.choices[0]?.message?.content?.trim();
     if (!rewritten) return { success: false, message: "The model returned an empty response" };
 
-    return { success: true, text: rewritten };
+    // Restore whatever leading/trailing whitespace the original selection had — the model's
+    // reply gets trimmed above, but the caller replaces the *entire* original selection range
+    // with our result, so if that range included a boundary space and we don't put one back,
+    // the rewritten text ends up jammed against the neighboring word with no space at all.
+    const [, leadingSpace] = text.match(/^(\s*)/) ?? [];
+    const [, trailingSpace] = text.match(/(\s*)$/) ?? [];
+
+    return { success: true, text: `${leadingSpace ?? ""}${rewritten}${trailingSpace ?? ""}` };
 };
