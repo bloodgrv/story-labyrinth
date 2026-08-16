@@ -1,0 +1,13 @@
+diff --git a/node_modules/harper.js/dist/BinaryModule-Aj1vLnwf.js b/node_modules/harper.js/dist/BinaryModule-Aj1vLnwf.js
+index 3ed9b2f..97426b3 100644
+--- a/node_modules/harper.js/dist/BinaryModule-Aj1vLnwf.js
++++ b/node_modules/harper.js/dist/BinaryModule-Aj1vLnwf.js
+@@ -3034,7 +3034,7 @@ function getInitInput(binary) {
+       "fs"
+     ).then(
+       (fs) => new Promise((resolve, reject) => {
+-        fs.readFile(new URL(binary).pathname, (err, data) => {
++        fs.readFile(new URL(binary), (err, data) => {
+           if (err) reject(err);
+           resolve(data);
+         });

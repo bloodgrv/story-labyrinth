@@ -512,6 +512,20 @@
       "when": 1786764015697,
       "tag": "0072_volatile_epoch",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "6",
+      "when": 1786913016795,
+      "tag": "0073_grammar_settings_add_dialect",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "6",
+      "when": 1786913034865,
+      "tag": "0074_grammar_settings_drop_languagetool_fields",
+      "breakpoints": true
     }
   ]
 }

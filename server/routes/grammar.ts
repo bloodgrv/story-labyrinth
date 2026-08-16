@@ -1,8 +1,9 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { eq } from "drizzle-orm";
 import express from "express";
+import type { GrammarDialect } from "../../src/types/grammarSettings.js";
 import { db, schema } from "../db/client.js";
-import { checkGrammar, testGrammarConnection } from "../services/grammarService.js";
+import { checkGrammarLocally } from "../services/harperGrammarService.js";
 
 const router = express.Router();
 
@@ -24,8 +25,7 @@ router.get(
             const initial = {
                 id: crypto.randomUUID(),
                 enabled: false,
-                serverUrl: "http://localhost:8010",
-                language: "auto",
+                dialect: "american",
                 createdAt: new Date()
             };
             await db.insert(schema.grammarSettings).values(initial);
@@ -51,19 +51,6 @@ router.put(
 );
 
 router.post(
-    "/test-connection",
-    asyncHandler(async (req, res) => {
-        const { serverUrl } = req.body as { serverUrl?: string };
-        if (!serverUrl) {
-            res.status(400).json({ success: false, message: "Server URL is required" });
-            return;
-        }
-        const result = await testGrammarConnection(serverUrl);
-        res.json(result);
-    })
-);
-
-router.post(
     "/check",
     asyncHandler(async (req, res) => {
         const { text } = req.body as { text?: string };
@@ -78,7 +65,7 @@ router.post(
             return;
         }
 
-        const result = await checkGrammar(text, settings.serverUrl, settings.language);
+        const result = await checkGrammarLocally(text, settings.dialect as GrammarDialect);
         res.json(result);
     })
 );

@@ -387,16 +387,15 @@ export const autoHumanizerSettings = sqliteTable("autoHumanizerSettings", {
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
 });
 
-// Grammar Checker Settings table — single global row. Unlike the AI features (humanizer, beat
-// detection, etc.), LanguageTool isn't an OpenAI-compatible chat endpoint, so it doesn't go
-// through aiClientFactory/featureEndpoints — it gets its own server URL here, the same shape as
-// TTS's provider config but for a single fixed "provider" (a self-hosted or externally pointed
-// LanguageTool instance) rather than a set of swappable ones.
+// Grammar Checker Settings table — single global row. Backed by harper.js, an in-process
+// WASM linter (server/services/harperGrammarService.ts) — no server/endpoint involved at all,
+// so unlike the AI features this doesn't go through aiClientFactory/featureEndpoints; it just
+// needs a dialect. (Previously a LanguageTool server URL + language code — replaced once AI
+// Review's `line` mode made LanguageTool's style-rule depth redundant, see DECISIONS.md.)
 export const grammarSettings = sqliteTable("grammarSettings", {
     id: text("id").primaryKey(),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
-    serverUrl: text("serverUrl").notNull().default("http://localhost:8010"),
-    language: text("language").notNull().default("auto"), // LanguageTool language code, or "auto" to auto-detect
+    dialect: text("dialect").notNull().default("american"), // GrammarDialect — harper.js's Dialect enum, lowercased
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
 });
 

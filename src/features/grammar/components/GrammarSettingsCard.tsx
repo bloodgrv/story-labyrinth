@@ -1,23 +1,23 @@
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-    useGrammarSettingsQuery,
-    useTestGrammarConnectionMutation,
-    useUpdateGrammarSettingsMutation
-} from "@/features/grammar/hooks/useGrammarSettingsQuery";
+import { useGrammarSettingsQuery, useUpdateGrammarSettingsMutation } from "@/features/grammar/hooks/useGrammarSettingsQuery";
+import type { GrammarDialect } from "@/types/grammarSettings";
 import { GrammarMarkLegend } from "./GrammarMarkLegend";
+
+const DIALECT_LABELS: Record<GrammarDialect, string> = {
+    american: "American English",
+    british: "British English",
+    canadian: "Canadian English",
+    australian: "Australian English",
+    indian: "Indian English"
+};
 
 export function GrammarSettingsCard() {
     const { data: settings, isLoading } = useGrammarSettingsQuery();
     const updateMutation = useUpdateGrammarSettingsMutation();
-    const testMutation = useTestGrammarConnectionMutation();
-    const [serverUrlInput, setServerUrlInput] = useState<string | null>(null);
-    const [languageInput, setLanguageInput] = useState<string | null>(null);
 
     if (isLoading || !settings)
         return (
@@ -30,22 +30,6 @@ export function GrammarSettingsCard() {
                 </CardContent>
             </Card>
         );
-
-    const serverUrl = serverUrlInput ?? settings.serverUrl;
-    const language = languageInput ?? settings.language;
-    const isDirty = serverUrl !== settings.serverUrl || language !== settings.language;
-
-    const handleSave = () => {
-        updateMutation.mutate(
-            { id: settings.id, data: { serverUrl, language } },
-            {
-                onSuccess: () => {
-                    setServerUrlInput(null);
-                    setLanguageInput(null);
-                }
-            }
-        );
-    };
 
     return (
         <Card>
@@ -69,48 +53,28 @@ export function GrammarSettingsCard() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="grammar-server-url">LanguageTool Server URL</Label>
-                    <div className="flex gap-2">
-                        <Input
-                            id="grammar-server-url"
-                            value={serverUrl}
-                            onChange={event => setServerUrlInput(event.target.value)}
-                            placeholder="http://localhost:8010"
-                        />
-                        <Button
-                            variant="outline"
-                            onClick={() => testMutation.mutate(serverUrl)}
-                            disabled={testMutation.isPending || !serverUrl.trim()}
-                        >
-                            {testMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                            Test Connection
-                        </Button>
-                    </div>
+                    <Label htmlFor="grammar-dialect">Dialect</Label>
+                    <Select
+                        value={settings.dialect}
+                        onValueChange={dialect =>
+                            updateMutation.mutate({ id: settings.id, data: { dialect: dialect as GrammarDialect } })
+                        }
+                    >
+                        <SelectTrigger id="grammar-dialect" className="max-w-[220px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {(Object.keys(DIALECT_LABELS) as GrammarDialect[]).map(dialect => (
+                                <SelectItem key={dialect} value={dialect}>
+                                    {DIALECT_LABELS[dialect]}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <p className="text-xs text-muted-foreground">
-                        Points at a self-hosted LanguageTool instance — the Docker Compose setup for this project
-                        includes one by default at this address.
+                        Runs fully offline, in-process — no server, Docker container, or network connection needed.
                     </p>
                 </div>
-
-                <div className="grid gap-2">
-                    <Label htmlFor="grammar-language">Language</Label>
-                    <Input
-                        id="grammar-language"
-                        value={language}
-                        onChange={event => setLanguageInput(event.target.value)}
-                        placeholder="auto"
-                        className="max-w-[200px]"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        A LanguageTool language code (e.g. <code>en-US</code>, <code>en-GB</code>) or{" "}
-                        <code>auto</code> to detect it from each chapter's text.
-                    </p>
-                </div>
-
-                <Button onClick={handleSave} disabled={!isDirty || updateMutation.isPending}>
-                    {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Save Changes
-                </Button>
 
                 <p className="text-xs text-muted-foreground">
                     When enabled, spelling, grammar, and style issues are underlined directly in the Main Editor as

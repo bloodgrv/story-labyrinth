@@ -10,7 +10,7 @@
         {
             "name": "server-only",
             "runtimeExecutable": "npx",
-            "runtimeArgs": ["cross-env", "NODE_ENV=development", "PORT=3001", "tsx", "server/index.ts"],
+            "runtimeArgs": ["cross-env", "NODE_ENV=development", "PORT=3001", "NODE_OPTIONS=--use-system-ca", "tsx", "server/index.ts"],
             "port": 3001
         },
         {

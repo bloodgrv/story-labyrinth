@@ -1,14 +1,18 @@
 // Grammar Checker: live inline spelling/grammar/style underlines in the Main Editor, powered by
-// a self-hosted (or externally pointed) LanguageTool server. Unlike the AI features, this isn't
-// an OpenAI-compatible endpoint — LanguageTool has its own REST API (POST /v2/check), so it gets
-// its own settings row (server URL + language) instead of going through aiClientFactory's
-// featureEndpoints system, the same way TTS's provider config is separate from AI settings.
+// harper.js — a Rust/WASM grammar+spelling linter that runs entirely in-process (see
+// server/services/harperGrammarService.ts). No server, endpoint, or network reachability is
+// involved at all, so unlike the AI features this doesn't go through aiClientFactory's
+// featureEndpoints system — it just needs a dialect. (Previously backed by a self-hosted
+// LanguageTool server; replaced once AI Review's `line` mode made LanguageTool's style-rule depth
+// redundant — see DECISIONS.md.)
+
+// Harper's supported English dialects (harper.js's `Dialect` enum, lowercased for the API/DB).
+export type GrammarDialect = "american" | "british" | "canadian" | "australian" | "indian";
 
 export interface GrammarSettings {
     id: string;
     enabled: boolean;
-    serverUrl: string;
-    language: string; // LanguageTool language code (e.g. "en-US"), or "auto" to auto-detect
+    dialect: GrammarDialect;
     createdAt: Date;
 }
 
@@ -38,9 +42,4 @@ export interface GrammarCheckResult {
     success: boolean;
     matches?: GrammarMatch[];
     message?: string;
-}
-
-export interface GrammarConnectionTestResult {
-    success: boolean;
-    message: string;
 }

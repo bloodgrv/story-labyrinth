@@ -29,15 +29,3 @@ export const useUpdateGrammarSettingsMutation = () => {
         }
     });
 };
-
-export const useTestGrammarConnectionMutation = () =>
-    useMutation({
-        mutationFn: (serverUrl: string) => grammarApi.testConnection(serverUrl),
-        onSuccess: result => {
-            if (result.success) toast.success(result.message);
-            else toast.error(result.message);
-        },
-        onError: () => {
-            toast.error("Test connection failed");
-        }
-    });

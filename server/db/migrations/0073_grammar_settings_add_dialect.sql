@@ -1,0 +1,1 @@
+ALTER TABLE `grammarSettings` ADD `dialect` text DEFAULT 'american' NOT NULL;

@@ -17,13 +17,3 @@ services:
             timeout: 10s
             retries: 3
             start_period: 40s
-
-    # Self-hosted spelling/grammar/style checker (Grammar Checker feature). Reachable from the
-    # story-labyrinth container at http://languagetool:8010 via compose's default network — set that
-    # as the Server URL in Settings > Grammar Checker to enable it.
-    languagetool:
-        image: erikvl87/languagetool:latest
-        container_name: story-labyrinth-languagetool
-        ports:
-            - "8010:8010"
-        restart: unless-stopped
