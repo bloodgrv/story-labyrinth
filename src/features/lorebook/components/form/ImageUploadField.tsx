@@ -4,6 +4,7 @@ import type { Control, UseFormSetValue } from "react-hook-form";
 import { useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { FormLabel } from "@/components/ui/form";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { lorebookApi } from "@/services/api/client";
 import type { CreateEntryForm } from "./entryFormUtils";
 
@@ -48,6 +49,7 @@ export function ImageUploadField({ control, setValue, entryId, hasExistingImage,
     const previewSrc =
         objectUrl ?? (showExisting ? `${lorebookApi.imageUrl(entryId as string)}?v=${imageFilename ?? ""}` : null);
     const canRemove = !isRemoved && (previewSrc !== null || imageFile instanceof File);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
 
     const pickFile = (file: File) => {
         setValue("imageFile", file, { shouldDirty: true });
@@ -69,7 +71,20 @@ export function ImageUploadField({ control, setValue, entryId, hasExistingImage,
             <FormLabel>Image</FormLabel>
             <div className="h-56 w-56 overflow-hidden rounded-md border bg-muted flex items-center justify-center">
                 {previewSrc ? (
-                    <img src={previewSrc} alt="" className="h-full w-full object-cover" />
+                    <>
+                        <img
+                            src={previewSrc}
+                            alt=""
+                            onClick={() => setLightboxOpen(true)}
+                            className="h-full w-full object-cover cursor-zoom-in transition-opacity hover:opacity-90"
+                        />
+                        <ImageLightbox
+                            src={previewSrc}
+                            alt="Entry image"
+                            open={lightboxOpen}
+                            onOpenChange={setLightboxOpen}
+                        />
+                    </>
                 ) : generateImageOnSave ? (
                     <Sparkles className="h-10 w-10 text-muted-foreground" />
                 ) : (

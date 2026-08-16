@@ -1,7 +1,9 @@
 import { Eye, EyeOff, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { lorebookApi } from "@/services/api/client";
 import type { LorebookEntry } from "@/types/story";
 import { LevelBadge } from "./LevelBadge";
@@ -28,6 +30,8 @@ export function LorebookEntryCard({
     onDelete,
     folderPath
 }: LorebookEntryCardProps) {
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+
     return (
         <Card
             onClick={onOpen}
@@ -36,11 +40,23 @@ export function LorebookEntryCard({
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="flex items-center gap-2 min-w-0">
                     {entry.imageFilename && (
-                        <img
-                            src={lorebookApi.imageUrl(entry.id)}
-                            alt=""
-                            className="h-8 w-8 shrink-0 rounded-full object-cover border"
-                        />
+                        <>
+                            <img
+                                src={lorebookApi.imageUrl(entry.id)}
+                                alt=""
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    setLightboxOpen(true);
+                                }}
+                                className="h-8 w-8 shrink-0 rounded-full object-cover border cursor-zoom-in transition-opacity hover:opacity-80"
+                            />
+                            <ImageLightbox
+                                src={lorebookApi.imageUrl(entry.id)}
+                                alt={entry.name}
+                                open={lightboxOpen}
+                                onOpenChange={setLightboxOpen}
+                            />
+                        </>
                     )}
                     {showLevel && <LevelBadge level={entry.level} />}
                     <CardTitle className="text-lg font-semibold truncate">{entry.name}</CardTitle>
