@@ -38,7 +38,7 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
                     <img
                         src={wordmarkSrc}
                         alt="Story Labyrinth"
-                        className="h-6 w-auto transition-[filter] duration-300 hover:[filter:drop-shadow(0_0_6px_hsl(var(--brand-ember)/0.55))]"
+                        className="h-9 w-auto transition-[filter] duration-300 hover:[filter:drop-shadow(0_0_6px_hsl(var(--brand-ember)/0.55))]"
                     />
                 </div>
 
