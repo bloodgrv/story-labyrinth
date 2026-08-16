@@ -10,6 +10,7 @@ import {
     useTestGrammarConnectionMutation,
     useUpdateGrammarSettingsMutation
 } from "@/features/grammar/hooks/useGrammarSettingsQuery";
+import { GrammarMarkLegend } from "./GrammarMarkLegend";
 
 export function GrammarSettingsCard() {
     const { data: settings, isLoading } = useGrammarSettingsQuery();
@@ -50,7 +51,10 @@ export function GrammarSettingsCard() {
         <Card>
             <CardHeader>
                 <CardTitle className="flex justify-between items-center">
-                    Grammar Checker
+                    <div className="flex items-center gap-1">
+                        Grammar Checker
+                        <GrammarMarkLegend />
+                    </div>
                     <div className="flex items-center gap-2">
                         <Label htmlFor="grammar-enabled" className="text-sm font-normal text-muted-foreground">
                             Enable Grammar Checker

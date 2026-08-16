@@ -20,6 +20,7 @@ import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useStoryQuery, useUpdateStoryMutation } from "@/features/stories/hooks/useStoriesQuery";
 import type { RagIssueStatus, RagScanStatus } from "@/types/ragScan";
 import { IssueCard } from "./IssueCard";
+import { RagIssueSeverityLegend } from "./RagIssueSeverityLegend";
 
 const STATUS_TABS: { value: RagIssueStatus; label: string }[] = [
     { value: "open", label: "Open" },
@@ -78,7 +79,10 @@ export function RagScannerPanel({ storyId }: RagScannerPanelProps) {
         <div className="p-4 space-y-4 max-w-3xl mx-auto">
             <div className="flex items-start justify-between gap-2 flex-wrap">
                 <div>
-                    <h2 className="text-lg font-semibold">RAG Scanner</h2>
+                    <div className="flex items-center gap-1">
+                        <h2 className="text-lg font-semibold">RAG Scanner</h2>
+                        <RagIssueSeverityLegend />
+                    </div>
                     <p className="text-sm text-muted-foreground">
                         Checks chapters against the Codex and prior chapters for factual contradictions, state
                         mismatches, and timeline issues.

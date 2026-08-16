@@ -597,7 +597,10 @@
     text-decoration-color: rgba(249, 115, 22, 0.8);
 }
 .PlaygroundEditorTheme__mark.rag-issue-mark--high {
-    text-decoration-color: rgba(239, 68, 68, 0.8);
+    /* Deliberately not the same red as .grammar-mark--spelling (239, 68, 68) — both are solid-vs-
+       wavy underlines in the same editor, and an identical hue made "spelling error" and "high-
+       severity Codex contradiction" hard to tell apart at a glance. */
+    text-decoration-color: rgba(219, 39, 119, 0.85);
 }
 
 .PlaygroundEditorTheme__embedBlock {

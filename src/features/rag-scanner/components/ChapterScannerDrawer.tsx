@@ -12,6 +12,7 @@ import {
     useUpdateIssueStatusMutation
 } from "@/features/rag-scanner/hooks/useRagScanQuery";
 import { IssueCard } from "./IssueCard";
+import { RagIssueSeverityLegend } from "./RagIssueSeverityLegend";
 
 interface ChapterScannerDrawerProps {
     chapterId: string;
@@ -64,6 +65,7 @@ export function ChapterScannerDrawer({ chapterId, storyId }: ChapterScannerDrawe
                 )}
                 {isJobActive && <span className="text-xs text-muted-foreground">Scanning…</span>}
                 {job?.status === "failed" && <span className="text-xs text-destructive">Scan failed: {job.error}</span>}
+                <RagIssueSeverityLegend />
             </div>
             {isOwner && (
                 <div className="flex items-center gap-2">
