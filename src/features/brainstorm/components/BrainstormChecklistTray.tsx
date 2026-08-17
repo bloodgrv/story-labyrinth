@@ -93,7 +93,12 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
     const handleOpenHandoff = (item: BrainstormChecklistItem) => {
         const payload = item.payload as HandoffPacket;
         if (payload.destination === "worldbuilding") {
-            setPendingLorebookSeed({ name: payload.seedName || payload.summary.slice(0, 60), category: payload.seedCategory ?? "character", blurb: payload.summary });
+            setPendingLorebookSeed({
+                name: payload.seedName || payload.summary.slice(0, 60),
+                category: payload.seedCategory ?? "character",
+                blurb: payload.summary,
+                detail: payload.detail
+            });
             setCurrentTool("lorebook");
         } else {
             setPendingChatComposerSeed({ tool: payload.destination, text: payload.detail });

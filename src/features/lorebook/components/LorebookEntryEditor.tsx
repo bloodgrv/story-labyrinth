@@ -1,7 +1,7 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { useQueryClient } from "@tanstack/react-query";
 import { Inbox, Library, NotebookPen, Plus, SlidersHorizontal, Sparkles, Wand2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +40,7 @@ import type { DocumentImportDraft } from "@/types/codex";
 import type { AIChat, LorebookEntry } from "@/types/story";
 import { randomUUID } from "@/utils/crypto";
 import { toastCRUD } from "@/utils/toastUtils";
-import type { ChatStyle, WorldBuildingTemplateSlug } from "@/types/worldbuilding";
+import type { ChatStyle, WorldBuildingSeed, WorldBuildingTemplateSlug } from "@/types/worldbuilding";
 import { getTemplate } from "@/types/worldbuilding";
 import { lorebookKeys, useCreateLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
 import { LorebookScribbleContent } from "./LorebookScribbleContent";
@@ -113,6 +113,14 @@ export interface LorebookEntryEditorProps {
     // Seeds a brand-new entry from an AI document-import extraction — see entryFormUtils.ts's
     // getDefaultFormValues. Ignored when `entry` is set (editing always wins over a draft).
     draftValues?: DocumentImportDraft;
+    // Only ever set opening from Brainstorm's WB handoff (LorebookNewEntryTab, or the "entry" tab
+    // it gets promoted to once a stub entry exists) — auto-starts the docked WB chat on this
+    // template and seeds its composer, so the handoff lands ready-to-send like every other
+    // destination. See WorldBuildingChatPanel below.
+    initialWorldBuildingSeed?: WorldBuildingSeed;
+    // Fires once the auto-start above has actually created+selected its chat — lets the caller
+    // (LorebookPage) clear the seed from its tab state so it can't refire on a later remount.
+    onWorldBuildingSeedConsumed?: () => void;
     // Called after a successful create/update. Sheet usage closes itself; tab usage can leave
     // the tab open (entry tabs have nothing else to navigate back to).
     onSaved?: () => void;
@@ -143,7 +151,9 @@ function WorldBuildingChatPanel({
     entry,
     onEnsureEntry,
     onEntryUpdated,
-    onOpenScribble
+    onOpenScribble,
+    initialWorldBuildingSeed,
+    onWorldBuildingSeedConsumed
 }: {
     storyId: string;
     entryId?: string;
@@ -151,6 +161,8 @@ function WorldBuildingChatPanel({
     onEnsureEntry: () => Promise<LorebookEntry>;
     onEntryUpdated?: (entry: LorebookEntry) => void;
     onOpenScribble: () => void;
+    initialWorldBuildingSeed?: WorldBuildingSeed;
+    onWorldBuildingSeedConsumed?: () => void;
 }) {
     const [selectedChat, setSelectedChat] = useState<AIChat | null>(null);
     const [initialRework, setInitialRework] = useState<{ chatId: string; payload: InitialReworkPayload } | null>(null);
@@ -244,6 +256,47 @@ function WorldBuildingChatPanel({
             { onSuccess: newChat => setSelectedChat(newChat) }
         );
     };
+
+    // Brainstorm's "Handoff → World-Building" (BrainstormChecklistTray.tsx's handleOpenHandoff) —
+    // auto-starts a WB chat on the template matching the handoff's category and seeds its
+    // composer with the handoff's paste-ready detail text, so this lands ready-to-send like
+    // Outline/Notes/Research already do via pendingChatComposerSeed.
+    //
+    // Two-phase because a brand-new entry has no entryId yet: phase 1 (entryId undefined) only
+    // calls onEnsureEntry() to create the stub — that fires onEntryCreated, which promotes the
+    // "new" tab into a real "entry" tab (LorebookPage.tsx) and REMOUNTS this whole panel, wiping
+    // any selectedChat/composerSeedText this instance would otherwise set. Phase 2 fires on that
+    // fresh mount, now with a real entryId, and actually creates+selects the chat — consumed once
+    // via a ref guard so switching chats afterward can never re-trigger it. entryId's onEnsureEntry
+    // is itself idempotent (ensureLiveEntry returns the existing liveEntry once set), so phase 1
+    // can never double-create the entry even if this instance briefly re-renders before unmounting.
+    const consumedWorldBuildingSeedRef = useRef(false);
+    useEffect(() => {
+        if (!initialWorldBuildingSeed || consumedWorldBuildingSeedRef.current || selectedChat) return;
+        if (!entryId) {
+            void onEnsureEntry();
+            return;
+        }
+        consumedWorldBuildingSeedRef.current = true;
+        const template = getTemplate(initialWorldBuildingSeed.templateSlug);
+        createMutation.mutate(
+            {
+                storyId,
+                chatType: "worldbuilding",
+                templateSlug: initialWorldBuildingSeed.templateSlug,
+                title: template?.defaultTitle ?? "World-Building",
+                anchorEntryId: entryId
+            },
+            {
+                onSuccess: newChat => {
+                    setSelectedChat(newChat);
+                    setComposerSeedText(initialWorldBuildingSeed.composerText);
+                    onWorldBuildingSeedConsumed?.();
+                }
+            }
+        );
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once entryId becomes real, guarded by the ref above
+    }, [initialWorldBuildingSeed, entryId]);
 
     // P0.4 B5 — WB's guided-start style + Character template's opt-in psych module. Picking
     // Grill-me on a Character-template chat also nudges the psych toggle on in the same request
@@ -570,6 +623,8 @@ export function LorebookEntryEditor({
     entry,
     defaultCategory,
     draftValues,
+    initialWorldBuildingSeed,
+    onWorldBuildingSeedConsumed,
     onSaved,
     onCancel,
     onEntryCreated
@@ -855,6 +910,8 @@ export function LorebookEntryEditor({
                         onEnsureEntry={ensureLiveEntry}
                         onEntryUpdated={handleEntryUpdatedFromChat}
                         onOpenScribble={() => setScribbleOpen(true)}
+                        initialWorldBuildingSeed={initialWorldBuildingSeed}
+                        onWorldBuildingSeedConsumed={onWorldBuildingSeedConsumed}
                     />
                 </div>
             )}

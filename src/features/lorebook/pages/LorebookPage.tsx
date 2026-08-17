@@ -7,12 +7,12 @@ import { lorebookApi } from "@/services/api/client";
 import { useLorebookFolderFilter } from "@/features/folders/hooks/useLorebookFolderFilter";
 import type { DocumentImportDraft } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
+import { categoryToWbTemplate, type WorldBuildingSeed } from "@/types/worldbuilding";
 import { randomUUID } from "@/utils/crypto";
 import { logger } from "@/utils/logger";
-import { CreateEntryDialog } from "../components/CreateEntryDialog";
 import { LorebookBrowsePanel } from "../components/LorebookBrowsePanel";
 import { LorebookEntryTab } from "../components/LorebookEntryTab";
-import type { LorebookCategory } from "../components/form";
+import { EMPTY_CODEX_STATE, type LorebookCategory } from "../components/form";
 import { LorebookImportDraftTab } from "../components/LorebookImportDraftTab";
 import { LorebookNewEntryTab } from "../components/LorebookNewEntryTab";
 import { LorebookSecretsPanel } from "../components/LorebookSecretsPanel";
@@ -63,7 +63,6 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
     // Folders (B9) — per-category, cleared by handleCategoryChange below.
     const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
     const [includeDescendants, setIncludeDescendants] = useState(true);
-    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [openTabs, setOpenTabs] = useState<LorebookOpenTab[]>(() => loadStoredTabs().tabs);
     const [activeTabIndex, setActiveTabIndex] = useState(() => loadStoredTabs().activeIndex);
     const [isImportingDocument, setIsImportingDocument] = useState(false);
@@ -132,20 +131,63 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
         setOpenTabs(prev => [...prev, { kind: "entry", entryId: entry.id }]);
     };
 
-    // Two one-shot StoryContext handoff pointers (Relationships graph "open entry", Outline chat
-    // "Open in WB" lore-suggestion seed) — see useLorebookPendingHandoffs.ts.
-    const [activeDraftSeed, setActiveDraftSeed] = useState<DocumentImportDraft | null>(null);
-    useLorebookPendingHandoffs({ entries, isLoading, openEntryTab, setActiveDraftSeed, setIsCreateDialogOpen });
-
     const openDraftTab = (draft: DocumentImportDraft) => {
         setActiveTabIndex(openTabs.length);
         setOpenTabs(prev => [...prev, { kind: "draft", draftId: randomUUID(), draft }]);
     };
 
-    const openNewEntryTab = (defaultCategory: LorebookCategory) => {
+    const openNewEntryTab = (
+        defaultCategory: LorebookCategory,
+        seed?: { draftValues: DocumentImportDraft; initialWorldBuildingSeed?: WorldBuildingSeed }
+    ) => {
         setActiveTabIndex(openTabs.length);
-        setOpenTabs(prev => [...prev, { kind: "new", tabId: randomUUID(), defaultCategory }]);
+        setOpenTabs(prev => [
+            ...prev,
+            {
+                kind: "new",
+                tabId: randomUUID(),
+                defaultCategory,
+                draftValues: seed?.draftValues,
+                initialWorldBuildingSeed: seed?.initialWorldBuildingSeed
+            }
+        ]);
     };
+
+    // Handoff/quick-add entry point (Brainstorm's "Handoff → World-Building", Outline's lore-
+    // suggestion, Name Generator's "Create Codex Entry") — opens the same pre-filled tab the
+    // manual "New Entry" button uses, instead of the old CreateEntryDialog Sheet. detail (only
+    // ever populated by Brainstorm's handoff) auto-starts the docked WB chat — see
+    // LorebookNewEntryTab.tsx / LorebookEntryEditor.tsx's WorldBuildingChatPanel.
+    const openNewEntryTabWithSeed = (seed: { name: string; category: LorebookCategory; blurb: string; detail?: string }) => {
+        openNewEntryTab(seed.category, {
+            draftValues: {
+                name: seed.name,
+                category: seed.category,
+                description: seed.blurb,
+                tags: [],
+                codexState: EMPTY_CODEX_STATE,
+                image: null
+            },
+            initialWorldBuildingSeed: seed.detail
+                ? { templateSlug: categoryToWbTemplate(seed.category), composerText: seed.detail }
+                : undefined
+        });
+    };
+
+    // Clears whichever tab is currently active's initialWorldBuildingSeed, once
+    // WorldBuildingChatPanel has actually consumed it (created+selected the chat) — the active
+    // tab is still the right target across the "new"->"entry" promotion below, since that
+    // promotion replaces the tab in place at the same array index rather than changing
+    // activeTabIndex. Prevents the seed re-firing on a later reload of the persisted openTabs.
+    const clearActiveWorldBuildingSeed = () => {
+        setOpenTabs(prev =>
+            prev.map((t, i) => (i === activeTabIndex && (t.kind === "new" || t.kind === "entry") ? { ...t, initialWorldBuildingSeed: undefined } : t))
+        );
+    };
+
+    // Two one-shot StoryContext handoff pointers (Relationships graph "open entry", Outline/
+    // Brainstorm/Name-Generator "Open in WB" seed) — see useLorebookPendingHandoffs.ts.
+    useLorebookPendingHandoffs({ entries, isLoading, openEntryTab, openNewEntryTabWithSeed });
 
     // Story-wide Secrets panel (2026-08-14) — singleton tab like "browse", closable unlike it.
     const openSecretsTab = () => {
@@ -256,6 +298,8 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                             seriesId={seriesId}
                             onRefresh={() => void refetchEntries()}
                             isRefreshing={isRefreshing}
+                            initialWorldBuildingSeed={activeTab.initialWorldBuildingSeed}
+                            onWorldBuildingSeedConsumed={clearActiveWorldBuildingSeed}
                         />
                     </div>
                 ) : (
@@ -278,6 +322,8 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                         storyId={storyId}
                         seriesId={seriesId}
                         defaultCategory={activeTab.defaultCategory}
+                        draftValues={activeTab.draftValues}
+                        initialWorldBuildingSeed={activeTab.initialWorldBuildingSeed}
                         // No-op on success: onEntryCreated below already promotes this tab in
                         // place to a real entry tab (2026-08-15 QA-pass B20) — closing it here
                         // too would just immediately discard the tab it was just promoted to.
@@ -288,11 +334,20 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                         // stub entry to anchor to (LorebookEntryEditor.tsx's ensureLiveEntry) —
                         // once that happens, this draft tab needs to become a normal entry tab
                         // so the rest of the Codex machinery (id+updatedAt-keyed LorebookEntryTab
-                        // below) picks it up instead of this component going stale.
+                        // below) picks it up instead of this component going stale. Carries
+                        // initialWorldBuildingSeed across the promotion — this remounts
+                        // WorldBuildingChatPanel, so the seed's chat-creation phase actually
+                        // completes on the fresh "entry" tab mount, not this one (see its own
+                        // two-phase comment in LorebookEntryEditor.tsx).
                         onEntryCreated={created => {
                             const tabId = activeTab.tabId;
+                            const seed = activeTab.initialWorldBuildingSeed;
                             setOpenTabs(prev =>
-                                prev.map(t => (t.kind === "new" && t.tabId === tabId ? { kind: "entry", entryId: created.id } : t))
+                                prev.map(t =>
+                                    t.kind === "new" && t.tabId === tabId
+                                        ? { kind: "entry", entryId: created.id, initialWorldBuildingSeed: seed }
+                                        : t
+                                )
                             );
                         }}
                     />
@@ -332,24 +387,6 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
                     }}
                 />
             )}
-
-            {/* Create dialog */}
-            <CreateEntryDialog
-                open={isCreateDialogOpen}
-                onOpenChange={open => {
-                    setIsCreateDialogOpen(open);
-                    if (!open) setActiveDraftSeed(null);
-                }}
-                storyId={storyId}
-                seriesId={seriesId}
-                defaultCategory={selectedCategory}
-                draftValues={activeDraftSeed ?? undefined}
-                onEntryCreated={created => {
-                    setIsCreateDialogOpen(false);
-                    setActiveDraftSeed(null);
-                    openEntryTab(created);
-                }}
-            />
         </div>
     );
 }

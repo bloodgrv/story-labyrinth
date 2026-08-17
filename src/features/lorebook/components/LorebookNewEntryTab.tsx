@@ -1,4 +1,6 @@
+import type { DocumentImportDraft } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
+import type { WorldBuildingSeed } from "@/types/worldbuilding";
 import type { LorebookCategory } from "./form";
 import { LorebookEntryEditor } from "./LorebookEntryEditor";
 
@@ -6,6 +8,15 @@ interface LorebookNewEntryTabProps {
     storyId?: string;
     seriesId?: string;
     defaultCategory: LorebookCategory;
+    // Handoff pre-fill (Brainstorm/Outline/Name Generator's pendingLorebookSeed) — undefined for
+    // the plain "New Entry" button, which starts a genuinely blank form.
+    draftValues?: DocumentImportDraft;
+    // Only ever set by Brainstorm's WB handoff (the one producer with paste-ready chat text) —
+    // auto-starts the docked WB chat and seeds its composer. Already resolved to a template slug
+    // by LorebookPage.tsx's openNewEntryTabWithSeed. See LorebookEntryEditor.tsx's
+    // WorldBuildingChatPanel; must be forwarded unchanged to onEntryCreated's tab-promotion below
+    // (LorebookPage.tsx carries it across the draft->real-entry remount).
+    initialWorldBuildingSeed?: WorldBuildingSeed;
     onSaved: () => void;
     onCancel: () => void;
     // Fires the first time the docked WB chat lazily creates this draft's backing stub entry —
@@ -14,15 +25,17 @@ interface LorebookNewEntryTabProps {
     onEntryCreated?: (entry: LorebookEntry) => void;
 }
 
-// Full-width tab content for a brand-new entry (the Browse tab's "New Entry" button) — same
-// LorebookEntryEditor as LorebookEntryTab/LorebookImportDraftTab, just with no entry and no
-// draft seed, only a starting category. Was previously a slide-in Sheet (CreateEntryDialog);
-// moved to a tab so "New Entry" matches the same open-as-tab pattern every other Lorebook entry
-// point already uses (click a card, open a document-import draft).
+// Full-width tab content for a brand-new entry (the Browse tab's "New Entry" button, or a
+// pendingLorebookSeed handoff) — same LorebookEntryEditor as LorebookEntryTab/
+// LorebookImportDraftTab. Was previously a slide-in Sheet (CreateEntryDialog); moved to a tab so
+// "New Entry" matches the same open-as-tab pattern every other Lorebook entry point already uses
+// (click a card, open a document-import draft) — handoffs now share that same tab path too.
 export function LorebookNewEntryTab({
     storyId,
     seriesId,
     defaultCategory,
+    draftValues,
+    initialWorldBuildingSeed,
     onSaved,
     onCancel,
     onEntryCreated
@@ -37,6 +50,8 @@ export function LorebookNewEntryTab({
                     storyId={storyId}
                     seriesId={seriesId}
                     defaultCategory={defaultCategory}
+                    draftValues={draftValues}
+                    initialWorldBuildingSeed={initialWorldBuildingSeed}
                     onSaved={onSaved}
                     onCancel={onCancel}
                     onEntryCreated={onEntryCreated}

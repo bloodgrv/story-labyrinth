@@ -38,8 +38,14 @@ interface StoryContextType {
     // Same posture as pendingLorebookEntryId above, for the Outline chat's "Open in WB" lore-
     // suggestion handoff (P0.4 R8) — a suggested new entity's seed content, consumed once by
     // LorebookPage to pre-fill CreateEntryDialog, then cleared.
-    pendingLorebookSeed: { name: string; category: LorebookEntry["category"]; blurb: string } | null;
-    setPendingLorebookSeed: (seed: { name: string; category: LorebookEntry["category"]; blurb: string } | null) => void;
+    // detail (optional) — Brainstorm's own handoff-packet's longer paste-ready text, used to
+    // auto-seed the docked WB chat's composer once a chat is auto-started for this seed (see
+    // LorebookEntryEditor.tsx's WorldBuildingChatPanel). Other producers (Outline lore-suggestion,
+    // Name Generator) omit it, so no chat auto-starts for those — tab pre-fill only.
+    pendingLorebookSeed: { name: string; category: LorebookEntry["category"]; blurb: string; detail?: string } | null;
+    setPendingLorebookSeed: (
+        seed: { name: string; category: LorebookEntry["category"]; blurb: string; detail?: string } | null
+    ) => void;
     // Generalized version of the same one-shot pattern, for Brainstorm's "Handoff → Outline/
     // Research" tray actions (P0.4 B0-B4) — the WB handoff destination keeps reusing
     // pendingLorebookSeed above unchanged (same shape a lore-suggestion already produces); this

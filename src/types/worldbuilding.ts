@@ -78,6 +78,27 @@ export const WORLD_BUILDING_TEMPLATES: readonly WorldBuildingTemplate[] = [
 export const getTemplate = (slug: WorldBuildingTemplateSlug): WorldBuildingTemplate | undefined =>
     WORLD_BUILDING_TEMPLATES.find(t => t.slug === slug);
 
+// Maps a lorebook category (LorebookEntry["category"]) onto the WB template that best fits it —
+// used to auto-start the docked WB chat for a handoff/quick-add seed. item/event/note/synopsis/
+// "starting scenario" have no dedicated template, so they fall back to freeform.
+const CATEGORY_TO_WB_TEMPLATE: Record<string, WorldBuildingTemplateSlug> = {
+    character: "character_codex",
+    location: "locations",
+    timeline: "timeline"
+};
+
+export const categoryToWbTemplate = (category: string): WorldBuildingTemplateSlug =>
+    CATEGORY_TO_WB_TEMPLATE[category] ?? "freeform";
+
+// Auto-start-and-seed instruction for the docked WB chat (LorebookEntryEditor.tsx's
+// WorldBuildingChatPanel) — carried on a Lorebook "new"/"entry" open-tab across the tab's own
+// draft->real-entry promotion (see LorebookPage.tsx's onEntryCreated wiring), since a fresh
+// entryId remounts that panel and would otherwise drop any local in-flight seed state.
+export interface WorldBuildingSeed {
+    templateSlug: WorldBuildingTemplateSlug;
+    composerText: string;
+}
+
 // A Codex entry surfaced as context for a chat. `role` distinguishes how it was surfaced so the
 // client can format/prioritize it differently — see chatContextService.ts:
 //   "anchor"  — the entry this chat was opened from (WorldBuildingChatPanel), always current

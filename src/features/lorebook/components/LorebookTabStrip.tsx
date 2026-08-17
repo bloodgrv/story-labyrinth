@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DocumentImportDraft } from "@/types/codex";
 import type { LorebookEntry } from "@/types/story";
+import type { WorldBuildingSeed } from "@/types/worldbuilding";
 import type { LorebookCategory } from "./form";
 
 // The permanent first tab (card grid) plus one tab per entry opened from a card, plus one per
@@ -12,9 +13,18 @@ import type { LorebookCategory } from "./form";
 export type LorebookOpenTab =
     | { kind: "browse" }
     | { kind: "secrets" }
-    | { kind: "entry"; entryId: string }
+    // initialWorldBuildingSeed here only ever comes from a "new" tab's own seed being carried
+    // across its draft->real-entry promotion (LorebookPage.tsx's onEntryCreated) — never set when
+    // opening an already-existing entry the ordinary way (card click, cross-tool navigation).
+    | { kind: "entry"; entryId: string; initialWorldBuildingSeed?: WorldBuildingSeed }
     | { kind: "draft"; draftId: string; draft: DocumentImportDraft }
-    | { kind: "new"; tabId: string; defaultCategory: LorebookCategory };
+    | {
+          kind: "new";
+          tabId: string;
+          defaultCategory: LorebookCategory;
+          draftValues?: DocumentImportDraft;
+          initialWorldBuildingSeed?: WorldBuildingSeed;
+      };
 
 const tabKey = (tab: LorebookOpenTab) =>
     tab.kind === "browse"
