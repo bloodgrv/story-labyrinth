@@ -1,4 +1,4 @@
-import { ImageOff, Sparkles, Upload, X } from "lucide-react";
+import { ImageOff, Loader2, Sparkles, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Control, UseFormSetValue } from "react-hook-form";
 import { useWatch } from "react-hook-form";
@@ -21,15 +21,30 @@ interface ImageUploadFieldProps {
     // L2, docs/Locations_And_Maps_Design.md — only location entries get the Mood|Map preset
     // toggle; every other category stays on the original description-driven "mood" generation.
     isLocation?: boolean;
+    // Fires the real lorebookApi.generateImage call immediately (lazily creating the entry first
+    // if it's still unsaved) — see LorebookEntryEditor.tsx's handleGenerateImage. Unlike
+    // Upload/Remove below (still deferred to form submit, unchanged), generation doesn't wait for
+    // Update/Create — there's no reason to once an id exists, and even a brand-new entry gets one
+    // via the same lazy-create path starting a WB chat before Create already uses.
+    onGenerateImage: (preset: "mood" | "map") => void;
+    isGeneratingImage: boolean;
 }
 
-// Deferred like CodexStateEditor's state — picking/removing/generating an image only updates
-// local form state here (`imageFile`, `generateImageOnSave`); the actual upload/delete/generate
-// call happens in LorebookEntryEditor's handleSubmit after the base entry create/update succeeds,
-// since a brand-new entry has no id (and therefore nowhere to upload to) until that point.
-export function ImageUploadField({ control, setValue, entryId, hasExistingImage, imageFilename, isLocation }: ImageUploadFieldProps) {
+// Upload/Remove are still deferred like CodexStateEditor's state — picking/removing an image only
+// updates local form state here (`imageFile`), the actual call happens in LorebookEntryEditor's
+// handleSubmit after the base entry create/update succeeds. Generation is NOT deferred (see
+// onGenerateImage above) — it fires as soon as you click, independent of the Update button.
+export function ImageUploadField({
+    control,
+    setValue,
+    entryId,
+    hasExistingImage,
+    imageFilename,
+    isLocation,
+    onGenerateImage,
+    isGeneratingImage
+}: ImageUploadFieldProps) {
     const imageFile = useWatch({ control, name: "imageFile" });
-    const generateImageOnSave = useWatch({ control, name: "generateImageOnSave" });
     const description = useWatch({ control, name: "description" });
     const generateImagePreset = useWatch({ control, name: "generateImagePreset" }) ?? "mood";
     const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -53,17 +68,10 @@ export function ImageUploadField({ control, setValue, entryId, hasExistingImage,
 
     const pickFile = (file: File) => {
         setValue("imageFile", file, { shouldDirty: true });
-        setValue("generateImageOnSave", false, { shouldDirty: true });
-    };
-
-    const generateFromDescription = () => {
-        setValue("generateImageOnSave", true, { shouldDirty: true });
-        setValue("imageFile", undefined, { shouldDirty: true });
     };
 
     const removeImage = () => {
         setValue("imageFile", null, { shouldDirty: true });
-        setValue("generateImageOnSave", false, { shouldDirty: true });
     };
 
     return (
@@ -85,8 +93,8 @@ export function ImageUploadField({ control, setValue, entryId, hasExistingImage,
                             onOpenChange={setLightboxOpen}
                         />
                     </>
-                ) : generateImageOnSave ? (
-                    <Sparkles className="h-10 w-10 text-muted-foreground" />
+                ) : isGeneratingImage ? (
+                    <Loader2 className="h-10 w-10 text-muted-foreground animate-spin" />
                 ) : (
                     <ImageOff className="h-10 w-10 text-muted-foreground" />
                 )}
@@ -112,12 +120,16 @@ export function ImageUploadField({ control, setValue, entryId, hasExistingImage,
                 </label>
                 <Button
                     type="button"
-                    variant={generateImageOnSave ? "secondary" : "outline"}
+                    variant="outline"
                     size="sm"
-                    disabled={!description?.trim()}
-                    onClick={generateFromDescription}
+                    disabled={!description?.trim() || isGeneratingImage}
+                    onClick={() => onGenerateImage(generateImagePreset)}
                 >
-                    <Sparkles className="h-4 w-4 mr-1.5" />
+                    {isGeneratingImage ? (
+                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                    ) : (
+                        <Sparkles className="h-4 w-4 mr-1.5" />
+                    )}
                     Generate from Description
                 </Button>
                 {isLocation && (
@@ -149,12 +161,6 @@ export function ImageUploadField({ control, setValue, entryId, hasExistingImage,
                     </Button>
                 )}
             </div>
-            {generateImageOnSave && (
-                <p className="text-xs text-muted-foreground">
-                    Will generate a new {generateImagePreset === "map" ? "top-down map" : "mood"} image from the description when you
-                    save.
-                </p>
-            )}
         </div>
     );
 }

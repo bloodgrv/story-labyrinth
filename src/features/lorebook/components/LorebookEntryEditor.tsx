@@ -666,6 +666,7 @@ export function LorebookEntryEditor({
     const selectedCategory = form.watch("category");
     const nameValue = form.watch("name");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
     // Lore Sheet (T5 FS1) — if the user switches category on a still-untouched auto-seeded sheet
     // (matches the previous category's own empty template exactly), reseed to the new category's
@@ -711,6 +712,21 @@ export function LorebookEntryEditor({
         return withCodex;
     };
 
+    // Fires immediately on "Generate from Description" instead of deferring to form submit like
+    // Upload/Remove still do — there's no real reason to wait once an entry has a real id, and a
+    // brand-new one gets it via the same lazy-create path ensureLiveEntry already established for
+    // starting a WB chat before Create is clicked. See ImageUploadField.tsx.
+    const handleGenerateImage = async (preset: "mood" | "map") => {
+        setIsGeneratingImage(true);
+        const [error, updated] = await attemptPromise(async () => {
+            const current = liveEntry ?? (await ensureLiveEntry());
+            return lorebookApi.generateImage(current.id, preset);
+        });
+        setIsGeneratingImage(false);
+        if (error) toastCRUD.saveError("image", error);
+        else setLiveEntry(updated);
+    };
+
     // The docked WB chat's sheet-proposal Accept writes sheetBody straight to the server (bypassing
     // this form entirely, same as ensureLiveEntry's own direct-write precedent above) — this is the
     // form's only chance to learn about it while both stay mounted. Skips the field if the user has
@@ -752,22 +768,18 @@ export function LorebookEntryEditor({
                     await codexApi.recordState(entryId, { changes: { codexState: data.codexState }, sourceType: "user" });
             }
 
-            // Image is submitted separately too, same reasoning — see ImageUploadField.tsx and
-            // CreateEntryForm's imageFile/generateImageOnSave doc comments. Each of these returns
-            // the updated entry (new imageFilename) — apply it to liveEntry so the preview picks
-            // up the new/removed image immediately, without needing a manual page reload.
+            // Upload/Remove are still submitted separately here, same reasoning as codex state
+            // above — see ImageUploadField.tsx and CreateEntryForm's imageFile doc comment.
+            // Generation itself no longer goes through submit at all (handleGenerateImage fires
+            // immediately on click). Each of these returns the updated entry (new imageFilename)
+            // — apply it to liveEntry so the preview picks up the new/removed image immediately,
+            // without needing a manual page reload.
             if (data.imageFile instanceof File) setLiveEntry(await lorebookApi.uploadImage(entryId, data.imageFile));
             else if (data.imageFile === null) setLiveEntry(await lorebookApi.removeImage(entryId));
-            else if (data.generateImageOnSave)
-                setLiveEntry(await lorebookApi.generateImage(entryId, data.generateImagePreset));
 
-            // Clear the deferred image fields now that they've been applied — otherwise
-            // ImageUploadField keeps showing "Will generate a new image..." (or a stale File
-            // preview) after a successful save.
-            if (data.imageFile !== undefined || data.generateImageOnSave) {
-                form.setValue("imageFile", undefined, { shouldDirty: false });
-                form.setValue("generateImageOnSave", false, { shouldDirty: false });
-            }
+            // Clear the deferred imageFile field now that it's been applied — otherwise
+            // ImageUploadField keeps showing a stale File preview after a successful save.
+            if (data.imageFile !== undefined) form.setValue("imageFile", undefined, { shouldDirty: false });
 
             onSaved?.();
         });
@@ -805,6 +817,8 @@ export function LorebookEntryEditor({
                             hasExistingImage={!!liveEntry?.imageFilename}
                             imageFilename={liveEntry?.imageFilename}
                             isLocation={selectedCategory === "location"}
+                            onGenerateImage={handleGenerateImage}
+                            isGeneratingImage={isGeneratingImage}
                         />
 
                         {/* Sheet-first default surface (T5 FS1) — replaces the retired Natural View

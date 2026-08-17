@@ -54,12 +54,12 @@ export interface CreateEntryForm {
     // Never pre-populated from an existing entry's image — that's displayed via its own URL
     // (lorebookApi.imageUrl), not re-uploaded. See ImageUploadField.tsx.
     imageFile?: File | null;
-    // true = generate a new image from the description on save (lorebookApi.generateImage).
-    // Mutually exclusive with imageFile — picking one clears the other. See ImageUploadField.tsx.
-    generateImageOnSave?: boolean;
-    // Which prompt preset to use when generateImageOnSave is true — "mood" (default, current
+    // Which prompt preset "Generate from Description" uses — "mood" (default, current
     // description-driven path) or "map" (location-only, top-down/ink style, see
     // grokImageService.ts's MAP_IMAGE_PROMPT_PREFIX). Only ever shown for category="location".
+    // Generation itself fires immediately on click (LorebookEntryEditor.tsx's
+    // handleGenerateImage), not deferred to form submit — this field just remembers which preset
+    // is selected between clicks.
     generateImagePreset?: "mood" | "map";
     // Location template's light place sheet (L1) — only rendered/relevant for category="location"
     // (PlaceSheetFields.tsx), submitted into metadata.placeState alongside the rest of the form.
