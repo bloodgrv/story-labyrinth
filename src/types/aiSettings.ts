@@ -96,6 +96,11 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
 export const FEATURE_KEYS: FeatureKey[] = [
     "entity_detection",
     "embedding",
+    // Image Generation is the only other feature (besides Embeddings) that needs a genuinely
+    // different kind of model than the rest — "Set global default"/"Apply to all features" will
+    // silently point it at a plain text model otherwise, so it's kept near the top where it's
+    // easy to double-check/fix, rather than buried mid-list (FeatureEndpointsCard.tsx).
+    "image_generation",
     "rag_scanner",
     "worldbuilding_chat",
     "editor_chat",
@@ -103,7 +108,6 @@ export const FEATURE_KEYS: FeatureKey[] = [
     "auto_humanizer",
     "beat_detection",
     "document_import",
-    "image_generation",
     "agent_memory_distill",
     "chapter_version",
     "codex_compile",

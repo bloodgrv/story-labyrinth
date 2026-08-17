@@ -80,8 +80,19 @@ function FeatureEndpointRow({ featureKey, override, allModels, isSaving, onSave,
         });
     };
 
+    // Flagged distinctly from every other row — "Set global default"/"Apply to all features"
+    // above will happily overwrite this with a plain text model, which can't generate images at
+    // all, so it needs to stand out enough that it actually gets double-checked afterward.
+    const isImageGeneration = featureKey === "image_generation";
+
     return (
-        <div className="flex flex-wrap items-center gap-2 py-2">
+        <div
+            className={
+                isImageGeneration
+                    ? "flex flex-wrap items-center gap-2 py-2 -mx-2 px-2 rounded-md border border-amber-500/40 bg-amber-500/10"
+                    : "flex flex-wrap items-center gap-2 py-2"
+            }
+        >
             <span className="text-sm font-medium w-48 shrink-0">{FEATURE_LABELS[featureKey]}</span>
             <Select value={provider} onValueChange={handleProviderChange}>
                 <SelectTrigger className="w-44">
