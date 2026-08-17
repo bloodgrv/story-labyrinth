@@ -1,6 +1,7 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import type OpenAI from "openai";
 import type { AiReviewFinding, AiReviewOptions, AiReviewSeverity, AiReviewTag } from "../../src/types/aiReview.js";
+import { chunk as batchInto, DEFAULT_AI_CONCURRENCY } from "../lib/concurrency.js";
 import { buildClientForFeature } from "./aiClientFactory.js";
 import { db, schema } from "../db/client.js";
 import { chunkText } from "./embeddingService.js";
@@ -511,12 +512,19 @@ export const runDeepReview = async (params: {
     const chaptersForPrompt = orderedChapters.map(c => ({ id: c.id, title: c.title, text: extractTextFromLexical(c.content) }));
     const titleToId = new Map(orderedChapters.map(c => [c.title, c.id]));
 
-    // 1. Map
+    // 1. Map — DEFAULT_AI_CONCURRENCY chapters at a time (batched, not strictly one at a time) so
+    // a local model server with multiple request slots (e.g. LM Studio's default of 4) isn't left
+    // idling three of them while this stage serializes through the fourth. No resume/crash
+    // recovery exists for Deep review (unlike the Scanner's per-chapter loop), so batch-boundary
+    // progress reporting is purely a UX choice here, not a correctness requirement — chapter order
+    // is still preserved in `summaries` (each batch's Promise.all results land in the same order
+    // as its inputs, and batches themselves run in original chapter order), which the downstream
+    // cross-chapter/voice prompts depend on for coherent context.
     const summaries: { title: string; summary: string }[] = [];
-    for (const chapter of chaptersForPrompt) {
-        const { title, summary } = await runMapStage(chapter, client, model);
-        summaries.push({ title, summary });
-        processed++;
+    for (const batch of batchInto(chaptersForPrompt, DEFAULT_AI_CONCURRENCY)) {
+        const batchSummaries = await Promise.all(batch.map(chapter => runMapStage(chapter, client, model)));
+        summaries.push(...batchSummaries);
+        processed += batch.length;
         await report(`Mapping chapters (${processed}/${chapterIds.length})…`);
     }
 

@@ -1,6 +1,7 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import type OpenAI from "openai";
 import type { RagScan, RagScanEvidence, RagScanIssue } from "../../src/types/ragScan.js";
+import { chunk, DEFAULT_AI_CONCURRENCY } from "../lib/concurrency.js";
 import { buildClientForFeature } from "./aiClientFactory.js";
 import { db, schema } from "../db/client.js";
 import { chunkText } from "./embeddingService.js";
@@ -399,9 +400,11 @@ export const listOrderedChapterIds = async (storyId: string): Promise<string[]> 
     return chapterRows.map(row => row.id);
 };
 
-// Kick off a whole-story scan: chapters are scanned one at a time in the background so the
-// caller gets an immediate response and polls `getScanWithIssues(scan.id)` for progress.
-// Throws immediately (before creating the scan row) if no scanner endpoint is configured.
+// Kick off a whole-story scan: chapters are scanned DEFAULT_AI_CONCURRENCY at a time (batched,
+// not one at a time — see concurrency.ts's own comment for why batches rather than a rolling
+// pool) in the background so the caller gets an immediate response and polls
+// `getScanWithIssues(scan.id)` for progress. Throws immediately (before creating the scan row) if
+// no scanner endpoint is configured.
 export const scanStory = async (storyId: string, includeMemory = false, includeTimeline = false): Promise<RagScan> => {
     const { client, model } = await requireScannerConnection();
 
@@ -411,13 +414,19 @@ export const scanStory = async (storyId: string, includeMemory = false, includeT
 
     void (async () => {
         try {
-            for (const [index, chapterId] of chapterIds.entries()) {
-                try {
-                    await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory, includeTimeline });
-                } catch (error) {
-                    console.error(`RAG scan: chapter ${chapterId} failed:`, (error as Error).message);
-                }
-                await updateScanProgress(scan.id, index + 1);
+            let processed = 0;
+            for (const batch of chunk(chapterIds, DEFAULT_AI_CONCURRENCY)) {
+                await Promise.all(
+                    batch.map(async chapterId => {
+                        try {
+                            await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory, includeTimeline });
+                        } catch (error) {
+                            console.error(`RAG scan: chapter ${chapterId} failed:`, (error as Error).message);
+                        }
+                    })
+                );
+                processed += batch.length;
+                await updateScanProgress(scan.id, processed);
             }
             await completeScan(scan.id, { model, processedChapters: chapterIds.length });
         } catch (error) {

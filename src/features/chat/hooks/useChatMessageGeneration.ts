@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
 import { useGenerateWithPrompt } from "@/features/ai/hooks/useGenerateWithPrompt";
 import { useStreamingGeneration } from "@/features/ai/hooks/useStreamingGeneration";
-import { chatsApi } from "@/services/api/client";
+import { brainstormApi, chatsApi } from "@/services/api/client";
 import type { AIChat, AllowedModel, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { useUpdateChatMutation } from "./useChatQuery";
@@ -290,6 +290,38 @@ export const useChatMessageGeneration = ({
                 if (loreSuggestions.length > 0 && assistantMessage) onLoreSuggestions?.(assistantMessage.id, loreSuggestions);
                 if (overviewProposal && assistantMessage) onOverviewProposal?.(assistantMessage.id, overviewProposal);
                 if (handoffPackets.length > 0 && assistantMessage) onHandoffPackets?.(assistantMessage.id, handoffPackets);
+
+                // Reliability fix (2026-08-17) — Brainstorm's own OVERVIEW_PROPOSAL_INSTRUCTIONS/
+                // HANDOFF_PACKET_INSTRUCTIONS fences above are unreliable during a normal
+                // conversational reply (verified live: the model skips them even with matching
+                // trigger phrases). Fire an isolated server-side extraction pass as a background
+                // follow-up — same technique verified to work reliably — only when the main reply
+                // didn't already self-emit one (avoids a duplicate proposal on the rare turn where
+                // it does). Fire-and-forget: the chat turn has already succeeded and rendered: a
+                // missed or failed extraction should never surface as a disruptive error.
+                if (
+                    selectedChat.chatType === "brainstorm" &&
+                    assistantMessage &&
+                    !overviewProposal &&
+                    handoffPackets.length === 0
+                ) {
+                    const extractionMessageId = assistantMessage.id;
+                    void (async () => {
+                        const [extractError, result] = await attemptPromise(() =>
+                            brainstormApi.extractProposals(fullResponse, input.trim())
+                        );
+                        if (extractError) {
+                            logger.warn("Brainstorm proposal extraction failed:", extractError);
+                            return;
+                        }
+                        if (result.overview) onOverviewProposal?.(extractionMessageId, result.overview);
+                        if (result.handoffs.length > 0) onHandoffPackets?.(extractionMessageId, result.handoffs);
+                        if (result.droppedCount > 0)
+                            toast.warning(
+                                `Captured ${result.handoffs.length} hand-off item(s) from that reply — ${result.droppedCount} couldn't be parsed. Use "Propose from this reply" to retry.`
+                            );
+                    })();
+                }
                 if (noteSplitProposal && assistantMessage) onNoteSplitProposal?.(assistantMessage.id, noteSplitProposal);
                 if (psychProposal && assistantMessage) onPsychProposal?.(assistantMessage.id, psychProposal);
                 if (sexualityProposal && assistantMessage) onSexualityProposal?.(assistantMessage.id, sexualityProposal);

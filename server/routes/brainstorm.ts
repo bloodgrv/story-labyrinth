@@ -6,6 +6,7 @@ import {
     updateChecklistStatus
 } from "../services/brainstormChecklistService.js";
 import { getSlots, setSlotStatus } from "../services/brainstormSlotsService.js";
+import { extractBrainstormProposals } from "../services/brainstormExtractService.js";
 import { BRAINSTORM_SLOTS } from "../../src/types/brainstorm.js";
 
 // P0.4 B0-B4 — Brainstorm Hub. Previously this router was a bare createCrudRouter over aiChats;
@@ -102,6 +103,31 @@ router.patch("/checklist/:id", async (req, res) => {
         return;
     }
     res.json(item);
+});
+
+// POST /api/brainstorm/extract-proposals — body: { replyText, userMessageText? }
+// Automatic reliability fix (2026-08-17, see brainstormExtractService.ts's own comment): a
+// narrow, isolated, non-streaming follow-up extraction pass over an already-generated Brainstorm
+// reply, since the reply's own fence-emission during normal conversational generation is
+// unreliable. Fired automatically by the client after every Brainstorm reply, and manually via
+// a per-message "Propose from this reply" retry action — same endpoint either way. Always
+// resolves (never 500s on "no provider"/model failure — extractBrainstormProposals degrades to
+// an empty result), since this must never disrupt a chat turn that already succeeded.
+router.post("/extract-proposals", async (req, res) => {
+    const { replyText, userMessageText } = req.body as { replyText?: unknown; userMessageText?: unknown };
+    if (typeof replyText !== "string" || !replyText.trim()) {
+        res.status(400).json({ error: "replyText is required" });
+        return;
+    }
+
+    const [error, result] = await attemptPromise(() =>
+        extractBrainstormProposals(replyText, typeof userMessageText === "string" ? userMessageText : undefined)
+    );
+    if (error) {
+        res.status(500).json({ error: "Failed to extract proposals", details: error.message });
+        return;
+    }
+    res.json(result);
 });
 
 // GET /api/brainstorm/slots?storyId= — always returns all of BRAINSTORM_SLOTS, defaulting any

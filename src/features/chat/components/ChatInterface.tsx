@@ -41,6 +41,7 @@ import {
     useUpdateOutlineItemMutation
 } from "@/features/outline/hooks/useOutlineQuery";
 import { brainstormApi, chatsApi, deskTransfersApi, lorebookApi } from "@/services/api/client";
+import type { HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
 import type { ChapterSelectionTarget, SheetFieldReworkTarget } from "@/types/rework";
 import type { AIChat, ChatMessage, LorebookEntry, Prompt, PromptParserConfig } from "@/types/story";
 import type { ChatContext } from "@/types/worldbuilding";
@@ -816,6 +817,98 @@ export function ChatInterface({
         return "applied";
     };
 
+    // Extracted from useChatMessageGeneration's onOverviewProposal/onHandoffPackets config (below)
+    // so the manual "Propose from this reply" retry (handleProposeFromReply, ChatMessageList.tsx's
+    // hover action) can reuse the exact same persist-and-log logic instead of duplicating it —
+    // both the model's own (rare) self-emitted fence and the automatic/manual extraction-pass
+    // results need to land in the checklist tray identically.
+    const handleOverviewProposal = useCallback(
+        (messageId: string, proposal: OverviewProposalPayload) => {
+            if (!storyId) return;
+            brainstormApi
+                .createChecklistItem({ chatId: selectedChat.id, storyId, kind: "overview_proposal", payload: proposal, sourceMessageId: messageId })
+                .then(item => {
+                    queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] });
+                    const fromDesk = selectedChat.chatType ?? "general";
+                    if (proposal.proposalType !== "note" || fromDesk === "notes") return;
+                    deskTransfersApi
+                        .log(storyId, {
+                            event: "proposed",
+                            kind: "overview_proposal",
+                            fromDesk,
+                            fromChatId: selectedChat.id,
+                            fromChatTitleSnapshot: selectedChat.title,
+                            toDesk: "notes",
+                            subject: proposal.title,
+                            sourceChecklistItemId: item.id
+                        })
+                        .catch(() => {});
+                });
+        },
+        [storyId, selectedChat.id, selectedChat.chatType, selectedChat.title, queryClient]
+    );
+
+    const handleHandoffPackets = useCallback(
+        (messageId: string, packets: HandoffPacket[]) => {
+            if (!storyId) return;
+            Promise.all(
+                packets.map(packet =>
+                    brainstormApi
+                        .createChecklistItem({
+                            chatId: selectedChat.id,
+                            storyId,
+                            kind: "handoff",
+                            payload: packet,
+                            sourceMessageId: messageId
+                        })
+                        .then(item => {
+                            deskTransfersApi
+                                .log(storyId, {
+                                    event: "proposed",
+                                    kind: "handoff",
+                                    fromDesk: selectedChat.chatType ?? "general",
+                                    fromChatId: selectedChat.id,
+                                    fromChatTitleSnapshot: selectedChat.title,
+                                    toDesk: packet.destination,
+                                    subject: packet.summary,
+                                    crumb: packet.detail,
+                                    sourceChecklistItemId: item.id
+                                })
+                                .catch(() => {});
+                            return item;
+                        })
+                )
+            ).then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
+        },
+        [storyId, selectedChat.id, selectedChat.chatType, selectedChat.title, queryClient]
+    );
+
+    // Manual backstop for the automatic extraction pass (useChatMessageGeneration.ts) — a per-
+    // message "Propose from this reply" retry (ChatMessageList.tsx hover action) for when the
+    // automatic pass judged there was nothing to propose but the user disagrees, or a prior pass
+    // reported a partial-failure drop. Calls the identical server-side extraction endpoint.
+    const [proposingMessageId, setProposingMessageId] = useState<string | null>(null);
+    const handleProposeFromReply = useCallback(
+        async (messageId: string, replyText: string) => {
+            setProposingMessageId(messageId);
+            const [error, result] = await attemptPromise(() => brainstormApi.extractProposals(replyText));
+            setProposingMessageId(null);
+            if (error) {
+                toast.error("Couldn't extract proposals from that reply — try again.");
+                return;
+            }
+            if (result.overview) handleOverviewProposal(messageId, result.overview);
+            if (result.handoffs.length > 0) handleHandoffPackets(messageId, result.handoffs);
+            if (!result.overview && result.handoffs.length === 0 && result.droppedCount === 0) {
+                toast.info("Nothing to propose in that reply.");
+                return;
+            }
+            if (result.droppedCount > 0)
+                toast.warning(`Captured ${result.handoffs.length} hand-off item(s) — ${result.droppedCount} couldn't be parsed.`);
+        },
+        [handleOverviewProposal, handleHandoffPackets]
+    );
+
     const { generate, isGenerating, abort, streamingContent } = useChatMessageGeneration({
         selectedChat,
         selectedPrompt,
@@ -935,69 +1028,12 @@ export function ChatInterface({
         // persisted immediately as durable brainstormChecklist rows the moment they're parsed
         // (B4's tray needs them durable across reloads, not ephemeral component state); the tray
         // itself queries the server directly (BrainstormChecklistTray.tsx), so invalidating its
-        // query is all this component needs to do after the POST resolves.
-        onOverviewProposal: (messageId, proposal) => {
-            if (!storyId) return;
-            brainstormApi
-                .createChecklistItem({ chatId: selectedChat.id, storyId, kind: "overview_proposal", payload: proposal, sourceMessageId: messageId })
-                .then(item => {
-                    queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] });
-                    // Transfer Log (T1) — only the "note" sub-type crosses a desk boundary (a new
-                    // Note gets created); synopsis/memory write directly into story fields/Project
-                    // Memory, neither of which is a "desk" in the design doc's sense, so they're
-                    // deliberately not logged here. Also skip if this chat IS already Notes (Notes'
-                    // own NotesChecklistTray.tsx never actually offers "note" via its own prompt
-                    // instructions, but the parser is shared/defensive) — same-desk, not a transfer.
-                    const fromDesk = selectedChat.chatType ?? "general";
-                    if (proposal.proposalType !== "note" || fromDesk === "notes") return;
-                    deskTransfersApi
-                        .log(storyId, {
-                            event: "proposed",
-                            kind: "overview_proposal",
-                            fromDesk,
-                            fromChatId: selectedChat.id,
-                            fromChatTitleSnapshot: selectedChat.title,
-                            toDesk: "notes",
-                            subject: proposal.title,
-                            sourceChecklistItemId: item.id
-                        })
-                        .catch(() => {});
-                });
-        },
-        onHandoffPackets: (messageId, packets) => {
-            if (!storyId) return;
-            Promise.all(
-                packets.map(packet =>
-                    brainstormApi
-                        .createChecklistItem({
-                            chatId: selectedChat.id,
-                            storyId,
-                            kind: "handoff",
-                            payload: packet,
-                            sourceMessageId: messageId
-                        })
-                        .then(item => {
-                            // Transfer Log (T1) — one row per packet, logged the moment it's
-                            // offered (the tray's later Open is the 'opened' event — see
-                            // BrainstormChecklistTray.tsx/NotesChecklistTray.tsx's handleOpenHandoff).
-                            deskTransfersApi
-                                .log(storyId, {
-                                    event: "proposed",
-                                    kind: "handoff",
-                                    fromDesk: selectedChat.chatType ?? "general",
-                                    fromChatId: selectedChat.id,
-                                    fromChatTitleSnapshot: selectedChat.title,
-                                    toDesk: packet.destination,
-                                    subject: packet.summary,
-                                    crumb: packet.detail,
-                                    sourceChecklistItemId: item.id
-                                })
-                                .catch(() => {});
-                            return item;
-                        })
-                )
-            ).then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
-        },
+        // query is all this component needs to do after the POST resolves. Extracted above
+        // (handleOverviewProposal/handleHandoffPackets) so the automatic/manual extraction-pass
+        // results (useChatMessageGeneration.ts's background follow-up, handleProposeFromReply's
+        // manual retry) share this exact persist-and-log logic instead of duplicating it.
+        onOverviewProposal: handleOverviewProposal,
+        onHandoffPackets: handleHandoffPackets,
         onPsychProposal: (messageId, proposal) => setPsychProposals(prev => ({ ...prev, [messageId]: proposal })),
         onSexualityProposal: (messageId, proposal) => setSexualityProposals(prev => ({ ...prev, [messageId]: proposal })),
         onPlaceSheetProposal: (messageId, proposal) => setPlaceSheetProposals(prev => ({ ...prev, [messageId]: proposal })),
@@ -1797,6 +1833,13 @@ export function ChatInterface({
                 onRegenerateMessage={handleRegenerateMessage}
                 onResendMessage={handleResendMessage}
                 onBranchMessage={storyId ? handleBranchMessage : undefined}
+                // Manual backstop for the automatic extraction pass (useChatMessageGeneration.ts)
+                // — Brainstorm assistant messages only, same gate every other Brainstorm-only
+                // affordance in this file uses.
+                onProposeFromReply={
+                    selectedChat.chatType === "brainstorm" ? message => handleProposeFromReply(message.id, message.content) : undefined
+                }
+                proposingMessageId={proposingMessageId}
                 // N5 — hidden entirely for Editor chats (stay canon-only) and for global chats
                 // with no storyId (Research Global mode has none to save a note against; Story
                 // mode gets a real storyId from ResearchTool.tsx, so this starts working there

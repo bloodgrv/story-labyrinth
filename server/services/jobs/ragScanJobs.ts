@@ -1,5 +1,6 @@
 import type { AgentJob } from "../../../src/types/agentJob.js";
 import { updateJobProgress } from "../agentJobsRepository.js";
+import { chunk, DEFAULT_AI_CONCURRENCY } from "../../lib/concurrency.js";
 import { completeScan, createScan, failScan, getScan, updateScanProgress } from "../ragScanRepository.js";
 import { listOrderedChapterIds, requireScannerConnection, runChapterScan, scanChapter } from "../ragScanner.js";
 
@@ -35,6 +36,15 @@ export const runRagScanChapterJob = async (job: AgentJob): Promise<{ scanId: str
 // job.progress.processed says how many of listOrderedChapterIds it already got through. Falls
 // back to a fresh scan if that scanId is missing or its row isn't still "running" (corrupt/stale
 // progress, or a genuinely first attempt), so this can't wedge the job.
+//
+// P1.1 (2026-08-17) — chapters within `remainingChapterIds` are now scanned DEFAULT_AI_CONCURRENCY
+// at a time (batched, not a rolling pool) instead of strictly one at a time, so a local model
+// server with multiple request slots (e.g. LM Studio's default of 4) isn't left idling three of
+// them while this job serializes through the fourth. Progress/resume correctness is preserved
+// deliberately: `processed` only advances once a WHOLE batch has settled, never mid-batch, so the
+// B4 resume slice above (`chapterIds.slice(alreadyProcessed)`) still always sees a durably
+// complete, contiguous prefix — a crash mid-batch just re-scans that batch, same as a crash
+// mid-chapter did before.
 export const runRagScanStoryJob = async (
     job: AgentJob
 ): Promise<{ scanId: string; totalChapters: number; processedChapters: number }> => {
@@ -67,14 +77,20 @@ export const runRagScanStoryJob = async (
     });
 
     try {
-        for (const [offset, chapterId] of remainingChapterIds.entries()) {
-            try {
-                await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory, includeTimeline });
-            } catch (error) {
-                console.error(`rag_scan_story job: chapter ${chapterId} failed:`, (error as Error).message);
-            }
+        let doneInThisRun = 0;
+        for (const batch of chunk(remainingChapterIds, DEFAULT_AI_CONCURRENCY)) {
+            await Promise.all(
+                batch.map(async chapterId => {
+                    try {
+                        await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory, includeTimeline });
+                    } catch (error) {
+                        console.error(`rag_scan_story job: chapter ${chapterId} failed:`, (error as Error).message);
+                    }
+                })
+            );
 
-            const processed = alreadyProcessed + offset + 1;
+            doneInThisRun += batch.length;
+            const processed = alreadyProcessed + doneInThisRun;
             await updateScanProgress(scan.id, processed); // existing ragScans write
             await updateJobProgress(job.id, {
                 processed,

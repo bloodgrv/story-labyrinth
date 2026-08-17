@@ -1,4 +1,4 @@
-import { Copy, Edit, GitBranch, Loader2, RefreshCw, Send, StickyNote, Trash2, X } from "lucide-react";
+import { Copy, Edit, GitBranch, Loader2, RefreshCw, Send, Sparkles, StickyNote, Trash2, X } from "lucide-react";
 import type { ReactNode } from "react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -74,6 +74,14 @@ interface ChatMessageListProps {
     // this message — omitted (button hidden) for global chats with no chat list to branch into
     // (see ChatInterface.tsx's storyId gate).
     onBranchMessage?: (message: ChatMessage) => void;
+    // Manual backstop for Brainstorm's automatic proposal-extraction pass (see
+    // useChatMessageGeneration.ts's background follow-up and ChatInterface.tsx's
+    // handleProposeFromReply) — re-runs the isolated extraction call against this specific
+    // reply. Brainstorm assistant messages only; omitted (button hidden) everywhere else.
+    onProposeFromReply?: (message: ChatMessage) => void;
+    // The message id currently being (re-)extracted, if any — shows a spinner on that message's
+    // button instead of the sparkle icon while the request is in flight.
+    proposingMessageId?: string | null;
 }
 
 export function ChatMessageList({
@@ -94,7 +102,9 @@ export function ChatMessageList({
     onDeleteMessage,
     onRegenerateMessage,
     onResendMessage,
-    onBranchMessage
+    onBranchMessage,
+    onProposeFromReply,
+    proposingMessageId
 }: ChatMessageListProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -242,6 +252,22 @@ export function ChatMessageList({
                                 {onBranchMessage && (
                                     <Button size="icon" variant="ghost" className="h-6 w-6" title="Branch from here" onClick={() => onBranchMessage(message)}>
                                         <GitBranch className="h-3.5 w-3.5" />
+                                    </Button>
+                                )}
+                                {onProposeFromReply && (
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6"
+                                        title="Propose from this reply"
+                                        disabled={proposingMessageId === message.id}
+                                        onClick={() => onProposeFromReply(message)}
+                                    >
+                                        {proposingMessageId === message.id ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                            <Sparkles className="h-3.5 w-3.5" />
+                                        )}
                                     </Button>
                                 )}
                                 <Button

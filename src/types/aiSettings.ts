@@ -27,7 +27,8 @@ export type FeatureKey =
     | "timeline_extract_pins" // Extract multiple dated beats from a single timeline/event entry's Lore Sheet (timelineExtractPinsService.ts)
     | "sheet_migrate" // Optional "Improve sheet with AI" tidy pass over a Lore Sheet (T5 FS2, sheetMigrateService.ts)
     | "sheet_sync" // "Sync structured fields" — LLM row/list extraction inside Lore Sheet sections (T5 FS3, sheetSyncService.ts)
-    | "ai_review"; // AI Review manuscript-editor pass — dev/continuity/voice/line findings (AR1, aiReviewService.ts)
+    | "ai_review" // AI Review manuscript-editor pass — dev/continuity/voice/line findings (AR1, aiReviewService.ts)
+    | "brainstorm_extract"; // Isolated extraction pass over a Brainstorm reply for overview/handoff proposals (brainstormExtractService.ts) — separate from the main chat call since a single-purpose extraction prompt is far more reliable than asking the conversational reply to also self-emit fences
 
 // "grok-session" is deliberately excluded — it isn't a simple OpenAI-compatible client (it proxies
 // through grok.com server-side via a bespoke SSE conversion, see grokSessionClient.ts) and is
@@ -80,7 +81,8 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
     timeline_extract_pins: "Story Timeline (Extract Pins from Entry)",
     sheet_migrate: "Lore Sheet (Improve with AI)",
     sheet_sync: "Lore Sheet (Sync to Codex)",
-    ai_review: "AI Review (Manuscript Editor)"
+    ai_review: "AI Review (Manuscript Editor)",
+    brainstorm_extract: "Brainstorm (Extract Proposals)"
 };
 
 export const FEATURE_KEYS: FeatureKey[] = [
@@ -103,5 +105,6 @@ export const FEATURE_KEYS: FeatureKey[] = [
     "timeline_extract_pins",
     "sheet_migrate",
     "sheet_sync",
-    "ai_review"
+    "ai_review",
+    "brainstorm_extract"
 ];
