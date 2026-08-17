@@ -10,12 +10,14 @@ import { usePromptsQuery } from "@/features/prompts/hooks/usePromptsQuery";
 import type { FeatureKey } from "@/types/aiSettings";
 import type { AIModel, AllowedModel, ChatMode, Prompt } from "@/types/story";
 
-// The only two chatTypes with their own Feature Routing row (see src/types/aiSettings.ts's
-// FEATURE_KEYS) — Brainstorm/Outline/Notes/Research have none, so they always fall through to
-// the mode-based default below, unchanged.
+// Every chatType with its own Feature Routing row (see src/types/aiSettings.ts's FEATURE_KEYS).
 const CHAT_FEATURE_KEYS: Partial<Record<Prompt["promptType"], FeatureKey>> = {
     worldbuilding: "worldbuilding_chat",
-    editor: "editor_chat"
+    editor: "editor_chat",
+    brainstorm: "brainstorm_chat",
+    outline: "outline_chat",
+    notes: "notes_chat",
+    research: "research_chat"
 };
 
 interface UseChatSystemPromptReturn {
