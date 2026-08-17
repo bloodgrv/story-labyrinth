@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 import { PromptPreviewDialog } from "@/components/ui/prompt-preview-dialog";
 import { Separator } from "@/components/ui/separator";
 import { useGenerateWithPrompt } from "@/features/ai/hooks/useGenerateWithPrompt";
+import { beginAiActivity, endAiActivity } from "@/features/activity/store/aiActivityStore";
 import { useMarkBeatAction } from "@/features/beats/hooks/useMarkBeatAction";
 import { useChapterQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { useEditorChapterId, useEditorStoryId } from "@/features/editor-multiview/context/EditorPaneContext";
@@ -116,6 +117,7 @@ const TextFormatFloatingToolbar = ({
         }
 
         setIsGenerating(true);
+        const activityId = beginAiActivity({ label: "Selection rework", storyId: currentStoryId ?? undefined, tool: "editor" });
 
         const [err] = await attemptPromise(async () => {
             const config = createPromptConfig(selectedPrompt);
@@ -156,6 +158,7 @@ const TextFormatFloatingToolbar = ({
                 }
             );
         });
+        endAiActivity(activityId);
         if (err) {
             logger.error("Error generating text:", err);
             toast.error("Failed to generate text");

@@ -3,6 +3,8 @@ import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
 import { useGenerateWithPrompt } from "@/features/ai/hooks/useGenerateWithPrompt";
 import { useStreamingGeneration } from "@/features/ai/hooks/useStreamingGeneration";
+import { beginAiActivity, endAiActivity } from "@/features/activity/store/aiActivityStore";
+import type { WorkspaceTool } from "@/features/stories/context/StoryContext";
 import { brainstormApi, chatsApi } from "@/services/api/client";
 import type { AIChat, AllowedModel, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { logger } from "@/utils/logger";
@@ -132,6 +134,18 @@ interface UseChatMessageGenerationReturn {
 // "New Chat <timestamp>" title today, which is the one this auto-titles over.
 const AUTO_TITLE_CHAT_TYPES = new Set(["editor", "outline", "notes", "brainstorm"]);
 
+// AI Activity indicator — worldbuilding/general omitted (no Jump target): a WB chat is
+// entry-anchored inside the Lorebook editor with no pointer here to the right entry, and general
+// isn't tied to a specific tool at all. Same "omit rather than approximate" precedent
+// jobPresentation.ts's JOB_TYPE_JUMP_TOOL already sets.
+const CHAT_TYPE_TOOL: Partial<Record<NonNullable<AIChat["chatType"]>, WorkspaceTool>> = {
+    editor: "editor",
+    outline: "outline",
+    notes: "notes",
+    research: "research",
+    brainstorm: "brainstorm"
+};
+
 // Generation for chats.ts-backed chats (World-Building, Research, Editor) — distinct from
 // features/brainstorm's useMessageGeneration because these chats always already exist (created
 // via a template picker or get-or-create, never inline-created from the first message) and
@@ -185,6 +199,11 @@ export const useChatMessageGeneration = ({
             const isFirstExchange = selectedChat.messages.length === 0;
 
             setIsSending(true);
+            const activityId = beginAiActivity({
+                label: selectedChat.title,
+                storyId: selectedChat.storyId ?? undefined,
+                tool: selectedChat.chatType ? CHAT_TYPE_TOOL[selectedChat.chatType] : undefined
+            });
             const [error] = await attemptPromise(async () => {
                 const afterUserMessage = await chatsApi.appendMessage(selectedChat.id, "user", input.trim());
                 onChatUpdate(afterUserMessage);
@@ -335,6 +354,7 @@ export const useChatMessageGeneration = ({
                     onTimelinePinProposal?.(assistantMessage.id, timelinePinProposals);
             });
 
+            endAiActivity(activityId);
             if (error) {
                 logger.error("Error during generation:", error);
                 toast.error(error.message || "An error occurred during generation");

@@ -11,6 +11,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { ActivityStoplight } from "@/features/activity/components/ActivityStoplight";
+import { AiActivityIndicator } from "@/features/activity/components/AiActivityIndicator";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useStoriesQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { isDarkThemeId, useTheme } from "@/lib/theme-provider";
@@ -76,6 +77,9 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
                     <div className="flex items-center gap-1 sm:gap-2">
                         {/* Activity Stoplight - global agentJobs indicator, owner-only (jobs API is owner-gated) */}
                         {isOwner && <ActivityStoplight />}
+
+                        {/* AI Activity - live/streaming AI generation indicator, not owner-gated (any user can generate) */}
+                        <AiActivityIndicator />
 
                         {/* Command Palette - hidden on mobile */}
                         <Tooltip>

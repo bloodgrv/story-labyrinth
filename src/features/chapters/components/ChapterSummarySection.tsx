@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useGenerateWithPrompt } from "@/features/ai/hooks/useGenerateWithPrompt";
+import { beginAiActivity, endAiActivity } from "@/features/activity/store/aiActivityStore";
 import { useUpdateChapterMutation } from "@/features/chapters/hooks/useChaptersQuery";
 import { useLastUsedPrompt } from "@/features/prompts/hooks/useLastUsedPrompt";
 import { usePromptsQuery } from "@/features/prompts/hooks/usePromptsQuery";
@@ -64,6 +65,7 @@ export const ChapterSummarySection = ({ chapter, storyId }: ChapterSummarySectio
     const handleGenerateSummary = async (prompt: Prompt, model: AllowedModel) => {
         saveSelection(prompt, model);
         setIsGenerating(true);
+        const activityId = beginAiActivity({ label: `Chapter summary: ${chapter.title}`, storyId, tool: "editor" });
 
         const [err] = await attemptPromise(async () => {
             const chapterData = await chaptersApi.getById(chapter.id);
@@ -98,6 +100,7 @@ export const ChapterSummarySection = ({ chapter, storyId }: ChapterSummarySectio
             toast.success("Summary generated successfully");
         });
 
+        endAiActivity(activityId);
         if (err) {
             logger.error("Failed to generate summary:", err);
             toast.error("Failed to generate summary");
