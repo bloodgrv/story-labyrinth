@@ -178,7 +178,11 @@ function GlobalDefaultApplyRow({ featureEndpoints, allModels, isSaving, onApply 
             <p className="text-sm font-medium mb-2">Set global default</p>
             <p className="text-sm text-muted-foreground mb-3">
                 Pick a provider and model, then apply it to every feature below at once — except Embeddings, which
-                keeps its own separate setting (it's the only feature "Local (in-process)" is valid for).
+                keeps its own separate setting (it's the only feature "Local (in-process)" is valid for).{" "}
+                <span className="text-amber-600 dark:text-amber-500">
+                    This also overwrites Image Generation — since a text/chat model can't generate images, you'll
+                    need to go back and set that one row to an actual image model afterward.
+                </span>
             </p>
             <div className="flex flex-wrap items-center gap-2">
                 <Select value={provider} onValueChange={handleProviderChange}>
@@ -217,7 +221,7 @@ function GlobalDefaultApplyRow({ featureEndpoints, allModels, isSaving, onApply 
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
                 title="Apply to all features?"
-                description={`Sets every feature except Embeddings to ${PROVIDER_LABELS[provider]} / ${modelId ?? ""}, overwriting any per-feature overrides currently configured below.`}
+                description={`Sets every feature except Embeddings to ${PROVIDER_LABELS[provider]} / ${modelId ?? ""}, overwriting any per-feature overrides currently configured below. This includes Image Generation — remember to set that row back to a real image model afterward, since ${modelId ?? "this model"} can't generate images.`}
                 confirmLabel="Apply"
                 onConfirm={handleConfirm}
             />
