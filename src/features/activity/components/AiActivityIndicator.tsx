@@ -5,18 +5,28 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useStoriesQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { formatElapsed } from "../lib/jobPresentation";
-import { type AiActivityEntry, useAiActivity } from "../store/aiActivityStore";
+import type { AiActivityEntry } from "../store/aiActivityStore";
 
-// AI Activity — global TopBar indicator over live/streaming AI generation (chat sends, Editor
-// Selection-Generate/Rework, chapter summary generation — see aiActivityStore.ts). A deliberate
-// sibling of ActivityStoplight.tsx (agentJobs), not a merge: unlike a background job, a live
-// generation has no failed/retry state to show — it either finishes or its own toast already
-// reported the error — so this is just a live "what's running right now" list, no Retry/Dismiss.
-// Same "always visible, dim when idle" posture as the job lamp; a distinct blue dot keeps the two
-// visually separable at a glance. Not owner-gated — chat generation isn't an owner-only action.
-export function AiActivityIndicator() {
+interface AiActivityIndicatorProps {
+    entries: AiActivityEntry[];
+    ariaLabel: string;
+    heading: string;
+    emptyLabel: string;
+    activeVerb: string;
+    dotColorClass: string;
+}
+
+// Reusable TopBar lamp shell for foreground AI work — instantiated twice (see TopBar.tsx): once
+// over the streaming registry (chat sends, Editor Selection-Generate/Rework, chapter summaries)
+// and once over the one-shot registry (Humanizer rewrite, Lore Sheet Improve/Sync, Image
+// Generation, Document/Outline Import — wired generically in apiFactory.ts). A deliberate sibling
+// of ActivityStoplight.tsx (agentJobs), not a merge: unlike a background job, none of this has a
+// failed/retry state to show — it either finishes or its own toast already reported the error —
+// so this is just a live "what's running right now" list, no Retry/Dismiss. Same "always visible,
+// dim when idle" posture as the job lamp; a distinct dot color per instance keeps all three lamps
+// visually separable at a glance. Not owner-gated — none of this is an owner-only action.
+export function AiActivityIndicator({ entries, ariaLabel, heading, emptyLabel, activeVerb, dotColorClass }: AiActivityIndicatorProps) {
     const [open, setOpen] = useState(false);
-    const entries = useAiActivity();
     const { data: stories } = useStoriesQuery();
     const { setCurrentStoryId, setCurrentTool } = useStoryContext();
 
@@ -39,18 +49,18 @@ export function AiActivityIndicator() {
             <PopoverTrigger asChild>
                 <button
                     type="button"
-                    aria-label="AI Activity"
-                    title={isIdle ? "No AI generation running" : `${entries.length} generating`}
+                    aria-label={ariaLabel}
+                    title={isIdle ? emptyLabel : `${entries.length} ${activeVerb}`}
                     className="flex items-center gap-1.5 rounded-md border border-input bg-background px-2 h-9 text-xs hover:bg-accent transition-colors"
                 >
-                    <span className={`h-2 w-2 rounded-full ${isIdle ? "bg-muted-foreground/40" : "bg-sky-500 animate-pulse"}`} />
+                    <span className={`h-2 w-2 rounded-full ${isIdle ? "bg-muted-foreground/40" : `${dotColorClass} animate-pulse`}`} />
                     {!isIdle && <span>{entries.length}</span>}
                 </button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-3" align="end">
-                <p className="font-medium text-sm mb-1">AI Activity</p>
+                <p className="font-medium text-sm mb-1">{heading}</p>
                 {isIdle ? (
-                    <p className="text-xs text-muted-foreground py-2">Nothing generating.</p>
+                    <p className="text-xs text-muted-foreground py-2">{emptyLabel}</p>
                 ) : (
                     <div className="divide-y max-h-80 overflow-y-auto">
                         {entries.map(entry => {

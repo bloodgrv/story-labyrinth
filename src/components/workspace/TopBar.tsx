@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { ActivityStoplight } from "@/features/activity/components/ActivityStoplight";
 import { AiActivityIndicator } from "@/features/activity/components/AiActivityIndicator";
+import { useAiActivity, useAiOneShotActivity } from "@/features/activity/store/aiActivityStore";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useStoriesQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { isDarkThemeId, useTheme } from "@/lib/theme-provider";
@@ -79,7 +80,24 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
                         {isOwner && <ActivityStoplight />}
 
                         {/* AI Activity - live/streaming AI generation indicator, not owner-gated (any user can generate) */}
-                        <AiActivityIndicator />
+                        <AiActivityIndicator
+                            entries={useAiActivity()}
+                            ariaLabel="AI Activity"
+                            heading="AI Activity"
+                            emptyLabel="Nothing generating."
+                            activeVerb="generating"
+                            dotColorClass="bg-sky-500"
+                        />
+
+                        {/* AI Actions - one-shot AI POST calls (Humanizer, Lore Sheet, Image Generation, Import) */}
+                        <AiActivityIndicator
+                            entries={useAiOneShotActivity()}
+                            ariaLabel="AI Actions"
+                            heading="AI Actions"
+                            emptyLabel="No AI actions running."
+                            activeVerb="running"
+                            dotColorClass="bg-violet-500"
+                        />
 
                         {/* Command Palette - hidden on mobile */}
                         <Tooltip>
