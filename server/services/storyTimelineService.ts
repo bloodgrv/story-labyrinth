@@ -328,30 +328,37 @@ export const findPinsByLink = async (storyId: string, linkType: PinLinkType, lin
     return rows.filter(row => row.status !== "rejected").map(row => rowToPin(row, []));
 };
 
+// B25 (docs/CODE_REVIEW_2026-08-17.md) — the status flip is conditioned on the row's CURRENT
+// status ('pending') in the same UPDATE, not a separate check-then-act, so two concurrent
+// approve/reject calls on the same pending pin (double-click, two tabs) can't both pass a plain
+// check and both apply. A `row === undefined` result (claim lost the race) throws the same
+// "not pending" error a pre-check would have, just without the TOCTOU gap.
 export const approvePin = async (id: string): Promise<TimelinePin> => {
-    const [existing] = await db.select().from(schema.storyTimelinePins).where(eq(schema.storyTimelinePins.id, id));
-    if (!existing) throw new Error(`Timeline pin not found: ${id}`);
-    if (existing.status !== "pending") throw new Error(`Pin is not pending (status: ${existing.status})`);
-
     const [row] = await db
         .update(schema.storyTimelinePins)
         .set({ status: "active", updatedAt: new Date() })
-        .where(eq(schema.storyTimelinePins.id, id))
+        .where(and(eq(schema.storyTimelinePins.id, id), eq(schema.storyTimelinePins.status, "pending")))
         .returning();
+    if (!row) {
+        const [existing] = await db.select().from(schema.storyTimelinePins).where(eq(schema.storyTimelinePins.id, id));
+        if (!existing) throw new Error(`Timeline pin not found: ${id}`);
+        throw new Error(`Pin is not pending (status: ${existing.status})`);
+    }
     const memberships = await db.select().from(schema.storyTimelineMemberships).where(eq(schema.storyTimelineMemberships.pinId, id));
     return rowToPin(row, memberships.map(rowToMembership));
 };
 
 export const rejectPin = async (id: string): Promise<TimelinePin> => {
-    const [existing] = await db.select().from(schema.storyTimelinePins).where(eq(schema.storyTimelinePins.id, id));
-    if (!existing) throw new Error(`Timeline pin not found: ${id}`);
-    if (existing.status !== "pending") throw new Error(`Pin is not pending (status: ${existing.status})`);
-
     const [row] = await db
         .update(schema.storyTimelinePins)
         .set({ status: "rejected", updatedAt: new Date() })
-        .where(eq(schema.storyTimelinePins.id, id))
+        .where(and(eq(schema.storyTimelinePins.id, id), eq(schema.storyTimelinePins.status, "pending")))
         .returning();
+    if (!row) {
+        const [existing] = await db.select().from(schema.storyTimelinePins).where(eq(schema.storyTimelinePins.id, id));
+        if (!existing) throw new Error(`Timeline pin not found: ${id}`);
+        throw new Error(`Pin is not pending (status: ${existing.status})`);
+    }
     return rowToPin(row, []);
 };
 

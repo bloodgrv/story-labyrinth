@@ -1,12 +1,16 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { debounce } from "lodash";
 import { useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import { useDetectBeatsMutation } from "@/features/beats/hooks/useDetectBeatsMutation";
-import { useUpdateChapterMutation } from "@/features/chapters/hooks/useChaptersQuery";
+import { useChapterQuery, useUpdateChapterMutation } from "@/features/chapters/hooks/useChaptersQuery";
 import { useEditorChapterId, useEditorStoryId } from "@/features/editor-multiview/context/EditorPaneContext";
+import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { useAutoDetectBeats } from "@/lib/useAutoDetectBeats";
+import { ApiError } from "@/services/api/apiFactory";
 import { ragApi } from "@/services/api/client";
+import type { Chapter } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { stripEphemeralMarks } from "../../nodes/stripEphemeralMarks";
 
@@ -17,19 +21,72 @@ export function SaveChapterContentPlugin(): null {
     const updateChapterMutation = useUpdateChapterMutation();
     const detectBeatsMutation = useDetectBeatsMutation(currentChapterId ?? "");
     const [autoDetectEnabled] = useAutoDetectBeats();
+    const { data: loadedChapter } = useChapterQuery(currentChapterId ?? "");
+    const { refreshChapterContent, chapterContentRefreshToken } = useStoryContext();
+    const queryClient = useQueryClient();
+
+    // B24 (docs/CODE_REVIEW_2026-08-17.md) — optimistic-concurrency baseline for this pane's next
+    // content save. Deliberately NOT kept in sync with `loadedChapter.contentVersion` on every
+    // render: that value can change out from under this pane the moment a *different* pane saves
+    // the same chapter (same react-query cache entry), and blindly following it would silently
+    // defeat the whole check — it's re-seeded exactly once per real load (below, keyed on
+    // chapterId + chapterContentRefreshToken, the same "did the DB content change out from under
+    // this editor" signal LoadChapterContentPlugin itself resets on) and once per successful save
+    // from THIS pane.
+    const baseContentVersionRef = useRef<number | undefined>(undefined);
+    const warnedForVersionRef = useRef<number | undefined>(undefined);
+    const seededForRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!currentChapterId || !loadedChapter || loadedChapter.id !== currentChapterId) return;
+        const seedKey = `${currentChapterId}:${chapterContentRefreshToken}`;
+        if (seededForRef.current === seedKey) return;
+        seededForRef.current = seedKey;
+        baseContentVersionRef.current = loadedChapter.contentVersion;
+        warnedForVersionRef.current = undefined;
+    }, [currentChapterId, chapterContentRefreshToken, loadedChapter]);
 
     // Create stable debounced save function using ref
     const saveContentRef = useRef(
         debounce((chapterId: string, content: string) => {
             logger.info("SaveChapterContent - Saving content for chapter:", chapterId);
             updateChapterMutation.mutate(
-                { id: chapterId, data: { content } },
+                { id: chapterId, data: { content, expectedContentVersion: baseContentVersionRef.current } },
                 {
-                    onSuccess: () => {
+                    onSuccess: updated => {
                         logger.info("SaveChapterContent - Content saved successfully");
+                        baseContentVersionRef.current = updated.contentVersion;
                     },
                     onError: error => {
                         logger.error("SaveChapterContent - Failed to save content:", error);
+
+                        if (error instanceof ApiError && error.status === 409) {
+                            const latest = (error.body as { latest?: Chapter } | undefined)?.latest;
+                            // Only nag once per stale baseline — the debounced save will keep
+                            // retrying (and keep 409ing) on every further keystroke until the user
+                            // acts, and re-toasting on each one would be pure noise.
+                            if (warnedForVersionRef.current === baseContentVersionRef.current) return;
+                            warnedForVersionRef.current = baseContentVersionRef.current;
+
+                            toast.warning(
+                                <div>
+                                    <p style={{ margin: 0, marginBottom: 8 }}>
+                                        This chapter was edited elsewhere (another open tab/pane) since your last save
+                                        here — your changes in this pane aren't saved.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (latest) queryClient.setQueryData(["chapters", chapterId], latest);
+                                            refreshChapterContent();
+                                        }}
+                                    >
+                                        Reload latest (discards edits in this pane)
+                                    </button>
+                                </div>,
+                                { autoClose: false, closeOnClick: false }
+                            );
+                        }
                     }
                 }
             );

@@ -21,6 +21,7 @@ const rowToScan = (row: typeof schema.ragScans.$inferSelect): RagScan => ({
     processedChapters: row.processedChapters,
     model: row.model ?? null,
     error: row.error ?? null,
+    failedChapterIds: (row.failedChapterIds as string[] | null) ?? [],
     createdAt: row.createdAt as unknown as Date,
     startedAt: (row.startedAt as unknown as Date | null) ?? null,
     completedAt: (row.completedAt as unknown as Date | null) ?? null
@@ -74,16 +75,20 @@ export const updateScanProgress = async (scanId: string, processedChapters: numb
     await db.update(schema.ragScans).set({ processedChapters }).where(eq(schema.ragScans.id, scanId));
 };
 
+// B30 — `failedChapterIds` (default []) flips status to 'completed_with_errors' instead of the
+// plain 'completed' every caller got before, regardless of how many chapters actually failed.
 export const completeScan = async (
     scanId: string,
-    fields: { model: string | null; processedChapters: number }
+    fields: { model: string | null; processedChapters: number; failedChapterIds?: string[] }
 ): Promise<RagScan> => {
+    const failedChapterIds = fields.failedChapterIds ?? [];
     const [row] = await db
         .update(schema.ragScans)
         .set({
-            status: "completed",
+            status: failedChapterIds.length > 0 ? "completed_with_errors" : "completed",
             model: fields.model,
             processedChapters: fields.processedChapters,
+            failedChapterIds: failedChapterIds.length > 0 ? failedChapterIds : null,
             completedAt: new Date()
         })
         .where(eq(schema.ragScans.id, scanId))

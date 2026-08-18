@@ -1,5 +1,6 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { type Request, type Response, Router } from "express";
+import { z } from "zod";
 import { parseJson } from "../lib/json.js";
 import {
     getCodexEntry,
@@ -9,6 +10,7 @@ import {
 } from "../services/codexRepository.js";
 import {
     approvePendingChange,
+    type ChangeProposal,
     createCodexEntry,
     enableCodexForEntry,
     proposeChange,
@@ -174,6 +176,46 @@ router.post(
     })
 );
 
+// B39 (docs/CODE_REVIEW_2026-08-17.md) — this route is the one place a client-parsed AI fence
+// (chatContextService.ts's CODEX_PROPOSAL_INSTRUCTIONS) turns into a real pending-change row, so
+// it's the highest-value place to stop trusting the client's payload shape wholesale. Scoped to
+// this one route rather than every proposal type in the app (there are roughly a dozen — sheet,
+// place-sheet, psych, timeline-pin, note, etc.) per explicit user decision — already mitigated
+// elsewhere by the Approve UX (a human reviews before anything applies) and by
+// codexService.ts's approvePendingChange, which strips `secrets` from any proposal regardless of
+// what's in it; this schema rejects a `secrets` key outright instead, closing the same gap one
+// step earlier. `.strict()` on every object level so an unexpected extra field is a clean 400,
+// not silently ignored or silently stored.
+const codexStateItemSchema = z.object({ id: z.string(), value: z.string() }).strict();
+const codexCustomFieldSchema = z.object({ key: z.string(), label: z.string(), value: z.string() }).strict();
+// Partial by design (not every section) — proposedState.appearance is a labeled-field bucket,
+// wardrobe/wounds/items are flat lists — mirrors codexService.ts's own approvePendingChange
+// comment on why this is a shallow per-section merge, not a wholesale replace.
+const proposedCodexStateSchema = z
+    .object({
+        wardrobe: z.array(codexStateItemSchema).optional(),
+        appearance: z.array(codexCustomFieldSchema).optional(),
+        wounds: z.array(codexStateItemSchema).optional(),
+        items: z.array(codexStateItemSchema).optional(),
+        customFields: z.array(codexCustomFieldSchema).optional()
+    })
+    .strict();
+const proposeChangeBodySchema = z
+    .object({
+        proposal: z
+            .object({
+                proposedDescription: z.string().optional(),
+                proposedState: proposedCodexStateSchema.optional(),
+                proposedTags: z.array(z.string()).optional(),
+                proposedNeedsFleshingOut: z.boolean().optional()
+            })
+            .strict()
+            .optional(),
+        sourceType: z.enum(["chat", "ai"]).optional(),
+        sourceRef: z.string().nullable().optional()
+    })
+    .strict();
+
 // ── POST /api/codex/:entryId/propose ──────────────────────────────────────────
 // Submit an AI-proposed change for user review. Does not touch the live entry.
 // Body: { proposal: { proposedDescription?, proposedState?, proposedTags?, proposedNeedsFleshingOut? }, sourceType?, sourceRef? }
@@ -186,10 +228,20 @@ router.post(
             return;
         }
 
-        const { proposal, sourceType, sourceRef } = req.body;
+        const parsed = proposeChangeBodySchema.safeParse(req.body);
+        if (!parsed.success) {
+            res.status(400).json({ error: "Invalid proposal payload", details: parsed.error.issues });
+            return;
+        }
+
+        const { proposal, sourceType, sourceRef } = parsed.data;
+        // proposedState is legitimately partial at runtime (a shallow per-section merge, see
+        // codexService.ts's own approvePendingChange comment) even though ChangeProposal's
+        // declared CodexState type has every array as required — the Zod schema above is the
+        // real validation boundary, this cast just reconciles that pre-existing shape mismatch.
         const result = await proposeChange(
             req.params.entryId,
-            proposal ?? {},
+            (proposal ?? {}) as ChangeProposal,
             sourceType ?? "chat",
             sourceRef ?? null
         );

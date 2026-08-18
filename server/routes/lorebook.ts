@@ -269,7 +269,13 @@ export default createCrudRouter({
                     }
                 }
 
-                const { id: _id, createdAt: _createdAt, ...updates } = req.body;
+                // B33 (docs/CODE_REVIEW_2026-08-17.md) — imageFilename is server-managed (set only
+                // by the dedicated POST/DELETE /:id/image routes below, which generate a fresh
+                // UUID filename themselves); stripping it here closes the mass-assignment path at
+                // its actual source. lorebookImageStorage.ts's own path-jail validation (B22)
+                // already makes an injected value harmless even without this, but this is the
+                // route B22's fix traced the vulnerability back to, so it gets the direct fix too.
+                const { id: _id, createdAt: _createdAt, imageFilename: _imageFilename, ...updates } = req.body;
 
                 // Resolve folderId (B9, docs/Folders_Org_Design.md) — validates an explicit
                 // choice against the entry's (possibly also-changing) level/scopeId/category, or

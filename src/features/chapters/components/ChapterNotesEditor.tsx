@@ -59,7 +59,12 @@ export function ChapterNotesEditor({ chapter, onClose: _onClose }: ChapterNotesE
 
     useEffect(
         () => () => {
-            debouncedSave.cancel();
+            // B28 (docs/CODE_REVIEW_2026-08-17.md) — flush, don't cancel: this component unmounts
+            // on every "close scribble" / switch-tool / switch-chapter, and `.cancel()` silently
+            // discarded whatever was still sitting in the 1s debounce window at that moment (type
+            // a bit, close quickly = lost text). Same fix already applied to the main chapter
+            // editor's own autosave — see SaveChapterContent/index.tsx's identical comment.
+            debouncedSave.flush();
         },
         [debouncedSave]
     );

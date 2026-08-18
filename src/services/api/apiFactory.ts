@@ -10,6 +10,21 @@ const notifyIfUnauthorized = (status: number, pathname: string) => {
     if (status === 401 && !pathname.startsWith("/auth/")) window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
 };
 
+// Carries the HTTP status and parsed error body alongside the usual Error message, so a caller
+// that needs to branch on "was this specifically a 409 conflict" (e.g. chapter content's
+// optimistic-concurrency check, B24) doesn't have to string-match `.message`. Every existing
+// `catch`/`error.message` call site keeps working unchanged since this still extends Error.
+export class ApiError extends Error {
+    status: number;
+    body: unknown;
+    constructor(status: number, message: string, body?: unknown) {
+        super(message);
+        this.name = "ApiError";
+        this.status = status;
+        this.body = body;
+    }
+}
+
 // AI Actions lamp (aiActivityStore.ts's one-shot registry) — a curated allowlist of the one-shot
 // AI POST endpoints fetchJSON/uploadFile already funnel through, matched against the path only
 // (no query string). Deliberately excludes /lorebook/:id/image (plain file upload, no AI) and
@@ -44,7 +59,7 @@ export const fetchJSON = async <T>(url: string, options?: RequestInit): Promise<
         if (!response.ok) {
             notifyIfUnauthorized(response.status, url);
             const error = await response.json().catch(() => ({ error: "Request failed" }));
-            throw new Error(error.error || `Request failed with status ${response.status}`);
+            throw new ApiError(response.status, error.error || `Request failed with status ${response.status}`, error);
         }
 
         // 204/other no-body responses have nothing for response.json() to parse — it throws

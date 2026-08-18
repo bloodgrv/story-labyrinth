@@ -2,6 +2,22 @@ import { randomUUID } from "node:crypto";
 import { sqlite } from "../db/client.js";
 import { computeContentHash } from "./embeddingService.js";
 
+// B43 (docs/CODE_REVIEW_2026-08-17.md) — ragChunks.createdAt/updatedAt/embeddedAt are drizzle
+// `mode: "timestamp"` columns, but every access to this table goes through raw `sqlite.prepare()`
+// (never the drizzle ORM's own .select()/.insert()), and these raw writes previously used
+// `Date.now()` (epoch ms) — the wrong unit for that column mode, which drizzle itself always
+// stores/reads as epoch *seconds* (the same landmine agentJobsRepository.ts/
+// agentMemoriesRepository.ts each already guard against with their own identical local helper).
+// Currently harmless in practice (nothing reads this table through the drizzle path, and every
+// consumer — ragIndexService.ts's maybeIndexChapter throttle — only ever compares this column
+// against itself/Date.now() in matching units), but a latent correctness bug for the day someone
+// adds a drizzle-ORM read of this table expecting the app-wide convention. No data migration for
+// already-written ms-valued rows: ragChunks is fully derived/regeneratable (rebuilt from its
+// source entity on every reindex), so a lingering old-format row just makes the throttle
+// backstop skip an unnecessary reindex attempt until that chunk's source next actually changes
+// and gets rewritten under the new convention — never a staleness or data-loss risk.
+const toEpochSeconds = (): number => Math.floor(Date.now() / 1000);
+
 export type RagEntityType = "lorebook_entry" | "chapter" | "agent_memory" | "note" | "outline_item";
 
 // Single source of truth for "entityTypes omitted" — every caller in the codebase (routes/rag.ts,
@@ -45,6 +61,17 @@ const deleteChunkEverywhere = (chunkId: string) => {
     sqlite.prepare("DELETE FROM fts_chunks WHERE chunkId = ?").run(chunkId);
 };
 
+// B36/B43 — epoch seconds (matches the app-wide `mode: "timestamp"` convention this table's own
+// raw writes now follow too, above). Null when the entity has never been indexed. Lets a caller
+// throttle re-indexing to "not more often than every N seconds" without a dedicated timestamp
+// column of its own — see ragIndexService.ts's maybeIndexChapter.
+export const getLastIndexedAt = (entityType: RagEntityType, entityId: string): number | null => {
+    const row = sqlite
+        .prepare("SELECT MAX(updatedAt) as maxUpdatedAt FROM ragChunks WHERE entityType = ? AND entityId = ?")
+        .get(entityType, entityId) as { maxUpdatedAt: number | null };
+    return row.maxUpdatedAt;
+};
+
 // Remove all indexed chunks for a given entity (lorebook entry or chapter).
 // Call this when the source entity is deleted, or before re-chunking on update.
 export const deleteChunksForEntity = (entityType: RagEntityType, entityId: string): void => {
@@ -79,7 +106,7 @@ export const replaceChunksForEntity = (params: {
     const tx = sqlite.transaction(() => {
         deleteChunksForEntity(entityType, entityId);
 
-        const now = Date.now();
+        const now = toEpochSeconds();
         texts.forEach((content, chunkIndex) => {
             const row = {
                 id: randomUUID(),
@@ -133,7 +160,7 @@ export const saveEmbeddings = (
     const clearFtsRow = sqlite.prepare("DELETE FROM fts_chunks WHERE chunkId = ?");
 
     const tx = sqlite.transaction(() => {
-        const now = Date.now();
+        const now = toEpochSeconds();
         for (const row of rows) {
             // Defensive: clear any stale rows before inserting (should not normally exist yet).
             clearVecRow.run(row.id);

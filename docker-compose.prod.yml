@@ -2,8 +2,11 @@ services:
     story-labyrinth:
         image: bloodgrv/story-labyrinth:latest
         container_name: story-labyrinth-app
+        # B34 — see docker-compose.yml's own comment: publishing on all interfaces is the
+        # intentional default (direct-LAN-access use case), set BIND_HOST=127.0.0.1 in .env for
+        # loopback-only.
         ports:
-            - "3000:3000"
+            - "${BIND_HOST:-0.0.0.0}:3000:3000"
         volumes:
             - ./data:/app/data
         environment:

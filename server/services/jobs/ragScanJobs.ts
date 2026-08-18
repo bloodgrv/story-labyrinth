@@ -76,6 +76,15 @@ export const runRagScanStoryJob = async (
         scanId: scan.id
     });
 
+    // B30 (docs/CODE_REVIEW_2026-08-17.md) — a chapter that throws is skipped (deliberately: one
+    // bad chapter shouldn't abort scanning the rest), but its id is collected here so the scan
+    // doesn't just report plain success at the end with no record of it. Only tracks failures from
+    // THIS invocation's own loop — a crash-and-resume (the `resuming` branch above) doesn't carry
+    // forward which chapters failed in the pre-crash attempt, since per-chapter failures were never
+    // durably persisted, only the running total of processed chapters was. Acceptable gap: the
+    // resumed attempt re-scans the same chapters and will re-report a fresh failure if one recurs.
+    const failedChapterIds: string[] = [];
+
     try {
         let doneInThisRun = 0;
         for (const batch of chunk(remainingChapterIds, DEFAULT_AI_CONCURRENCY)) {
@@ -85,6 +94,7 @@ export const runRagScanStoryJob = async (
                         await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory, includeTimeline });
                     } catch (error) {
                         console.error(`rag_scan_story job: chapter ${chapterId} failed:`, (error as Error).message);
+                        failedChapterIds.push(chapterId);
                     }
                 })
             );
@@ -95,11 +105,14 @@ export const runRagScanStoryJob = async (
             await updateJobProgress(job.id, {
                 processed,
                 total: chapterIds.length,
-                message: `Scanned ${processed}/${chapterIds.length} chapters`,
+                message:
+                    failedChapterIds.length > 0
+                        ? `Scanned ${processed}/${chapterIds.length} chapters (${failedChapterIds.length} failed)`
+                        : `Scanned ${processed}/${chapterIds.length} chapters`,
                 scanId: scan.id
             }); // new agentJobs write — the "dual write"
         }
-        await completeScan(scan.id, { model, processedChapters: chapterIds.length });
+        await completeScan(scan.id, { model, processedChapters: chapterIds.length, failedChapterIds });
         return { scanId: scan.id, totalChapters: chapterIds.length, processedChapters: chapterIds.length };
     } catch (error) {
         await failScan(scan.id, (error as Error).message);

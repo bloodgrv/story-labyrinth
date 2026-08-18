@@ -12,6 +12,7 @@ import {
     getTemplates,
     listArchivedChats,
     listGlobalChats,
+    MessagesVersionConflictError,
     replaceMessages,
     unarchiveChat,
     updateMeta
@@ -197,6 +198,7 @@ router.patch(
 
         const {
             messages,
+            expectedMessagesVersion,
             title,
             lastUsedPromptId,
             lastUsedModelId,
@@ -221,6 +223,9 @@ router.patch(
             folderId
         } = req.body as {
             messages?: unknown[];
+            // B27 — optimistic-concurrency token for `messages` only; see schema.ts's own comment
+            // on aiChats.messagesVersion. Only checked when `messages` is also present.
+            expectedMessagesVersion?: number;
             title?: string;
             lastUsedPromptId?: string | null;
             lastUsedModelId?: string | null;
@@ -253,7 +258,17 @@ router.patch(
                 res.status(400).json({ error: "messages must be an array" });
                 return;
             }
-            result = await replaceMessages(req.params.chatId, messages as ChatMessage[]);
+            const [conflictError, replaced] = await attemptPromise(() =>
+                replaceMessages(req.params.chatId, messages as ChatMessage[], expectedMessagesVersion)
+            );
+            if (conflictError) {
+                if (conflictError instanceof MessagesVersionConflictError) {
+                    res.status(409).json({ error: conflictError.message, latest: conflictError.latest });
+                    return;
+                }
+                throw conflictError;
+            }
+            result = replaced;
         }
 
         // Apply metadata updates (if any)

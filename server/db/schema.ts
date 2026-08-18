@@ -65,7 +65,15 @@ export const chapters = sqliteTable(
         povType: text("povType"), // 'First Person' | 'Third Person Limited' | 'Third Person Omniscient'
         notes: text("notes", { mode: "json" }), // JSON: { content: string, lastUpdated: Date }
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-        isDemo: integer("isDemo", { mode: "boolean" })
+        isDemo: integer("isDemo", { mode: "boolean" }),
+        // Optimistic-concurrency token for `content` only (B24, docs/CODE_REVIEW_2026-08-17.md) —
+        // bumped by 1 on every PUT that changes content (server/routes/chapters.ts). A save whose
+        // client-supplied `expectedContentVersion` doesn't match the current value is rejected with
+        // 409 instead of silently overwriting a newer save from another open pane (MultiView same-
+        // chapter dual-open). Chapters have no `updatedAt` column to reuse for this — a purpose-
+        // built counter avoids timestamp-precision/serialization edge cases a Date-based token would
+        // need to handle.
+        contentVersion: integer("contentVersion").notNull().default(0)
     },
     table => ({
         storyIdIdx: index("chapter_story_id_idx").on(table.storyId),
@@ -137,6 +145,13 @@ export const aiChats = sqliteTable(
         storyId: text("storyId").references(() => stories.id, { onDelete: "cascade" }),
         title: text("title").notNull(),
         messages: text("messages", { mode: "json" }).notNull(), // JSON: ChatMessage[]
+        // Optimistic-concurrency token for `messages` only (B27, docs/CODE_REVIEW_2026-08-17.md) —
+        // bumped by 1 on every write to the message array (server/services/chatService.ts). The
+        // system's own append (streaming a reply) retries on a lost race instead of surfacing a
+        // conflict to the user; a user-initiated full-array replace (edit/delete/regenerate/resend/
+        // branch) is rejected with 409 on a stale version instead of silently clobbering a message
+        // that landed from another tab/pane in the meantime.
+        messagesVersion: integer("messagesVersion").notNull().default(0),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
         updatedAt: integer("updatedAt", { mode: "timestamp" }),
         // Archive/soft-delete (app-wide, all chat types) — null = active, set = archived and hidden
@@ -928,11 +943,18 @@ export const ragScans = sqliteTable(
             .references(() => stories.id, { onDelete: "cascade" }),
         scope: text("scope").notNull(), // 'chapter' | 'story'
         chapterId: text("chapterId").references(() => chapters.id, { onDelete: "cascade" }), // set only when scope = 'chapter'
-        status: text("status").notNull().default("running"), // 'running' | 'completed' | 'failed'
+        status: text("status").notNull().default("running"), // 'running' | 'completed' | 'completed_with_errors' | 'failed'
         totalChapters: integer("totalChapters").notNull().default(0),
         processedChapters: integer("processedChapters").notNull().default(0),
         model: text("model"),
         error: text("error"),
+        // B30 (docs/CODE_REVIEW_2026-08-17.md) — a whole-story scan swallows and logs individual
+        // chapter failures (a bad chapter shouldn't abort scanning the rest), but previously that
+        // meant the scan reported plain 'completed' either way with zero record of which chapters
+        // never actually got scanned. Null/empty = no failures (normal case, unchanged from
+        // before); non-empty flips the scan's own status to 'completed_with_errors' instead of
+        // silently reporting full success. See ragScanJobs.ts's runRagScanStoryJob.
+        failedChapterIds: text("failedChapterIds", { mode: "json" }),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
         startedAt: integer("startedAt", { mode: "timestamp" }),
         completedAt: integer("completedAt", { mode: "timestamp" })

@@ -7,8 +7,9 @@ import {
     getFeatureEndpoints,
     setFeatureEndpoints
 } from "../services/aiClientFactory.js";
+import { parseJson } from "../lib/json.js";
 import { migrateSceneBeatNodesInContent } from "../services/sceneBeatContentMigration.js";
-import type { FeatureEndpoint, FeatureKey } from "../../src/types/aiSettings.js";
+import type { FeatureEndpoint, FeatureEndpoints, FeatureKey } from "../../src/types/aiSettings.js";
 import { FEATURE_KEYS } from "../../src/types/aiSettings.js";
 
 // Kept as a plain string[] (not FeatureProvider[]) since this is a runtime validation boundary
@@ -34,6 +35,45 @@ type ImportedAiSetting = typeof schema.aiSettings.$inferSelect;
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
+// B32 (docs/CODE_REVIEW_2026-08-17.md) — the full-DB export/import pair (below) is a genuine
+// disaster-recovery backup feature, not a shareable artifact like the per-story export — but it
+// still ends up as a plain JSON file wherever the browser saves downloads, which is a materially
+// different (and easily overlooked) exposure surface than a settings API response held only in
+// browser memory. Every raw secret aiSettings carries — the four static provider keys, the Grok
+// session cookie, both Grok OAuth tokens, and any per-feature override key buried in
+// featureEndpoints — is stripped from the exported row. A restored backup needs those re-entered
+// once; deliberately not attempting to preserve them across export/import, per explicit user
+// decision (unlike GET /api/ai/settings itself, which stays as-is — the browser genuinely needs
+// those raw keys in memory to call providers directly, a real architectural constraint, not an
+// oversight; see this file's own DECISIONS.md entry).
+const SECRET_AI_SETTINGS_FIELDS = [
+    "openaiKey",
+    "openrouterKey",
+    "geminiKey",
+    "grokKey",
+    "grokSessionCookie",
+    "grokOAuthAccessToken",
+    "grokOAuthRefreshToken"
+] as const;
+
+const redactAiSettingsForExport = (row: typeof schema.aiSettings.$inferSelect) => {
+    // Redacted to null, not a placeholder string — an import writes these fields straight back
+    // into the real columns, and a placeholder like "REDACTED" would get used as a literal (and
+    // silently broken) API key on the next live request rather than leaving the feature cleanly
+    // "not configured", which is what a real missing key already means everywhere else in the app.
+    const redacted: Record<string, unknown> = { ...row };
+    for (const field of SECRET_AI_SETTINGS_FIELDS) redacted[field] = null;
+
+    const featureEndpoints = parseJson<FeatureEndpoints>(row.featureEndpoints);
+    if (featureEndpoints && typeof featureEndpoints === "object") {
+        const redactedEndpoints: FeatureEndpoints = {};
+        for (const [feature, endpoint] of Object.entries(featureEndpoints) as [FeatureKey, FeatureEndpoint][])
+            redactedEndpoints[feature] = { ...endpoint, apiKey: null };
+        redacted.featureEndpoints = JSON.stringify(redactedEndpoints);
+    }
+    return redacted;
+};
+
 router.get("/export", async (_, res) => {
     const [error, tables] = await attemptPromise(() =>
         Promise.all([
@@ -58,7 +98,7 @@ router.get("/export", async (_, res) => {
     res.json({
         version: "1.0",
         exportedAt: new Date().toISOString(),
-        tables: { series, stories, chapters, prompts, lorebookEntries, aiChats, notes, aiSettings }
+        tables: { series, stories, chapters, prompts, lorebookEntries, aiChats, notes, aiSettings: aiSettings.map(redactAiSettingsForExport) }
     });
 });
 

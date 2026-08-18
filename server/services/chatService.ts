@@ -128,9 +128,18 @@ export const unarchiveChat = async (chatId: string): Promise<ChatRow> => {
 
 // ── Message management ─────────────────────────────────────────────────────────
 
+const APPEND_MAX_ATTEMPTS = 5;
+
 /**
  * Append a single message to a chat's history.
  * Server assigns id and timestamp so clients can't forge them.
+ *
+ * B27 (docs/CODE_REVIEW_2026-08-17.md) — this is a read-modify-write (the array append itself
+ * needs the current array), so it retries on a lost `messagesVersion` race instead of surfacing a
+ * conflict: unlike a user-initiated edit/delete (replaceMessages below), losing this race just
+ * means someone else's write landed a moment earlier, and re-reading+reappending is always the
+ * right outcome, not something a user needs to resolve. `updateChatMessages`'s conditional UPDATE
+ * (not a separate check-then-write) is what makes each attempt itself race-free.
  */
 export const appendMessage = async (
     chatId: string,
@@ -140,7 +149,6 @@ export const appendMessage = async (
     // one (Local only this pass — see streamUtils.ts/LocalAIProvider.generate()).
     usage?: ChatMessage["usage"]
 ): Promise<ChatRow> => {
-    const chat = await getOrThrow(chatId);
     if (!content.trim()) throw new Error("Message content cannot be empty");
 
     const newMessage: ChatMessage = {
@@ -151,23 +159,48 @@ export const appendMessage = async (
         ...(usage ? { usage } : {})
     };
 
-    const updated = await updateChatMessages(chatId, [...chat.messages, newMessage]);
-    if (!updated) throw new Error(`Failed to append message to chat: ${chatId}`);
-    return updated;
+    for (let attempt = 0; attempt < APPEND_MAX_ATTEMPTS; attempt++) {
+        const chat = await getOrThrow(chatId);
+        const updated = await updateChatMessages(chatId, [...chat.messages, newMessage], chat.messagesVersion);
+        if (updated) return updated;
+        // Lost the race — another write landed between our read and write. Loop re-reads fresh.
+    }
+    throw new Error(`Failed to append message to chat after repeated conflicts: ${chatId}`);
 };
+
+// Thrown by replaceMessages on a lost optimistic-concurrency race — routes/chats.ts's PATCH
+// handler catches this specifically to respond 409 with the current chat, distinct from every
+// other failure (which stays a generic 500).
+export class MessagesVersionConflictError extends Error {
+    latest: ChatRow;
+    constructor(latest: ChatRow) {
+        super("This chat's messages changed elsewhere since you last loaded them.");
+        this.name = "MessagesVersionConflictError";
+        this.latest = latest;
+    }
+}
 
 /**
  * Replace the full message history for a chat.
  * Used when the client has edited or deleted messages locally.
+ *
+ * B27 — user-initiated, unlike appendMessage above: a lost race here means another tab/pane (or
+ * the in-flight streaming reply this same tab just sent) wrote a message this array doesn't know
+ * about, so silently overwriting would lose it. `expectedVersion` is optional so any caller that
+ * doesn't send one (there is none left client-side, but a stray external API caller shouldn't
+ * hard-break) still gets the old unconditional-write behavior.
  */
 export const replaceMessages = async (
     chatId: string,
-    messages: ChatMessage[]
+    messages: ChatMessage[],
+    expectedVersion?: number
 ): Promise<ChatRow> => {
     await getOrThrow(chatId);
-    const updated = await updateChatMessages(chatId, messages);
-    if (!updated) throw new Error(`Failed to update messages for chat: ${chatId}`);
-    return updated;
+    const updated = await updateChatMessages(chatId, messages, expectedVersion);
+    if (updated) return updated;
+
+    if (typeof expectedVersion !== "number") throw new Error(`Failed to update messages for chat: ${chatId}`);
+    throw new MessagesVersionConflictError(await getOrThrow(chatId));
 };
 
 // ── Metadata updates ──────────────────────────────────────────────────────────

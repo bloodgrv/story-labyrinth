@@ -188,13 +188,34 @@ export const createUserByAdmin = async (
     return toAuthUser(user);
 };
 
+// B35 (docs/CODE_REVIEW_2026-08-17.md) — with no other active owner, demoting or deactivating the
+// last one locks every admin action (owner management, AI/TTS settings, etc.) behind a role no
+// account can reach anymore, recoverable only by editing the DB directly. Simple check-then-act,
+// not wrapped in a transaction like B25's approve-TOCTOU fixes — this is a rare, admin-only,
+// human-paced action (not a hot concurrent path), so the same atomicity investment isn't
+// proportionate here; a race would need two admins simultaneously demoting different owners down
+// to the exact same last one, an extremely low-probability scenario for this app's threat model.
+const countOtherActiveOwners = async (excludeUserId: string): Promise<number> =>
+    (await getAllUsers()).filter(u => u.role === "owner" && u.isActive && u.id !== excludeUserId).length;
+
 export const updateUserRole = async (id: string, role: UserRole): Promise<AuthUser> => {
+    const existing = await getUserById(id);
+    if (!existing) throw new Error("User not found.");
+    if (existing.role === "owner" && existing.isActive && role !== "owner" && (await countOtherActiveOwners(id)) === 0)
+        throw new Error("Can't change the role of the last active owner — promote another user to owner first.");
+
     const user = await updateUser(id, { role });
     if (!user) throw new Error("User not found.");
     return toAuthUser(user);
 };
 
 export const setUserActive = async (id: string, isActive: boolean): Promise<AuthUser> => {
+    if (!isActive) {
+        const existing = await getUserById(id);
+        if (existing?.role === "owner" && existing.isActive && (await countOtherActiveOwners(id)) === 0)
+            throw new Error("Can't deactivate the last active owner — promote another user to owner first.");
+    }
+
     const user = await updateUser(id, { isActive });
     if (!user) throw new Error("User not found.");
     if (!isActive) await deleteSessionsForUser(id);

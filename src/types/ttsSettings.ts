@@ -24,7 +24,13 @@
 export type TtsProvider = "speechify";
 
 export interface TtsProviderConfig {
+    // Only ever present on a PUT request body (an explicit "Save" of a freshly typed key) — GET
+    // responses never include it (B31, docs/CODE_REVIEW_2026-08-17.md); see hasApiKey below for
+    // what the settings UI actually has to render against.
     apiKey?: string;
+    // GET-response-only computed flag (server/routes/tts.ts's redactSettings) — lets the settings
+    // UI show "a key is already saved" without the raw key ever being sent back over the wire.
+    hasApiKey?: boolean;
     // The user's chosen default voice for this provider, used app-wide unless a project
     // (story) sets its own override — see StoryTtsPreference.
     defaultVoiceId?: string;

@@ -2,7 +2,7 @@
 
 **Purpose:** Topics queued for design grill / home sessions — **not** built unless noted.  
 **SoT priority still:** `docs/CURRENT_BACKLOG.md`  
-**Updated:** 2026-08-12 (**T9** shipped; **T5**, **T10** shipped; T8 parked)
+**Updated:** 2026-08-18 (**Code review debt → backlog B22–B44** / `docs/CODE_REVIEW_2026-08-17.md`. Prior: Auto Humanizer / AI Review / Activity Stoplight / Sexuality shipped 2026-08-15 — headers below may lag; trust `CURRENT_BACKLOG.md`)
 
 ---
 
@@ -20,8 +20,12 @@
 | **T7** | **Notes desk org + browse UI** | Doc: `docs/Notes_Org_Browse_Design.md`. Lorebook-shaped Browse+tabs; Cards\|List; cosmetic folders (`kind: notes`); thin tags; smart piles; **no** Notes graph. Slices **NO0–NO6**. | ✅ **Shipped** (2026-08-08) |
 | **Relations · note pins** | **Notes on the relationship graph** | Later: notes as **optional linked pins/leaves** on Relations (not a second graph on Notes). Complements Timeline multi-source pins. **Do not build with T7.** | **Parked — discuss with Relations** |
 | **T8** | **UX/UI polish cleanup (full toolbox)** | User not happy with current look/feel; **keep all tool sections/desks** the product needs — cleaner hierarchy, density, chrome quieting, polish. **Not** a feature cull. Distinct from T1 chrome tokens (already shipped) and from T5 sheet SoT (content model). **Also distinct from T10** (chat-host chrome specifically, kept separate per user direction, not T8's first slice). Pilot candidate: Lorebook (post-T5), or app-wide pass. **Do not build until grilled + locked.** | **Parked — discuss** |
-| **T9** | **Lore Sheet inline rework with AI** | Sub-span "Rework in chat" for the Lore Sheet textarea (highlight → docked WB chat → Accept splices just that span), extending the existing description-field/chapter-prose rework pattern. Doc: `docs/Lore_Sheet_Inline_Rework_Design.md`. Slices **IR0–IR6** all shipped. Not a T5 reopen — new mechanism alongside FS4's whole-sheet `sheet-proposal`. | ✅ **Shipped in full (2026-08-12)** |
-| **T10** | **Chat chrome declutter (icon rail + drawers)** | Doc: `docs/Chat_Chrome_Declutter_Design.md`. **Grilled/locked 2026-08-10** (Axes 1–6). CR0–CR8 all shipped. ≠ T8. First paint: Chats collapsed. Rollout Notes→Outline→Brainstorm→Research→WB done. | ✅ **Shipped in full (2026-08-11)** |
+| **T9** | **Lore Sheet inline rework with AI** | Sub-span "Rework in chat" for the Lore Sheet textarea. Doc: `docs/Lore_Sheet_Inline_Rework_Design.md`. Slices **IR0–IR6**. | ✅ **Shipped in full (2026-08-12)** |
+| **T10** | **Chat chrome declutter (icon rail + drawers)** | Doc: `docs/Chat_Chrome_Declutter_Design.md`. CR0–CR8. ≠ T8. | ✅ **Shipped in full (2026-08-11)** |
+| **AI Review** | **Manuscript human-editor desk** | Doc: `docs/AI_Review_Design.md`. Multi-chapter / whole book; Quick + Deep; durable findings (`dev` / soft `continuity` / elevated `voice`); sidebar tool + Editor entry; actions: scribble + Editor chat seed (no direct Notes, no Humanizer on desk). ≠ RAG Scanner. Slices **AR0–AR6**. | **Locked 2026-08-14 — not built until promoted** |
+| **Activity Stoplight** | **Global running-work indicator** | Doc: `docs/Activity_Stoplight_Design.md`. TopBar lamp+count over `agentJobs`; expand task list; workspace `/` only; ≠ pending-review dots. Slices **AS0–AS5**. | **Locked 2026-08-14 — not built until promoted** |
+| **Auto Humanizer** | **Silent AI→editor commit pipeline + Editor Humanize sheet** | Doc: `docs/Auto_Humanizer_Design.md`. **Separate** from shipped manual Humanizer. Detect+threshold+tone; Accept prose hard silent. **Editor rail SimpleSheet `humanize`** hosts **both** Manual + Auto. Slices **AH0–AH8**. | ✅ **Shipped** (2026-08-15) — verify backlog |
+| **Code review debt** | **Hardening from 2026-08-17/18 audit** | Doc: `docs/CODE_REVIEW_2026-08-17.md`. Backlog **B22–B44** (path jail, SSRF, MultiView same-chapter LWW, Codex approve TOCTOU, chat switch state, secrets redaction, …). Pick slices; not one mega-PR. | **Open on backlog** |
 
 ---
 
@@ -37,7 +41,7 @@
 | Brainstorm / new-story import | Parked note in Outline Import doc |
 | Research S* / Notes desk K* | **Shipped** (P0.4) — T7 is browse/org shell on top |
 | Name gen / Locations L0–L5 | **shipped**; product map **tool** → **Maps v2 (shipped)** |
-| Character playbook packs | PP0–PP5 **shipped**; **PP6** starter interview prose still open |
+| Character playbook packs | **PP0–PP6 shipped** (incl. starter prose) |
 | SL rename + brand type | SL0–SL3 + SL5 + BT0–BT4 **shipped**; SL4/SL6 outside or separate |
 | **Dep majors (pack 3)** | Backlog P3 — **low ROI freeze (2026-07-27).** Do **not** promote the pack. |
 | **Scene Beat removal** | ✅ **Shipped** 2026-07-22 |
@@ -46,6 +50,7 @@
 | Advanced export profiles | Neighbor of T3 — not T3 |
 | Spellcheck / LanguageTool depth | P3 open (light) |
 | Gemini provider polish | `docs/gemini-provider-plan.md` |
+| **Lorebook entry split proposal** | Parked 2026-08-14 — not designed |
 
 ---
 
@@ -54,14 +59,16 @@
 When user says “SN Planning” or “talk list”:
 
 1. Re-read live `docs/CURRENT_BACKLOG.md` — this file can lag  
-2. Open / next candidates: **T8** UX polish (**parked**, grill first); **Relations · note pins** parked; **PP6** playbook prose; P1 polish / residual bugs  
+2. Open / next candidates: **AI Review** or **Activity Stoplight** (locked — promote to build); **Auto Humanizer** (locked — promote to build); **T8** UX polish (**parked**, grill first); **Relations · note pins** parked; P1 polish / residual bugs  
 3. One topic at a time; lock to `docs/` when decided  
-4. Don’t build **T8** until **grilled + locked** (and promoted)  
+4. Don’t build **T8** until **grilled + locked** (and promoted); don’t build **Auto Humanizer** until **promoted**  
 5. Don’t re-grill closed T1–T7 / KDP / L0–L5 / **T6** / **Maps v2** / **T5** / **T9** / **T10** unless user reopens  
-6. Notes graph ≠ Notes desk — graph pins live under **Relations** later, not T7  
-7. **T8 ≠ T1** — T1 locked chrome tokens; T8 is layout/hierarchy/polish with full tool surface kept  
-8. **T9 ≠ T5 reopen** — span rework was a new mechanism beside shipped whole-sheet `sheet-proposal`, now also shipped
-
+6. Don’t build **AI Review**, **Activity Stoplight**, or **Auto Humanizer** until **promoted**  
+7. Notes graph ≠ Notes desk — graph pins live under **Relations** later, not T7  
+8. **T8 ≠ T1** — T1 locked chrome tokens; T8 is layout/hierarchy/polish with full tool surface kept  
+9. **AI Review ≠ Scanner** — craft/voice/dev vs factual Codex proof; separate queues  
+10. **Activity Stoplight ≠** pending-review dots — machine busy vs needs-you  
+11. **Auto Humanizer ≠ manual Humanizer** — pipeline on Accept vs select+click; ≠ AI Review rewrite  
 
 ---
 

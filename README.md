@@ -115,6 +115,8 @@ Access on `http://localhost:3000` or from any device on your network using your 
 
 Database persists in `./data/story-labyrinth.db` (mounted volume).
 
+**Security note**: by default the container publishes its port on every network interface, so it's reachable from anywhere on your LAN — this is intentional (see [Remote Access via Tailscale](#remote-access-via-tailscale) below for the "no Tailscale" alternative too: direct LAN access is a fully supported setup here, not just a fallback). If this host is *also* reachable from somewhere you don't want the login screen exposed to — the public internet, a shared/untrusted network — set `BIND_HOST=127.0.0.1` in your `.env` to bind loopback-only (reach it via a reverse proxy or SSH tunnel instead), or use `docker-compose.tailscale.yml`, which never publishes a host port at all. If you do put a reverse proxy or Tailscale Serve in front with real HTTPS, also set `COOKIE_SECURE=true` so the session cookie is marked HTTPS-only — leave it unset for the default plain-HTTP LAN/Tailscale setup.
+
 **Version pinning**:
 
 ```yaml

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { parseJson } from "../lib/json.js";
 import type { ChatMessage } from "../../src/types/story.js";
@@ -135,14 +135,26 @@ export const createChat = async (params: CreateChatParams): Promise<ChatRow> => 
     return toChat(row);
 };
 
+// B27 (docs/CODE_REVIEW_2026-08-17.md) — `expectedVersion`, when passed, conditions the UPDATE on
+// the row's CURRENT `messagesVersion` matching it (atomic claim, not a separate check-then-write);
+// the increment itself is done in-database via `sql` rather than read-then-add-1, so this is safe
+// to call from a retry loop without re-reading first. Returns null both when the id doesn't exist
+// and when `expectedVersion` didn't match — callers that need to tell those apart do a follow-up
+// read purely for messaging, not to re-decide the race. Omitting `expectedVersion` keeps the old
+// unconditional-write behavior (still bumps the version) for any caller that doesn't need CAS.
 export const updateChatMessages = async (
     id: string,
-    messages: ChatMessage[]
+    messages: ChatMessage[],
+    expectedVersion?: number
 ): Promise<ChatRow | null> => {
+    const whereClause =
+        typeof expectedVersion === "number"
+            ? and(eq(schema.aiChats.id, id), eq(schema.aiChats.messagesVersion, expectedVersion))
+            : eq(schema.aiChats.id, id);
     const [row] = await db
         .update(schema.aiChats)
-        .set({ messages, updatedAt: new Date() })
-        .where(eq(schema.aiChats.id, id))
+        .set({ messages, updatedAt: new Date(), messagesVersion: sql`${schema.aiChats.messagesVersion} + 1` })
+        .where(whereClause)
         .returning();
     return row ? toChat(row) : null;
 };

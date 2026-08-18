@@ -72,7 +72,7 @@ export const BrainstormTool = () => {
     const [toolsRailCollapsed, setToolsRailCollapsed] = useState(true);
     // Single source of truth for the Context & memory toggles, shared with ChatInterface
     // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
-    const contextToggles = useChatContextToggles(selectedChat, "brainstorm");
+    const contextToggles = useChatContextToggles(selectedChat, "brainstorm", setSelectedChat);
     // Mounted here (not just inside BrainstormChecklistTray) so the "Approvals" icon's
     // pending-count badge stays live while its drawer — and the tray — are unmounted. Shares the
     // tray's own query cache key, same pattern NotesChatRail.tsx's CR3 used.

@@ -2,6 +2,7 @@ import { attemptPromise } from "@jfdi/attempt";
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
+import { sanitizeNoteHtml } from "../lib/sanitizeHtml.js";
 import { buildNoteText, indexNote, removeEntityFromIndex } from "../services/ragIndexService.js";
 import { resolveNotesFolderId } from "../services/folderService.js";
 import { unlinkPinsForSource } from "../services/storyTimelineService.js";
@@ -35,6 +36,10 @@ export default createCrudRouter({
                 // the pre-existing "Save message as note"/note-proposal/New Note paths, all of
                 // which call this same route with no updatedAt in the body).
                 const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = req.body;
+                // B42 (docs/CODE_REVIEW_2026-08-17.md) — content is raw HTML from
+                // react-simple-wysiwyg, hydrated straight into a contentEditable div's innerHTML
+                // on read, not rendered through React's escaped-text path.
+                if (typeof rest.content === "string") rest.content = sanitizeNoteHtml(rest.content);
                 const now = new Date();
                 const data = { id: req.body.id || crypto.randomUUID(), ...rest, createdAt: now, updatedAt: now };
                 const [created] = await db.insert(table).values(data).returning();
@@ -51,6 +56,7 @@ export default createCrudRouter({
             "/:id",
             asyncHandler(async (req, res) => {
                 const { id: _id, createdAt: _createdAt, ...updates } = req.body;
+                if (typeof updates.content === "string") updates.content = sanitizeNoteHtml(updates.content); // B42
                 const [existing] = await db.select().from(table).where(eq(table.id, req.params.id));
                 if (!existing) {
                     res.status(404).json({ error: "Note not found" });

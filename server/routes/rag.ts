@@ -5,14 +5,7 @@ import type { RagIssueStatus } from "../../src/types/ragScan.js";
 import { db, schema } from "../db/client.js";
 import { indexChapter, indexLorebookEntry, removeEntityFromIndex, search } from "../services/ragIndexService.js";
 import type { RagEntityType } from "../services/ragRepository.js";
-import {
-    getScanWithIssues,
-    listIssuesForStory,
-    listScansForStory,
-    scanChapter,
-    scanStory,
-    setIssueStatus
-} from "../services/ragScanner.js";
+import { getScanWithIssues, listIssuesForStory, listScansForStory, scanChapter, setIssueStatus } from "../services/ragScanner.js";
 
 const router = express.Router();
 
@@ -159,16 +152,19 @@ router.post("/scan/chapter/:chapterId", async (req, res) => {
     res.json(result);
 });
 
-// POST /api/rag/scan/story/:storyId — kick off a whole-story scan. Chapters are scanned
-// one at a time in the background; poll GET /api/rag/scan/:scanId for progress/issues.
-router.post("/scan/story/:storyId", async (req, res) => {
-    const [error, scan] = await attemptPromise(() => scanStory(req.params.storyId));
-    if (error) {
-        res.status(500).json({ error: "Scan failed to start", details: error.message });
-        return;
-    }
-    res.status(202).json({ scan });
-});
+// B29 (docs/CODE_REVIEW_2026-08-17.md) — POST /api/rag/scan/story/:storyId (whole-story scan)
+// retired 2026-08-18. It fired a bare `void (async () => {...})()` IIFE with no `agentJobs` row
+// behind it — no crash recovery (a process restart mid-scan just silently abandoned it, unlike
+// the job-runner path's `recoverCrashedJobs`), and nothing stopped it from running concurrently
+// with a job-queued `rag_scan_story` scan of the same story. Confirmed dead client-side first —
+// `ragClient.ts`'s own comment already says triggering a scan goes through
+// `agentJobsApi.enqueue(rag_scan_story)`, not this route — so retiring outright (not
+// "redirect to enqueue a job", which would just be unreachable dead code with different plumbing)
+// removes the race by removing the second writer entirely. `scanStory` itself (ragScanner.ts) is
+// removed too — `runChapterScan`/`listOrderedChapterIds`, the pieces it shared with the real
+// job-runner implementation (`services/jobs/ragScanJobs.ts`'s `runRagScanStoryJob`), stay exported
+// and untouched. The single-chapter scan route below is a different, synchronous (no IIFE) shape
+// and isn't part of this finding.
 
 // GET /api/rag/scan/:scanId — poll a scan's status/progress and the issues found so far.
 router.get("/scan/:scanId", async (req, res) => {

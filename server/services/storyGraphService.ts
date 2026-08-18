@@ -12,6 +12,7 @@ import type {
 import { parseJson } from "../lib/json.js";
 import { indexLorebookEntry } from "./ragIndexService.js";
 import {
+    claimEdgeStatus,
     deleteEdgeRow,
     deleteEdgesForEntity as deleteEdgesForEntityRow,
     deleteLayoutForStory,
@@ -195,6 +196,12 @@ export const listPendingEdges = async (storyId: string): Promise<PendingEdgeWith
     });
 };
 
+// B25 (docs/CODE_REVIEW_2026-08-17.md) — the actual status transition is claimed atomically via
+// claimEdgeStatus's `WHERE status = fromStatus` guard, not a plain check-then-updateEdgeRow, so
+// two concurrent approve/reject calls on the same pending edge (double-click, two tabs) can't
+// both pass a check and both apply. The pre-checks above the claim (not-found, the active-edge
+// conflict) stay as user-facing validation for the common case; a race that slips past them still
+// can't double-apply because the claim itself is the real atomicity boundary.
 export const approveEdge = async (id: string): Promise<StoryGraphEdge> => {
     const existing = await getEdge(id);
     if (!existing) throw new Error(`Edge not found: ${id}`);
@@ -203,20 +210,19 @@ export const approveEdge = async (id: string): Promise<StoryGraphEdge> => {
     const conflict = await findActiveEdge(existing.storyId, existing.fromId, existing.toId, existing.edgeType);
     if (conflict) throw new Error("An active edge of this type already exists between these entries");
 
-    const row = await updateEdgeRow(id, { status: "active" });
-    if (!row) throw new Error(`Edge not found: ${id}`);
+    const row = await claimEdgeStatus(id, "pending", "active");
+    if (!row) throw new Error(`Edge is no longer pending: ${id}`);
     reindexEdgeEntries(row.fromId, row.toId);
     return rowToEdge(row);
 };
 
 export const rejectEdge = async (id: string): Promise<StoryGraphEdge> => {
+    const row = await claimEdgeStatus(id, "pending", "rejected");
+    if (row) return rowToEdge(row);
+
     const existing = await getEdge(id);
     if (!existing) throw new Error(`Edge not found: ${id}`);
-    if (existing.status !== "pending") throw new Error(`Edge is not pending (status: ${existing.status})`);
-
-    const row = await updateEdgeRow(id, { status: "rejected" });
-    if (!row) throw new Error(`Edge not found: ${id}`);
-    return rowToEdge(row);
+    throw new Error(`Edge is not pending (status: ${existing.status})`);
 };
 
 // Called from server/routes/lorebook.ts's DELETE /:id — the delete-cascade for edges, since no

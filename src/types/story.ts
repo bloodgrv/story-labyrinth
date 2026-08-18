@@ -41,6 +41,11 @@ export interface Chapter extends BaseEntity {
     povCharacter?: string;
     povType?: "First Person" | "Third Person Limited" | "Third Person Omniscient";
     notes?: ChapterNotes;
+    // Optimistic-concurrency token for `content` only (B24) — see server/db/schema.ts's own
+    // comment. Bumped by the server on every successful content-bearing PUT; SaveChapterContent
+    // sends the value it last saw back as `expectedContentVersion` on its next save so a stale
+    // pane's write is rejected (409) instead of silently overwriting a newer one.
+    contentVersion?: number;
 }
 
 export interface ChapterOutline {
@@ -58,6 +63,11 @@ export interface AIChat extends BaseEntity {
     storyId: string | null; // null for global chats (e.g. Research) — see ChatType
     title: string;
     messages: ChatMessage[];
+    // Optimistic-concurrency token for `messages` only (B27) — see server/db/schema.ts's own
+    // comment. A user-initiated full-array replace (edit/delete/regenerate/resend/branch) sends
+    // this back as `expectedMessagesVersion` so a stale array is rejected (409) instead of
+    // silently overwriting a message that landed from another tab/pane in the meantime.
+    messagesVersion?: number;
     updatedAt?: Date;
     // Archive/soft-delete (app-wide) — set = hidden from its normal rail, restorable from Settings.
     archivedAt?: Date | null;

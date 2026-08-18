@@ -144,11 +144,17 @@ router.post("/maps/:id/thumbnail", upload.single("file"), async (req, res) => {
 // globally), not a public static mount — same posture as lorebook's own image route.
 router.get("/maps/:id/thumbnail", async (req, res) => {
     const [row] = await db.select().from(schema.storyMaps).where(eq(schema.storyMaps.id, req.params.id));
-    if (!row?.thumbnailFilename) {
+    const thumbnailFilename = row?.thumbnailFilename;
+    if (!thumbnailFilename) {
         res.status(404).json({ error: "No thumbnail set for this map" });
         return;
     }
-    res.sendFile(getStoryMapThumbnailPath(row.thumbnailFilename));
+    const [error, thumbnailPath] = await attemptPromise(async () => getStoryMapThumbnailPath(thumbnailFilename));
+    if (error) {
+        res.status(404).json({ error: "No thumbnail set for this map" });
+        return;
+    }
+    res.sendFile(thumbnailPath);
 });
 
 export default router;

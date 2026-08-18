@@ -8,6 +8,7 @@ import { chunkText, embedTexts } from "./embeddingService.js";
 import { extractTextFromLexical } from "./entityDetector.js";
 import {
     deleteChunksForEntity,
+    getLastIndexedAt,
     hybridSearch,
     type RagEntityType,
     replaceChunksForEntity,
@@ -213,6 +214,28 @@ export const indexChapter = async (chapterId: string): Promise<{ indexed: boolea
 
     const text = extractTextFromLexical(chapter.content);
     return indexEntity({ storyId: chapter.storyId, entityType: "chapter", entityId: chapterId, text });
+};
+
+// B36 (docs/CODE_REVIEW_2026-08-17.md) — chapter reindexing was client-triggered only
+// (SaveChapterContentPlugin.tsx's own 8s-debounced fetch), so a tab closed right after a save
+// left that content unindexed until the next ~15min reconcile_index sweep. This is the
+// server-side backstop, called fire-and-forget from chapters.ts's PUT route on every
+// content-bearing save so convergence never depends on the client tab staying open — throttled
+// (not "reindex on every save") since indexEntity always fully re-chunks/re-embeds, a real
+// per-call AI/compute cost that a 1s-debounced-content-save cadence would otherwise multiply. In
+// the common case (client stays open, actively typing) the client's own faster 8s debounce
+// already keeps the index fresh, so this mostly no-ops (skipped by the throttle) — it only does
+// real work when the client-side path didn't get a chance to run.
+const CHAPTER_REINDEX_THROTTLE_S = 60;
+
+export const maybeIndexChapter = async (chapterId: string): Promise<void> => {
+    // B43 — getLastIndexedAt returns epoch seconds (ragChunks' own convention), so this compares
+    // in seconds too, not ms.
+    const lastIndexedAt = getLastIndexedAt("chapter", chapterId);
+    if (lastIndexedAt !== null && Math.floor(Date.now() / 1000) - lastIndexedAt < CHAPTER_REINDEX_THROTTLE_S) return;
+    await indexChapter(chapterId).catch(error =>
+        console.error(`RAG indexing: server-side chapter reindex failed for ${chapterId}:`, (error as Error).message)
+    );
 };
 
 // Remove an entity's chunks from the index entirely (e.g. after the source entity is deleted).

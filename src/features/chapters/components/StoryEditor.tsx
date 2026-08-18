@@ -29,7 +29,7 @@ export function StoryEditor() {
     // ChatToolsRail treatment — both siblings need the same selectedChat/contextToggles instance.
     const [selectedEditorChat, setSelectedEditorChat] = useState<AIChat | null>(null);
     const [editorComposerSeedText, setEditorComposerSeedText] = useState<string | null>(null);
-    const editorContextToggles = useChatContextToggles(selectedEditorChat, "editor");
+    const editorContextToggles = useChatContextToggles(selectedEditorChat, "editor", setSelectedEditorChat);
     const { data: pendingEditorCodexProposals = [] } = useChatProposalsQuery(selectedEditorChat?.id, "pending");
     const { data: activeEditorShuttleItems = [] } = useBrainstormChecklistQuery(selectedEditorChat?.id, "active");
     const { currentChapterId, currentStoryId, pendingChatComposerSeed, setPendingChatComposerSeed, setPendingAiReviewChapterId, setCurrentTool } =

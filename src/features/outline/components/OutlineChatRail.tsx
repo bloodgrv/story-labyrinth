@@ -105,7 +105,7 @@ export function OutlineChatRail({ storyId, collapsed, onCollapsedChange }: Outli
     const [toolsRailCollapsed, setToolsRailCollapsed] = useState(true);
     // T10 CR7 — single source of truth for the Context & memory toggles, shared with ChatInterface
     // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
-    const contextToggles = useChatContextToggles(selectedChat, "outline");
+    const contextToggles = useChatContextToggles(selectedChat, "outline", setSelectedChat);
     // Added on user request, mirroring WB's own "Story Context" rail panel (LorebookEntryEditor.tsx)
     // — same single-source-of-truth pattern as contextToggles above, for the manual chapter/
     // lorebook-entry picker (ContextSelector), so this rail's own panel and ChatInterface's

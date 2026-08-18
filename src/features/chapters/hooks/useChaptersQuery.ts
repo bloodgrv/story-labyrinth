@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { chaptersApi } from "@/services/api/client";
+import { ApiError } from "@/services/api/apiFactory";
 import type { Chapter } from "@/types/story";
 
 // Query keys (internal use only)
@@ -47,14 +48,18 @@ export const useUpdateChapterMutation = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: Partial<Chapter> }) => chaptersApi.update(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Partial<Chapter> & { expectedContentVersion?: number } }) =>
+            chaptersApi.update(id, data),
         onSuccess: updatedChapter => {
             queryClient.setQueryData(chaptersKeys.detail(updatedChapter.id), updatedChapter);
             queryClient.setQueryData<Chapter[]>(chaptersKeys.byStory(updatedChapter.storyId), old =>
                 old?.map(ch => (ch.id === updatedChapter.id ? updatedChapter : ch))
             );
         },
-        onError: () => {
+        onError: (error: Error) => {
+            // A content-version conflict (B24) gets its own dedicated "reload latest" toast from
+            // SaveChapterContentPlugin's own onError — this generic one would just be noise on top.
+            if (error instanceof ApiError && error.status === 409) return;
             toast.error("Failed to update chapter");
         }
     });

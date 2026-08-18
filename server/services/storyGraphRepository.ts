@@ -95,6 +95,24 @@ export const updateEdgeRow = async (id: string, updates: UpdateEdgeFields): Prom
     return row;
 };
 
+// B25 (docs/CODE_REVIEW_2026-08-17.md) — atomic claim for approve/reject: conditioned on the
+// row's CURRENT status matching `fromStatus`, so two concurrent approve/reject calls on the same
+// pending edge (double-click, two tabs) can't both pass a plain check-then-act and both apply.
+// Only one caller's claim can ever return a row; the loser sees `undefined` and should treat that
+// as "already resolved" rather than retrying the transition.
+export const claimEdgeStatus = async (
+    id: string,
+    fromStatus: string,
+    toStatus: string
+): Promise<StoryGraphEdgeRow | undefined> => {
+    const [row] = await db
+        .update(schema.storyGraphEdges)
+        .set({ status: toStatus, updatedAt: new Date() })
+        .where(and(eq(schema.storyGraphEdges.id, id), eq(schema.storyGraphEdges.status, fromStatus)))
+        .returning();
+    return row;
+};
+
 export const deleteEdgeRow = async (id: string): Promise<void> => {
     await db.delete(schema.storyGraphEdges).where(eq(schema.storyGraphEdges.id, id));
 };

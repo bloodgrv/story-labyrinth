@@ -1,0 +1,1 @@
+ALTER TABLE `aiChats` ADD `messagesVersion` integer DEFAULT 0 NOT NULL;

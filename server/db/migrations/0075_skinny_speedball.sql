@@ -1,0 +1,1 @@
+ALTER TABLE `chapters` ADD `contentVersion` integer DEFAULT 0 NOT NULL;

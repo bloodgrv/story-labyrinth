@@ -2,10 +2,35 @@ import { attemptPromise } from "@jfdi/attempt";
 import { eq } from "drizzle-orm";
 import express from "express";
 import { db, schema } from "../db/client.js";
+import { requireOwner } from "../middleware/auth.js";
 import { getTtsProviderAdapter } from "../services/ttsProviders.js";
-import type { TtsAvailableVoices, TtsProviderConfigs } from "../../src/types/ttsSettings.js";
+import type { TtsAvailableVoices, TtsProviderConfig, TtsProviderConfigs } from "../../src/types/ttsSettings.js";
 
 const router = express.Router();
+
+// B31 (docs/CODE_REVIEW_2026-08-17.md) — this whole router sits under editor-level auth (just
+// `requireAuth`/`blockViewerMutations`, applied globally in server/index.ts, matching
+// `/api/codex`'s posture) so any signed-in user can play back TTS, which is the desk's actual
+// job. `/settings` is different: it's where the raw provider API key lives, so those two routes
+// specifically get `requireOwner` (matching `/api/ai`'s own posture) plus response redaction
+// below — every other route here (generate/test-connection/voices/refresh/per-story voice) reads
+// the stored key server-side and never echoes it back, so they stay reachable without needing
+// owner rights.
+
+type TtsSettingsRow = typeof schema.ttsSettings.$inferSelect;
+
+// Strips the raw apiKey out of every provider's config before it goes over the wire, replacing it
+// with a `hasApiKey` boolean the UI can use to render "a key is already saved" without ever
+// re-transmitting the secret itself.
+const redactSettings = (settings: TtsSettingsRow) => ({
+    ...settings,
+    providers: Object.fromEntries(
+        Object.entries((settings.providers ?? {}) as TtsProviderConfigs).map(([providerId, config]) => {
+            const { apiKey, ...rest } = (config ?? {}) as TtsProviderConfig;
+            return [providerId, { ...rest, hasApiKey: Boolean(apiKey) }];
+        })
+    )
+});
 
 const asyncHandler =
     (fn: (req: express.Request, res: express.Response) => Promise<void>) =>
@@ -19,6 +44,7 @@ const asyncHandler =
 
 router.get(
     "/settings",
+    requireOwner,
     asyncHandler(async (_, res) => {
         const [settings] = await db.select().from(schema.ttsSettings);
         if (!settings) {
@@ -31,39 +57,72 @@ router.get(
                 createdAt: new Date()
             };
             await db.insert(schema.ttsSettings).values(initial);
-            res.json(initial);
+            res.json(redactSettings(initial as TtsSettingsRow));
             return;
         }
-        res.json(settings);
+        res.json(redactSettings(settings));
     })
 );
 
 router.put(
     "/settings/:id",
+    requireOwner,
     asyncHandler(async (req, res) => {
-        const { id: _id, createdAt: _createdAt, ...updates } = req.body;
+        const { id: _id, createdAt: _createdAt, ...updates } = req.body as Record<string, unknown>;
+
+        // Redacted GET means the client can never round-trip a real apiKey it doesn't already
+        // know — a payload that omits `apiKey` on a provider (every write except an explicit
+        // "Save" of a freshly typed key) must NOT blank out whatever key is already stored.
+        // Per-field merge onto the existing row, not a full-column overwrite, for `providers` only.
+        if (updates.providers && typeof updates.providers === "object") {
+            const [existing] = await db.select().from(schema.ttsSettings).where(eq(schema.ttsSettings.id, req.params.id));
+            const existingProviders = (existing?.providers ?? {}) as TtsProviderConfigs;
+            const incomingProviders = updates.providers as TtsProviderConfigs;
+            const mergedProviders: TtsProviderConfigs = { ...existingProviders };
+            for (const [providerId, incomingConfig] of Object.entries(incomingProviders))
+                mergedProviders[providerId as keyof TtsProviderConfigs] = {
+                    ...existingProviders[providerId as keyof TtsProviderConfigs],
+                    ...incomingConfig
+                };
+            updates.providers = mergedProviders;
+        }
+
         const result = await db
             .update(schema.ttsSettings)
             .set(updates)
             .where(eq(schema.ttsSettings.id, req.params.id))
             .returning();
         const updated = Array.isArray(result) ? result[0] : result;
-        res.json(updated);
+        res.json(updated ? redactSettings(updated) : updated);
     })
 );
 
 router.post(
     "/test-connection",
     asyncHandler(async (req, res) => {
-        const { provider, apiKey } = req.body as { provider?: string; apiKey?: string };
-        if (!provider || !apiKey) {
-            res.status(400).json({ success: false, message: "Provider and API key are required" });
+        const { provider, apiKey: requestApiKey } = req.body as { provider?: string; apiKey?: string };
+        if (!provider) {
+            res.status(400).json({ success: false, message: "Provider is required" });
             return;
         }
 
         const adapter = getTtsProviderAdapter(provider);
         if (!adapter) {
             res.json({ success: false, message: `Unknown TTS provider: ${provider}` });
+            return;
+        }
+
+        // Redacted GET (B31) means the client can't re-send an already-saved key to test it
+        // without the user retyping it — fall back to the server's own stored key, same lookup
+        // voices/refresh below already does, so "Test Connection" on an already-saved key still
+        // works with nothing typed in the field.
+        let apiKey = requestApiKey;
+        if (!apiKey) {
+            const [settings] = await db.select().from(schema.ttsSettings);
+            apiKey = (settings?.providers as TtsProviderConfigs | undefined)?.[provider as keyof TtsProviderConfigs]?.apiKey;
+        }
+        if (!apiKey) {
+            res.status(400).json({ success: false, message: "Provider and API key are required" });
             return;
         }
 

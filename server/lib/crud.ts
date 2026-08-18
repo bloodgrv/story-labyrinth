@@ -32,10 +32,28 @@ type CrudConfig<
     name: string;
     parentKey?: keyof TRow & string;
     parentRoute?: string;
+    // B33 (docs/CODE_REVIEW_2026-08-17.md) — this generic router trusts the rest of req.body
+    // wholesale (only id/createdAt are ever stripped), so any column a table shouldn't accept
+    // arbitrary client values for — a server-managed filename/path column being the concrete case
+    // that mattered (B22's lorebookEntries.imageFilename) — needs to opt out explicitly here. A
+    // deny-list, not an allow-list: retrofitting an allow-list onto an existing table risks
+    // silently breaking a legitimate write path for a column this pass didn't think to include;
+    // a deny-list only needs the columns that are actually dangerous to be named. Applied on both
+    // POST and PUT. Not a substitute for real per-table Zod validation (still open, tracked as the
+    // rest of B33) — this closes the one concrete "filesystem path column on generic PUT" class
+    // the review flagged, nothing broader.
+    protectedFields?: (keyof TRow & string)[];
     transforms?: {
         afterRead?: (row: TRow) => TTransformed;
     };
     customRoutes?: (router: Router, helpers: RouteHelpers<TTable, TRow, TTransformed>) => void;
+};
+
+const stripProtectedFields = (data: Record<string, unknown>, protectedFields: readonly string[] | undefined) => {
+    if (!protectedFields || protectedFields.length === 0) return data;
+    const stripped = { ...data };
+    for (const field of protectedFields) delete stripped[field];
+    return stripped;
 };
 
 type RouteHelpers<TTable extends TableWithId, TRow, TTransformed = TRow> = {
@@ -60,7 +78,7 @@ export const createCrudRouter = <
     config: CrudConfig<TTable, TRow, TTransformed>
 ): Router => {
     const router = Router();
-    const { table, name, parentKey, parentRoute, transforms, customRoutes } = config;
+    const { table, name, parentKey, parentRoute, transforms, customRoutes, protectedFields } = config;
 
     const applyTransform = (data: TRow): TTransformed =>
         transforms?.afterRead ? transforms.afterRead(data) : (data as unknown as TTransformed);
@@ -115,7 +133,7 @@ export const createCrudRouter = <
             const { id: _id, createdAt: _createdAt, ...bodyWithoutReserved } = req.body;
             const data = {
                 id: req.body.id || crypto.randomUUID(),
-                ...coerceTimestampColumns(table, bodyWithoutReserved),
+                ...coerceTimestampColumns(table, stripProtectedFields(bodyWithoutReserved, protectedFields)),
                 createdAt: new Date()
             } as InferInsertModel<TTable>;
             const result = await db.insert(table).values(data).returning();
@@ -132,7 +150,7 @@ export const createCrudRouter = <
             const column = table.id;
             const result = await db
                 .update(table)
-                .set(coerceTimestampColumns(table, updates) as Partial<InferInsertModel<TTable>>)
+                .set(coerceTimestampColumns(table, stripProtectedFields(updates, protectedFields)) as Partial<InferInsertModel<TTable>>)
                 .where(eq(column, req.params.id))
                 .returning();
             const updated = Array.isArray(result) ? result[0] : result;

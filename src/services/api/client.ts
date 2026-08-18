@@ -171,6 +171,9 @@ export const chatsApi = {
         id: string,
         data: {
             messages?: unknown[];
+            // B27 — optimistic-concurrency token; only checked server-side when `messages` is
+            // also present. See src/types/story.ts's AIChat.messagesVersion.
+            expectedMessagesVersion?: number;
             title?: string;
             lastUsedPromptId?: string | null;
             lastUsedModelId?: string | null;
@@ -178,6 +181,7 @@ export const chatsApi = {
             includeOutline?: boolean;
             includeMemory?: boolean;
             includeTimeline?: boolean;
+            includeGuide?: boolean;
             includeLorebook?: boolean;
             includeChapterSummaries?: boolean;
             brainstormStyle?: string;

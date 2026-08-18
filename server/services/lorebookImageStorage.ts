@@ -16,6 +16,15 @@ const MIME_TO_EXT: Record<string, string> = {
 
 export const isSupportedImageMimetype = (mimetype: string): boolean => mimetype in MIME_TO_EXT;
 
+// Path jail (B22): every filename this module ever writes is `${randomUUID()}.${ext}` (see
+// saveLorebookImage below), so anything that doesn't match that shape did not come from this
+// module's own write path — it arrived via a DB column that a generic CRUD PUT or a hand-edited
+// story-import JSON can set to arbitrary text (e.g. "../../../etc/passwd"). Every read/delete of a
+// stored filename must be checked against this allowlist before touching the filesystem.
+const VALID_FILENAME = new RegExp(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(${Object.values(MIME_TO_EXT).join("|")})$`, "i");
+
+export const isValidLorebookImageFilename = (filename: string): boolean => VALID_FILENAME.test(filename);
+
 // Identifies an image's real format from its magic bytes — used for AI-generated images
 // (grokImageService.ts), where the API doesn't guarantee a specific format the way a browser's
 // File.type does for manual uploads. Returns null if none of the supported formats match.
@@ -42,9 +51,18 @@ export const saveLorebookImage = async (buffer: Buffer, mimetype: string): Promi
     return filename;
 };
 
-// Best-effort delete - a file that's already gone (or never existed) isn't an error here.
+// Best-effort delete - a file that's already gone (or never existed) isn't an error here. Silently
+// no-ops on a filename that fails the path-jail check rather than throwing, matching the existing
+// best-effort posture for a merely-missing file.
 export const deleteLorebookImage = async (filename: string): Promise<void> => {
+    if (!isValidLorebookImageFilename(filename)) return;
     await fs.rm(path.join(UPLOADS_DIR, filename), { force: true });
 };
 
-export const getLorebookImagePath = (filename: string): string => path.join(UPLOADS_DIR, filename);
+// Throws on a filename that fails the path-jail check — callers (image GET route) already handle
+// "file not found" as a 404, so a thrown error here surfaces the same way without ever calling
+// fs/sendFile on an unvalidated path.
+export const getLorebookImagePath = (filename: string): string => {
+    if (!isValidLorebookImageFilename(filename)) throw new Error(`Invalid stored image filename: ${filename}`);
+    return path.join(UPLOADS_DIR, filename);
+};

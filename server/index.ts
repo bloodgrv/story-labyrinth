@@ -188,6 +188,17 @@ app.get("/_status", requireAuth, requireOwner, (_req, res) => {
         })
     );
 });
+// B44 (docs/CODE_REVIEW_2026-08-17.md) — restart and shutdown are deliberately identical, not an
+// unfinished feature: a plain Node process has no way to relaunch itself, and under Docker's
+// `restart: unless-stopped` policy (every compose file here), Docker can't tell "the app exited
+// gracefully by request" apart from "the app exited and should come back" either way — both look
+// like a graceful exit that wasn't an explicit `docker stop`. So "restart" really means "exit and
+// trust whatever's supervising this process (Docker's restart policy, PM2, systemd, ...) to bring
+// it back" — there's no code-level distinction to make here without also coordinating with the
+// image's own entrypoint (a materially bigger change than this route pair). The status page's own
+// note (routes/statusPage.ts) already explains this to the person clicking the button; this is
+// the same explanation for whoever next reads this file and assumes two routes doing the exact
+// same thing must be a bug.
 app.post("/_status/shutdown", requireAuth, requireOwner, (_req, res) => {
     res.json({ ok: true });
     setTimeout(() => void shutdown(), 100);

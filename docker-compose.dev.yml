@@ -4,8 +4,11 @@ services:
             context: .
             dockerfile: Dockerfile
         container_name: story-labyrinth-app
+        # B34 — see docker-compose.yml's own comment: publishing on all interfaces is the
+        # intentional default (direct-LAN-access use case), set BIND_HOST=127.0.0.1 in .env for
+        # loopback-only.
         ports:
-            - "${APP_PORT:-3000}:${APP_PORT:-3000}"
+            - "${BIND_HOST:-0.0.0.0}:${APP_PORT:-3000}:${APP_PORT:-3000}"
         environment:
             - NODE_ENV=production
             - PORT=${APP_PORT:-3000}

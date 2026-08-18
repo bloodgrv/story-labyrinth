@@ -126,9 +126,15 @@ export const ResearchTool = () => {
     // T10 CR8 — icon-vs-label width toggle for the ChatToolsRail itself (separate axis from
     // chatListCollapsed above). Mirrors EditorToolsPanel's own collapsed/onToggleCollapsed.
     const [toolsRailCollapsed, setToolsRailCollapsed] = useState(true);
+    // Story vs Global selection both funnel through this so toggle PATCHes (and ChatInterface
+    // onChatUpdate) keep the sticky selected row field-fresh across switches.
+    const handleChatUpdate = (updated: AIChat) => {
+        if (mode === "story") setSelectedStoryChat(updated);
+        else setSelectedGlobalChat(updated);
+    };
     // Single source of truth for the Context & memory toggles, shared with ChatInterface
     // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
-    const contextToggles = useChatContextToggles(chat, "research");
+    const contextToggles = useChatContextToggles(chat, "research", handleChatUpdate);
     const [openPanelId, setOpenPanelId] = useState<string | null>(null);
 
     // Brainstorm's "Handoff → Research" tray action (P0.4 B0-B4) — same one-shot consumption
@@ -197,11 +203,6 @@ export const ResearchTool = () => {
                     .catch(() => {});
             })
             .catch(() => toast.error("Failed to send brief back"));
-    };
-
-    const handleChatUpdate = (updated: AIChat) => {
-        if (mode === "story") setSelectedStoryChat(updated);
-        else setSelectedGlobalChat(updated);
     };
 
     return (

@@ -27,8 +27,11 @@ export function TtsSettingsCard() {
     const { isGenerating: isPreviewGenerating, isPlaying: isPreviewPlaying, speak, stop } = useTtsPlayback();
 
     const activeProvider = (settings?.activeProvider ?? "speechify") as TtsProvider;
-    const storedKey = settings?.providers?.[activeProvider]?.apiKey ?? "";
-    const [apiKeyInput, setApiKeyInput] = useState(storedKey);
+    // B31 — GET no longer echoes the raw key (owner-only route now, but redacted regardless as
+    // defense in depth); `hasApiKey` is all the UI gets, so the input always starts empty rather
+    // than pre-filled with a value that's no longer available.
+    const hasApiKey = settings?.providers?.[activeProvider]?.hasApiKey ?? false;
+    const [apiKeyInput, setApiKeyInput] = useState("");
 
     if (isLoading || !settings)
         return (
@@ -67,7 +70,9 @@ export function TtsSettingsCard() {
     };
 
     const handleTestConnection = () => {
-        testMutation.mutate({ provider: activeProvider, apiKey: apiKeyInput || storedKey });
+        // apiKeyInput may be empty (testing the already-saved key, nothing retyped) — the server
+        // falls back to its own stored key in that case (B31).
+        testMutation.mutate({ provider: activeProvider, apiKey: apiKeyInput });
     };
 
     const handleRefreshVoices = () => {
@@ -112,12 +117,12 @@ export function TtsSettingsCard() {
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                {settings.enabled && (!storedKey || !defaultVoiceId) && (
+                {settings.enabled && (!hasApiKey || !defaultVoiceId) && (
                     <div className="flex items-start gap-2 rounded-md border border-amber-300/50 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
                         <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                         <span>
                             TTS is enabled but not fully set up —{" "}
-                            {!storedKey ? "add and save an API key" : "choose a default voice"} below to make it work.
+                            {!hasApiKey ? "add and save an API key" : "choose a default voice"} below to make it work.
                         </span>
                     </div>
                 )}
@@ -144,7 +149,7 @@ export function TtsSettingsCard() {
                         <Input
                             id="tts-api-key"
                             type="password"
-                            placeholder={providerMeta.apiKeyPlaceholder}
+                            placeholder={hasApiKey ? "•••••••• (key saved — enter a new one to replace it)" : providerMeta.apiKeyPlaceholder}
                             value={apiKeyInput}
                             onChange={e => setApiKeyInput(e.target.value)}
                         />
@@ -170,7 +175,7 @@ export function TtsSettingsCard() {
                     <Button
                         variant="outline"
                         onClick={handleTestConnection}
-                        disabled={isTesting || !(apiKeyInput || storedKey).trim()}
+                        disabled={isTesting || !(apiKeyInput.trim() || hasApiKey)}
                     >
                         {isTesting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                         Test Connection
@@ -178,7 +183,7 @@ export function TtsSettingsCard() {
                     <Button
                         variant="outline"
                         onClick={handleRefreshVoices}
-                        disabled={isRefreshingVoices || !storedKey.trim()}
+                        disabled={isRefreshingVoices || !hasApiKey}
                     >
                         {isRefreshingVoices && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                         Refresh Voices

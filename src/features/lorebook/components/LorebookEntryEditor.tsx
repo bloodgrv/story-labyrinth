@@ -180,7 +180,7 @@ function WorldBuildingChatPanel({
     const [toolsRailCollapsed, setToolsRailCollapsed] = useState(true);
     // Single source of truth for the Context & memory toggles, shared with ChatInterface
     // (contextToggles/contextPanelMode="external" below) and the rail's own "Context" panel.
-    const contextToggles = useChatContextToggles(selectedChat, "worldbuilding");
+    const contextToggles = useChatContextToggles(selectedChat, "worldbuilding", setSelectedChat);
     // T10-follow-up — same single-source-of-truth pattern as contextToggles above, for the older,
     // separate "Story Context" structured picker (ContextSelector — Include Full Context/Chapter
     // Summaries/Chapter Content/Lorebook Entries), which predates T10 and was never part of the

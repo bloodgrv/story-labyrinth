@@ -27,6 +27,20 @@ import { runTimelineSuggestPinsJob } from "./jobs/timelineSuggestPinsJob.js";
 const TICK_INTERVAL_MS = 3000; // claim + run
 const SCHEDULE_INTERVAL_MS = 60_000; // enqueue due periodic jobs
 
+// B37 (docs/CODE_REVIEW_2026-08-17.md) — before this, a handler that hung (a stuck fetch with no
+// timeout, a network partition, an unresponsive local model server) left `tickRunning` true
+// forever: every subsequent 3s tick's `if (tickRunning) return` guard above made the entire serial
+// queue permanently stuck behind it, recoverable only by restarting the process (which
+// `recoverCrashedJobs` above only runs at `start()`). Generous ceiling — `ai_review_deep`'s staged
+// pipeline and a whole-story RAG scan are both legitimately long-running — but any handler that's
+// still going past this is functionally hung either way, and a timed-out job goes through the
+// exact same `recordJobFailure` retry/exhaustion accounting as a thrown error, so it isn't lost,
+// just requeued (or permanently failed once attempts run out) like any other failure. Doesn't
+// truly cancel the stuck operation underneath (Node has no hard-kill for a wedged Promise) — what
+// it does do is stop that operation from blocking every OTHER job forever, which is the actual
+// reported symptom.
+const JOB_TIMEOUT_MS = 15 * 60_000;
+
 const RECONCILE_INDEX_CADENCE_MS = 15 * 60_000; // per story, design doc §3.5 cadence table
 const PRUNE_HISTORY_CADENCE_MS = 24 * 60 * 60_000; // global
 // C4 (docs/CURRENT_BACKLOG.md P0.3) — fixed daily cadence for stories that have explicitly
@@ -66,7 +80,12 @@ const runTick = async (): Promise<void> => {
         currentJobId = job.id;
         try {
             const handler = HANDLERS[job.jobType];
-            const result = await handler(job);
+            const result = await Promise.race([
+                handler(job),
+                new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error(`Job exceeded max runtime of ${JOB_TIMEOUT_MS / 60_000} minutes`)), JOB_TIMEOUT_MS)
+                )
+            ]);
             await completeJob(job.id, result);
         } catch (error) {
             console.error(`jobRunner: job ${job.id} (${job.jobType}) failed:`, (error as Error).message);

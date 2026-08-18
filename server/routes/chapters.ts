@@ -1,9 +1,10 @@
 import { attemptPromise } from "@jfdi/attempt";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { parseJson } from "../lib/json.js";
+import { sanitizeNoteHtml } from "../lib/sanitizeHtml.js";
 import {
     createSnapshot,
     listSnapshotsForChapter,
@@ -21,6 +22,7 @@ import {
     setVersionLabel,
     updateVersionContent
 } from "../services/chapterVersionsRepository.js";
+import { maybeIndexChapter } from "../services/ragIndexService.js";
 import { unlinkPinsForSource } from "../services/storyTimelineService.js";
 
 type Chapter = InferSelectModel<typeof schema.chapters>;
@@ -44,22 +46,78 @@ export default createCrudRouter({
         // PUT /api/chapters/:id — overrides the generic CRUD update (customRoutes are registered
         // before the generic routes, see server/lib/crud.ts) so a content change can be checked
         // for an auto-snapshot first. Every other field updates exactly as the generic path did.
+        //
+        // B24/B38 (docs/CODE_REVIEW_2026-08-17.md) — a content-bearing PUT is optimistic-
+        // concurrency-checked against `contentVersion` (see schema.ts's own comment on that
+        // column). `expectedContentVersion` is optional so any caller that doesn't send it (there
+        // is none left client-side — SaveChapterContentPlugin is the only writer of `content`
+        // through this route — but a stray external API caller shouldn't hard-break) still gets
+        // the old unconditional-write behavior; contentVersion is still bumped either way so a
+        // caller that starts sending it later has a real baseline to compare against. The
+        // conditional `UPDATE ... WHERE id = ? AND contentVersion = ?` is one atomic statement
+        // rather than select-then-compare-then-update, closing the same TOCTOU class B25 flags
+        // elsewhere.
         router.put(
             "/:id",
             asyncHandler(async (req, res) => {
-                const { id: _id, createdAt: _createdAt, ...updates } = req.body as Record<string, unknown>;
+                const { id: _id, createdAt: _createdAt, expectedContentVersion, ...updates } = req.body as Record<string, unknown> & {
+                    expectedContentVersion?: unknown;
+                };
 
-                if (typeof updates.content === "string") {
-                    const [existing] = await db.select().from(table).where(eq(table.id, req.params.id));
-                    if (existing) await maybeAutoSnapshot(req.params.id, existing.content as string, updates.content);
+                // B42 (docs/CODE_REVIEW_2026-08-17.md) — chapter Scribble (`notes.content`) is raw
+                // HTML from the same react-simple-wysiwyg editor Notes uses (ChapterNotesEditor.tsx)
+                // and gets hydrated straight into a contentEditable div's innerHTML on read, same
+                // risk as notes.ts's own content field.
+                if (updates.notes && typeof updates.notes === "object" && "content" in updates.notes) {
+                    const notes = updates.notes as Record<string, unknown>;
+                    if (typeof notes.content === "string") notes.content = sanitizeNoteHtml(notes.content);
                 }
 
-                const result = await db.update(table).set(updates).where(eq(table.id, req.params.id)).returning();
-                const updated = Array.isArray(result) ? result[0] : result;
-                if (!updated) {
+                if (typeof updates.content !== "string") {
+                    const result = await db.update(table).set(updates).where(eq(table.id, req.params.id)).returning();
+                    const updated = Array.isArray(result) ? result[0] : result;
+                    if (!updated) {
+                        res.status(404).json({ error: "Chapter not found" });
+                        return;
+                    }
+                    res.json(applyTransform(updated as Chapter));
+                    return;
+                }
+
+                const [existing] = await db.select().from(table).where(eq(table.id, req.params.id));
+                if (!existing) {
                     res.status(404).json({ error: "Chapter not found" });
                     return;
                 }
+                await maybeAutoSnapshot(req.params.id, existing.content as string, updates.content);
+
+                const nextVersion = (existing.contentVersion as number) + 1;
+                const whereClause =
+                    typeof expectedContentVersion === "number"
+                        ? and(eq(table.id, req.params.id), eq(table.contentVersion, expectedContentVersion))
+                        : eq(table.id, req.params.id);
+
+                const result = await db
+                    .update(table)
+                    .set({ ...updates, contentVersion: nextVersion })
+                    .where(whereClause)
+                    .returning();
+                const updated = Array.isArray(result) ? result[0] : result;
+
+                if (!updated) {
+                    // Only reachable when expectedContentVersion was checked and didn't match —
+                    // someone else's save landed since this pane last loaded/saved. Return the
+                    // current row so the client can offer "reload latest" instead of retrying blind.
+                    const [latest] = await db.select().from(table).where(eq(table.id, req.params.id));
+                    res.status(409).json({
+                        error: "This chapter was changed elsewhere since you last saved.",
+                        latest: latest ? applyTransform(latest as Chapter) : null
+                    });
+                    return;
+                }
+                // B36 — server-side throttled reindex backstop (see ragIndexService.ts's own
+                // comment); fire-and-forget so it never delays the save response.
+                void maybeIndexChapter(req.params.id);
                 res.json(applyTransform(updated as Chapter));
             })
         );

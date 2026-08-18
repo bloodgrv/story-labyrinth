@@ -1,7 +1,6 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import type OpenAI from "openai";
 import type { RagScan, RagScanEvidence, RagScanIssue } from "../../src/types/ragScan.js";
-import { chunk, DEFAULT_AI_CONCURRENCY } from "../lib/concurrency.js";
 import { buildClientForFeature } from "./aiClientFactory.js";
 import { db, schema } from "../db/client.js";
 import { chunkText } from "./embeddingService.js";
@@ -19,8 +18,7 @@ import {
     getIssuesForStory,
     getScan,
     getScansForStory,
-    updateIssueStatus,
-    updateScanProgress
+    updateIssueStatus
 } from "./ragScanRepository.js";
 
 const MAX_CONTEXT_QUERIES = 6;
@@ -304,10 +302,10 @@ export const requireScannerConnection = async (): Promise<{ client: OpenAI; mode
 
 // ── Core per-chapter scan ────────────────────────────────────────────────────────
 
-// Exported for services/jobs/ragScanJobs.ts's runRagScanStoryJob, which reimplements this
-// function's own loop (below, in scanStory) without the fire-and-forget IIFE so the job runner
-// itself can await it. Per-chapter errors here are still swallowed by the caller's own
-// try/catch, not this function — see both call sites.
+// Exported for services/jobs/ragScanJobs.ts's runRagScanStoryJob, the job-runner-driven
+// whole-story scan loop (the old standalone `scanStory` this once also served was retired, B29 —
+// see this file's own note near the bottom). Per-chapter errors here are still swallowed by the
+// caller's own try/catch, not this function — see both call sites.
 export const runChapterScan = async (params: {
     scanId: string;
     storyId: string;
@@ -400,42 +398,11 @@ export const listOrderedChapterIds = async (storyId: string): Promise<string[]> 
     return chapterRows.map(row => row.id);
 };
 
-// Kick off a whole-story scan: chapters are scanned DEFAULT_AI_CONCURRENCY at a time (batched,
-// not one at a time — see concurrency.ts's own comment for why batches rather than a rolling
-// pool) in the background so the caller gets an immediate response and polls
-// `getScanWithIssues(scan.id)` for progress. Throws immediately (before creating the scan row) if
-// no scanner endpoint is configured.
-export const scanStory = async (storyId: string, includeMemory = false, includeTimeline = false): Promise<RagScan> => {
-    const { client, model } = await requireScannerConnection();
-
-    const chapterIds = await listOrderedChapterIds(storyId);
-
-    const scan = await createScan({ storyId, scope: "story", chapterId: null, totalChapters: chapterIds.length });
-
-    void (async () => {
-        try {
-            let processed = 0;
-            for (const batch of chunk(chapterIds, DEFAULT_AI_CONCURRENCY)) {
-                await Promise.all(
-                    batch.map(async chapterId => {
-                        try {
-                            await runChapterScan({ scanId: scan.id, storyId, chapterId, client, model, includeMemory, includeTimeline });
-                        } catch (error) {
-                            console.error(`RAG scan: chapter ${chapterId} failed:`, (error as Error).message);
-                        }
-                    })
-                );
-                processed += batch.length;
-                await updateScanProgress(scan.id, processed);
-            }
-            await completeScan(scan.id, { model, processedChapters: chapterIds.length });
-        } catch (error) {
-            await failScan(scan.id, (error as Error).message);
-        }
-    })();
-
-    return scan;
-};
+// B29 (docs/CODE_REVIEW_2026-08-17.md) — the old fire-and-forget whole-story `scanStory` (a bare
+// `void (async () => {...})()` IIFE, no `agentJobs` row, no crash recovery, could race the real
+// job-runner path) was removed 2026-08-18 along with its route (server/routes/rag.ts). Whole-story
+// scans now only ever run via `services/jobs/ragScanJobs.ts`'s `runRagScanStoryJob`, which reuses
+// `runChapterScan`/`listOrderedChapterIds` above unchanged.
 
 export const getScanWithIssues = async (scanId: string): Promise<{ scan: RagScan; issues: RagScanIssue[] } | null> => {
     const scan = await getScan(scanId);

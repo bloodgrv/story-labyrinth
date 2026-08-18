@@ -67,7 +67,7 @@ export function NotesChatRail({ storyId, focusedNoteId }: NotesChatRailProps) {
     // T10 CR4 — single source of truth for the Context & memory toggles, shared between
     // ChatInterface (contextToggles/contextPanelMode="external" below) and the rail's own
     // "Context" drawer panel (openPanelId), so there's exactly one PATCH-and-local-state copy.
-    const contextToggles = useChatContextToggles(selectedChat, "notes");
+    const contextToggles = useChatContextToggles(selectedChat, "notes", setSelectedChat);
     // T10 CR3 — mounted at this top level (not just inside NotesChecklistTray) so the pending
     // count is available for the closed "Approvals" icon's badge even while the drawer itself is
     // closed and the tray isn't mounted. Shares the tray's own query cache key, so no duplicate

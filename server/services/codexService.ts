@@ -20,6 +20,7 @@ import {
     getSnapshotById,
     insertCodexEntry,
     resolvePendingChange,
+    revertPendingChangeToPending,
     updateCodexEntryFields,
     type UpdateCodexEntryFields
 } from "./codexRepository.js";
@@ -222,61 +223,75 @@ export const proposeChange = async (
  * and mark the pending change as approved. Idempotent on the snapshot side — safe to call
  * even if the proposal has no fields (takes a snapshot of current state without modifying).
  */
+const alreadyResolvedError = async (id: string): Promise<Error> => {
+    const pending = await getPendingChangeById(id);
+    return pending ? new Error(`Change is already '${pending.status}'`) : new Error(`Pending change not found: ${id}`);
+};
+
 export const approvePendingChange = async (
     pendingChangeId: string
 ): Promise<{ entry: LorebookRow; snapshot: CodexSnapshot; pendingChange: CodexPendingChange }> => {
-    const pending = await getPendingChangeById(pendingChangeId);
-    if (!pending) throw new Error(`Pending change not found: ${pendingChangeId}`);
-    if (pending.status !== "pending") throw new Error(`Change is already '${pending.status}'`);
+    // B25 (docs/CODE_REVIEW_2026-08-17.md) — claim the row atomically FIRST, before any of the
+    // entry-mutation work below, via resolvePendingChange's own `WHERE status='pending'` guard.
+    // Two concurrent approve calls (double-click, two open tabs) both racing a plain
+    // check-then-act could otherwise both pass the check and both apply — only one caller's claim
+    // can ever return a row here, so the loser gets a clean "already resolved" error immediately
+    // instead of double-applying.
+    const claimed = await resolvePendingChange(pendingChangeId, "approved");
+    if (!claimed) throw await alreadyResolvedError(pendingChangeId);
 
-    const existing = await getOrThrow(pending.entryId);
+    try {
+        const existing = await getOrThrow(claimed.entryId);
 
-    // Build the set of fields to apply — only non-null proposed values
-    const changes: UpdateCodexEntryFields = {};
-    if (pending.proposedDescription !== null) changes.description = pending.proposedDescription;
-    // Shallow merge, not a wholesale replace: proposedState from a chat proposal may only include
-    // the section(s) that actually changed (see CODEX_PROPOSAL_INSTRUCTIONS in
-    // chatContextService.ts) — replacing codexState outright would silently wipe every other
-    // section (wardrobe/appearance/wounds/items/customFields) the model didn't mention, the same
-    // class of data-loss bug already fixed once for entry metadata (see entryFormUtils.ts's
-    // buildSubmitData spread). Any key present in proposedState overwrites; any key absent is kept
-    // from the entry's current state.
-    // `secrets` is deliberately never taken from a proposal, regardless of what the AI (or a
-    // future "Edit First" tray edit) included — the existing entry's own secrets always win, so a
-    // secret can only ever be created, edited, or revealed through the entry's own direct save
-    // path, never as a side effect of an ordinary codex-proposal Approve.
-    if (pending.proposedState !== null) {
-        const currentState = toCodexState(existing.codexState) ?? EMPTY_CODEX_STATE;
-        changes.codexState = { ...currentState, ...pending.proposedState, secrets: currentState.secrets };
+        // Build the set of fields to apply — only non-null proposed values
+        const changes: UpdateCodexEntryFields = {};
+        if (claimed.proposedDescription !== null) changes.description = claimed.proposedDescription;
+        // Shallow merge, not a wholesale replace: proposedState from a chat proposal may only include
+        // the section(s) that actually changed (see CODEX_PROPOSAL_INSTRUCTIONS in
+        // chatContextService.ts) — replacing codexState outright would silently wipe every other
+        // section (wardrobe/appearance/wounds/items/customFields) the model didn't mention, the same
+        // class of data-loss bug already fixed once for entry metadata (see entryFormUtils.ts's
+        // buildSubmitData spread). Any key present in proposedState overwrites; any key absent is kept
+        // from the entry's current state.
+        // `secrets` is deliberately never taken from a proposal, regardless of what the AI (or a
+        // future "Edit First" tray edit) included — the existing entry's own secrets always win, so a
+        // secret can only ever be created, edited, or revealed through the entry's own direct save
+        // path, never as a side effect of an ordinary codex-proposal Approve.
+        if (claimed.proposedState !== null) {
+            const currentState = toCodexState(existing.codexState) ?? EMPTY_CODEX_STATE;
+            changes.codexState = { ...currentState, ...claimed.proposedState, secrets: currentState.secrets };
+        }
+        if (claimed.proposedTags !== null) changes.tags = claimed.proposedTags;
+        if (claimed.proposedNeedsFleshingOut !== null) changes.needsFleshingOut = claimed.proposedNeedsFleshingOut;
+
+        // Apply the changes (if any); snapshot captures the state after the update
+        let entry = existing;
+        if (hasFields(changes)) {
+            const updated = await updateCodexEntryFields(claimed.entryId, changes);
+            if (!updated) throw new Error(`Failed to apply changes to entry: ${claimed.entryId}`);
+            entry = updated;
+            void attemptPromise(() => indexLorebookEntry(entry.id));
+        }
+
+        // sourceRef on the snapshot points back to the pending change for full audit trail
+        const pendingSourceToCodexSource = (src: CodexPendingSourceType): CodexSourceType =>
+            src === "ai" ? "ai_suggestion" : src;
+
+        const snapshot = await createSnapshot({
+            entryId: entry.id,
+            description: entry.description,
+            codexState: toCodexState(entry.codexState),
+            sourceType: pendingSourceToCodexSource(claimed.sourceType),
+            sourceRef: pendingChangeId
+        });
+
+        return { entry, snapshot, pendingChange: claimed };
+    } catch (err) {
+        // Don't leave the row stuck 'approved' with nothing actually applied and no way to retry
+        // from the UI — put it back to 'pending' before propagating the real failure.
+        await revertPendingChangeToPending(pendingChangeId).catch(() => {});
+        throw err;
     }
-    if (pending.proposedTags !== null) changes.tags = pending.proposedTags;
-    if (pending.proposedNeedsFleshingOut !== null) changes.needsFleshingOut = pending.proposedNeedsFleshingOut;
-
-    // Apply the changes (if any); snapshot captures the state after the update
-    let entry = existing;
-    if (hasFields(changes)) {
-        const updated = await updateCodexEntryFields(pending.entryId, changes);
-        if (!updated) throw new Error(`Failed to apply changes to entry: ${pending.entryId}`);
-        entry = updated;
-        void attemptPromise(() => indexLorebookEntry(entry.id));
-    }
-
-    // sourceRef on the snapshot points back to the pending change for full audit trail
-    const pendingSourceToCodexSource = (src: CodexPendingSourceType): CodexSourceType =>
-        src === "ai" ? "ai_suggestion" : src;
-
-    const snapshot = await createSnapshot({
-        entryId: entry.id,
-        description: entry.description,
-        codexState: toCodexState(entry.codexState),
-        sourceType: pendingSourceToCodexSource(pending.sourceType),
-        sourceRef: pendingChangeId
-    });
-
-    const resolved = await resolvePendingChange(pendingChangeId, "approved");
-    if (!resolved) throw new Error(`Failed to resolve pending change: ${pendingChangeId}`);
-
-    return { entry, snapshot, pendingChange: resolved };
 };
 
 /**
@@ -285,12 +300,10 @@ export const approvePendingChange = async (
 export const rejectPendingChange = async (
     pendingChangeId: string
 ): Promise<CodexPendingChange> => {
-    const pending = await getPendingChangeById(pendingChangeId);
-    if (!pending) throw new Error(`Pending change not found: ${pendingChangeId}`);
-    if (pending.status !== "pending") throw new Error(`Change is already '${pending.status}'`);
-
+    // B25 — same atomic-claim shape as approvePendingChange, just with no apply step to
+    // compensate for on failure.
     const resolved = await resolvePendingChange(pendingChangeId, "rejected");
-    if (!resolved) throw new Error(`Failed to resolve pending change: ${pendingChangeId}`);
+    if (!resolved) throw await alreadyResolvedError(pendingChangeId);
 
     return resolved;
 };

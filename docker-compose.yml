@@ -4,8 +4,16 @@ services:
         container_name: story-labyrinth-app
         pull_policy: always
         user: "${PUID:-1000}:${PGID:-1000}"
+        # B34 (docs/CODE_REVIEW_2026-08-17.md) — publishing on all interfaces (the default here,
+        # unchanged) is intentional for this project's "direct LAN access, no Tailscale required"
+        # supported use case, not an oversight — but it does mean anything else on your LAN (or,
+        # worse, the public internet if this host is also reachable there — e.g. router UPnP, a
+        # cloud VPS with a public IP) can reach the login screen. If you don't specifically want
+        # that, set BIND_HOST=127.0.0.1 in your .env (loopback-only — pair with a reverse proxy or
+        # SSH tunnel for remote access) or use docker-compose.tailscale.yml instead, which never
+        # publishes a host port at all. See README.md's Docker Deployment section.
         ports:
-            - "${APP_PORT:-3000}:${APP_PORT:-3000}"
+            - "${BIND_HOST:-0.0.0.0}:${APP_PORT:-3000}:${APP_PORT:-3000}"
         environment:
             - NODE_ENV=production
             - PORT=${APP_PORT:-3000}

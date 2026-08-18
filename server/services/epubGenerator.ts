@@ -13,6 +13,13 @@ type Story = InferSelectModel<typeof schema.stories>;
 type Chapter = InferSelectModel<typeof schema.chapters>;
 
 const DATA_URI_IMG_RE = /(<img[^>]+src=")(data:[^"]+)(")/g;
+// B23 — anything left with an http(s)/protocol-relative src after the data-URI pass above is a
+// remote URL that epub-gen-memory would otherwise fetch server-side via node-fetch when it builds
+// the archive. Chapter content should only ever produce pasted/dropped (data-URI) images — this
+// is not a supported way to embed pictures — so any remote src is stripped rather than routed
+// through ssrfSafeFetch: an EPUB export has no soft-fail path to fall back to, and a blocked image
+// silently dropping is strictly better UX than the whole export failing.
+const REMOTE_IMG_RE = /<img[^>]+src="(?:https?:)?\/\/[^"]*"[^>]*\/?>/gi;
 
 /**
  * epub-gen-memory fetches every `<img src>` via node-fetch, which does not
@@ -22,10 +29,11 @@ const DATA_URI_IMG_RE = /(<img[^>]+src=")(data:[^"]+)(")/g;
  * to a `file://` URL so the generator can actually embed it.
  */
 async function embedDataUriImages(html: string, tempDir: string, counter: { n: number }): Promise<string> {
-    const matches = [...html.matchAll(DATA_URI_IMG_RE)];
-    if (matches.length === 0) return html;
+    let result = html.replace(REMOTE_IMG_RE, "");
 
-    let result = html;
+    const matches = [...result.matchAll(DATA_URI_IMG_RE)];
+    if (matches.length === 0) return result;
+
     for (const [full, prefix, dataUri, suffix] of matches) {
         const commaIdx = dataUri.indexOf(",");
         if (commaIdx === -1) continue;

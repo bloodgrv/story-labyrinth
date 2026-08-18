@@ -31,6 +31,10 @@ const STATUS_TABS: { value: RagIssueStatus; label: string }[] = [
 const SCAN_STATUS_VARIANT: Record<RagScanStatus, "default" | "secondary" | "destructive"> = {
     running: "secondary",
     completed: "default",
+    // B30 — a distinct "yellow-flag" variant so partial results don't read as either a clean
+    // success (misleading, some chapters never got scanned) or a hard failure (misleading, most
+    // of the scan's results are real).
+    completed_with_errors: "secondary",
     failed: "destructive"
 };
 
@@ -193,7 +197,7 @@ export function RagScannerPanel({ storyId }: RagScannerPanelProps) {
                                     <span className="text-muted-foreground"> · {new Date(scan.createdAt).toLocaleString()}</span>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                    {isOwner && scan.status === "completed" && (
+                                    {isOwner && (scan.status === "completed" || scan.status === "completed_with_errors") && (
                                         <Button
                                             size="sm"
                                             variant="outline"
@@ -204,7 +208,18 @@ export function RagScannerPanel({ storyId }: RagScannerPanelProps) {
                                             Suggest memories
                                         </Button>
                                     )}
-                                    <Badge variant={SCAN_STATUS_VARIANT[scan.status]}>{scan.status}</Badge>
+                                    <Badge
+                                        variant={SCAN_STATUS_VARIANT[scan.status]}
+                                        title={
+                                            scan.status === "completed_with_errors"
+                                                ? `${scan.failedChapterIds.length} chapter${scan.failedChapterIds.length === 1 ? "" : "s"} failed to scan — its results are incomplete`
+                                                : undefined
+                                        }
+                                    >
+                                        {scan.status === "completed_with_errors"
+                                            ? `${scan.failedChapterIds.length} chapter${scan.failedChapterIds.length === 1 ? "" : "s"} failed`
+                                            : scan.status}
+                                    </Badge>
                                 </div>
                             </div>
                         ))}

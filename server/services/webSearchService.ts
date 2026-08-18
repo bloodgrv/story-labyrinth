@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { ssrfSafeFetch } from "../lib/ssrfSafeFetch.js";
 
 // P0.4 S1 — no search API key: scrapes DuckDuckGo's html-only endpoint (the same one the
 // Python `ddgs` package targets), per explicit user choice over a keyed provider (Tavily/Brave/
@@ -61,10 +62,11 @@ export const searchWeb = async (query: string, maxResults = 5): Promise<WebSearc
 
 export const fetchPage = async (url: string): Promise<FetchedPage | null> => {
     try {
-        const parsed = new URL(url);
-        if (!["http:", "https:"].includes(parsed.protocol)) return null;
-
-        const res = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+        // B23 — url is lifted straight out of the user's chat message text (chatContextService.ts's
+        // resolveWebSearch), so it's untrusted input the server is about to make its own request
+        // with. ssrfSafeFetch rejects loopback/private/link-local/metadata targets (incl. after DNS
+        // resolution and on every redirect hop) before this ever reaches the network.
+        const res = await ssrfSafeFetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
         if (!res.ok || !(res.headers.get("content-type") ?? "").includes("text/html")) return null;
 
         const $ = cheerio.load(await res.text());

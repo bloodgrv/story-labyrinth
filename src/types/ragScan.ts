@@ -4,7 +4,10 @@ export type RagIssueType = "contradiction" | "state_mismatch" | "timeline" | "ot
 export type RagIssueSeverity = "low" | "medium" | "high";
 export type RagIssueStatus = "open" | "dismissed" | "resolved";
 export type RagScanScope = "chapter" | "story";
-export type RagScanStatus = "running" | "completed" | "failed";
+// 'completed_with_errors' (B30) — the scan finished but one or more individual chapters threw
+// (a bad chapter's own error doesn't abort scanning the rest, so this isn't 'failed', but the
+// user still needs to know the results are partial). See RagScan.failedChapterIds below.
+export type RagScanStatus = "running" | "completed" | "completed_with_errors" | "failed";
 
 export interface RagScanEvidence {
     // "memory" (C3, docs/CURRENT_BACKLOG.md P0.3) — an active Project Memory entry cited as
@@ -39,6 +42,9 @@ export interface RagScan {
     processedChapters: number;
     model: string | null;
     error: string | null;
+    // B30 — chapter ids that threw during this scan and were skipped (not blank/empty text, a
+    // genuine processing failure). Empty array when status isn't 'completed_with_errors'.
+    failedChapterIds: string[];
     createdAt: Date;
     startedAt: Date | null;
     completedAt: Date | null;

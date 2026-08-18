@@ -183,6 +183,14 @@ export const getPendingChangeById = async (id: string): Promise<CodexPendingChan
     return row ? rowToPendingChange(row) : null;
 };
 
+// B25 (docs/CODE_REVIEW_2026-08-17.md) — conditioned on `status = 'pending'` so this doubles as
+// the atomic "claim" step callers use to close the double-click/two-tabs TOCTOU: a caller that
+// checked status with a separate SELECT first and then calls this can still lose a race to
+// another concurrent caller, but a caller that treats *this* call's null-vs-row result as the
+// single source of truth for "did I win" cannot — only one concurrent `UPDATE ... WHERE
+// status='pending'` can ever match the row. Returns null both when the id doesn't exist and when
+// it's already resolved; callers that need to tell those apart for error messaging do a follow-up
+// SELECT purely for the message, not to re-decide the race.
 export const resolvePendingChange = async (
     id: string,
     status: "approved" | "rejected"
@@ -190,9 +198,19 @@ export const resolvePendingChange = async (
     const [row] = await db
         .update(schema.codexPendingChanges)
         .set({ status, resolvedAt: new Date() })
-        .where(eq(schema.codexPendingChanges.id, id))
+        .where(and(eq(schema.codexPendingChanges.id, id), eq(schema.codexPendingChanges.status, "pending")))
         .returning();
     return row ? rowToPendingChange(row) : null;
+};
+
+// Compensating action for approvePendingChange (codexService.ts): if claiming the row succeeds
+// but applying its changes to the live entry then fails, this puts it back to 'pending' rather
+// than leaving it stuck 'approved' with nothing actually applied and no way to retry from the UI.
+export const revertPendingChangeToPending = async (id: string): Promise<void> => {
+    await db
+        .update(schema.codexPendingChanges)
+        .set({ status: "pending", resolvedAt: null })
+        .where(eq(schema.codexPendingChanges.id, id));
 };
 
 // Revise the proposed fields of a still-pending change in place (e.g. the conversation

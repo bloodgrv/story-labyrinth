@@ -40,6 +40,7 @@ import {
     useReorderOutlineMutation,
     useUpdateOutlineItemMutation
 } from "@/features/outline/hooks/useOutlineQuery";
+import { ApiError } from "@/services/api/apiFactory";
 import { brainstormApi, chatsApi, deskTransfersApi, lorebookApi } from "@/services/api/client";
 import type { HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
 import type { ChapterSelectionTarget, SheetFieldReworkTarget } from "@/types/rework";
@@ -186,9 +187,19 @@ export function ChatInterface({
         setInputState(value);
         setChatDraft(selectedChat.id, value);
     };
-    // Only meaningful when `guidedSetup` is provided — resets to expanded on remount (chat
-    // switch), same as GuidedSetupControl's own collapse used to before it moved here.
+    // B26 companion — chatDrafts already remembers per chatId, but this useState only seeded on
+    // first mount; without a re-load, switching A→B leaves A's draft in the box (or blank if B
+    // never typed) until remount. Id-only dep: don't fight keystrokes that also write chatDrafts.
+    useEffect(() => {
+        setInputState(chatDrafts[selectedChat.id] ?? "");
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally id-only
+    }, [selectedChat.id]);
+    // Only meaningful when `guidedSetup` is provided — expand header when the selected chat changes
+    // (same "fresh chat" feel as a remount).
     const [headerExpanded, setHeaderExpanded] = useState(true);
+    useEffect(() => {
+        setHeaderExpanded(true);
+    }, [selectedChat.id]);
     const queryClient = useQueryClient();
     // Editor chats rely entirely on the auto-pulled codexContext (chapter passages + Codex
     // entries, fetched below) instead of the manual chapter-summary/lorebook checkboxes —
@@ -295,7 +306,10 @@ export function ChatInterface({
     // instance to both this component (via contextToggles below) and its rail panel content,
     // instead of two independent copies racing each other's chatsApi.update calls. Every host not
     // yet migrated gets internalToggles — behavior is unchanged (same hook, called here instead).
-    const internalToggles = useChatContextToggles(selectedChat, promptType);
+    // B26 — when this host owns toggles internally, still push PATCH results into onChatUpdate so the
+    // sticky selectedChat object stays field-fresh for the next chat switch (lifted hosts pass
+    // their own onChatUpdated into useChatContextToggles instead).
+    const internalToggles = useChatContextToggles(selectedChat, promptType, onChatUpdate);
     const toggles = contextToggles ?? internalToggles;
 
     // Chat chrome density (CC0) — collapsed-by-default "Context & memory" disclosure wrapping the
@@ -1437,8 +1451,26 @@ export function ChatInterface({
     // `PATCH /:chatId {messages}` full-array-replace already exists (chatsApi.update) — so no new
     // server routes were needed for delete/edit/regenerate, just client-side array mutation +
     // that one existing endpoint.
+    // B27 (docs/CODE_REVIEW_2026-08-17.md) — sends the version this pane last saw so a stale
+    // edit/delete/regenerate/resend (this chat open in another tab/pane, or the in-flight
+    // streaming reply this same tab just sent, wrote a message this array doesn't know about)
+    // gets rejected instead of silently clobbering it. On conflict, push the server's current
+    // state straight into this component via onChatUpdate — unlike the chapter-editor equivalent
+    // (B24), there's no separate Lexical/cache duality to reconcile here, so this alone re-renders
+    // the message list with the real current state; no extra "reload" click needed.
     const persistMessages = async (messages: ChatMessage[]) => {
-        const updated = await chatsApi.update(selectedChat.id, { messages });
+        const [error, updated] = await attemptPromise(() =>
+            chatsApi.update(selectedChat.id, { messages, expectedMessagesVersion: selectedChat.messagesVersion })
+        );
+        if (error) {
+            if (error instanceof ApiError && error.status === 409) {
+                const latest = (error.body as { latest?: AIChat } | undefined)?.latest;
+                if (latest) onChatUpdate(latest);
+                toast.warning("This chat changed elsewhere — your action didn't apply. Showing the current state.");
+                return latest ?? selectedChat;
+            }
+            throw error;
+        }
         onChatUpdate(updated);
         return updated;
     };
