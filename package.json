@@ -17,6 +17,8 @@
         "prebuild": "node server/scripts/prefetchEmbeddingModel.mjs",
         "build": "tsc && tsc --project server/tsconfig.json && vite build",
         "start": "cross-env NODE_ENV=production NODE_OPTIONS=--use-system-ca node dist/server/server/index.js",
+        "test": "vitest run",
+        "test:watch": "vitest",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "drizzle-kit migrate",
         "knip": "knip",
@@ -133,6 +135,7 @@
         "prettier": "^3.7.4",
         "tsx": "^4.20.6",
         "typescript": "~5.9.3",
-        "vite": "^7.2.7"
+        "vite": "^7.2.7",
+        "vitest": "^4.1.11"
     }
 }
