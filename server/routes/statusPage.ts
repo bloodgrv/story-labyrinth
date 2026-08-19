@@ -60,7 +60,9 @@ export interface StatusPageData {
     port: string | number;
     dbPath: string;
     jobRunnerStarted: boolean;
-    currentJobId: string | null;
+    // P1.1 — the runner can now have several jobs in flight at once (one per distinct jobType),
+    // not just one.
+    currentJobIds: string[];
 }
 
 export const renderStatusPage = (data: StatusPageData): string => {
@@ -70,7 +72,7 @@ export const renderStatusPage = (data: StatusPageData): string => {
         ["Port", String(data.port)],
         ["Uptime", uptime],
         ["Job runner", data.jobRunnerStarted ? "running" : "stopped"],
-        ["Active job", data.currentJobId ?? "none"],
+        ["Active jobs", data.currentJobIds.length > 0 ? data.currentJobIds.join(", ") : "none"],
         ["Database", data.dbPath],
         ["App version", APP_VERSION]
     ];

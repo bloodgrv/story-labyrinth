@@ -7,7 +7,7 @@ import { seedCoreNamePools } from "./db/seedNamePools.js";
 import { migrateSceneBeatPromptType, patchStaleSystemPrompts, seedSystemPrompts } from "./db/seedSystemPrompts.js";
 import { blockViewerMutations, requireAuth, requireOwner } from "./middleware/auth.js";
 import { renderStatusPage } from "./routes/statusPage.js";
-import { getCurrentJobId, start as startJobRunner, stop as stopJobRunner } from "./services/jobRunner.js";
+import { getCurrentJobIds, start as startJobRunner, stop as stopJobRunner } from "./services/jobRunner.js";
 import { seedShippedPlaybookPacks } from "./services/playbookPackService.js";
 import adminRouter from "./routes/admin.js";
 import agentJobsRouter from "./routes/agentJobs.js";
@@ -184,7 +184,7 @@ app.get("/_status", requireAuth, requireOwner, (_req, res) => {
             port: PORT,
             dbPath: DB_PATH,
             jobRunnerStarted,
-            currentJobId: getCurrentJobId()
+            currentJobIds: getCurrentJobIds()
         })
     );
 });

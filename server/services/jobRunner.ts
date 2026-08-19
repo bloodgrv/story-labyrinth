@@ -20,25 +20,28 @@ import { runTimelineSuggestPinsJob } from "./jobs/timelineSuggestPinsJob.js";
 
 // In-process job runner — no queue library, no worker_threads, no second process (single Docker
 // container, single SQLite file; see docs/Agent_Framework_And_Project_Memory_Design.md §3.2/3.3).
-// Strictly serial: at most one job runs at a time, enforced by the `tickRunning` re-entrancy
-// guard below, so a slow job can't let a second tick claim + run concurrently (SQLite
-// write-contention rationale, design doc §3.3).
+//
+// P1.1 soft concurrency (docs/CURRENT_BACKLOG.md, 2026-08-18) — jobs of DIFFERENT types may now
+// run concurrently (an AI Review no longer waits behind an unrelated RAG scan), but jobs of the
+// SAME type still never overlap — `runningJobs` tracks in-flight (jobId -> jobType) so each tick
+// only claims a job whose type isn't already running, preserving the original SQLite
+// write-contention rationale (design doc §3.3) within a type while relaxing it across types.
 
 const TICK_INTERVAL_MS = 3000; // claim + run
 const SCHEDULE_INTERVAL_MS = 60_000; // enqueue due periodic jobs
 
 // B37 (docs/CODE_REVIEW_2026-08-17.md) — before this, a handler that hung (a stuck fetch with no
-// timeout, a network partition, an unresponsive local model server) left `tickRunning` true
-// forever: every subsequent 3s tick's `if (tickRunning) return` guard above made the entire serial
-// queue permanently stuck behind it, recoverable only by restarting the process (which
-// `recoverCrashedJobs` above only runs at `start()`). Generous ceiling — `ai_review_deep`'s staged
-// pipeline and a whole-story RAG scan are both legitimately long-running — but any handler that's
-// still going past this is functionally hung either way, and a timed-out job goes through the
-// exact same `recordJobFailure` retry/exhaustion accounting as a thrown error, so it isn't lost,
-// just requeued (or permanently failed once attempts run out) like any other failure. Doesn't
-// truly cancel the stuck operation underneath (Node has no hard-kill for a wedged Promise) — what
-// it does do is stop that operation from blocking every OTHER job forever, which is the actual
-// reported symptom.
+// timeout, a network partition, an unresponsive local model server) left that job's type
+// permanently excluded from claiming (per P1.1's `runningJobs` above), recoverable only by
+// restarting the process (which `recoverCrashedJobs` above only runs at `start()`). Generous
+// ceiling — `ai_review_deep`'s staged pipeline and a whole-story RAG scan are both legitimately
+// long-running — but any handler that's still going past this is functionally hung either way,
+// and a timed-out job goes through the exact same `recordJobFailure` retry/exhaustion accounting
+// as a thrown error, so it isn't lost, just requeued (or permanently failed once attempts run
+// out) like any other failure. Doesn't truly cancel the stuck operation underneath (Node has no
+// hard-kill for a wedged Promise) — what it does do is stop that operation from blocking every
+// future job of the SAME type forever, which is the actual reported symptom (P1.1's own
+// concurrency change means a hang no longer blocks every OTHER type too, a nice side effect).
 const JOB_TIMEOUT_MS = 15 * 60_000;
 
 const RECONCILE_INDEX_CADENCE_MS = 15 * 60_000; // per story, design doc §3.5 cadence table
@@ -65,37 +68,45 @@ const HANDLERS: Record<AgentJobType, JobHandler> = {
 
 let claimIntervalId: NodeJS.Timeout | null = null;
 let scheduleIntervalId: NodeJS.Timeout | null = null;
-let tickRunning = false;
-let currentJobId: string | null = null;
+// jobId -> jobType, for every job currently mid-handler. Doubles as both the "what's running
+// right now" status surface (getCurrentJobIds) and the same-type exclusion set claimNextQueuedJob
+// needs on every tick.
+const runningJobs = new Map<string, AgentJobType>();
 
-export const getCurrentJobId = (): string | null => currentJobId;
+export const getCurrentJobIds = (): string[] => [...runningJobs.keys()];
 
-const runTick = async (): Promise<void> => {
-    if (tickRunning) return; // strictly serial — a still-running job blocks the next claim
-    tickRunning = true;
+// Runs one claimed job to completion (or timeout) and records the outcome. Never awaited by
+// runTick itself — deliberately fire-and-forget, so a long-running job doesn't block the next
+// tick from claiming a job of a different type.
+const runJob = async (job: AgentJob): Promise<void> => {
     try {
-        const job = claimNextQueuedJob();
-        if (!job) return;
-
-        currentJobId = job.id;
-        try {
-            const handler = HANDLERS[job.jobType];
-            const result = await Promise.race([
-                handler(job),
-                new Promise<never>((_, reject) =>
-                    setTimeout(() => reject(new Error(`Job exceeded max runtime of ${JOB_TIMEOUT_MS / 60_000} minutes`)), JOB_TIMEOUT_MS)
-                )
-            ]);
-            await completeJob(job.id, result);
-        } catch (error) {
-            console.error(`jobRunner: job ${job.id} (${job.jobType}) failed:`, (error as Error).message);
-            await recordJobFailure(job.id, (error as Error).message);
-        } finally {
-            currentJobId = null;
-        }
+        const handler = HANDLERS[job.jobType];
+        const result = await Promise.race([
+            handler(job),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error(`Job exceeded max runtime of ${JOB_TIMEOUT_MS / 60_000} minutes`)), JOB_TIMEOUT_MS)
+            )
+        ]);
+        await completeJob(job.id, result);
+    } catch (error) {
+        console.error(`jobRunner: job ${job.id} (${job.jobType}) failed:`, (error as Error).message);
+        await recordJobFailure(job.id, (error as Error).message);
     } finally {
-        tickRunning = false;
+        runningJobs.delete(job.id);
     }
+};
+
+// Synchronous up to the claim (no `await` before `runningJobs.set`), so two ticks can never
+// interleave mid-claim — each tick's own claim-and-register step always finishes atomically
+// before the event loop can run another timer callback. That's what keeps claimNextQueuedJob's
+// same-type exclusion race-free without needing its own lock.
+const runTick = (): void => {
+    const excludeJobTypes = [...new Set(runningJobs.values())];
+    const job = claimNextQueuedJob(excludeJobTypes);
+    if (!job) return;
+
+    runningJobs.set(job.id, job.jobType);
+    void runJob(job);
 };
 
 // Enqueue a periodic job type/scope if it's not already active and its last successful
@@ -145,16 +156,16 @@ export const start = async (): Promise<void> => {
     if (recovery.requeued || recovery.failed)
         console.log(`jobRunner: crash recovery — requeued ${recovery.requeued}, permanently failed ${recovery.failed}`);
 
-    claimIntervalId = setInterval(() => void runTick(), TICK_INTERVAL_MS);
+    claimIntervalId = setInterval(runTick, TICK_INTERVAL_MS);
     scheduleIntervalId = setInterval(() => void runScheduleTick(), SCHEDULE_INTERVAL_MS);
 
     console.log("jobRunner: started");
     void runScheduleTick(); // seed immediately rather than waiting a full SCHEDULE_INTERVAL_MS
 };
 
-// Clears both timers and waits briefly for any in-flight tick to finish so a job is never
-// yanked mid-write. No SIGTERM/SIGINT handling existed anywhere in this codebase before this —
-// see server/index.ts wiring.
+// Clears both timers and waits briefly for every in-flight job (there may now be several, one
+// per running type — P1.1) to finish so none is yanked mid-write. No SIGTERM/SIGINT handling
+// existed anywhere in this codebase before this — see server/index.ts wiring.
 export const stop = async (): Promise<void> => {
     if (claimIntervalId) clearInterval(claimIntervalId);
     if (scheduleIntervalId) clearInterval(scheduleIntervalId);
@@ -162,6 +173,6 @@ export const stop = async (): Promise<void> => {
     scheduleIntervalId = null;
 
     const start = Date.now();
-    while (tickRunning && Date.now() - start < 10_000) await new Promise(resolve => setTimeout(resolve, 100));
+    while (runningJobs.size > 0 && Date.now() - start < 10_000) await new Promise(resolve => setTimeout(resolve, 100));
     console.log("jobRunner: stopped");
 };

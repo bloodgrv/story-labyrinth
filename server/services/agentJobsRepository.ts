@@ -164,19 +164,32 @@ export const enqueue = (params: EnqueueParams): { job: AgentJob; deduped: boolea
     return { job: rawRowToJob(job), deduped };
 };
 
-// Atomically claim the oldest queued job and flip it to 'running', incrementing attempts — one
-// synchronous SQLite statement (subquery selects the row, outer UPDATE claims it), so no other
-// JS in this process can observe or mutate the row in between (design doc §3.2). Returns null
-// if no queued job exists.
-export const claimNextQueuedJob = (): AgentJob | null => {
+// Atomically claim the oldest queued job (of a type not already running, per `excludeJobTypes`)
+// and flip it to 'running', incrementing attempts — one synchronous SQLite statement (subquery
+// selects the row, outer UPDATE claims it), so no other JS in this process can observe or mutate
+// the row in between (design doc §3.2). Returns null if no eligible queued job exists.
+//
+// P1.1 (docs/CURRENT_BACKLOG.md) — `excludeJobTypes` is jobRunner.ts's soft-concurrency guard:
+// a second job may now claim and run while another is still in flight, as long as it's a
+// different jobType. Same-jobType jobs still never overlap (the exclusion list always includes
+// every currently-running type), so the SQLite write-contention rationale for staying serial
+// within one job type (design doc §3.3) still holds — this only relaxes the "one job, period"
+// rule across unrelated job types.
+export const claimNextQueuedJob = (excludeJobTypes: AgentJobType[] = []): AgentJob | null => {
+    const exclusionClause = excludeJobTypes.length > 0 ? `AND jobType NOT IN (${excludeJobTypes.map(() => "?").join(", ")})` : "";
+    const now = toEpochSeconds();
     const row = sqlite
         .prepare(
             `UPDATE agentJobs
-             SET status = 'running', attempts = attempts + 1, startedAt = @now, lastAttemptAt = @now
-             WHERE id = (SELECT id FROM agentJobs WHERE status = 'queued' ORDER BY queuedAt ASC LIMIT 1)
+             SET status = 'running', attempts = attempts + 1, startedAt = ?, lastAttemptAt = ?
+             WHERE id = (
+                 SELECT id FROM agentJobs
+                 WHERE status = 'queued' ${exclusionClause}
+                 ORDER BY queuedAt ASC LIMIT 1
+             )
              RETURNING *`
         )
-        .get({ now: toEpochSeconds() }) as RawJobRow | undefined;
+        .get(now, now, ...excludeJobTypes) as RawJobRow | undefined;
     return row ? rawRowToJob(row) : null;
 };
 
