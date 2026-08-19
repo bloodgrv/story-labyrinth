@@ -25,7 +25,7 @@ export const WorkspaceStoryCard = ({ story, onEdit, onExport }: WorkspaceStoryCa
     const deleteStoryMutation = useDeleteStoryMutation();
     const { data: series } = useSingleSeriesQuery(story.seriesId);
     const navigate = useNavigate();
-    const { setCurrentStoryId, setCurrentTool } = useStoryContext();
+    const { currentStoryId, setCurrentStoryId, setCurrentTool } = useStoryContext();
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
     const handleDeleteClick = (e: MouseEvent) => {
@@ -103,7 +103,17 @@ export const WorkspaceStoryCard = ({ story, onEdit, onExport }: WorkspaceStoryCa
                 open={deleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
                 description={`Delete "${story.title}"? This action cannot be undone.`}
-                onConfirm={() => deleteStoryMutation.mutate(story.id)}
+                onConfirm={() =>
+                    deleteStoryMutation.mutate(story.id, {
+                        onSuccess: () => {
+                            // The deleted story may still be the workspace's "current" story (e.g.
+                            // deleting the story you're currently working in) — leaving currentStoryId
+                            // stale points every other tool at a story that no longer exists, which
+                            // rendered a blank page instead of falling back to the Stories list.
+                            if (story.id === currentStoryId) setCurrentStoryId(null);
+                        }
+                    })
+                }
                 confirmLabel="Delete"
             />
         </Card>

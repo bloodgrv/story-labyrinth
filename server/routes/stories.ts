@@ -475,6 +475,17 @@ export default createCrudRouter({
                 // returns a promise, so this must not be `async` — each query is forced to
                 // execute synchronously via `.run()` instead of being awaited.
                 db.transaction(tx => {
+                    // 0. Null out concreteBeats.characterId pointing at this story's entries first.
+                    // schema.ts declares this FK onDelete: "set null", but the migration that added
+                    // the column (0016_concrete_beats_character_ref.sql) never wrote the "ON DELETE
+                    // SET NULL" clause into the actual table — so it behaves as RESTRICT, and step 1
+                    // below throws "FOREIGN KEY constraint failed" for any story with concrete beats
+                    // tied to a character, aborting the whole delete.
+                    tx.update(schema.concreteBeats)
+                        .set({ characterId: null })
+                        .where(eq(schema.concreteBeats.storyId, storyId))
+                        .run();
+
                     // 1. Delete story-level lorebook entries
                     tx.delete(schema.lorebookEntries)
                         .where(

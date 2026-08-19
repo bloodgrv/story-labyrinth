@@ -11,8 +11,9 @@ import {
     Plus,
     StickyNote
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ROUTES } from "@/constants/urls";
@@ -53,6 +54,16 @@ export default function DashboardPage() {
     } = useDashboardData(storyId ?? "");
 
     const sessionManager = useSessionManager(storyId ?? "");
+
+    // The story this tab/page is anchored to can vanish out from under it — most commonly it was
+    // deleted from the Stories list in another tab (this app opens most things in new tabs, per
+    // CLAUDE.md's UX Flow). Previously this just sat on a "Story not found" message with a manual
+    // "Go home" link forever, which reads as a dead/blank page. Redirect automatically instead.
+    useEffect(() => {
+        if (isLoadingStory || story) return;
+        toast.info("This story is no longer available.");
+        navigate(ROUTES.HOME, { replace: true });
+    }, [isLoadingStory, story, navigate]);
 
     if (isLoadingStory) {
         return (
