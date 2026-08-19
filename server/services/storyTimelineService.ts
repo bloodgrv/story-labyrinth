@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import type {
     PinLinkType,
     PinWhen,
@@ -103,7 +103,10 @@ export const ensureSpineTimeline = async (storyId: string): Promise<StoryTimelin
 
 export const listTimelinesForStory = async (storyId: string): Promise<StoryTimeline[]> => {
     await ensureSpineTimeline(storyId);
-    const rows = await db.select().from(schema.storyTimelines).where(eq(schema.storyTimelines.storyId, storyId));
+    const rows = await db
+        .select()
+        .from(schema.storyTimelines)
+        .where(and(eq(schema.storyTimelines.storyId, storyId), isNull(schema.storyTimelines.deletedAt)));
     return rows.map(rowToTimeline);
 };
 
@@ -152,6 +155,10 @@ export const updateTimeline = async (id: string, input: UpdateTimelineInput): Pr
 // guaranteed board). Before deleting, any pin whose ONLY membership is this timeline gets a Spine
 // membership added first — guarantees a pin can never become orphaned/unreachable by a timeline
 // delete (same "preserve, don't destroy" doctrine as unlinkMapsForLocation/unlinkPinsForSource).
+// Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — the real hard-delete this
+// function used to be, unchanged. Called by purgeExpiredTrash() (scheduled) and by the Trash
+// panel's manual "Delete forever" action. server/routes/storyTimeline.ts's DELETE /timelines/:id
+// now calls softDeleteTimeline instead.
 export const deleteTimeline = async (id: string): Promise<void> => {
     const [timeline] = await db.select().from(schema.storyTimelines).where(eq(schema.storyTimelines.id, id));
     if (!timeline) throw new Error(`Timeline not found: ${id}`);
@@ -173,6 +180,17 @@ export const deleteTimeline = async (id: string): Promise<void> => {
     await db.delete(schema.storyTimelines).where(eq(schema.storyTimelines.id, id));
 };
 
+// Moves a named timeline to Trash — spine stays undeletable, same guard as deleteTimeline above.
+// Unlike a real delete, this does NOT preserve orphaned pins onto Spine yet (that reassignment
+// only matters for a real, permanent removal) — a trashed timeline still owns its memberships
+// until it's restored or purged.
+export const softDeleteTimeline = async (id: string): Promise<void> => {
+    const [timeline] = await db.select().from(schema.storyTimelines).where(eq(schema.storyTimelines.id, id));
+    if (!timeline) throw new Error(`Timeline not found: ${id}`);
+    if (timeline.isDefault) throw new Error("Cannot delete the spine timeline");
+    await db.update(schema.storyTimelines).set({ deletedAt: new Date() }).where(eq(schema.storyTimelines.id, id));
+};
+
 // Active pins only — mirrors storyGraphService's listActiveEdgesForStory. Pending AI-suggested
 // pins (TL11B) never appear on a board or in chronology context until approved via the Pending
 // tab; use listPendingPinsForStory for that review surface instead.
@@ -180,7 +198,13 @@ export const listPinsForStory = async (storyId: string): Promise<TimelinePin[]> 
     const pinRows = await db
         .select()
         .from(schema.storyTimelinePins)
-        .where(and(eq(schema.storyTimelinePins.storyId, storyId), eq(schema.storyTimelinePins.status, "active")));
+        .where(
+            and(
+                eq(schema.storyTimelinePins.storyId, storyId),
+                eq(schema.storyTimelinePins.status, "active"),
+                isNull(schema.storyTimelinePins.deletedAt)
+            )
+        );
     if (pinRows.length === 0) return [];
 
     // Memberships fetched via one join across the whole story rather than per-pin — pin counts per
@@ -260,7 +284,13 @@ export const listPendingPinsForStory = async (storyId: string): Promise<Timeline
     const pinRows = await db
         .select()
         .from(schema.storyTimelinePins)
-        .where(and(eq(schema.storyTimelinePins.storyId, storyId), eq(schema.storyTimelinePins.status, "pending")));
+        .where(
+            and(
+                eq(schema.storyTimelinePins.storyId, storyId),
+                eq(schema.storyTimelinePins.status, "pending"),
+                isNull(schema.storyTimelinePins.deletedAt)
+            )
+        );
     if (pinRows.length === 0) return [];
     return pinRows.map(row => rowToPin(row, []));
 };
@@ -322,7 +352,8 @@ export const findPinsByLink = async (storyId: string, linkType: PinLinkType, lin
             and(
                 eq(schema.storyTimelinePins.storyId, storyId),
                 eq(schema.storyTimelinePins.linkType, linkType),
-                eq(schema.storyTimelinePins.linkId, linkId)
+                eq(schema.storyTimelinePins.linkId, linkId),
+                isNull(schema.storyTimelinePins.deletedAt)
             )
         );
     return rows.filter(row => row.status !== "rejected").map(row => rowToPin(row, []));
@@ -381,8 +412,15 @@ export const updatePin = async (id: string, input: UpdatePinInput): Promise<Time
     return rowToPin(row, memberships.map(rowToMembership));
 };
 
+// Trash / Restore (14-day soft-delete) — the real hard-delete, unchanged. Called by
+// purgeExpiredTrash() (scheduled) and by the Trash panel's manual "Delete forever" action.
+// server/routes/storyTimeline.ts's DELETE /timeline-pins/:id now calls softDeletePin instead.
 export const deletePin = async (id: string): Promise<void> => {
     await db.delete(schema.storyTimelinePins).where(eq(schema.storyTimelinePins.id, id));
+};
+
+export const softDeletePin = async (id: string): Promise<void> => {
+    await db.update(schema.storyTimelinePins).set({ deletedAt: new Date() }).where(eq(schema.storyTimelinePins.id, id));
 };
 
 // TL5 — multi-timeline membership (design decision #7: "one pin SoT, multi-timeline membership").
@@ -432,7 +470,8 @@ export const getPinForLink = async (storyId: string, linkType: PinLinkType, link
             and(
                 eq(schema.storyTimelinePins.storyId, storyId),
                 eq(schema.storyTimelinePins.linkType, linkType),
-                eq(schema.storyTimelinePins.linkId, linkId)
+                eq(schema.storyTimelinePins.linkId, linkId),
+                isNull(schema.storyTimelinePins.deletedAt)
             )
         );
     if (!row) return null;

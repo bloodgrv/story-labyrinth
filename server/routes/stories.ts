@@ -8,6 +8,41 @@ import { generateEpub } from "../services/epubGenerator.js";
 import { indexNote, indexOutlineItem } from "../services/ragIndexService.js";
 import { migrateSceneBeatNodesInContent } from "../services/sceneBeatContentMigration.js";
 
+// Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — the real cascading delete,
+// relocated unchanged from the old DELETE /:id handler. Called by purgeExpiredTrash() (scheduled)
+// and by the Trash panel's manual "Delete forever" action (server/routes/trash.ts). The DELETE
+// route itself now just sets deletedAt — see the customRoutes block below.
+export const purgeStory = async (storyId: string): Promise<void> => {
+    // better-sqlite3's transaction API is sync-only and throws if the callback returns a promise,
+    // so this must not be `async` — each query is forced to execute synchronously via `.run()`
+    // instead of being awaited.
+    db.transaction(tx => {
+        // 0. Null out concreteBeats.characterId pointing at this story's entries first.
+        // schema.ts declares this FK onDelete: "set null", but the migration that added the
+        // column (0016_concrete_beats_character_ref.sql) never wrote the "ON DELETE SET NULL"
+        // clause into the actual table — so it behaves as RESTRICT, and step 1 below throws
+        // "FOREIGN KEY constraint failed" for any story with concrete beats tied to a character,
+        // aborting the whole delete.
+        tx.update(schema.concreteBeats)
+            .set({ characterId: null })
+            .where(eq(schema.concreteBeats.storyId, storyId))
+            .run();
+
+        // 1. Delete story-level lorebook entries
+        tx.delete(schema.lorebookEntries)
+            .where(and(eq(schema.lorebookEntries.level, "story"), eq(schema.lorebookEntries.scopeId, storyId)))
+            .run();
+
+        // 2. Delete folders (B9, docs/Folders_Org_Design.md) — both story-level lore folders and
+        // chat folders share scopeId=storyId (same query shape as this route's own export above);
+        // no FK to rely on, so explicit cleanup here too.
+        tx.delete(schema.orgFolders).where(eq(schema.orgFolders.scopeId, storyId)).run();
+
+        // 3. Delete story (FK cascades handle chapters, aiChats, notes, etc.)
+        tx.delete(schema.stories).where(eq(schema.stories.id, storyId)).run();
+    });
+};
+
 type ImportedChapter = InferSelectModel<typeof schema.chapters>;
 type ImportedLorebookEntry = InferSelectModel<typeof schema.lorebookEntries>;
 type ImportedAiChat = InferSelectModel<typeof schema.aiChats>;
@@ -25,6 +60,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 
 export default createCrudRouter({
     table: schema.stories,
     name: "Story",
+    softDelete: true,
     customRoutes: (router, { asyncHandler }) => {
         // Export a single story with all related data
         router.get(
@@ -34,7 +70,7 @@ export default createCrudRouter({
 
                 const [error, data] = await attemptPromise(async () => {
                     const [story] = await db.select().from(schema.stories).where(eq(schema.stories.id, storyId));
-                    if (!story) throw new Error("Story not found");
+                    if (!story || story.deletedAt) throw new Error("Story not found");
 
                     // Fetch series if story belongs to one
                     let seriesData;
@@ -465,43 +501,13 @@ export default createCrudRouter({
             })
         );
 
-        // Delete story with lorebook cascade
+        // Trash / Restore (14-day soft-delete) — the real cascading delete this route used to run
+        // synchronously is now purgeStory(), called from the scheduled purge job and from the
+        // Trash panel's manual "Delete forever" action. This route just moves the story to Trash.
         router.delete(
             "/:id",
             asyncHandler(async (req, res) => {
-                const storyId = req.params.id;
-
-                // better-sqlite3's transaction API is sync-only and throws if the callback
-                // returns a promise, so this must not be `async` — each query is forced to
-                // execute synchronously via `.run()` instead of being awaited.
-                db.transaction(tx => {
-                    // 0. Null out concreteBeats.characterId pointing at this story's entries first.
-                    // schema.ts declares this FK onDelete: "set null", but the migration that added
-                    // the column (0016_concrete_beats_character_ref.sql) never wrote the "ON DELETE
-                    // SET NULL" clause into the actual table — so it behaves as RESTRICT, and step 1
-                    // below throws "FOREIGN KEY constraint failed" for any story with concrete beats
-                    // tied to a character, aborting the whole delete.
-                    tx.update(schema.concreteBeats)
-                        .set({ characterId: null })
-                        .where(eq(schema.concreteBeats.storyId, storyId))
-                        .run();
-
-                    // 1. Delete story-level lorebook entries
-                    tx.delete(schema.lorebookEntries)
-                        .where(
-                            and(eq(schema.lorebookEntries.level, "story"), eq(schema.lorebookEntries.scopeId, storyId))
-                        )
-                        .run();
-
-                    // 2. Delete folders (B9, docs/Folders_Org_Design.md) — both story-level lore
-                    // folders and chat folders share scopeId=storyId (same query shape as this
-                    // route's own export above); no FK to rely on, so explicit cleanup here too.
-                    tx.delete(schema.orgFolders).where(eq(schema.orgFolders.scopeId, storyId)).run();
-
-                    // 3. Delete story (FK cascades handle chapters, aiChats, notes, etc.)
-                    tx.delete(schema.stories).where(eq(schema.stories.id, storyId)).run();
-                });
-
+                await db.update(schema.stories).set({ deletedAt: new Date() }).where(eq(schema.stories.id, req.params.id));
                 res.status(204).send();
             })
         );
@@ -514,7 +520,7 @@ export default createCrudRouter({
 
                 const [error, epubBuffer] = await attemptPromise(async () => {
                     const [story] = await db.select().from(schema.stories).where(eq(schema.stories.id, storyId));
-                    if (!story) throw new Error("Story not found");
+                    if (!story || story.deletedAt) throw new Error("Story not found");
 
                     const chapters = await db
                         .select()

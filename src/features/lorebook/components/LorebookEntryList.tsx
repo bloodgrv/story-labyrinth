@@ -234,8 +234,7 @@ export function LorebookEntryList({
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the entry "
-                                        {deletingEntry?.name}".
+                                        Move "{deletingEntry?.name}" to Trash? You can restore it within 14 days.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>

@@ -7,11 +7,11 @@ import { db, schema } from "../db/client.js";
 import {
     copyPackForEdit,
     createPlaybookPack,
-    deletePlaybookPack,
     listPlaybookPacks,
     parsePackFrontmatter,
     readPackFileText,
     resolvePlaybookPack,
+    softDeletePlaybookPack,
     updatePlaybookPack
 } from "../services/playbookPackService.js";
 import { PLAYBOOK_KEYS, PLAYBOOK_STYLES } from "../../src/types/playbookPack.js";
@@ -143,7 +143,7 @@ router.put("/:id", async (req, res) => {
 
 // DELETE /api/playbook-packs/:id — 404s for shipped rows (permanent floor of the ladder).
 router.delete("/:id", async (req, res) => {
-    const [error, deleted] = await attemptPromise(() => deletePlaybookPack(req.params.id));
+    const [error, deleted] = await attemptPromise(() => softDeletePlaybookPack(req.params.id));
     if (error) {
         res.status(500).json({ error: "Failed to delete playbook pack", details: error.message });
         return;

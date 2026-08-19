@@ -37,6 +37,7 @@ import aiReviewRouter from "./routes/aiReview.js";
 import seriesRouter from "./routes/series.js";
 // Import routes
 import storiesRouter from "./routes/stories.js";
+import trashRouter from "./routes/trash.js";
 import storyGraphRouter from "./routes/storyGraph.js";
 import storyMapRouter from "./routes/storyMap.js";
 import storyMapsRouter from "./routes/storyMaps.js";
@@ -115,6 +116,7 @@ app.use("/api", blockViewerMutations);
 // API routes
 app.use("/api/series", seriesRouter);
 app.use("/api/stories", storiesRouter);
+app.use("/api/trash", trashRouter);
 app.use("/api/chapters", chaptersRouter);
 app.use("/api/chats", chatsRouter);
 app.use("/api/codex", codexRouter);

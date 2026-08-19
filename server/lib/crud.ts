@@ -1,11 +1,12 @@
 import { attemptPromise } from "@jfdi/attempt";
 import type { Table } from "drizzle-orm";
-import { eq, getTableColumns, type InferInsertModel, type InferSelectModel } from "drizzle-orm";
+import { and, eq, getTableColumns, isNull, type InferInsertModel, type InferSelectModel } from "drizzle-orm";
 import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import { type Request, type Response, Router } from "express";
 import { db } from "../db/client.js";
 
 type TableWithId = Table & { id: SQLiteColumn };
+type TableWithDeletedAt = TableWithId & { deletedAt: SQLiteColumn };
 
 // req.body always arrives JSON-parsed, so any `mode: "timestamp"` column value the client sends
 // (e.g. updatedAt) is a string, not a Date — drizzle's SQLite driver calls .getTime() on it and
@@ -47,6 +48,13 @@ type CrudConfig<
         afterRead?: (row: TRow) => TTransformed;
     };
     customRoutes?: (router: Router, helpers: RouteHelpers<TTable, TRow, TTransformed>) => void;
+    // Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — opt-in for tables that have
+    // a `deletedAt` column. When set: generic `GET /` and `GET /:id` add `isNull(deletedAt)` so a
+    // trashed row never reappears in a normal list/lookup, and the generic `DELETE /:id` becomes
+    // `SET deletedAt = now()` instead of a real delete. Entities with their own customRoutes
+    // DELETE override (matched before the generic route, see below) still need to implement their
+    // own soft-delete explicitly — this flag only changes the *generic* fallback route's behavior.
+    softDelete?: boolean;
 };
 
 const stripProtectedFields = (data: Record<string, unknown>, protectedFields: readonly string[] | undefined) => {
@@ -78,7 +86,8 @@ export const createCrudRouter = <
     config: CrudConfig<TTable, TRow, TTransformed>
 ): Router => {
     const router = Router();
-    const { table, name, parentKey, parentRoute, transforms, customRoutes, protectedFields } = config;
+    const { table, name, parentKey, parentRoute, transforms, customRoutes, protectedFields, softDelete } = config;
+    const deletedAtColumn = softDelete ? (table as unknown as TableWithDeletedAt).deletedAt : undefined;
 
     const applyTransform = (data: TRow): TTransformed =>
         transforms?.afterRead ? transforms.afterRead(data) : (data as unknown as TTransformed);
@@ -98,26 +107,28 @@ export const createCrudRouter = <
                 // TypeScript limitation: can't express that parentKey (keyof TRow) maps to table columns
                 // At runtime, parentKey is constrained to valid column names via the type system
                 const column = (table as unknown as Record<string, SQLiteColumn>)[parentKey];
-                const rows = await db.select().from(table).where(eq(column, req.params[paramName]));
+                const where = deletedAtColumn ? and(eq(column, req.params[paramName]), isNull(deletedAtColumn)) : eq(column, req.params[paramName]);
+                const rows = await db.select().from(table).where(where);
                 res.json(rows.map(r => applyTransform(r as TRow)));
             })
         );
-    } else 
+    } else
         router.get(
             "/",
             asyncHandler(async (_, res) => {
-                const rows = await db.select().from(table);
+                const rows = deletedAtColumn ? await db.select().from(table).where(isNull(deletedAtColumn)) : await db.select().from(table);
                 res.json(rows.map(r => applyTransform(r as TRow)));
             })
         );
-    
+
 
     // GET by id
     router.get(
         "/:id",
         asyncHandler(async (req, res) => {
             const column = table.id;
-            const [row] = await db.select().from(table).where(eq(column, req.params.id));
+            const where = deletedAtColumn ? and(eq(column, req.params.id), isNull(deletedAtColumn)) : eq(column, req.params.id);
+            const [row] = await db.select().from(table).where(where);
             if (!row) {
                 res.status(404).json({ error: `${name} not found` });
                 return;
@@ -162,12 +173,14 @@ export const createCrudRouter = <
         })
     );
 
-    // DELETE
+    // DELETE — soft-delete (SET deletedAt = now()) when this table opts into Trash/Restore,
+    // real hard-delete otherwise. Only reached for tables with no customRoutes DELETE override.
     router.delete(
         "/:id",
         asyncHandler(async (req, res) => {
             const column = table.id;
-            await db.delete(table).where(eq(column, req.params.id));
+            if (deletedAtColumn) await db.update(table).set({ deletedAt: new Date() } as Partial<InferInsertModel<TTable>>).where(eq(column, req.params.id));
+            else await db.delete(table).where(eq(column, req.params.id));
             res.json({ success: true });
         })
     );

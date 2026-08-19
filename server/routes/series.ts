@@ -1,12 +1,31 @@
 import { attemptPromise } from "@jfdi/attempt";
 import type { InferSelectModel } from "drizzle-orm";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { type Request, type Response, Router } from "express";
 import multer from "multer";
 import { nanoid } from "nanoid";
 import { db } from "../db/client.js";
 import { aiChats, chapters, lorebookEntries, orgFolders, series, stories } from "../db/schema.js";
 import { migrateSceneBeatNodesInContent } from "../services/sceneBeatContentMigration.js";
+
+// Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — the real cascading delete this
+// route used to run directly, relocated unchanged. Called by purgeExpiredTrash() (scheduled) and
+// by the Trash panel's manual "Delete forever" action. The DELETE route below now just sets
+// deletedAt.
+export const purgeSeries = async (seriesId: string): Promise<void> => {
+    // 1. Orphan all stories in this series (set seriesId to null)
+    await db.update(stories).set({ seriesId: null }).where(eq(stories.seriesId, seriesId));
+
+    // 2. Delete all series-level lorebook entries
+    await db.delete(lorebookEntries).where(and(eq(lorebookEntries.level, "series"), eq(lorebookEntries.scopeId, seriesId)));
+
+    // 3. Delete series-level lore folders (B9, docs/Folders_Org_Design.md) — no FK, so no
+    // cascade to rely on, same call as the entries above.
+    await db.delete(orgFolders).where(and(eq(orgFolders.kind, "lorebook"), eq(orgFolders.level, "series"), eq(orgFolders.scopeId, seriesId)));
+
+    // 4. Delete the series itself
+    await db.delete(series).where(eq(series.id, seriesId));
+};
 
 type ImportedChapter = InferSelectModel<typeof chapters>;
 type ImportedLorebookEntry = InferSelectModel<typeof lorebookEntries>;
@@ -29,7 +48,7 @@ const asyncHandler = (fn: (req: Request, res: Response) => Promise<void>) => asy
 seriesRouter.get(
     "/",
     asyncHandler(async (_, res) => {
-        const allSeries = await db.select().from(series).orderBy(series.createdAt);
+        const allSeries = await db.select().from(series).where(isNull(series.deletedAt)).orderBy(series.createdAt);
         res.json(allSeries);
     })
 );
@@ -38,7 +57,7 @@ seriesRouter.get(
 seriesRouter.get(
     "/:id",
     asyncHandler(async (req, res) => {
-        const [result] = await db.select().from(series).where(eq(series.id, req.params.id));
+        const [result] = await db.select().from(series).where(and(eq(series.id, req.params.id), isNull(series.deletedAt)));
         if (!result) {
             res.status(404).json({ error: "Series not found" });
             return;
@@ -82,26 +101,13 @@ seriesRouter.put(
 );
 
 // DELETE /series/:id - Delete series with cascade
+// Trash / Restore (14-day soft-delete) — moves the series to Trash instead of the real cascading
+// delete (now purgeSeries above, called from the scheduled purge job and the Trash panel's manual
+// "Delete forever" action).
 seriesRouter.delete(
     "/:id",
     asyncHandler(async (req, res) => {
-        const seriesId = req.params.id;
-
-        // 1. Orphan all stories in this series (set seriesId to null)
-        await db.update(stories).set({ seriesId: null }).where(eq(stories.seriesId, seriesId));
-
-        // 2. Delete all series-level lorebook entries
-        await db
-            .delete(lorebookEntries)
-            .where(and(eq(lorebookEntries.level, "series"), eq(lorebookEntries.scopeId, seriesId)));
-
-        // 3. Delete series-level lore folders (B9, docs/Folders_Org_Design.md) — no FK, so no
-        // cascade to rely on, same call as the entries above.
-        await db.delete(orgFolders).where(and(eq(orgFolders.kind, "lorebook"), eq(orgFolders.level, "series"), eq(orgFolders.scopeId, seriesId)));
-
-        // 4. Delete the series itself
-        await db.delete(series).where(eq(series.id, seriesId));
-
+        await db.update(series).set({ deletedAt: new Date() }).where(eq(series.id, req.params.id));
         res.json({ success: true });
     })
 );
@@ -114,7 +120,7 @@ seriesRouter.get(
         const seriesStories = await db
             .select()
             .from(stories)
-            .where(eq(stories.seriesId, req.params.id))
+            .where(and(eq(stories.seriesId, req.params.id), isNull(stories.deletedAt)))
             .orderBy(sql`${stories.seriesOrder} IS NULL`, asc(stories.seriesOrder), asc(stories.createdAt));
         res.json(seriesStories);
     })
@@ -127,7 +133,7 @@ seriesRouter.get(
         const entries = await db
             .select()
             .from(lorebookEntries)
-            .where(and(eq(lorebookEntries.level, "series"), eq(lorebookEntries.scopeId, req.params.id)))
+            .where(and(eq(lorebookEntries.level, "series"), eq(lorebookEntries.scopeId, req.params.id), isNull(lorebookEntries.deletedAt)))
             .orderBy(lorebookEntries.createdAt);
         res.json(entries);
     })

@@ -5,7 +5,6 @@ import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import {
     createFolder,
-    deleteFolder,
     listFolders,
     moveFolder,
     renameFolder,
@@ -15,6 +14,7 @@ import {
 export default createCrudRouter({
     table: schema.orgFolders,
     name: "Folder",
+    softDelete: true,
     customRoutes: (router: Router, { asyncHandler }) => {
         // GET /folders?kind=lorebook&scopeId=X&category=Y  (or ?kind=chat&scopeId=X&chatType=Y)
         router.get(
@@ -113,11 +113,14 @@ export default createCrudRouter({
             })
         );
 
-        // Overrides the generic DELETE /:id — reparents children/leaves instead of cascading.
+        // Overrides the generic DELETE /:id — moves the folder to Trash instead of deleting it.
+        // Real reparent-children-then-delete (deleteFolder) only runs at purge time; while
+        // trashed, children keep pointing at this folder's id (see schema.ts's orgFolders.deletedAt
+        // comment) rather than being reparented early.
         router.delete(
             "/:id",
             asyncHandler(async (req, res) => {
-                await deleteFolder(req.params.id);
+                await db.update(schema.orgFolders).set({ deletedAt: new Date() }).where(eq(schema.orgFolders.id, req.params.id));
                 res.json({ success: true });
             })
         );

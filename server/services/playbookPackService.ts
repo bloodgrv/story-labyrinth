@@ -39,7 +39,7 @@ export const resolvePlaybookPack = async (
     playbookKey: string,
     style: string
 ): Promise<PlaybookPack | null> => {
-    const keyStyle = and(eq(schema.playbookPacks.playbookKey, playbookKey), eq(schema.playbookPacks.style, style));
+    const keyStyle = and(eq(schema.playbookPacks.playbookKey, playbookKey), eq(schema.playbookPacks.style, style), isNull(schema.playbookPacks.deletedAt));
 
     if (storyId) {
         const [storyRow] = await db
@@ -66,14 +66,13 @@ export const listPlaybookPacks = async (storyId: string | null): Promise<Playboo
     const rows = await db
         .select()
         .from(schema.playbookPacks)
-        .where(storyId ? undefined : isNull(schema.playbookPacks.storyId))
+        .where(storyId ? isNull(schema.playbookPacks.deletedAt) : and(isNull(schema.playbookPacks.storyId), isNull(schema.playbookPacks.deletedAt)))
         .orderBy(desc(schema.playbookPacks.updatedAt));
     // storyId provided: return shipped+global (storyId IS NULL) plus this story's own rows.
     // Filtering in application code (not SQL OR) keeps the query above reusable for both cases
     // without a second and(...) branch — this table is small (a handful of packs), no scale concern.
     if (!storyId) return rows.map(rowToPack);
-    const allRows = await db.select().from(schema.playbookPacks).orderBy(desc(schema.playbookPacks.updatedAt));
-    return allRows.filter(row => row.storyId === null || row.storyId === storyId).map(rowToPack);
+    return rows.filter(row => row.storyId === null || row.storyId === storyId).map(rowToPack);
 };
 
 export type CreatePackParams = {
@@ -125,10 +124,20 @@ export const updatePlaybookPack = async (id: string, fields: UpdatePackFields): 
 
 // Blocks deleting shipped rows (they're the permanent floor of the ladder). Deleting a
 // global/story override is how "reset to shipped/global" works — the ladder just falls through.
+// Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — the real hard-delete, unchanged.
+// Called by purgeExpiredTrash() (scheduled) and by the Trash panel's manual "Delete forever"
+// action. server/routes/playbookPacks.ts's DELETE /:id now calls softDeletePlaybookPack instead.
 export const deletePlaybookPack = async (id: string): Promise<boolean> => {
     const [existing] = await db.select().from(schema.playbookPacks).where(eq(schema.playbookPacks.id, id));
     if (!existing || existing.packScope === "shipped") return false;
     await db.delete(schema.playbookPacks).where(eq(schema.playbookPacks.id, id));
+    return true;
+};
+
+export const softDeletePlaybookPack = async (id: string): Promise<boolean> => {
+    const [existing] = await db.select().from(schema.playbookPacks).where(eq(schema.playbookPacks.id, id));
+    if (!existing || existing.packScope === "shipped") return false;
+    await db.update(schema.playbookPacks).set({ deletedAt: new Date() }).where(eq(schema.playbookPacks.id, id));
     return true;
 };
 

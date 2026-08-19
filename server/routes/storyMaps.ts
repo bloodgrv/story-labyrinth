@@ -5,11 +5,11 @@ import multer from "multer";
 import { db, schema } from "../db/client.js";
 import {
     createMap,
-    deleteMap,
     getMap,
     getMapForLocation,
     listMapsForStory,
     setMapThumbnail,
+    softDeleteMap,
     updateMap
 } from "../services/storyMapsService.js";
 import { getStoryMapThumbnailPath, isSupportedThumbnailMimetype, saveStoryMapThumbnail } from "../services/storyMapThumbnailStorage.js";
@@ -107,7 +107,7 @@ router.patch("/maps/:id", async (req, res) => {
 });
 
 router.delete("/maps/:id", async (req, res) => {
-    const [error] = await attemptPromise(() => deleteMap(req.params.id));
+    const [error] = await attemptPromise(() => softDeleteMap(req.params.id));
     if (error) {
         res.status(500).json({ error: "Failed to delete story map", details: error.message });
         return;

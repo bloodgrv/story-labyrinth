@@ -102,7 +102,7 @@ export const WorkspaceStoryCard = ({ story, onEdit, onExport }: WorkspaceStoryCa
             <ConfirmDialog
                 open={deleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
-                description={`Delete "${story.title}"? This action cannot be undone.`}
+                description={`Move "${story.title}" to Trash? You can restore it within 14 days.`}
                 onConfirm={() =>
                     deleteStoryMutation.mutate(story.id, {
                         onSuccess: () => {

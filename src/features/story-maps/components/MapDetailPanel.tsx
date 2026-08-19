@@ -236,7 +236,7 @@ export function MapDetailPanel({ storyId, mapId, onBack, onDeleted, seedSkeleton
                 open={confirmDeleteOpen}
                 onOpenChange={setConfirmDeleteOpen}
                 title="Delete this map?"
-                description={`"${map.title}" and its sketch will be permanently deleted. This can't be undone.`}
+                description={`Move "${map.title}" to Trash? You can restore it within 14 days.`}
                 confirmLabel="Delete"
                 onConfirm={handleDelete}
             />

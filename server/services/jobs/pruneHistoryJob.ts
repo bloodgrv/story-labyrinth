@@ -2,13 +2,16 @@ import { and, inArray, lt } from "drizzle-orm";
 import type { AgentJob } from "../../../src/types/agentJob.js";
 import { db, schema } from "../../db/client.js";
 import { pruneOldTransfers } from "../deskTransfersService.js";
+import { purgeExpiredTrash } from "../../lib/trash.js";
 
 // Deliberately narrow, per the design doc's own "define narrow rules" hedge (§3.4): only prunes
 // a small named set of rows, not e.g. ragScans/ragScanIssues (out of scope — those may still be
 // relied on for scan history display). Prevents these tables from growing unbounded.
 const RETENTION_DAYS = 30;
 
-export const runPruneHistoryJob = async (_job: AgentJob): Promise<{ deletedJobs: number; deletedTransfers: number }> => {
+export const runPruneHistoryJob = async (
+    _job: AgentJob
+): Promise<{ deletedJobs: number; deletedTransfers: number; purgedTrash: number }> => {
     const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60_000);
 
     const rows = await db
@@ -21,5 +24,10 @@ export const runPruneHistoryJob = async (_job: AgentJob): Promise<{ deletedJobs:
     // cadence rather than a second scheduled job type for one more narrow prune rule.
     const deletedTransfers = await pruneOldTransfers();
 
-    return { deletedJobs: rows.length, deletedTransfers };
+    // Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — same "piggyback on this
+    // job's existing daily cadence" precedent as Transfer Log pruning above, rather than a new
+    // AgentJobType/scheduling path (see server/lib/trash.ts's TRASH_RETENTION_DAYS).
+    const { purged: purgedTrash } = await purgeExpiredTrash();
+
+    return { deletedJobs: rows.length, deletedTransfers, purgedTrash };
 };

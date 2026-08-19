@@ -547,6 +547,13 @@
       "when": 1787089094920,
       "tag": "0077_light_silvermane",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "6",
+      "when": 1787110210485,
+      "tag": "0078_charming_paper_doll",
+      "breakpoints": true
     }
   ]
 }

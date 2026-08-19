@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { AgentJob } from "../../../src/types/agentJob.js";
 import { db, schema } from "../../db/client.js";
 import { buildMemoryText } from "../agentMemoriesService.js";
@@ -74,8 +74,8 @@ const reconcileOneStory = async (
         db
             .select()
             .from(schema.lorebookEntries)
-            .where(and(eq(schema.lorebookEntries.level, "story"), eq(schema.lorebookEntries.scopeId, storyId))),
-        db.select().from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
+            .where(and(eq(schema.lorebookEntries.level, "story"), eq(schema.lorebookEntries.scopeId, storyId), isNull(schema.lorebookEntries.deletedAt))),
+        db.select().from(schema.chapters).where(and(eq(schema.chapters.storyId, storyId), isNull(schema.chapters.deletedAt))),
         db
             .select({
                 entityType: schema.ragChunks.entityType,
@@ -87,11 +87,14 @@ const reconcileOneStory = async (
             .from(schema.ragChunks)
             .where(eq(schema.ragChunks.storyId, storyId)),
         listMemories({ storyId, status: "active" }),
-        db.select().from(schema.notes).where(and(eq(schema.notes.storyId, storyId), eq(schema.notes.includeInAi, true))),
+        db
+            .select()
+            .from(schema.notes)
+            .where(and(eq(schema.notes.storyId, storyId), eq(schema.notes.includeInAi, true), isNull(schema.notes.deletedAt))),
         db
             .select()
             .from(schema.outlineItems)
-            .where(and(eq(schema.outlineItems.storyId, storyId), eq(schema.outlineItems.includeInAi, true)))
+            .where(and(eq(schema.outlineItems.storyId, storyId), eq(schema.outlineItems.includeInAi, true), isNull(schema.outlineItems.deletedAt)))
     ]);
 
     const chunksByKey = new Map<string, ChunkSummary[]>();
@@ -224,7 +227,7 @@ export const runReconcileIndexJob = async (
         return { storyId: job.storyId, ...result };
     }
 
-    const stories = await db.select({ id: schema.stories.id }).from(schema.stories);
+    const stories = await db.select({ id: schema.stories.id }).from(schema.stories).where(isNull(schema.stories.deletedAt));
     let aggregate: ReconcileStoryResult = {
         lorebookEntries: { checked: 0, reindexed: 0 },
         chapters: { checked: 0, reindexed: 0 },

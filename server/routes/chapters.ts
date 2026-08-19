@@ -22,15 +22,25 @@ import {
     setVersionLabel,
     updateVersionContent
 } from "../services/chapterVersionsRepository.js";
-import { maybeIndexChapter } from "../services/ragIndexService.js";
+import { maybeIndexChapter, removeEntityFromIndex } from "../services/ragIndexService.js";
 import { unlinkPinsForSource } from "../services/storyTimelineService.js";
 
 type Chapter = InferSelectModel<typeof schema.chapters>;
+
+// Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — the real hard-delete this route
+// used to run directly, relocated unchanged. Called by purgeExpiredTrash() (scheduled) and by the
+// Trash panel's manual "Delete forever" action. The DELETE route below now just sets deletedAt.
+export const purgeChapter = async (chapterId: string): Promise<void> => {
+    await db.delete(schema.chapters).where(eq(schema.chapters.id, chapterId));
+    removeEntityFromIndex("chapter", chapterId);
+    await unlinkPinsForSource("chapter", chapterId);
+};
 
 export default createCrudRouter({
     table: schema.chapters,
     name: "Chapter",
     parentKey: "storyId",
+    softDelete: true,
     transforms: {
         afterRead: (ch: Chapter) => ({
             ...ch,
@@ -123,14 +133,14 @@ export default createCrudRouter({
         );
 
         // DELETE /api/chapters/:id — overrides the generic CRUD delete (customRoutes are
-        // registered before the generic routes, see server/lib/crud.ts) so a Story Timeline pin
-        // pointing at this chapter keeps its placement rather than the writer's chronology work
-        // vanishing (unlink-don't-destroy, matches lorebook.ts's unlinkMapsForLocation posture).
+        // registered before the generic routes, see server/lib/crud.ts) to move the chapter to
+        // Trash instead of deleting it, and remove it from the RAG index immediately (undone on
+        // restore) so a trashed chapter never surfaces in search/context while it's trashed.
         router.delete(
             "/:id",
             asyncHandler(async (req, res) => {
-                await db.delete(table).where(eq(table.id, req.params.id));
-                await unlinkPinsForSource("chapter", req.params.id);
+                await db.update(table).set({ deletedAt: new Date() }).where(eq(table.id, req.params.id));
+                removeEntityFromIndex("chapter", req.params.id);
                 res.json({ success: true });
             })
         );

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { StoryMapDocument } from "../../src/types/storyMaps.js";
 import { db, schema } from "../db/client.js";
 import { deleteStoryMapThumbnail } from "./storyMapThumbnailStorage.js";
@@ -26,12 +26,12 @@ const rowToDocument = (row: StoryMapRow): StoryMapDocument => ({
 export const EMPTY_SCENE = { type: "excalidraw", version: 2, elements: [], appState: {} };
 
 export const listMapsForStory = async (storyId: string): Promise<StoryMapDocument[]> =>
-    (await db.select().from(schema.storyMaps).where(eq(schema.storyMaps.storyId, storyId)))
+    (await db.select().from(schema.storyMaps).where(and(eq(schema.storyMaps.storyId, storyId), isNull(schema.storyMaps.deletedAt))))
         .map(rowToDocument)
         .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
 export const getMap = async (id: string): Promise<StoryMapDocument | null> => {
-    const [row] = await db.select().from(schema.storyMaps).where(eq(schema.storyMaps.id, id));
+    const [row] = await db.select().from(schema.storyMaps).where(and(eq(schema.storyMaps.id, id), isNull(schema.storyMaps.deletedAt)));
     return row ? rowToDocument(row) : null;
 };
 
@@ -43,7 +43,7 @@ export const getMapForLocation = async (storyId: string, locationId: string): Pr
     const rows = await db
         .select()
         .from(schema.storyMaps)
-        .where(and(eq(schema.storyMaps.storyId, storyId), eq(schema.storyMaps.locationId, locationId)));
+        .where(and(eq(schema.storyMaps.storyId, storyId), eq(schema.storyMaps.locationId, locationId), isNull(schema.storyMaps.deletedAt)));
     if (rows.length === 0) return null;
     const [latest] = rows.sort((a, b) => (b.updatedAt as unknown as Date).getTime() - (a.updatedAt as unknown as Date).getTime());
     return rowToDocument(latest);
@@ -81,10 +81,17 @@ export const updateMap = async (id: string, input: UpdateStoryMapInput): Promise
     return rowToDocument(row);
 };
 
+// Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — the real hard-delete, unchanged.
+// Called by purgeExpiredTrash() (scheduled) and by the Trash panel's manual "Delete forever"
+// action. server/routes/storyMaps.ts's DELETE /maps/:id now calls softDeleteMap instead.
 export const deleteMap = async (id: string): Promise<void> => {
     const [row] = await db.select().from(schema.storyMaps).where(eq(schema.storyMaps.id, id));
     if (row?.thumbnailFilename) await deleteStoryMapThumbnail(row.thumbnailFilename);
     await db.delete(schema.storyMaps).where(eq(schema.storyMaps.id, id));
+};
+
+export const softDeleteMap = async (id: string): Promise<void> => {
+    await db.update(schema.storyMaps).set({ deletedAt: new Date() }).where(eq(schema.storyMaps.id, id));
 };
 
 export const setMapThumbnail = async (id: string, filename: string): Promise<StoryMapDocument> => {

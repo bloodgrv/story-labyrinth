@@ -5,8 +5,6 @@ import {
     approvePin,
     createPin,
     createTimeline,
-    deletePin,
-    deleteTimeline,
     getPinForLink,
     getTimelineSuggestSettings,
     listPendingPinsForStory,
@@ -14,6 +12,8 @@ import {
     listTimelinesForStory,
     rejectPin,
     removeMembership,
+    softDeletePin,
+    softDeleteTimeline,
     updatePin,
     updateTimeline,
     updateTimelineSuggestSettings
@@ -71,7 +71,7 @@ router.patch("/timelines/:id", async (req, res) => {
 });
 
 router.delete("/timelines/:id", async (req, res) => {
-    const [error] = await attemptPromise(() => deleteTimeline(req.params.id));
+    const [error] = await attemptPromise(() => softDeleteTimeline(req.params.id));
     if (error) {
         res.status(400).json({ error: "Failed to delete timeline", details: error.message });
         return;
@@ -185,7 +185,7 @@ router.patch("/timeline-pins/:id", async (req, res) => {
 });
 
 router.delete("/timeline-pins/:id", async (req, res) => {
-    const [error] = await attemptPromise(() => deletePin(req.params.id));
+    const [error] = await attemptPromise(() => softDeletePin(req.params.id));
     if (error) {
         res.status(500).json({ error: "Failed to delete timeline pin", details: error.message });
         return;

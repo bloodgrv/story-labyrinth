@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 
 // Cosmetic org folders (B9, docs/Folders_Org_Design.md) — one shared "folder engine" used by
@@ -245,7 +245,7 @@ export const listFolders = async (params: {
     category?: string;
     chatType?: string;
 }): Promise<FolderRow[]> => {
-    const conditions = [eq(schema.orgFolders.kind, params.kind), eq(schema.orgFolders.scopeId, params.scopeId)];
+    const conditions = [eq(schema.orgFolders.kind, params.kind), eq(schema.orgFolders.scopeId, params.scopeId), isNull(schema.orgFolders.deletedAt)];
     if (params.category) conditions.push(eq(schema.orgFolders.category, params.category));
     if (params.chatType) conditions.push(eq(schema.orgFolders.chatType, params.chatType));
     return db.select().from(schema.orgFolders).where(and(...conditions));

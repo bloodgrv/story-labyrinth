@@ -18,7 +18,7 @@ export const DeleteChapterDialog = ({
     <ConfirmDialog
         open={open}
         onOpenChange={onOpenChange}
-        description={`This will permanently delete Chapter ${chapterOrder}: ${chapterTitle}. This action cannot be undone.`}
+        description={`Move Chapter ${chapterOrder}: ${chapterTitle} to Trash? You can restore it within 14 days.`}
         onConfirm={onDelete}
         confirmLabel="Delete"
     />

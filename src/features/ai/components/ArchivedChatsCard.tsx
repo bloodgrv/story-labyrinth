@@ -44,7 +44,7 @@ function ArchivedChatRow({ chat, onRestore, onDeleteClick, isRestoring }: Archiv
                 </Button>
                 <Button size="sm" variant="outline" className="hover:text-destructive" onClick={() => onDeleteClick(chat.id)}>
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete permanently
+                    Delete
                 </Button>
             </div>
         </div>
@@ -68,7 +68,7 @@ export function ArchivedChatsCard() {
             <CardContent>
                 <p className="text-sm text-muted-foreground mb-3">
                     Chats you've archived from any chat list (World-Building, Outline, Notes, Editor, Research). Restore
-                    one back to its list, or delete it permanently — deletion here can't be undone.
+                    one back to its list, or delete it — deleted chats move to Trash and can be restored there within 14 days.
                 </p>
                 {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -92,13 +92,13 @@ export function ArchivedChatsCard() {
             <ConfirmDialog
                 open={deletingId !== null}
                 onOpenChange={open => !open && setDeletingId(null)}
-                title="Delete chat permanently"
-                description="This chat and all its messages will be permanently deleted. This cannot be undone."
+                title="Delete chat"
+                description="This chat will be moved to Trash (Settings → Trash), where you can restore it within 14 days."
                 onConfirm={() => {
                     if (deletingId) deleteMutation.mutate(deletingId);
                     setDeletingId(null);
                 }}
-                confirmLabel="Delete permanently"
+                confirmLabel="Delete"
             />
         </Card>
     );

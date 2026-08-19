@@ -19,10 +19,30 @@ const syncOutlineItemIndex = (item: OutlineItemRow) => {
     else removeEntityFromIndex("outline_item", item.id);
 };
 
+// Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — the real hard-delete this route
+// used to run directly (including its "chapter" -> "scene" children cascade, which stays a real
+// hard-delete even at trash time since parentId isn't a real FK), relocated unchanged. Called by
+// purgeExpiredTrash() (scheduled) and by the Trash panel's manual "Delete forever" action.
+export const purgeOutlineItem = async (itemId: string): Promise<void> => {
+    const [item] = await db.select().from(schema.outlineItems).where(eq(schema.outlineItems.id, itemId));
+    if (!item) return;
+
+    const childRows =
+        item.type === "chapter"
+            ? await db.select({ id: schema.outlineItems.id }).from(schema.outlineItems).where(eq(schema.outlineItems.parentId, item.id))
+            : [];
+    const allIds = [item.id, ...childRows.map(row => row.id)];
+
+    await db.delete(schema.outlineItemCharacters).where(inArray(schema.outlineItemCharacters.outlineItemId, allIds));
+    await db.delete(schema.outlineItems).where(inArray(schema.outlineItems.id, allIds));
+    for (const id of allIds) removeEntityFromIndex("outline_item", id);
+};
+
 export default createCrudRouter({
     table: schema.outlineItems,
     name: "Outline item",
     parentKey: "storyId",
+    softDelete: true,
     customRoutes: (router, { asyncHandler }) => {
         // Overrides the generic POST / (registered further down, but this is matched first) so
         // `updatedAt` — NOT NULL, unlike createdAt the generic CRUD helper doesn't auto-populate
@@ -139,35 +159,16 @@ export default createCrudRouter({
         );
 
         // Overrides the generic DELETE /:id (registered further down by createCrudRouter, but
-        // this route is matched first since customRoutes run before it) so deleting a "chapter"
-        // row also removes its "scene" children and any character-arc links on all of them —
-        // parentId isn't a real DB foreign key (see schema.ts), so there's no cascade to rely on.
+        // this route is matched first since customRoutes run before it) to move the item to
+        // Trash instead of deleting it. Unlike the real purge (purgeOutlineItem above), trashing
+        // a "chapter" row does NOT also trash its "scene" children — same one-level cascade
+        // doctrine as a trashed story/chapter (children just become unreachable via their own
+        // list query, not individually flagged); the hard-delete-on-purge cascade is unaffected.
         router.delete(
             "/:id",
             asyncHandler(async (req, res) => {
-                const [item] = await db
-                    .select()
-                    .from(schema.outlineItems)
-                    .where(eq(schema.outlineItems.id, req.params.id));
-                if (!item) {
-                    res.json({ success: true });
-                    return;
-                }
-
-                const childRows =
-                    item.type === "chapter"
-                        ? await db
-                              .select({ id: schema.outlineItems.id })
-                              .from(schema.outlineItems)
-                              .where(eq(schema.outlineItems.parentId, item.id))
-                        : [];
-                const allIds = [item.id, ...childRows.map(row => row.id)];
-
-                await db
-                    .delete(schema.outlineItemCharacters)
-                    .where(inArray(schema.outlineItemCharacters.outlineItemId, allIds));
-                await db.delete(schema.outlineItems).where(inArray(schema.outlineItems.id, allIds));
-                for (const id of allIds) removeEntityFromIndex("outline_item", id);
+                await db.update(schema.outlineItems).set({ deletedAt: new Date() }).where(eq(schema.outlineItems.id, req.params.id));
+                removeEntityFromIndex("outline_item", req.params.id);
                 res.json({ success: true });
             })
         );

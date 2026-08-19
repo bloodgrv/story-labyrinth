@@ -14,6 +14,7 @@ import {
     getChatById,
     getChatsForStory,
     getGlobalChats,
+    softDeleteChat,
     unarchiveChat as repoUnarchiveChat,
     updateChatMessages,
     updateChatMeta,
@@ -227,4 +228,4 @@ export const updateMeta = async (
 
 // ── Retrieval ─────────────────────────────────────────────────────────────────
 
-export { getChatsForStory, getChatById, deleteChat };
+export { getChatsForStory, getChatById, deleteChat, softDeleteChat };

@@ -1,5 +1,5 @@
 import { attemptPromise } from "@jfdi/attempt";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import multer from "multer";
 import { nanoid } from "nanoid";
 import { db, schema } from "../db/client.js";
@@ -46,10 +46,26 @@ const transform = (entry: LorebookRow): TransformedLorebookEntry => ({
         : entry.codexState
 });
 
+// Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — the real hard-delete this route
+// used to run directly, relocated unchanged. Called by purgeExpiredTrash() (scheduled) and by the
+// Trash panel's manual "Delete forever" action. The DELETE route below now just sets deletedAt.
+export const purgeLorebookEntry = async (entryId: string): Promise<void> => {
+    const [entry] = await db.select().from(schema.lorebookEntries).where(eq(schema.lorebookEntries.id, entryId));
+    if (entry?.imageFilename) await deleteLorebookImage(entry.imageFilename);
+    await db.delete(schema.lorebookEntries).where(eq(schema.lorebookEntries.id, entryId));
+    removeEntityFromIndex("lorebook_entry", entryId);
+    await deleteEdgesForEntity(entryId);
+    await deleteMapEdgesForEntity(entryId);
+    await deleteMapLayoutForEntity(entryId);
+    await unlinkMapsForLocation(entryId);
+    await unlinkPinsForSource("lorebook", entryId);
+};
+
 export default createCrudRouter({
     table: schema.lorebookEntries,
     name: "Lorebook entry",
     transforms: { afterRead: transform },
+    softDelete: true,
     customRoutes: (router, { asyncHandler, table }) => {
         // Level-based query endpoints
 
@@ -57,7 +73,7 @@ export default createCrudRouter({
         router.get(
             "/global",
             asyncHandler(async (_, res) => {
-                const entries = await db.select().from(table).where(eq(table.level, "global")).orderBy(table.createdAt);
+                const entries = await db.select().from(table).where(and(eq(table.level, "global"), isNull(table.deletedAt))).orderBy(table.createdAt);
                 res.json(entries.map(transform));
             })
         );
@@ -69,7 +85,7 @@ export default createCrudRouter({
                 const entries = await db
                     .select()
                     .from(table)
-                    .where(and(eq(table.level, "series"), eq(table.scopeId, req.params.seriesId)))
+                    .where(and(eq(table.level, "series"), eq(table.scopeId, req.params.seriesId), isNull(table.deletedAt)))
                     .orderBy(table.createdAt);
                 res.json(entries.map(transform));
             })
@@ -101,7 +117,7 @@ export default createCrudRouter({
                 const entries = await db
                     .select()
                     .from(table)
-                    .where(or(...conditions))
+                    .where(and(or(...conditions), isNull(table.deletedAt)))
                     .orderBy(table.level, table.createdAt);
 
                 res.json(entries.map(transform));
@@ -115,7 +131,7 @@ export default createCrudRouter({
                 const entries = await db
                     .select()
                     .from(table)
-                    .where(and(eq(table.level, "story"), eq(table.scopeId, req.params.storyId)))
+                    .where(and(eq(table.level, "story"), eq(table.scopeId, req.params.storyId), isNull(table.deletedAt)))
                     .orderBy(table.createdAt);
                 res.json(entries.map(transform));
             })
@@ -132,7 +148,8 @@ export default createCrudRouter({
                         and(
                             eq(table.level, "story"),
                             eq(table.scopeId, req.params.storyId),
-                            eq(table.category, req.params.category)
+                            eq(table.category, req.params.category),
+                            isNull(table.deletedAt)
                         )
                     );
                 res.json(rows.map(transform));
@@ -145,7 +162,7 @@ export default createCrudRouter({
                 const rows = await db
                     .select()
                     .from(table)
-                    .where(and(eq(table.level, "story"), eq(table.scopeId, req.params.storyId)));
+                    .where(and(eq(table.level, "story"), eq(table.scopeId, req.params.storyId), isNull(table.deletedAt)));
                 const filtered = rows
                     .map(transform)
                     .filter(entry => Array.isArray(entry.tags) && entry.tags.includes(req.params.tag));
@@ -312,7 +329,7 @@ export default createCrudRouter({
         router.get(
             "/global/export",
             asyncHandler(async (_, res) => {
-                const entries = await db.select().from(table).where(eq(table.level, "global")).orderBy(table.createdAt);
+                const entries = await db.select().from(table).where(and(eq(table.level, "global"), isNull(table.deletedAt))).orderBy(table.createdAt);
 
                 const exportData = {
                     version: "1.0",
@@ -520,22 +537,16 @@ export default createCrudRouter({
         );
 
         // DELETE /lorebook/:id - overrides the generic CRUD delete (customRoutes are registered
-        // before the generic routes, see server/lib/crud.ts) to also delete the entry's image
-        // file, remove it from the RAG index, remove its story-graph edges and story-map
-        // edges/layout (L3), and unlink (not delete) any Maps v2 sketch document pointed at it, so
-        // deleting an entry never orphans any of those.
+        // before the generic routes, see server/lib/crud.ts) to move the entry to Trash instead
+        // of deleting it, removing it from the RAG index immediately (undone on restore) so a
+        // trashed entry never surfaces in search/context while it's trashed. The image file,
+        // story-graph edges, story-map edges/layout, and Maps v2 unlink only happen for real at
+        // purge time — see purgeLorebookEntry above.
         router.delete(
             "/:id",
             asyncHandler(async (req, res) => {
-                const [entry] = await db.select().from(table).where(eq(table.id, req.params.id));
-                if (entry?.imageFilename) await deleteLorebookImage(entry.imageFilename);
-                await db.delete(table).where(eq(table.id, req.params.id));
+                await db.update(table).set({ deletedAt: new Date() }).where(eq(table.id, req.params.id));
                 removeEntityFromIndex("lorebook_entry", req.params.id);
-                await deleteEdgesForEntity(req.params.id);
-                await deleteMapEdgesForEntity(req.params.id);
-                await deleteMapLayoutForEntity(req.params.id);
-                await unlinkMapsForLocation(req.params.id);
-                await unlinkPinsForSource("lorebook", req.params.id);
                 res.json({ success: true });
             })
         );

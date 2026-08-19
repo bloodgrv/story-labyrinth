@@ -43,6 +43,7 @@ export { storyGraphApi } from "./storyGraphClient";
 export { storyMapApi } from "./storyMapClient";
 export { storyMapsApi } from "./storyMapsClient";
 export { storyTimelineApi } from "./storyTimelineClient";
+export { trashApi } from "./trashClient";
 export { ttsApi } from "./ttsClient";
 export { usersApi } from "./usersClient";
 

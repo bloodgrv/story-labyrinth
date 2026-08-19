@@ -65,7 +65,7 @@ export const getChatsForStory = async (
     storyId: string,
     chatType?: ChatType
 ): Promise<ChatRow[]> => {
-    const conditions = [eq(schema.aiChats.storyId, storyId), isNull(schema.aiChats.archivedAt)];
+    const conditions = [eq(schema.aiChats.storyId, storyId), isNull(schema.aiChats.archivedAt), isNull(schema.aiChats.deletedAt)];
     if (chatType) conditions.push(eq(schema.aiChats.chatType, chatType));
 
     const rows = await db
@@ -87,7 +87,8 @@ export const getGlobalChats = async (chatType: ChatType): Promise<ChatRow[]> => 
             and(
                 isNull(schema.aiChats.storyId),
                 eq(schema.aiChats.chatType, chatType),
-                isNull(schema.aiChats.archivedAt)
+                isNull(schema.aiChats.archivedAt),
+                isNull(schema.aiChats.deletedAt)
             )
         )
         .orderBy(desc(schema.aiChats.updatedAt), desc(schema.aiChats.createdAt));
@@ -101,7 +102,7 @@ export const getArchivedChats = async (): Promise<Array<ChatRow & { storyTitle: 
         .select({ chat: schema.aiChats, storyTitle: schema.stories.title })
         .from(schema.aiChats)
         .leftJoin(schema.stories, eq(schema.aiChats.storyId, schema.stories.id))
-        .where(isNotNull(schema.aiChats.archivedAt))
+        .where(and(isNotNull(schema.aiChats.archivedAt), isNull(schema.aiChats.deletedAt)))
         .orderBy(desc(schema.aiChats.archivedAt));
     return rows.map(({ chat, storyTitle }) => ({ ...toChat(chat), storyTitle: storyTitle ?? null }));
 };
@@ -215,9 +216,23 @@ export const unarchiveChat = async (id: string): Promise<ChatRow | null> => {
     return row ? toChat(row) : null;
 };
 
+// Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — the real hard-delete, unchanged.
+// Called by purgeExpiredTrash() (scheduled) and by the Trash panel's manual "Delete forever"
+// action. No RAG/file-system side effects to clean up — chats aren't RAG-indexed.
 export const deleteChat = async (id: string): Promise<boolean> => {
     const result = await db
         .delete(schema.aiChats)
+        .where(eq(schema.aiChats.id, id))
+        .returning({ id: schema.aiChats.id });
+    return result.length > 0;
+};
+
+// Moves a chat to Trash — a further step after archive (archivedAt), not a replacement for it.
+// See chats.ts's DELETE /:chatId, the only route reachable from the Settings Archived Chats panel.
+export const softDeleteChat = async (id: string): Promise<boolean> => {
+    const result = await db
+        .update(schema.aiChats)
+        .set({ deletedAt: new Date() })
         .where(eq(schema.aiChats.id, id))
         .returning({ id: schema.aiChats.id });
     return result.length > 0;

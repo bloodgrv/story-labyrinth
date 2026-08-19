@@ -511,10 +511,10 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
             <ConfirmDialog
                 open={!!deletingPin}
                 onOpenChange={open => { if (!open) setDeletingPin(null); }}
-                title="Remove timeline pin?"
-                description={deletingPin ? `Remove "${deletingPin.title}" from the timeline?` : ""}
+                title="Delete timeline pin?"
+                description={deletingPin ? `Move "${deletingPin.title}" to Trash? You can restore it within 14 days.` : ""}
                 onConfirm={confirmDelete}
-                confirmLabel="Remove"
+                confirmLabel="Delete"
             />
         </div>
     );

@@ -66,7 +66,7 @@ function SeriesCard({
             <ConfirmDialog
                 open={deleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
-                description={`Delete series "${series.name}" and all its stories? This action cannot be undone.`}
+                description={`Move series "${series.name}" to Trash? You can restore it within 14 days. Its stories are not deleted.`}
                 onConfirm={() => deleteSeriesMutation.mutate(series.id)}
                 confirmLabel="Delete"
             />

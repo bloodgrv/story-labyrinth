@@ -156,7 +156,7 @@ export function TimelineSwitcher({ storyId, timelines, activeTimelineId, onSelec
                 title="Delete timeline?"
                 description={
                     active
-                        ? `Delete "${active.title}"? Pins that only appear on this timeline will be kept on Spine instead of being deleted.`
+                        ? `Move "${active.title}" to Trash? Pins that only appear on this timeline will be kept on Spine. You can restore this timeline within 14 days.`
                         : ""
                 }
                 onConfirm={confirmDelete}

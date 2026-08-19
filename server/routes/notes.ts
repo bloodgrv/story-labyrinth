@@ -19,10 +19,20 @@ const syncNoteIndex = (note: NoteRow) => {
     else removeEntityFromIndex("note", note.id);
 };
 
+// Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — the real hard-delete this route
+// used to run directly, relocated unchanged. Called by purgeExpiredTrash() (scheduled) and by the
+// Trash panel's manual "Delete forever" action. The DELETE route below now just sets deletedAt.
+export const purgeNote = async (noteId: string): Promise<void> => {
+    await db.delete(schema.notes).where(eq(schema.notes.id, noteId));
+    removeEntityFromIndex("note", noteId);
+    await unlinkPinsForSource("note", noteId);
+};
+
 export default createCrudRouter({
     table: schema.notes,
     name: "Note",
     parentKey: "storyId",
+    softDelete: true,
     customRoutes: (router, { asyncHandler, table }) => {
         // Overrides the generic POST / (customRoutes are matched first, see server/lib/crud.ts)
         // so a newly created note that's already armed (includeInAi: true) gets indexed immediately.
@@ -86,16 +96,14 @@ export default createCrudRouter({
             })
         );
 
-        // Overrides the generic DELETE /:id so a deleted note's RAG chunks (if any) never linger
-        // as orphans, and any Story Timeline pin pointing at this note keeps its placement rather
-        // than the writer's chronology work vanishing (unlink-don't-destroy, matches lorebook.ts's
-        // unlinkMapsForLocation posture).
+        // Overrides the generic DELETE /:id to move the note to Trash instead of deleting it, and
+        // remove it from the RAG index immediately (undone on restore, gated the same way as
+        // syncNoteIndex above) so a trashed note never lingers in search/context while trashed.
         router.delete(
             "/:id",
             asyncHandler(async (req, res) => {
-                await db.delete(table).where(eq(table.id, req.params.id));
+                await db.update(table).set({ deletedAt: new Date() }).where(eq(table.id, req.params.id));
                 removeEntityFromIndex("note", req.params.id);
-                await unlinkPinsForSource("note", req.params.id);
                 res.json({ success: true });
             })
         );

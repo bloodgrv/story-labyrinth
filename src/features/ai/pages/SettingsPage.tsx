@@ -12,6 +12,7 @@ import { UsersTool } from "@/components/workspace/tools/UsersTool";
 import { WriterPrefsCard } from "@/features/agent-memory/components/WriterPrefsCard";
 import { PlaybookPacksSettingsCard } from "@/features/playbooks/components/PlaybookPacksSettingsCard";
 import { ArchivedChatsCard } from "@/features/ai/components/ArchivedChatsCard";
+import { TrashCard } from "@/features/trash/components/TrashCard";
 import { ContextMeterSettingsCard } from "@/features/ai/components/ContextMeterSettingsCard";
 import { FeatureEndpointsCard } from "@/features/ai/components/FeatureEndpointsCard";
 import { GrokOAuthCard } from "@/features/ai/components/GrokOAuthCard";
@@ -44,7 +45,7 @@ import type { ChatMode } from "@/types/story";
 // Guide/Users/Scanner were left-sidebar workspace tools; moved here to declutter that rail — Users
 // stays owner-gated (see isOwner below), Scanner reuses the same story-scoped panel and just asks
 // for a story if none is selected yet.
-const SECTIONS = ["appearance", "providers", "local", "routing", "writing", "logs", "data", "guide", "scanner", "users"] as const;
+const SECTIONS = ["appearance", "providers", "local", "routing", "writing", "logs", "data", "trash", "guide", "scanner", "users"] as const;
 type Section = (typeof SECTIONS)[number];
 
 export default function SettingsPage() {
@@ -122,6 +123,9 @@ export default function SettingsPage() {
                             </TabsTrigger>
                             <TabsTrigger value="data" className="justify-start w-full data-[state=active]:bg-muted">
                                 Data
+                            </TabsTrigger>
+                            <TabsTrigger value="trash" className="justify-start w-full data-[state=active]:bg-muted">
+                                Trash
                             </TabsTrigger>
                             <TabsTrigger value="guide" className="justify-start w-full data-[state=active]:bg-muted">
                                 Guide
@@ -313,6 +317,10 @@ export default function SettingsPage() {
                                     </CardContent>
                                 </Card>
                                 <ArchivedChatsCard />
+                            </TabsContent>
+
+                            <TabsContent value="trash" className="mt-0 space-y-6">
+                                <TrashCard />
                             </TabsContent>
 
                             <TabsContent value="guide" className="mt-0">

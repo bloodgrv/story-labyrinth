@@ -9,7 +9,11 @@ export const series = sqliteTable(
         name: text("name").notNull(),
         description: text("description"),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-        isDemo: integer("isDemo", { mode: "boolean" })
+        isDemo: integer("isDemo", { mode: "boolean" }),
+        // Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — null = active, set = in
+        // Trash and hidden from every normal list. Purged for real by purgeExpiredTrash() once
+        // older than TRASH_RETENTION_DAYS. See server/lib/trash.ts.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         nameIdx: index("series_name_idx").on(table.name),
@@ -38,7 +42,11 @@ export const stories = sqliteTable(
         // "unattended scan policy: default OFF" applies per-story now, not just "no setting yet".
         // No separate interval column — a single fixed daily cadence (matching prune_history's own
         // cadence) avoids a config surface for a feature this narrow; revisit only if requested.
-        unattendedScanEnabled: integer("unattendedScanEnabled", { mode: "boolean" }).notNull().default(false)
+        unattendedScanEnabled: integer("unattendedScanEnabled", { mode: "boolean" }).notNull().default(false),
+        // Trash / Restore — see series.deletedAt comment above for the doctrine. Trashing a story
+        // does NOT flag its children (chapters/notes/lorebook entries/etc.) — they just become
+        // unreachable because the story itself is filtered out of every list.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         titleIdx: index("title_idx").on(table.title),
@@ -73,7 +81,9 @@ export const chapters = sqliteTable(
         // chapter dual-open). Chapters have no `updatedAt` column to reuse for this — a purpose-
         // built counter avoids timestamp-precision/serialization edge cases a Date-based token would
         // need to handle.
-        contentVersion: integer("contentVersion").notNull().default(0)
+        contentVersion: integer("contentVersion").notNull().default(0),
+        // Trash / Restore — see series.deletedAt comment above.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         storyIdIdx: index("chapter_story_id_idx").on(table.storyId),
@@ -269,7 +279,11 @@ export const aiChats = sqliteTable(
         // — arm toggle for injecting a resolved playbookPacks row into context (§3's "Arm toggle").
         // Default false, mirrors includePsychModule's pattern exactly. Only ever offered/read when
         // templateSlug is "character_codex" (v1 scope — see chatContextService.ts's getChatContext).
-        usePlaybookPack: integer("usePlaybookPack", { mode: "boolean" }).notNull().default(false)
+        usePlaybookPack: integer("usePlaybookPack", { mode: "boolean" }).notNull().default(false),
+        // Trash / Restore — a further step after archive (archivedAt above), not a replacement
+        // for it. The hard-delete DELETE route (only reachable from Settings' Archived Chats
+        // panel) becomes a soft-delete; see docs/CURRENT_BACKLOG.md.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         storyIdIdx: index("chat_story_id_idx").on(table.storyId),
@@ -292,7 +306,10 @@ export const prompts = sqliteTable(
         allowedModels: text("allowedModels", { mode: "json" }).notNull(), // JSON: AllowedModel[]
         storyId: text("storyId").references(() => stories.id, { onDelete: "cascade" }),
         isSystem: integer("isSystem", { mode: "boolean" }),
-        createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        // Trash / Restore — non-system prompts only (system prompts are already blocked from
+        // delete). See series.deletedAt comment above.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         nameIdx: index("prompt_name_idx").on(table.name),
@@ -454,7 +471,9 @@ export const lorebookEntries = sqliteTable(
         // Scribble — a per-entry scratch pad, same shape/doctrine as chapters.notes: a single JSON
         // blob {content, lastUpdated}, never RAG-indexed or chat-visible. Bridges to the real Notes
         // desk only via an explicit one-shot "Send to Notes" convert (mirrors ChapterNotesEditor.tsx).
-        scribble: text("scribble", { mode: "json" })
+        scribble: text("scribble", { mode: "json" }),
+        // Trash / Restore — see series.deletedAt comment above.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         levelIdx: index("lorebook_level_idx").on(table.level),
@@ -634,7 +653,9 @@ export const storyMaps = sqliteTable(
         // lorebookEntries.imageFilename — never inline base64 in this column.
         thumbnailFilename: text("thumbnailFilename"),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+        // Trash / Restore — see series.deletedAt comment above.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         storyIdIdx: index("storymaps_story_id_idx").on(table.storyId),
@@ -676,7 +697,10 @@ export const storyTimelines = sqliteTable(
         // self-contained mode rather than three more nullable flat columns on this row.
         storyStartManualWhenJson: text("storyStartManualWhenJson", { mode: "json" }),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+        // Trash / Restore — the spine timeline stays undeletable (deleteTimeline still rejects
+        // it), so this is only ever set on named timelines. See series.deletedAt comment above.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         storyIdIdx: index("storytimelines_story_id_idx").on(table.storyId)
@@ -725,7 +749,9 @@ export const storyTimelinePins = sqliteTable(
         // chapter (the one case where the UI genuinely knows better), still user-overridable.
         manuscriptStatus: text("manuscriptStatus").notNull().default("planned"),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+        // Trash / Restore — see series.deletedAt comment above.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         storyIdIdx: index("storytimelinepins_story_id_idx").on(table.storyId),
@@ -809,7 +835,11 @@ export const orgFolders = sqliteTable(
         name: text("name").notNull(),
         order: integer("order").notNull().default(0), // position among siblings sharing the same parentId
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+        // Trash / Restore — see series.deletedAt comment above. Children (lorebook entries/notes/
+        // chats) keep their own folderId pointing at a trashed folder rather than being reparented;
+        // they just stop appearing under any visible folder until it's restored or purged.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         kindIdx: index("orgfolder_kind_idx").on(table.kind),
@@ -1221,7 +1251,11 @@ export const outlineItems = sqliteTable(
         // planning intent, not canon, and never surface to a chat unless explicitly armed.
         includeInAi: integer("includeInAi", { mode: "boolean" }).notNull().default(false),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+        // Trash / Restore — direct-delete only; deleted-via-parent-chapter scene rows are still
+        // hard-cascaded (parentId isn't a real FK, see the DELETE /:id route). See series.deletedAt
+        // comment above.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         storyIdIdx: index("outlineitem_story_id_idx").on(table.storyId),
@@ -1354,7 +1388,9 @@ export const notes = sqliteTable(
         tags: text("tags", { mode: "json" }).$type<string[]>(),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
         updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
-        isDemo: integer("isDemo", { mode: "boolean" })
+        isDemo: integer("isDemo", { mode: "boolean" }),
+        // Trash / Restore — see series.deletedAt comment above.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         storyIdIdx: index("note_story_id_idx").on(table.storyId),
@@ -1633,7 +1669,11 @@ export const playbookPacks = sqliteTable(
         // the source row may itself be deleted/reset independently.
         sourcePackId: text("sourcePackId"),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+        // Trash / Restore — shipped-scope packs can't be deleted at all (deletePlaybookPack
+        // already blocks it), so this is only ever set on global/story-scope rows. See
+        // series.deletedAt comment above.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
         storyIdIdx: index("playbookpack_story_id_idx").on(table.storyId),

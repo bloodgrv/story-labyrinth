@@ -6,7 +6,6 @@ import {
     createGenericChat,
     createGlobalChat,
     createWorldBuildingChat,
-    deleteChat,
     getChatById,
     getChatsForStory,
     getTemplates,
@@ -14,6 +13,7 @@ import {
     listGlobalChats,
     MessagesVersionConflictError,
     replaceMessages,
+    softDeleteChat,
     unarchiveChat,
     updateMeta
 } from "../services/chatService.js";
@@ -604,8 +604,10 @@ router.post(
 );
 
 // ── DELETE /api/chats/:chatId ─────────────────────────────────────────────────
-// Permanently delete a chat and all its messages. Only reachable from the Settings "Archived
-// Chats" panel now — the normal rails' delete action was replaced by archive above.
+// Trash / Restore (14-day soft-delete) — moves the chat to Trash. Only reachable from the
+// Settings "Archived Chats" panel now — the normal rails' delete action was replaced by archive
+// above, and trash is a further step after archive, not a replacement for it (see chatService.ts's
+// softDeleteChat / deleteChat, the latter now the real purge called from server/lib/trash.ts).
 router.delete(
     "/:chatId",
     asyncHandler(async (req, res) => {
@@ -614,7 +616,7 @@ router.delete(
             res.status(404).json({ error: "Chat not found" });
             return;
         }
-        await deleteChat(req.params.chatId);
+        await softDeleteChat(req.params.chatId);
         res.status(204).send();
     })
 );
