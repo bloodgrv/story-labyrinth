@@ -265,7 +265,10 @@ const parseIssues = (raw: string): ParsedIssue[] => {
 
 // Map lorebook entry names (lowercased) to ids, scoped to a story's visible entries
 // (global + this story + this story's series), for resolving the LLM's "relatedEntityName".
-const resolveEntityIdsByName = async (storyId: string): Promise<Map<string, string>> => {
+// Exported for server/routes/chats.ts's modify_entry proposal handling (see B1/B20) — the LLM
+// cannot be trusted to know or invent a real entry id, so any code path that lets it name an
+// entry by name resolves it against this same lookup rather than duplicating the query.
+export const resolveEntityIdsByName = async (storyId: string): Promise<Map<string, string>> => {
     const [story] = await db.select({ seriesId: schema.stories.seriesId }).from(schema.stories).where(eq(schema.stories.id, storyId));
 
     const conditions = [

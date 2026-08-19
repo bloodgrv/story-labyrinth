@@ -64,14 +64,26 @@ type ParsedCandidate = {
     civilDate: string | null;
 };
 
+// B17-adjacent fix (2026-08-19): same silent-empty-result class of bug root-caused and fixed in
+// graphSuggestEdgesJob.ts (byte-for-byte the same parser shape and the same undersized
+// max_tokens) — logging the two failure branches here too so a real cause (most likely
+// truncation, see the LLM call below) is visible instead of indistinguishable from "nothing to
+// propose."
 const parseCandidates = (raw: string): ParsedCandidate[] => {
     const match = raw.match(/\[[\s\S]*\]/);
-    if (!match) return [];
+    if (!match) {
+        console.warn(`timeline_suggest_pins: no JSON array found in LLM response (length ${raw.length}): ${raw.slice(0, 300)}`);
+        return [];
+    }
 
     let parsed: unknown[];
     try {
         parsed = JSON.parse(match[0]) as unknown[];
-    } catch {
+    } catch (error) {
+        console.warn(
+            `timeline_suggest_pins: JSON.parse failed on matched array (likely truncated — ends: ...${match[0].slice(-200)}):`,
+            error
+        );
         return [];
     }
 
@@ -182,8 +194,12 @@ export const runTimelineSuggestPinsJob = async (job: AgentJob): Promise<{ storyI
             }
         ],
         temperature: 0,
-        max_tokens: 2048
+        max_tokens: 8192
     });
+    if (completion.choices[0]?.finish_reason === "length")
+        console.warn(
+            "timeline_suggest_pins: response was truncated by max_tokens (finish_reason='length') — proposals were likely cut off mid-JSON."
+        );
 
     const raw = completion.choices[0]?.message?.content ?? "[]";
     const parsedCandidates = parseCandidates(raw);

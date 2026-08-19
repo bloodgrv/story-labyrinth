@@ -1,3 +1,4 @@
+import { attemptPromise } from "@jfdi/attempt";
 import type { AgentJob } from "../../../src/types/agentJob.js";
 import { STORY_GRAPH_EDGE_TYPES } from "../../../src/types/storyGraph.js";
 import type { StoryGraphEdgeType } from "../../../src/types/storyGraph.js";
@@ -48,38 +49,60 @@ type ParsedCandidate = {
     description: string | null;
 };
 
-const parseCandidates = (raw: string): ParsedCandidate[] => {
+// B17 fix (2026-08-19): this job could "complete" having produced zero edges from an obviously
+// relationship-rich cast, with nothing anywhere logging why — every failure mode (no [] found, a
+// JSON.parse throw, items missing fromIndex/toIndex/edgeType) silently degraded to an empty
+// array, indistinguishable in the job's own "completed" status from "the model genuinely found
+// nothing." parseCandidates now reports WHY it came up short so a real cause (most likely
+// max_tokens truncation — see the LLM call below) is visible in server logs instead of invisible.
+const parseCandidates = (raw: string): { candidates: ParsedCandidate[]; parseFailed: boolean; droppedCount: number } => {
     const match = raw.match(/\[[\s\S]*\]/);
-    if (!match) return [];
+    if (!match) {
+        console.warn(`graph_suggest_edges: no JSON array found in LLM response (length ${raw.length}): ${raw.slice(0, 300)}`);
+        return { candidates: [], parseFailed: false, droppedCount: 0 };
+    }
 
     let parsed: unknown[];
     try {
         parsed = JSON.parse(match[0]) as unknown[];
-    } catch {
-        return [];
+    } catch (error) {
+        console.warn(
+            `graph_suggest_edges: JSON.parse failed on matched array (likely truncated — ends: ...${match[0].slice(-200)}):`,
+            error
+        );
+        return { candidates: [], parseFailed: true, droppedCount: 0 };
     }
 
-    return parsed
-        .filter((c): c is Record<string, unknown> => typeof c === "object" && c !== null)
-        .filter(c => typeof c.fromIndex === "number" && typeof c.toIndex === "number" && typeof c.edgeType === "string")
-        .map(c => ({
-            fromIndex: c.fromIndex as number,
-            toIndex: c.toIndex as number,
-            edgeType: (c.edgeType as string).trim(),
-            label: typeof c.label === "string" && c.label.trim() ? c.label.trim() : null,
-            description: typeof c.description === "string" && c.description.trim() ? c.description.trim() : null
-        }));
+    const objects = parsed.filter((c): c is Record<string, unknown> => typeof c === "object" && c !== null);
+    const isWellShaped = (c: Record<string, unknown>) =>
+        typeof c.fromIndex === "number" && typeof c.toIndex === "number" && typeof c.edgeType === "string";
+    const candidates = objects.filter(isWellShaped).map(c => ({
+        fromIndex: c.fromIndex as number,
+        toIndex: c.toIndex as number,
+        edgeType: (c.edgeType as string).trim(),
+        label: typeof c.label === "string" && c.label.trim() ? c.label.trim() : null,
+        description: typeof c.description === "string" && c.description.trim() ? c.description.trim() : null
+    }));
+    const dropped = objects.filter(c => !isWellShaped(c));
+    if (dropped.length > 0)
+        console.warn(
+            `graph_suggest_edges: dropped ${dropped.length} of ${objects.length} candidates missing fromIndex/toIndex/edgeType — ` +
+                `sample keys: ${dropped.slice(0, 3).map(c => Object.keys(c).join(",")).join(" | ")}`
+        );
+    return { candidates, parseFailed: false, droppedCount: dropped.length };
 };
 
 const isValidEdgeType = (value: string): value is StoryGraphEdgeType => STORY_GRAPH_EDGE_TYPES.includes(value as StoryGraphEdgeType);
 
-export const runGraphSuggestEdgesJob = async (job: AgentJob): Promise<{ storyId: string; proposedCount: number }> => {
+export const runGraphSuggestEdgesJob = async (
+    job: AgentJob
+): Promise<{ storyId: string; proposedCount: number; parsedCount: number }> => {
     if (!job.storyId) throw new Error("graph_suggest_edges job requires storyId");
     const storyId = job.storyId;
 
     const visibleEntries = await listVisibleEntriesForStory(storyId);
     const enabledEntries = visibleEntries.filter(e => !e.isDisabled);
-    if (enabledEntries.length < 2) return { storyId, proposedCount: 0 };
+    if (enabledEntries.length < 2) return { storyId, proposedCount: 0, parsedCount: 0 };
 
     const candidates: CandidateEntry[] = [...enabledEntries]
         .sort((a, b) => a.name.localeCompare(b.name))
@@ -108,21 +131,43 @@ export const runGraphSuggestEdgesJob = async (job: AgentJob): Promise<{ storyId:
     const entriesBlock = candidates.map((c, i) => `[${i}] ${c.name} (${c.category})${c.description ? `: ${c.description}` : ""}`).join("\n");
     const existingBlock = existingSummaryLines.length > 0 ? existingSummaryLines.join("\n") : "(none yet)";
 
-    const completion = await client.chat.completions.create({
-        model,
-        messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            {
-                role: "user",
-                content: `=== ENTRIES ===\n${entriesBlock}\n\n=== ALREADY RECORDED (do not repeat) ===\n${existingBlock}`
-            }
-        ],
-        temperature: 0,
-        max_tokens: 2048
-    });
+    // B17 fix: 2048 was the same undersized budget already root-caused in brainstormExtractService.ts
+    // (B16) — a reply proposing 15-25 edges, each carrying a cited "description", easily exceeds it,
+    // and a reasoning-capable model can burn the whole budget on internal reasoning before emitting
+    // any visible content at all. Either way the JSON truncates mid-object, JSON.parse throws, and
+    // the job "completes" having proposed nothing. Raised to match B16's fix.
+    const [error, completion] = await attemptPromise(() =>
+        client.chat.completions.create({
+            model,
+            messages: [
+                { role: "system", content: SYSTEM_PROMPT },
+                {
+                    role: "user",
+                    content: `=== ENTRIES ===\n${entriesBlock}\n\n=== ALREADY RECORDED (do not repeat) ===\n${existingBlock}`
+                }
+            ],
+            temperature: 0,
+            max_tokens: 8192
+        })
+    );
+    if (error) {
+        console.warn("graph_suggest_edges: LLM call failed:", error);
+        throw error;
+    }
 
-    const raw = completion.choices[0]?.message?.content ?? "[]";
-    const parsedCandidates = parseCandidates(raw);
+    const choice = completion.choices[0];
+    if (choice?.finish_reason === "length")
+        console.warn(
+            "graph_suggest_edges: response was truncated by max_tokens (finish_reason='length') — proposals were likely cut off mid-JSON."
+        );
+
+    const raw = choice?.message?.content ?? "[]";
+    const { candidates: parsedCandidates, parseFailed, droppedCount: parseDroppedCount } = parseCandidates(raw);
+    if (parseFailed || parseDroppedCount > 0)
+        console.warn(
+            `graph_suggest_edges: parsing issues on this run — parseFailed=${parseFailed}, droppedCount=${parseDroppedCount}, ` +
+                `raw response length=${raw.length}, finish_reason=${choice?.finish_reason ?? "unknown"}`
+        );
 
     let proposedCount = 0;
     for (const candidate of parsedCandidates) {
@@ -146,5 +191,11 @@ export const runGraphSuggestEdgesJob = async (job: AgentJob): Promise<{ storyId:
         if (created) proposedCount++;
     }
 
-    return { storyId, proposedCount };
+    if (proposedCount === 0 && parsedCandidates.length > 0)
+        console.warn(
+            `graph_suggest_edges: parsed ${parsedCandidates.length} candidate(s) but proposed 0 — all were filtered by ` +
+                `bad index/self-reference, invalid edgeType, or already existing (active or pending).`
+        );
+
+    return { storyId, proposedCount, parsedCount: parsedCandidates.length };
 };

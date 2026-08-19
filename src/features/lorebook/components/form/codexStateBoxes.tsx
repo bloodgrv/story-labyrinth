@@ -124,6 +124,18 @@ export function LabeledFieldsBox({ control, name, title, emptyHint, labelPlaceho
                     onChange={e => setLabel(e.target.value)}
                     placeholder={labelPlaceholder}
                     className="w-28"
+                    onKeyDown={e => {
+                        // Without this, Enter here fell through to the surrounding entry-editor
+                        // <form>'s implicit submit instead of adding the field — silently saving
+                        // the entry while the typed label/value sat unsubmitted in these two
+                        // local-state inputs (see B2: this is why Core Identity/Appearance edits
+                        // could appear to "vanish" — they were never actually part of a saved
+                        // codexState to begin with).
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            addField();
+                        }
+                    }}
                 />
                 <Input
                     value={value}

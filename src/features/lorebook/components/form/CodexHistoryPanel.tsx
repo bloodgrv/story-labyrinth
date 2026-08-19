@@ -56,6 +56,11 @@ function SnapshotRow({ entryId, storyId, snapshot, isCurrent }: SnapshotRowProps
     const restoreMutation = useRestoreSnapshotMutation(entryId, storyId);
 
     const Icon = SOURCE_ICON[snapshot.sourceType];
+    // B2: the earliest snapshot for an entry (taken before any Codex fields were ever filled
+    // in) has no codexState at all — restoring it now lands on an explicit empty state rather
+    // than silently wiping the live entry, but it's still worth flagging clearly here so a user
+    // doesn't mistake it for a normal save with real content.
+    const isEmptyState = snapshot.codexState === null;
 
     const saveLabel = () => {
         const trimmed = labelInput.trim();
@@ -99,6 +104,11 @@ function SnapshotRow({ entryId, storyId, snapshot, isCurrent }: SnapshotRowProps
                     <Badge variant="secondary" className="text-xs">
                         {SOURCE_LABEL[snapshot.sourceType]}
                     </Badge>
+                    {isEmptyState && (
+                        <Badge variant="destructive" className="text-xs">
+                            Empty state
+                        </Badge>
+                    )}
                     {isCurrent && (
                         <Badge variant="outline" className="text-xs">
                             Current
@@ -119,8 +129,13 @@ function SnapshotRow({ entryId, storyId, snapshot, isCurrent }: SnapshotRowProps
                     <AlertDialogHeader>
                         <AlertDialogTitle>Restore this save?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will overwrite the entry's current description and Codex state with this save's values. The
-                            current state isn't lost — restoring creates a new save of its own, so you can always undo this too.
+                            {isEmptyState
+                                ? "This save has no Codex state recorded — restoring it will clear Wardrobe, Appearance, " +
+                                  "Wounds, Items, and Core Identity back to empty. The current state isn't lost — restoring " +
+                                  "creates a new save of its own, so you can always undo this too."
+                                : "This will overwrite the entry's current description and Codex state with this save's " +
+                                  "values. The current state isn't lost — restoring creates a new save of its own, so you " +
+                                  "can always undo this too."}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

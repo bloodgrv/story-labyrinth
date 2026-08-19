@@ -25,6 +25,7 @@ import {
     reviseChatProposal
 } from "../services/chatCodexService.js";
 import { getCodexEntry } from "../services/codexRepository.js";
+import { resolveEntityIdsByName } from "../services/ragScanner.js";
 import { getChatContext } from "../services/chatContextService.js";
 import type { ChatType, WorldBuildingTemplateSlug } from "../../src/types/worldbuilding.js";
 import type { ChatMessage } from "../../src/types/story.js";
@@ -523,34 +524,61 @@ router.post(
 
         if (type === "modify_entry") {
             const {
-                entryId,
+                entryId: rawEntryId,
+                entryName,
                 proposedDescription,
                 proposedState,
                 proposedTags,
                 proposedNeedsFleshingOut
             } = req.body as {
                 entryId?: string;
+                entryName?: string;
                 proposedDescription?: string;
                 proposedState?: unknown;
                 proposedTags?: string[];
                 proposedNeedsFleshingOut?: boolean;
             };
 
-            if (!entryId) {
-                res.status(400).json({ error: "entryId is required for modify_entry" });
+            if (!rawEntryId && !entryName) {
+                res.status(400).json({ error: "entryId or entryName is required for modify_entry" });
                 return;
             }
 
-            // A model reply occasionally grounds this on the entry's NAME instead of the real
-            // entryId from the Codex context (despite CODEX_PROPOSAL_INSTRUCTIONS telling it to
-            // use the id) — without this check that falls through to codexService's generic
-            // getOrThrow(), which throws a plain Error and previously surfaced as an opaque 500
-            // via the app's catch-all error handler instead of a clean, actionable failure.
-            const existingEntry = await getCodexEntry(entryId);
+            // The model has no legitimate way to know a real database entryId, and reliably
+            // guesses wrong or invents one (see B1/B20) — so entryId is treated as a hint at
+            // best, and entryName (or a name mistakenly placed in entryId) is resolved
+            // server-side against this story's actual lorebook, the same way
+            // codexCompileJob.ts/ragScanner.ts already resolve model-supplied names to real ids
+            // rather than trusting the model to produce one.
+            let existingEntry = rawEntryId ? await getCodexEntry(rawEntryId) : null;
+            let entryId = existingEntry?.id;
+
             if (!existingEntry) {
+                const nameToResolve = (entryName ?? rawEntryId ?? "").toLowerCase().trim();
+                if (nameToResolve) {
+                    const nameMap = await resolveEntityIdsByName(chat.storyId);
+                    let resolvedId = nameMap.get(nameToResolve);
+                    if (!resolvedId) {
+                        // Fall back to a first-name/substring match (e.g. "Mara" -> "Mara Ellison"),
+                        // only when it's unambiguous.
+                        const matches = [...nameMap.entries()].filter(
+                            ([name]) => name.includes(nameToResolve) || nameToResolve.includes(name)
+                        );
+                        if (matches.length === 1) resolvedId = matches[0][1];
+                    }
+                    if (resolvedId) {
+                        existingEntry = await getCodexEntry(resolvedId);
+                        entryId = resolvedId;
+                    }
+                }
+            }
+
+            if (!existingEntry || !entryId) {
                 res.status(404).json({
-                    error: `No Codex entry found with id "${entryId}" — this proposal wasn't recorded. ` +
-                        "The model may have used the entry's name instead of its id; try asking it to retry."
+                    error:
+                        `Couldn't find a Codex entry matching ${entryName ? `"${entryName}"` : `id "${rawEntryId}"`} ` +
+                        "in this story's lorebook — this proposal wasn't recorded. Check the spelling, or that the " +
+                        "entry has Codex tracking enabled, and try asking the model to retry."
                 });
                 return;
             }

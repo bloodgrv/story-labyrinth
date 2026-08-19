@@ -1,6 +1,6 @@
 import { $unwrapMarkNode, $wrapSelectionInMarkNode } from "@lexical/mark";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $getNearestNodeFromDOMNode, $nodesOfType } from "lexical";
+import { $getNearestNodeFromDOMNode, $getSelection, $nodesOfType, $setSelection, SKIP_DOM_SELECTION_TAG } from "lexical";
 import { useEffect, useMemo, useState } from "react";
 import { useEditorChapterId, useEditorStoryId } from "@/features/editor-multiview/context/EditorPaneContext";
 import { useStoryIssuesQuery, useUpdateIssueStatusMutation } from "@/features/rag-scanner/hooks/useRagScanQuery";
@@ -42,6 +42,10 @@ export default function RagIssueHighlightPlugin(): React.ReactNode {
 
         editor.update(
             () => {
+                // Preserve the user's real selection — this update only maintains highlight
+                // marks and must not steal focus or relocate the caret (see B15).
+                const priorSelection = $getSelection()?.clone() ?? null;
+
                 const openIds = new Set(chapterIssues.map(issue => issue.id));
 
                 // Reconcile removals first — an issue resolved/dismissed elsewhere (the drawer,
@@ -65,8 +69,10 @@ export default function RagIssueHighlightPlugin(): React.ReactNode {
                         break;
                     }
                 }
+
+                $setSelection(priorSelection);
             },
-            { tag: "rag-issue-highlight" }
+            { tag: ["rag-issue-highlight", SKIP_DOM_SELECTION_TAG] }
         );
     }, [editor, chapterId, chapterIssues]);
 
@@ -102,7 +108,7 @@ export default function RagIssueHighlightPlugin(): React.ReactNode {
             () => {
                 for (const mark of $nodesOfType(RagIssueMarkNode)) if (mark.getIssueId() === issue.id) $unwrapMarkNode(mark);
             },
-            { tag: "rag-issue-highlight" }
+            { tag: ["rag-issue-highlight", SKIP_DOM_SELECTION_TAG] }
         );
         setOpenPopover(null);
     };

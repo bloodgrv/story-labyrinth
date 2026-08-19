@@ -47,18 +47,21 @@ const CODEX_PROPOSAL_INSTRUCTIONS =
     "```\n\n" +
     "or, to modify an existing entry:\n\n" +
     "```codex-proposal\n" +
-    '{"type": "modify_entry", "entryId": "...", "proposedDescription": "...", "proposedTags": ["..."]}\n' +
+    '{"type": "modify_entry", "entryName": "...", "proposedDescription": "...", "proposedTags": ["..."]}\n' +
     "```\n\n" +
-    '"entryId" must be copied exactly from the "id: ..." shown after that entry\'s name in the Codex ' +
-    "context below — never the entry's name itself, and never invented. If you don't see an id for the " +
-    "entry you mean, don't propose modify_entry for it — say so, or propose new_entry instead.\n\n" +
+    '"entryName" should be the entry\'s name exactly as it appears in the Codex context below, or as it ' +
+    "has come up in this conversation — the server resolves it to the real entry. You do not need to know " +
+    "or guess the entry's internal id; if the Codex context happens to show one (as \"id: ...\"), you may " +
+    'send it as "entryId" instead, but "entryName" is fine and usually simpler. Only propose new_entry ' +
+    "when you genuinely mean a character/location/item that doesn't exist yet — not because you're unsure " +
+    "of an id.\n\n" +
     '"level" must be "global", "series", or "story" (use "story" unless told otherwise). ' +
     '"category" must be one of: character, location, item, event, note, synopsis, starting scenario, timeline.\n\n' +
     "If a concrete physical fact belongs in a structured field rather than free prose — an item of " +
     'clothing, a physical trait, a wound, a possession — include it under "proposedState" (valid on ' +
     "both new_entry and modify_entry) instead of only mentioning it in description:\n\n" +
     "```codex-proposal\n" +
-    '{"type": "modify_entry", "entryId": "...", "proposedDescription": "...", ' +
+    '{"type": "modify_entry", "entryName": "...", "proposedDescription": "...", ' +
     '"proposedState": {"wardrobe": [{"value": "..."}], "appearance": [{"label": "Hair", "value": "..."}], ' +
     '"wounds": [{"value": "..."}], "items": [{"value": "..."}]}}\n' +
     "```\n\n" +

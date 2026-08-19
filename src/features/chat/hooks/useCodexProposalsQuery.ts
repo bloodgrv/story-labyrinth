@@ -39,6 +39,11 @@ export const useCreateProposalMutation = () => {
             data.type === "new_entry" ? chatsApi.proposeNewEntry(chatId, data) : chatsApi.proposeModifyEntry(chatId, data),
         onSuccess: (_result, { chatId }) => {
             queryClient.invalidateQueries({ queryKey: proposalKeys.forChatAllStatuses(chatId) });
+            // A new_entry proposal creates a real stub lorebook entry immediately (not just a
+            // pending change), so the proposal tray's entry-name lookup needs fresh lorebook
+            // data too — otherwise it renders as "Unknown entry" until something else happens
+            // to invalidate lorebookKeys.
+            queryClient.invalidateQueries({ queryKey: lorebookKeys.all });
         },
         onError: (error: Error) => toast.error(`Failed to record Codex proposal: ${error.message}`)
     });

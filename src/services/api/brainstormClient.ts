@@ -15,6 +15,11 @@ export interface BrainstormExtractResult {
     overview: OverviewProposalPayload | null;
     handoffs: HandoffPacket[];
     droppedCount: number;
+    // B16: distinguishes "the model genuinely had nothing to hand off" (its own documented,
+    // valid outcome — handoffCallFailed: false, handoffs: []) from "the extraction call itself
+    // errored" (handoffCallFailed: true), so the UI can surface the latter instead of silently
+    // looking identical to an empty Approvals tray either way.
+    handoffCallFailed: boolean;
 }
 
 // P0.4 B0-B4 — replaces the old bare chat-CRUD brainstormApi (Brainstorm chats now ride

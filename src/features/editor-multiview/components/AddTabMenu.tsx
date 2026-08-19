@@ -31,8 +31,13 @@ export function AddTabMenu({ paneId, storyId }: AddTabMenuProps) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Add tab">
+                {/* B5-adjacent fix (2026-08-19): was icon-only with "Add tab" as an HTML title
+                    tooltip only — an identical anonymous Plus glyph sits ~40px from
+                    ChapterVersionsPanel's own "New version" trigger, easy to conflate. A visible
+                    text label distinguishes the two without relying on a hover tooltip. */}
+                <Button variant="ghost" size="sm" className="h-7 shrink-0 gap-1 px-2 text-xs" title="Add tab">
                     <Plus className="h-3.5 w-3.5" />
+                    Add tab
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">

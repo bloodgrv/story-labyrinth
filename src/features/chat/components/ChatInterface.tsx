@@ -41,15 +41,18 @@ import {
     useUpdateOutlineItemMutation
 } from "@/features/outline/hooks/useOutlineQuery";
 import { ApiError } from "@/services/api/apiFactory";
+import { useBrainstormChecklistActions } from "@/features/brainstorm/hooks/useBrainstormChecklistActions";
 import { brainstormApi, chatsApi, deskTransfersApi, lorebookApi } from "@/services/api/client";
-import type { HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
+import type { BrainstormChecklistItem, HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
 import type { ChapterSelectionTarget, SheetFieldReworkTarget } from "@/types/rework";
 import type { AIChat, ChatMessage, LorebookEntry, Prompt, PromptParserConfig } from "@/types/story";
-import type { ChatContext } from "@/types/worldbuilding";
+import type { ChatContext, ChatContextOutlineTreeItem } from "@/types/worldbuilding";
 import { ChatSystemPromptControl } from "./ChatSystemPromptControl";
+import { HandoffPacketCard } from "./HandoffPacketCard";
 import { NameProposalCard } from "./NameProposalCard";
 import { NoteProposalCard } from "./NoteProposalCard";
 import { OutlineProposalCard } from "./OutlineProposalCard";
+import { OverviewProposalCard } from "./OverviewProposalCard";
 import { ProposalCard } from "./ProposalCard";
 import { ProseProposalCard } from "./ProseProposalCard";
 import { PsychProposalCard } from "./PsychProposalCard";
@@ -153,6 +156,29 @@ interface ChatInterfaceProps {
     // "external" suppresses this component's own inline <ContextSelector> render entirely — the
     // host's rail panel renders it instead. Defaults to "inline" (unchanged behavior).
     storyContextPanelMode?: "inline" | "external";
+}
+
+// B18 fix (2026-08-19) — shared by the mount-time snapshot (below) and computeExtraContext's
+// per-turn refresh (further down this file) so the two can never render the tree differently.
+// Reconstructs chapter/scene nesting from the flat outlineTree array so the model sees real
+// structure, not just a flat list; itemIds are called out explicitly since outline-proposal
+// edit/reorder/delete fences need to reference them exactly.
+function formatOutlineTree(
+    outlineChapters: ChatContextOutlineTreeItem[],
+    scenesByChapter: Map<string, ChatContextOutlineTreeItem[]>
+): string {
+    return outlineChapters
+        .map(chapter => {
+            const sceneLines = (scenesByChapter.get(chapter.id) ?? [])
+                .map(s => `  - Scene "${s.title}" (id: ${s.id}): ${s.summary ?? "(no summary)"}`)
+                .join("\n");
+            const writtenTag = chapter.chapterId ? " [written]" : " [not yet written]";
+            return (
+                `- Chapter "${chapter.title}" (id: ${chapter.id})${writtenTag}: ${chapter.summary ?? "(no summary)"}` +
+                (sceneLines ? `\n${sceneLines}` : "")
+            );
+        })
+        .join("\n");
 }
 
 // ChatInterface for chats.ts-backed chats (World-Building, Research, Editor) — reuses the same
@@ -402,29 +428,16 @@ export function ChatInterface({
             // never the full linked-entry body (design doc's own "not full linked bodies" line).
             const timelineText = context.relevantTimelinePins.map(p => `- ${p.title} (${p.when})${p.blurb ? `: ${p.blurb}` : ""}`).join("\n");
 
-            // Outline chat's own always-on structured reads (P0.4 R5) — only ever non-empty for
-            // chatType="outline" (chatContextService.ts only populates these two for that type).
-            // Reconstructs chapter/scene nesting from the flat outlineTree array so the model sees
-            // real structure, not just a flat list; itemIds are called out explicitly since
-            // outline-proposal edit/reorder/delete fences need to reference them exactly.
-            const outlineChapters = context.outlineTree.filter(item => item.type === "chapter");
-            const scenesByChapter = new Map<string, typeof context.outlineTree>();
-            for (const item of context.outlineTree) {
-                if (item.type !== "scene" || !item.parentId) continue;
-                scenesByChapter.set(item.parentId, [...(scenesByChapter.get(item.parentId) ?? []), item]);
-            }
-            const outlineTreeText = outlineChapters
-                .map(chapter => {
-                    const sceneLines = (scenesByChapter.get(chapter.id) ?? [])
-                        .map(s => `  - Scene "${s.title}" (id: ${s.id}): ${s.summary ?? "(no summary)"}`)
-                        .join("\n");
-                    const writtenTag = chapter.chapterId ? " [written]" : " [not yet written]";
-                    return (
-                        `- Chapter "${chapter.title}" (id: ${chapter.id})${writtenTag}: ${chapter.summary ?? "(no summary)"}` +
-                        (sceneLines ? `\n${sceneLines}` : "")
-                    );
-                })
-                .join("\n");
+            // B18 fix (2026-08-19): the outline tree used to be built HERE, once, at mount/chat-
+            // select time, then never rebuilt for the rest of the conversation — this effect's own
+            // dependency array (below) has nothing that changes when outline items are created,
+            // accepted, or rejected. On a chat opened against an empty outline, the block below
+            // would say "(empty)" for the entire session even after 20 items existed, leaving the
+            // model with no real item ids to reference — it could only fall back to `create`
+            // fences reconstructing chapters from titles still visible in the transcript, which is
+            // exactly what produced 5 duplicate appended chapters instead of a targeted edit. Moved
+            // to computeExtraContext below, which already re-fetches context fresh on every real
+            // turn (unlike this mount-time snapshot) — see its own `needsOutlineTree` block.
             const writtenChaptersText = context.writtenChapters
                 .map(c => `- Ch. ${c.order} "${c.title}": ${c.summary ?? "(no summary)"}`)
                 .join("\n");
@@ -511,19 +524,10 @@ export function ChatInterface({
                 // computeExtraContext below, which refreshes it per-message against the user's
                 // actual live text (this block only ever refetches on chat.title, same reasoning
                 // P0.4 S1 already established for Research's own web search).
-                // Refetched fresh on every turn (unlike outlineTreeText's rejected-item exclusion,
-                // this note itself has to be repeated here every time, not just once at chat
-                // start) — a chapter/scene this chat proposed earlier and that the user then
-                // rejected simply disappears from this list; nothing else marks it "gone", so
-                // without this line the model keeps citing its own earlier proposal (title,
-                // summary, even the id) as if it still existed, since that text is still sitting
-                // right there in the chat history above.
-                isOutlineChat &&
-                    `[OUTLINE TREE — full story structure, current as of this message; use the id values exactly as shown when ` +
-                        `proposing edits/reorders/deletes. This is the live source of truth — if something you proposed earlier in ` +
-                        `this conversation (a chapter, scene, or edit) isn't listed here, the user rejected it or hasn't accepted it ` +
-                        `yet; don't treat it as created, and don't describe it as "already in the tree."]\n` +
-                        `${outlineTreeText || "(empty — no chapters or scenes yet)"}`,
+                // B18 fix: the OUTLINE TREE block used to live here too — moved to
+                // computeExtraContext below (real per-turn refresh) since this block never
+                // rebuilds mid-conversation as items are created/accepted/rejected. Sending it from
+                // BOTH places would risk two disagreeing snapshots reaching the model in one prompt.
                 writtenChaptersText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${writtenChaptersText}`,
                 chapterSummariesText && `[WRITTEN CHAPTERS — titles and summaries only, no full prose]\n${chapterSummariesText}`,
                 setupSlotsText && `[PROJECT SETUP CHECKLIST — use slotKey exactly as shown when a proposal addresses one]\n${setupSlotsText}`,
@@ -734,6 +738,17 @@ export function ChatInterface({
     const createNoteMutation = useCreateNoteMutation();
     const updateNoteMutation = useUpdateNoteMutation();
 
+    // B3 fix (2026-08-19) — same ephemeral, message-keyed posture as noteProposals above, but for
+    // Brainstorm's overview-proposal/handoff-packet fences, which used to persist correctly
+    // server-side (handleOverviewProposal/handleHandoffPackets below) yet render nothing at all
+    // inline in the chat transcript — only visible/actionable via the separate Approvals tray.
+    // These hold the just-created BrainstormChecklistItem(s) so OverviewProposalCard/
+    // HandoffPacketCard can render right under the message that produced them and perform the
+    // same accept/open action the tray does (useBrainstormChecklistActions.ts). Cleared once
+    // accepted/opened here — the tray remains the durable source of truth either way.
+    const [overviewChecklistItemsByMessage, setOverviewChecklistItemsByMessage] = useState<Record<string, BrainstormChecklistItem>>({});
+    const [handoffChecklistItemsByMessage, setHandoffChecklistItemsByMessage] = useState<Record<string, BrainstormChecklistItem[]>>({});
+
     // P0.4 B5 — Character template's opt-in psych module. Same ephemeral-state posture as
     // noteProposals above; only ever populated for WB chats since chatContextService.ts's
     // PSYCH_MODULE_INSTRUCTIONS is only ever included in the WB system prompt.
@@ -799,6 +814,14 @@ export function ChatInterface({
     const reorderOutlineMutation = useReorderOutlineMutation(storyId ?? "");
     const deleteOutlineItemMutation = useDeleteOutlineItemMutation(storyId ?? "");
 
+    // B3 fix — powers the inline OverviewProposalCard/HandoffPacketCard accept/open actions
+    // below with the exact same logic the Approvals tray (BrainstormChecklistTray.tsx) uses.
+    const brainstormChecklistActions = useBrainstormChecklistActions({
+        chatId: selectedChat.id,
+        storyId: storyId ?? "",
+        fromChatTitleSnapshot: selectedChat.title
+    });
+
     // P0.4 R6 — shared "apply" core for both the manual Accept button (handleAcceptProse below)
     // and the auto-insert path (onProseProposal callback below), so the two never drift. Pure
     // side-effecting apply, no proseProposals/dismiss bookkeeping — callers own that.
@@ -843,6 +866,7 @@ export function ChatInterface({
                 .createChecklistItem({ chatId: selectedChat.id, storyId, kind: "overview_proposal", payload: proposal, sourceMessageId: messageId })
                 .then(item => {
                     queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] });
+                    setOverviewChecklistItemsByMessage(prev => ({ ...prev, [messageId]: item }));
                     const fromDesk = selectedChat.chatType ?? "general";
                     if (proposal.proposalType !== "note" || fromDesk === "notes") return;
                     deskTransfersApi
@@ -892,10 +916,20 @@ export function ChatInterface({
                             return item;
                         })
                 )
-            ).then(() => queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] }));
+            ).then(items => {
+                queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] });
+                setHandoffChecklistItemsByMessage(prev => ({ ...prev, [messageId]: items }));
+            });
         },
         [storyId, selectedChat.id, selectedChat.chatType, selectedChat.title, queryClient]
     );
+
+    const dismissOverviewChecklistItem = (messageId: string) =>
+        setOverviewChecklistItemsByMessage(prev => {
+            const next = { ...prev };
+            delete next[messageId];
+            return next;
+        });
 
     // Manual backstop for the automatic extraction pass (useChatMessageGeneration.ts) — a per-
     // message "Propose from this reply" retry (ChatMessageList.tsx hover action) for when the
@@ -905,7 +939,19 @@ export function ChatInterface({
     const handleProposeFromReply = useCallback(
         async (messageId: string, replyText: string) => {
             setProposingMessageId(messageId);
-            const [error, result] = await attemptPromise(() => brainstormApi.extractProposals(replyText));
+            // B16: the automatic pass (useChatMessageGeneration.ts) passes the triggering user
+            // message as extraction context — this manual retry used to omit it entirely, so an
+            // escalating "please make a handoff card" instruction typed by the user (exactly the
+            // kind of message someone types right before hitting this retry) was invisible to the
+            // extractor. Find the nearest preceding user turn and pass it the same way.
+            const replyIndex = selectedChat.messages.findIndex(m => m.id === messageId);
+            const precedingUserMessage =
+                replyIndex >= 0
+                    ? [...selectedChat.messages.slice(0, replyIndex)].reverse().find(m => m.role === "user")
+                    : undefined;
+            const [error, result] = await attemptPromise(() =>
+                brainstormApi.extractProposals(replyText, precedingUserMessage?.content)
+            );
             setProposingMessageId(null);
             if (error) {
                 toast.error("Couldn't extract proposals from that reply — try again.");
@@ -920,7 +966,7 @@ export function ChatInterface({
             if (result.droppedCount > 0)
                 toast.warning(`Captured ${result.handoffs.length} hand-off item(s) — ${result.droppedCount} couldn't be parsed.`);
         },
-        [handleOverviewProposal, handleHandoffPackets]
+        [handleOverviewProposal, handleHandoffPackets, selectedChat.messages]
     );
 
     const { generate, isGenerating, abort, streamingContent } = useChatMessageGeneration({
@@ -1689,10 +1735,34 @@ export function ChatInterface({
         const needsResearch = isResearchChat && text.trim();
         const needsCodexSearch = (isWorldBuildingChat || isEditorChat || isOutlineChat) && text.trim() && storyId;
         const needsGuide = toggles.includeGuide && text.trim();
-        if (!needsResearch && !needsCodexSearch && !needsGuide) return undefined;
+        // B18 fix (2026-08-19) — see formatOutlineTree's own comment above and the removed
+        // mount-time block: this is now the ONLY place the outline tree is sent, always rebuilt
+        // fresh from this exact turn's real context, so item ids the model needs for
+        // edit/reorder/delete fences are never more than one message stale.
+        const needsOutlineTree = isOutlineChat && text.trim() && storyId;
+        if (!needsResearch && !needsCodexSearch && !needsGuide && !needsOutlineTree) return undefined;
 
         const ctx = await chatsApi.getContext(selectedChat.id, text);
         const blocks: (string | false | undefined)[] = [];
+
+        if (needsOutlineTree) {
+            const outlineChapters = ctx.outlineTree.filter(item => item.type === "chapter");
+            const scenesByChapter = new Map<string, typeof ctx.outlineTree>();
+            for (const item of ctx.outlineTree) {
+                if (item.type !== "scene" || !item.parentId) continue;
+                scenesByChapter.set(item.parentId, [...(scenesByChapter.get(item.parentId) ?? []), item]);
+            }
+            const outlineTreeText = formatOutlineTree(outlineChapters, scenesByChapter);
+            blocks.push(
+                `[OUTLINE TREE — full story structure, current as of this message; use the id values exactly as shown when ` +
+                    `proposing edits/reorders/deletes. This is the live source of truth — if something you proposed earlier in ` +
+                    `this conversation (a chapter, scene, or edit) isn't listed here, the user rejected it or hasn't accepted it ` +
+                    `yet; don't treat it as created, and don't describe it as "already in the tree." If the user asks you to ` +
+                    `change something that already exists here, use an edit/reorder/delete fence referencing its id — never a ` +
+                    `create fence. If you can't find the item's id here, say so and ask, rather than creating a replacement.]\n` +
+                    `${outlineTreeText || "(empty — no chapters or scenes yet)"}`
+            );
+        }
 
         if (needsResearch) {
             const searchText = ctx.webSearchResults.map(r => `- [${r.title}](${r.url}): ${r.snippet}`).join("\n");
@@ -1900,6 +1970,8 @@ export function ChatInterface({
                     const mapSketchProposal = mapSketchProposals[messageId];
                     const nameProposal = storyId ? nameProposals[messageId] : undefined;
                     const timelinePinProposalsForMessage = storyId ? timelinePinProposals[messageId] : undefined;
+                    const overviewChecklistItem = overviewChecklistItemsByMessage[messageId];
+                    const handoffChecklistItems = handoffChecklistItemsByMessage[messageId];
                     if (
                         !proposals?.length &&
                         !proseProposal &&
@@ -1912,7 +1984,9 @@ export function ChatInterface({
                         !sheetSpanProposal &&
                         !mapSketchProposal &&
                         !nameProposal &&
-                        !timelinePinProposalsForMessage?.length
+                        !timelinePinProposalsForMessage?.length &&
+                        !overviewChecklistItem &&
+                        !handoffChecklistItems?.length
                     )
                         return null;
                     return (
@@ -1943,6 +2017,32 @@ export function ChatInterface({
                                     proposal={noteProposal}
                                     onAccept={() => handleAcceptNote(messageId)}
                                     onReject={() => dismissNoteProposal(messageId)}
+                                />
+                            )}
+                            {overviewChecklistItem && (
+                                <OverviewProposalCard
+                                    item={overviewChecklistItem}
+                                    disabled={brainstormChecklistActions.isBusy}
+                                    onAccept={item => {
+                                        brainstormChecklistActions.handleAcceptOverview(item);
+                                        dismissOverviewChecklistItem(messageId);
+                                    }}
+                                />
+                            )}
+                            {handoffChecklistItems && handoffChecklistItems.length > 0 && (
+                                <HandoffPacketCard
+                                    items={handoffChecklistItems}
+                                    disabled={brainstormChecklistActions.isBusy}
+                                    onOpen={item => {
+                                        brainstormChecklistActions.handleOpenHandoff(item);
+                                        // Drop just this one item — the others in the same reply
+                                        // (e.g. a WB handoff and a Notes handoff from one packet)
+                                        // stay visible/actionable until opened themselves.
+                                        setHandoffChecklistItemsByMessage(prev => ({
+                                            ...prev,
+                                            [messageId]: (prev[messageId] ?? []).filter(candidate => candidate.id !== item.id)
+                                        }));
+                                    }}
                                 />
                             )}
                             {outlineProposalsForMessage?.map((proposal, index) => (
@@ -2080,6 +2180,8 @@ export function ChatInterface({
                 onInputChange={setInput}
                 onSend={handleSubmit}
                 onStop={abort}
+                chatId={selectedChat.id}
+                hasModel={!!selectedModel}
             />
         </div>
     );

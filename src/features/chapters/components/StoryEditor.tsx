@@ -36,6 +36,19 @@ export function StoryEditor() {
         useStoryContext();
     const { data: currentChapter } = useChapterQuery(currentChapterId || "");
 
+    // B19 fix (2026-08-19): switching chapters via the tab strip only ever updated
+    // currentChapterId — nothing re-pointed selectedEditorChat at the new chapter, so a chat
+    // anchored to the PREVIOUS chapter stayed selected and mounted in the composer (visible as
+    // "Focused on: Chapter: X" contradicting the actually-active tab). Sending from that stale
+    // composer wasn't blocked by any chapter check, but the anchor mismatch made it trivial to
+    // land in an unrelated bad state (e.g. a chat whose persisted lastUsedModelId no longer
+    // resolves) with no obvious way back short of manually reselecting a chat from the list.
+    // Clearing selection on a genuine chapter change forces a resync to that chapter's own chats
+    // every time, so "Focused on" can never contradict the active tab.
+    useEffect(() => {
+        setSelectedEditorChat(current => (current && current.anchorChapterId !== currentChapterId ? null : current));
+    }, [currentChapterId]);
+
     // AI Review's "Send to Editor chat" action (AR3, docs/AI_Review_Design.md) — same one-shot
     // consumption posture as ResearchTool.tsx's own pendingChatComposerSeed effect, gated on a
     // chat already being selected so the seed doesn't get lost against a still-mounting rail.

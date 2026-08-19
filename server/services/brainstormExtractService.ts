@@ -155,7 +155,7 @@ const runHandoffExtraction = async (
     client: OpenAI,
     model: string,
     userContent: string
-): Promise<{ handoffs: HandoffPacket[]; droppedCount: number }> => {
+): Promise<{ handoffs: HandoffPacket[]; droppedCount: number; callFailed: boolean }> => {
     // Generous budget — "detail" often needs to reproduce a full beat list AND multiple character
     // bios verbatim across several array items, easily 2000+ tokens of content alone. A cap too
     // tight here silently truncates the JSON mid-generation, which then fails to parse and
@@ -173,7 +173,15 @@ const runHandoffExtraction = async (
             max_tokens: 8192
         })
     );
-    if (error) return { handoffs: [], droppedCount: 0 };
+    if (error) {
+        // B16: this used to fail completely silently — indistinguishable client-side from "the
+        // model genuinely had nothing to hand off" (its own documented, valid empty-response
+        // case, see HANDOFF_EXTRACTION_SYSTEM_PROMPT above). Logging here is what let this get
+        // root-caused at all; the callFailed flag on the return value lets the client tell the
+        // two cases apart too instead of silently showing an empty Approvals tray either way.
+        console.warn("Brainstorm handoff extraction call failed:", error);
+        return { handoffs: [], droppedCount: 0, callFailed: true };
+    }
 
     const raw = completion.choices[0]?.message?.content ?? "";
     let { valid: handoffs, invalidRaw } = parseHandoffs(raw);
@@ -201,16 +209,23 @@ const runHandoffExtraction = async (
         }
     }
 
-    return { handoffs, droppedCount: invalidRaw.length };
+    // Note: an empty handoffs+invalidRaw result is NOT logged here — it's the model's documented,
+    // valid "nothing hand-off-worthy in this reply" case (see the system prompt above) and happens
+    // on most ordinary conversational turns, so treating it as a warning would just be noise. The
+    // callFailed flag above is what actually distinguishes a real failure from this expected case.
+    return { handoffs, droppedCount: invalidRaw.length, callFailed: false };
 };
 
-const EMPTY_RESULT: BrainstormExtractResult = { overview: null, handoffs: [], droppedCount: 0 };
+const EMPTY_RESULT: BrainstormExtractResult = { overview: null, handoffs: [], droppedCount: 0, handoffCallFailed: false };
 
 export const extractBrainstormProposals = async (replyText: string, userMessageText?: string): Promise<BrainstormExtractResult> => {
     if (!replyText.trim()) return EMPTY_RESULT;
 
     const connection = await buildClientForFeature("brainstorm_extract");
-    if (!connection) return EMPTY_RESULT;
+    if (!connection) {
+        console.warn("Brainstorm proposal extraction skipped: no AI connection configured for feature 'brainstorm_extract'.");
+        return EMPTY_RESULT;
+    }
     const { client, model } = connection;
 
     const userContent = buildUserContent(replyText, userMessageText);
@@ -222,5 +237,10 @@ export const extractBrainstormProposals = async (replyText: string, userMessageT
         runHandoffExtraction(client, model, userContent)
     ]);
 
-    return { overview, handoffs: handoffResult.handoffs, droppedCount: handoffResult.droppedCount };
+    return {
+        overview,
+        handoffs: handoffResult.handoffs,
+        droppedCount: handoffResult.droppedCount,
+        handoffCallFailed: handoffResult.callFailed
+    };
 };

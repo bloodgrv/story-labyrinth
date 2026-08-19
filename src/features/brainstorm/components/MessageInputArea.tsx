@@ -12,6 +12,13 @@ interface MessageInputAreaProps {
     onInputChange: (value: string) => void;
     onSend: () => void;
     onStop: () => void;
+    /** Chat id the composer is currently attached to — refocuses the textarea when this changes. */
+    chatId?: string;
+    // B19 fix: no model resolving (e.g. a chat's persisted lastUsedModelId naming a model no
+    // longer in the catalogue) used to leave Send enabled with no visible sign anything was
+    // wrong — every click silently no-op'd in the generate() guard. Mirror that guard here so
+    // the button reflects reality instead of the underlying failure being invisible.
+    hasModel: boolean;
 }
 
 export function MessageInputArea({
@@ -20,7 +27,9 @@ export function MessageInputArea({
     selectedPrompt,
     onInputChange,
     onSend,
-    onStop
+    onStop,
+    chatId,
+    hasModel
 }: MessageInputAreaProps) {
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const INITIAL_TEXTAREA_HEIGHT = 80;
@@ -42,14 +51,32 @@ export function MessageInputArea({
         
     }, [input]);
 
+    const canSend = !isGenerating && !!input.trim() && !!selectedPrompt && hasModel;
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            if (!isGenerating) 
-                onSend();
-            
+            if (canSend) onSend();
         }
     };
+
+    // B15: when a generating send disables (and thus browser-blurs) this textarea, focus was
+    // never restored afterward — leaving DOM focus ambiguous (often falling to <body>) right
+    // when a background editor.update() elsewhere in the app could steal it into the chapter's
+    // Lexical editor, so the user's next keystrokes landed in the manuscript instead of here.
+    // Re-focus once generation completes so the composer reliably owns the caret again.
+    const wasGeneratingRef = useRef(isGenerating);
+    useEffect(() => {
+        if (wasGeneratingRef.current && !isGenerating) textareaRef.current?.focus();
+        wasGeneratingRef.current = isGenerating;
+    }, [isGenerating]);
+
+    // Also claim focus whenever the user switches to a different chat (existing or freshly
+    // created) — part of the same B15 fix, so the composer reliably owns the caret right after
+    // a chat switch instead of leaving focus wherever it last happened to be.
+    useEffect(() => {
+        if (chatId) textareaRef.current?.focus();
+    }, [chatId]);
 
     return (
         <div className="border-t border-border p-4">
@@ -61,14 +88,20 @@ export function MessageInputArea({
                     onKeyDown={handleKeyDown}
                     placeholder="Ask me anything about your story..."
                     className="min-h-[80px] resize-none"
-                    disabled={isGenerating}
+                    readOnly={isGenerating}
+                    aria-busy={isGenerating}
                 />
                 {isGenerating ? (
                     <Button onClick={onStop} variant="destructive">
                         <Square className="h-4 w-4" />
                     </Button>
                 ) : (
-                    <Button variant="gradient" onClick={onSend} disabled={!input.trim() || !selectedPrompt}>
+                    <Button
+                        variant="gradient"
+                        onClick={onSend}
+                        disabled={!input.trim() || !selectedPrompt || !hasModel}
+                        title={!hasModel ? "No AI model selected for this chat — pick one above" : undefined}
+                    >
                         <Send className="h-4 w-4" />
                     </Button>
                 )}

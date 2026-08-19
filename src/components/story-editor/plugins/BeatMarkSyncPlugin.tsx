@@ -1,6 +1,6 @@
 import { $unwrapMarkNode, $wrapSelectionInMarkNode } from "@lexical/mark";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $getNodeByKey, $nodesOfType } from "lexical";
+import { $getNodeByKey, $getSelection, $nodesOfType, $setSelection, SKIP_DOM_SELECTION_TAG } from "lexical";
 import { useEffect } from "react";
 import { toast } from "react-toastify";
 import {
@@ -28,27 +28,38 @@ export default function BeatMarkSyncPlugin(): null {
     useEffect(() => {
         const handleBeatDeleted = (event: Event) => {
             const { beatId } = (event as CustomEvent<BeatDeletedEventDetail>).detail;
-            editor.update(() => {
-                for (const mark of $nodesOfType(BeatMarkNode))
-                    if (mark.hasID(beatId)) $unwrapMarkNode(mark);
-            });
+            editor.update(
+                () => {
+                    for (const mark of $nodesOfType(BeatMarkNode))
+                        if (mark.hasID(beatId)) $unwrapMarkNode(mark);
+                },
+                { tag: SKIP_DOM_SELECTION_TAG }
+            );
         };
 
         // Accepting an AI suggestion has no live selection to anchor to (the user isn't
-        // necessarily even looking at the editor when they accept), so this locates the
-        // suggestion's text in the current document and wraps it fresh — see
-        // beatTextSearch.ts for the single-TextNode limitation and fallback behaviour.
+        // necessarily even looking at the editor when they accept — often mid-conversation in a
+        // chat panel), so this locates the suggestion's text in the current document and wraps
+        // it fresh. It must not steal focus/caret from wherever the user actually is (see B15:
+        // this exact pattern — a background editor.update() calling range.node.select() — was
+        // found to relocate the DOM caret into the manuscript while the user was typing
+        // elsewhere, causing their next keystrokes to land in the chapter instead of the chat).
         const handleBeatAccepted = (event: Event) => {
             const { beatId, text, beatType } = (event as CustomEvent<BeatAcceptedEventDetail>).detail;
             let found = false;
 
-            editor.update(() => {
-                const range = $findTextNodeRange(text);
-                if (!range) return;
-                const selection = range.node.select(range.start, range.end);
-                $wrapSelectionInMarkNode(selection, false, beatId, ids => $createBeatMarkNode(ids, beatType));
-                found = true;
-            });
+            editor.update(
+                () => {
+                    const priorSelection = $getSelection()?.clone() ?? null;
+                    const range = $findTextNodeRange(text);
+                    if (!range) return;
+                    const selection = range.node.select(range.start, range.end);
+                    $wrapSelectionInMarkNode(selection, false, beatId, ids => $createBeatMarkNode(ids, beatType));
+                    found = true;
+                    $setSelection(priorSelection);
+                },
+                { tag: SKIP_DOM_SELECTION_TAG }
+            );
 
             if (!found)
                 toast.info(

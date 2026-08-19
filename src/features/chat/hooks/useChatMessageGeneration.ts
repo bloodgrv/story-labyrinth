@@ -190,7 +190,24 @@ export const useChatMessageGeneration = ({
 
     const generate = useCallback(
         async (input: string, extraContext?: string) => {
-            if (!input.trim() || !selectedPrompt || !selectedModel || isStreaming || !selectedChat.id) return;
+            // B19 fix: this used to be one combined guard that silently no-op'd on ANY of these
+            // conditions — no toast, no log, no visible state change. selectedModel resolving to
+            // null (e.g. a chat's persisted lastUsedModelId naming a model no longer in the
+            // catalogue) was the one case with no other visible symptom: the Send button stayed
+            // enabled, no spinner appeared, and every click/Enter silently did nothing. Split so
+            // the two legitimately-silent cases (empty input, already streaming) stay silent, and
+            // the two real failure cases tell the user why nothing happened.
+            if (!input.trim() || isStreaming || !selectedChat.id) return;
+            if (!selectedPrompt) {
+                toast.error("Chat system prompt hasn't loaded yet — try again in a moment.");
+                return;
+            }
+            if (!selectedModel) {
+                toast.error(
+                    "No AI model is selected for this chat — pick one from the model dropdown above, or check Settings → Providers & keys if the list is empty."
+                );
+                return;
+            }
 
             // Captured before anything is appended below — true only on a chat's genuine first
             // exchange (never on a resumed chat, a regenerate, or a branch, which always starts
@@ -314,17 +331,25 @@ export const useChatMessageGeneration = ({
                 // HANDOFF_PACKET_INSTRUCTIONS fences above are unreliable during a normal
                 // conversational reply (verified live: the model skips them even with matching
                 // trigger phrases). Fire an isolated server-side extraction pass as a background
-                // follow-up — same technique verified to work reliably — only when the main reply
-                // didn't already self-emit one (avoids a duplicate proposal on the rare turn where
-                // it does). Fire-and-forget: the chat turn has already succeeded and rendered: a
-                // missed or failed extraction should never surface as a disruptive error.
+                // follow-up — same technique verified to work reliably — for whichever type(s) the
+                // main reply didn't already self-emit. B16 fix (2026-08-19): this used to gate on
+                // BOTH types being absent (`!overviewProposal && handoffPackets.length === 0`), so
+                // any turn where the model self-emitted an overview-proposal fence skipped handoff
+                // extraction entirely — the exact "duplicate overview, never a real handoff" pattern
+                // seen live. Now it fires whenever EITHER type is still missing, and only applies
+                // whichever half of the extraction result the main reply didn't already provide, so
+                // a self-emitted overview can no longer suppress handoff extraction (or vice versa)
+                // and neither type can be double-applied. Fire-and-forget: the chat turn has already
+                // succeeded and rendered: a missed or failed extraction should never surface as a
+                // disruptive error.
                 if (
                     selectedChat.chatType === "brainstorm" &&
                     assistantMessage &&
-                    !overviewProposal &&
-                    handoffPackets.length === 0
+                    (!overviewProposal || handoffPackets.length === 0)
                 ) {
                     const extractionMessageId = assistantMessage.id;
+                    const alreadyHasOverview = !!overviewProposal;
+                    const alreadyHasHandoffs = handoffPackets.length > 0;
                     void (async () => {
                         const [extractError, result] = await attemptPromise(() =>
                             brainstormApi.extractProposals(fullResponse, input.trim())
@@ -333,12 +358,18 @@ export const useChatMessageGeneration = ({
                             logger.warn("Brainstorm proposal extraction failed:", extractError);
                             return;
                         }
-                        if (result.overview) onOverviewProposal?.(extractionMessageId, result.overview);
-                        if (result.handoffs.length > 0) onHandoffPackets?.(extractionMessageId, result.handoffs);
+                        if (result.overview && !alreadyHasOverview) onOverviewProposal?.(extractionMessageId, result.overview);
+                        if (result.handoffs.length > 0 && !alreadyHasHandoffs)
+                            onHandoffPackets?.(extractionMessageId, result.handoffs);
                         if (result.droppedCount > 0)
                             toast.warning(
                                 `Captured ${result.handoffs.length} hand-off item(s) from that reply — ${result.droppedCount} couldn't be parsed. Use "Propose from this reply" to retry.`
                             );
+                        // B16: previously a failed extraction call looked identical to "nothing to
+                        // hand off" — this couldn't be told apart from the chat UI, only from
+                        // server logs. Surface it so the user knows a retry might actually help.
+                        else if (result.handoffCallFailed && !alreadyHasHandoffs)
+                            toast.warning('Couldn\'t check that reply for hand-off items — use "Propose from this reply" to retry.');
                     })();
                 }
                 if (noteSplitProposal && assistantMessage) onNoteSplitProposal?.(assistantMessage.id, noteSplitProposal);

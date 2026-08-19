@@ -248,7 +248,11 @@ export const chatsApi = {
         id: string,
         data: {
             messageId?: string;
-            entryId: string;
+            // Either may be supplied — the server resolves entryName (or a name mistakenly
+            // sent as entryId) against the story's lorebook rather than trusting the model to
+            // know a real database id (see B1/B20).
+            entryId?: string;
+            entryName?: string;
             proposedDescription?: string;
             proposedState?: CodexState;
             proposedTags?: string[];

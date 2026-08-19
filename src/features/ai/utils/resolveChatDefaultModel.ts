@@ -114,7 +114,14 @@ export function resolveChatDefaultModel({
     if (featureOverrideModelId && availableModels.some(m => m.id === featureOverrideModelId))
         return featureOverrideModelId;
 
-    return computeModeDefaultModelId(mode, settings);
+    // B19 fix: computeModeDefaultModelId reads straight out of AI settings (defaultGrokModel,
+    // defaultLocalModel, ...) with no validation against the actual model catalogue — a stale
+    // saved default, a rotated provider key, or an unreachable local server can all leave it
+    // naming a model that no longer exists. Returning that unvalidated here meant
+    // useChatSystemPrompt.ts would resolve selectedModel to null AND persist the bad id back to
+    // the chat row, so the chat's Send button stayed silently, permanently dead across reloads.
+    const fallback = computeModeDefaultModelId(mode, settings);
+    return fallback && availableModels.some(m => m.id === fallback) ? fallback : undefined;
 }
 
 interface ResolveModelForModeSwitchParams {
@@ -135,5 +142,7 @@ export function resolveModelForModeSwitch({
     const currentModel = currentModelId ? availableModels.find(m => m.id === currentModelId) : undefined;
     if (currentModel && getModeForProvider(currentModel.provider) === newMode) return currentModel.id;
 
-    return computeModeDefaultModelId(newMode, settings, currentModel?.provider);
+    // B19 fix — same unvalidated-fallback risk as resolveChatDefaultModel above.
+    const fallback = computeModeDefaultModelId(newMode, settings, currentModel?.provider);
+    return fallback && availableModels.some(m => m.id === fallback) ? fallback : undefined;
 }

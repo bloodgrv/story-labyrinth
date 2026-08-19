@@ -5,14 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MultiEntryImportDialog } from "@/features/lorebook/components/MultiEntryImportDialog";
-import { useCreateNoteMutation } from "@/features/notes/hooks/useNotesQuery";
-import { useStoryContext } from "@/features/stories/context/StoryContext";
-import { useUpdateStoryMutation } from "@/features/stories/hooks/useStoriesQuery";
-import { agentMemoriesApi, deskTransfersApi } from "@/services/api/client";
-import { AGENT_MEMORY_CATEGORIES, type AgentMemoryCategory } from "@/types/agentMemory";
 import type { BrainstormChecklistItem, CharacterBatchPayload, HandoffPacket, OverviewProposalPayload } from "@/types/brainstorm";
+import { useBrainstormChecklistActions } from "../hooks/useBrainstormChecklistActions";
 import { useBrainstormChecklistQuery, useUpdateChecklistStatusMutation } from "../hooks/useBrainstormChecklistQuery";
-import { useSetSlotStatusMutation } from "../hooks/useBrainstormSlotsQuery";
 import { SlotChecklistPanel } from "./SlotChecklistPanel";
 
 interface BrainstormChecklistTrayProps {
@@ -37,88 +32,15 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
     const [openBatchItem, setOpenBatchItem] = useState<BrainstormChecklistItem | null>(null);
     const { data: items = [] } = useBrainstormChecklistQuery(chatId, statusTab);
     const updateStatus = useUpdateChecklistStatusMutation();
-    const updateStory = useUpdateStoryMutation();
-    const createNote = useCreateNoteMutation();
-    const setSlotStatus = useSetSlotStatusMutation(storyId);
-    const { setPendingLorebookSeed, setPendingChatComposerSeed, setCurrentTool } = useStoryContext();
+    const { handleAcceptOverview, handleOpenHandoff, markDone, isBusy } = useBrainstormChecklistActions({
+        chatId,
+        storyId,
+        fromChatTitleSnapshot
+    });
 
     const overviewItems = items.filter(i => i.kind === "overview_proposal");
     const handoffItems = items.filter(i => i.kind === "handoff");
     const characterBatchItems = items.filter(i => i.kind === "character_batch");
-    const isBusy = updateStatus.isPending || updateStory.isPending || createNote.isPending;
-
-    const markDone = (id: string) => updateStatus.mutate({ id, status: "done" });
-
-    // Accept performs the actual write (synopsis/note/memory) then moves the row to "opened" —
-    // NOT "done": per B4's doctrine, only the user's own explicit Mark done leaves the active
-    // queue, even for an action that already completed.
-    const handleAcceptOverview = (item: BrainstormChecklistItem) => {
-        const payload = item.payload as OverviewProposalPayload;
-        if (payload.proposalType === "synopsis") updateStory.mutate({ id: storyId, data: { synopsis: payload.content } });
-        else if (payload.proposalType === "note") createNote.mutate({ storyId, title: payload.title, content: payload.content, type: payload.noteType });
-        else if (payload.proposalType === "memory") {
-            // The model can only pick a category name it's seen defined nowhere in its own
-            // instructions (chatContextService.ts's OVERVIEW_PROPOSAL_INSTRUCTIONS never lists
-            // the valid set) — fall back to 'project_note' rather than letting an invalid value
-            // fail the create request outright.
-            const category: AgentMemoryCategory = AGENT_MEMORY_CATEGORIES.includes(payload.category as AgentMemoryCategory)
-                ? (payload.category as AgentMemoryCategory)
-                : "project_note";
-            void agentMemoriesApi.createNote({ storyId, category, title: payload.title, body: payload.body });
-        }
-        if (payload.slotKey) setSlotStatus.mutate({ slotKey: payload.slotKey, status: "known" });
-        updateStatus.mutate({ id: item.id, status: "opened" });
-        // Transfer Log (T1) — only "note" crosses a desk boundary; synopsis/memory write directly
-        // into story fields/Project Memory, not a desk (see ChatInterface.tsx's onOverviewProposal
-        // for the matching 'proposed' half of this same scoping decision).
-        if (payload.proposalType === "note")
-            deskTransfersApi
-                .log(storyId, {
-                    event: "opened",
-                    kind: "overview_proposal",
-                    fromDesk: "brainstorm",
-                    fromChatId: chatId,
-                    fromChatTitleSnapshot,
-                    toDesk: "notes",
-                    subject: payload.title,
-                    sourceChecklistItemId: item.id
-                })
-                .catch(() => {});
-    };
-
-    // WB reuses the existing pendingLorebookSeed handoff mechanism unchanged (same shape a
-    // lore-suggestion already produces). Notes now has its own chat rail (P0.4 K1) so "notes"
-    // navigates+seeds the same as Outline/Research, matching every other destination's behavior —
-    // previously (before K1) it just created the note directly with no navigation.
-    const handleOpenHandoff = (item: BrainstormChecklistItem) => {
-        const payload = item.payload as HandoffPacket;
-        if (payload.destination === "worldbuilding") {
-            setPendingLorebookSeed({
-                name: payload.seedName || payload.summary.slice(0, 60),
-                category: payload.seedCategory ?? "character",
-                blurb: payload.summary,
-                detail: payload.detail
-            });
-            setCurrentTool("lorebook");
-        } else {
-            setPendingChatComposerSeed({ tool: payload.destination, text: payload.detail });
-            setCurrentTool(payload.destination);
-        }
-        updateStatus.mutate({ id: item.id, status: "opened" });
-        deskTransfersApi
-            .log(storyId, {
-                event: "opened",
-                kind: "handoff",
-                fromDesk: "brainstorm",
-                fromChatId: chatId,
-                fromChatTitleSnapshot,
-                toDesk: payload.destination,
-                subject: payload.summary,
-                crumb: payload.detail,
-                sourceChecklistItemId: item.id
-            })
-            .catch(() => {});
-    };
 
     const renderChecklistCard = (item: BrainstormChecklistItem) => {
         const isOverview = item.kind === "overview_proposal";

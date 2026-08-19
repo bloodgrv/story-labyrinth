@@ -325,9 +325,14 @@ export const restoreSnapshot = async (
 
     const existing = await getOrThrow(entryId);
 
+    // B2: some snapshots (e.g. the very first one, taken at createCodexEntry/enableCodexForEntry
+    // time before any state exists) have codexState: null. Restoring one of those must land the
+    // entry on an explicit empty state, not write NULL over whatever the live entry currently
+    // holds — a null passed straight to updateCodexEntryFields is treated as "set to null", i.e.
+    // a full silent wipe of every Codex field, not "leave unchanged" and not "restore to empty".
     const updated = await updateCodexEntryFields(entryId, {
         description: target.description,
-        codexState: target.codexState
+        codexState: target.codexState ?? EMPTY_CODEX_STATE
     });
     const entry = updated ?? existing;
     if (updated) void attemptPromise(() => indexLorebookEntry(entry.id));

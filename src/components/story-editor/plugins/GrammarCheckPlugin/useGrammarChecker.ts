@@ -1,5 +1,5 @@
 import { $unwrapMarkNode, $wrapSelectionInMarkNode } from "@lexical/mark";
-import { $nodesOfType, type LexicalEditor } from "lexical";
+import { $getSelection, $nodesOfType, $setSelection, SKIP_DOM_SELECTION_TAG, type LexicalEditor } from "lexical";
 import { debounce } from "lodash";
 import { useEffect, useRef, type RefObject } from "react";
 import { grammarApi } from "@/services/api/client";
@@ -33,6 +33,12 @@ export function useGrammarChecker(editor: LexicalEditor, enabled: boolean, ignor
                     const { text: currentText } = $flattenDocumentForGrammarCheck();
                     if (currentText !== sentText) return;
 
+                    // Preserve wherever the user's real caret/selection is — this update only
+                    // maintains marks and must not steal focus or relocate the visible selection
+                    // (see B15: a mark-maintenance update was landing the caret mid-prose,
+                    // causing subsequently-typed chat text to be inserted into the manuscript).
+                    const priorSelection = $getSelection()?.clone() ?? null;
+
                     for (const mark of $nodesOfType(GrammarMarkNode)) $unwrapMarkNode(mark);
 
                     for (const match of matches) {
@@ -52,8 +58,10 @@ export function useGrammarChecker(editor: LexicalEditor, enabled: boolean, ignor
                             $createGrammarMarkNode(ids, match.category, match.message, match.replacements, match.ruleId)
                         );
                     }
+
+                    $setSelection(priorSelection);
                 },
-                { tag: "grammar-check" }
+                { tag: ["grammar-check", SKIP_DOM_SELECTION_TAG] }
             );
         };
     }, [editor, ignoredKeysRef]);

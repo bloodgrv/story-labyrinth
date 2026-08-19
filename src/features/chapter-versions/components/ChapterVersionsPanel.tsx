@@ -9,16 +9,10 @@ import {
     AlertDialogTitle
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Copy, Plus, Sparkles, X } from "lucide-react";
+import { Copy, Sparkles, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
     useChapterVersionsQuery,
@@ -151,23 +145,29 @@ export function ChapterVersionsPanel({ chapterId, children }: ChapterVersionsPan
                     </div>
                 ))}
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" title="New version">
-                            <Plus className="h-3.5 w-3.5" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => setGenerateDialogOpen(true)}>
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            New AI Draft...
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => duplicateMutation.mutate(undefined)}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            Duplicate Main as New Version
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {/* B5 fix (2026-08-19): this used to be a single icon-only Radix DropdownMenu trigger
+                    whose "New version" text existed only as an HTML title tooltip — Radix opens a
+                    dropdown trigger on pointerdown rather than click, which made it invisible to
+                    (and untestable by) anything that only synthesizes a plain click event, and gave
+                    a first-time human user no visible label for what the button does either. Two
+                    explicit, always-visible, plain-onClick buttons instead — fires for real pointers,
+                    synthetic clicks, and keyboard/assistive-tech alike, no dropdown required for just
+                    two actions. */}
+                <Button size="sm" variant="ghost" className="h-7 shrink-0 gap-1 px-2 text-xs" onClick={() => setGenerateDialogOpen(true)}>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    New version
+                </Button>
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 shrink-0 gap-1 px-2 text-xs"
+                    disabled={duplicateMutation.isPending}
+                    onClick={() => duplicateMutation.mutate(undefined)}
+                    title="Duplicate Main as a new version"
+                >
+                    <Copy className="h-3.5 w-3.5" />
+                    Duplicate
+                </Button>
 
                 {activeVersion && (
                     <div className="ml-auto flex shrink-0 items-center gap-3">

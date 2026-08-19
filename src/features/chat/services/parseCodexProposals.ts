@@ -15,7 +15,12 @@ export interface ParsedNewEntryProposal {
 
 export interface ParsedModifyEntryProposal {
     type: "modify_entry";
-    entryId: string;
+    // entryId is now optional — the model has no legitimate way to know or safely invent a real
+    // database id (see B1/B20), so entryName is the primary field going forward and the server
+    // resolves it against the story's lorebook. entryId is still accepted when the context
+    // block happened to surface a real id, for back-compat with older prompt output.
+    entryId?: string;
+    entryName?: string;
     proposedDescription?: string;
     proposedState?: CodexState;
     proposedTags?: string[];
@@ -39,7 +44,7 @@ const isNewEntry = (value: Record<string, unknown>): boolean =>
     typeof value.category === "string";
 
 const isModifyEntry = (value: Record<string, unknown>): boolean =>
-    value.type === "modify_entry" && typeof value.entryId === "string";
+    value.type === "modify_entry" && (typeof value.entryId === "string" || typeof value.entryName === "string");
 
 const isValidProposal = (value: unknown): value is ParsedCodexProposal => {
     if (typeof value !== "object" || value === null) return false;
