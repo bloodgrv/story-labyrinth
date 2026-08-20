@@ -1,3 +1,4 @@
+export * from "./DeepSeekProvider";
 export * from "./IAIProvider";
 export * from "./LocalAIProvider";
 export * from "./OpenAIProvider";

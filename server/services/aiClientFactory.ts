@@ -52,6 +52,32 @@ const clientFromEndpoint = async (endpoint: FeatureEndpoint, settings: AiSetting
                 }),
                 model: endpoint.model
             };
+        case "deepseek":
+            return {
+                client: new OpenAI({
+                    baseURL: "https://api.deepseek.com/v1",
+                    apiKey: endpoint.apiKey || settings.deepseekKey || ""
+                }),
+                model: endpoint.model
+            };
+        // Gemini has no HTTP client of its own here — GeminiProvider.ts (client-side live chat)
+        // uses the native @google/genai SDK for streaming, which doesn't fit this file's
+        // `{client: OpenAI, model}` shape. But Gemini also publishes an OpenAI-compatible endpoint
+        // (https://ai.google.dev/gemini-api/docs/openai) that speaks the exact
+        // `chat.completions.create` shape every job consumer here already calls — non-streaming,
+        // which is all agentMemoriesService.ts/codexCompileJob.ts/etc. ever need — so this is a
+        // plain `new OpenAI({baseURL, apiKey})` client like every other provider in this file, not
+        // a bespoke integration. Closes the gap tracked in docs/gemini-provider-plan.md /
+        // CURRENT_BACKLOG.md's "Gemini provider polish": Gemini was fully wired for live chat but
+        // silently unselectable for any background job/Feature Routing override.
+        case "gemini":
+            return {
+                client: new OpenAI({
+                    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+                    apiKey: endpoint.apiKey || settings.geminiKey || ""
+                }),
+                model: endpoint.model
+            };
         case "grok":
             return {
                 client: new OpenAI({ baseURL: "https://api.x.ai/v1", apiKey: endpoint.apiKey || settings.grokKey || "" }),
@@ -77,7 +103,7 @@ const clientFromEndpoint = async (endpoint: FeatureEndpoint, settings: AiSetting
     }
 };
 
-// Priority order: local → openai → openrouter → grok → grok-oauth. grok-oauth was added last
+// Priority order: local → openai → openrouter → deepseek → gemini → grok → grok-oauth. grok-oauth was added last
 // (after plain grok) rather than left out of this chain entirely, per the user's explicit call —
 // a feature with no per-feature override and no other provider configured should still be able to
 // reach a connected xAI OAuth session, not dead-end into "no provider configured" when one is
@@ -103,6 +129,21 @@ const clientFromGlobalSettings = async (settings: AiSettingsRow): Promise<Client
                 apiKey: settings.openrouterKey
             }),
             model: settings.defaultOpenRouterModel
+        };
+    }
+    if (settings.deepseekKey && settings.defaultDeepSeekModel) {
+        return {
+            client: new OpenAI({ baseURL: "https://api.deepseek.com/v1", apiKey: settings.deepseekKey }),
+            model: settings.defaultDeepSeekModel
+        };
+    }
+    if (settings.geminiKey && settings.defaultGeminiModel) {
+        return {
+            client: new OpenAI({
+                baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+                apiKey: settings.geminiKey
+            }),
+            model: settings.defaultGeminiModel
         };
     }
     if (settings.grokKey && settings.defaultGrokModel) {

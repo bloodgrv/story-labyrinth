@@ -46,6 +46,7 @@ export const useModelSelection = ({ initialModels = [] }: UseModelSelectionProps
 
         availableModels.forEach(model => {
             if (model.provider === "local") groups.Local.push(model);
+            else if (model.provider === "deepseek") groups.DeepSeek.push(model);
             else if (model.provider === "gemini") groups.Gemini.push(model);
             else if (model.provider === "grok" || model.provider === "grok-oauth") groups.xAI.push(model);
             else if (model.provider === "grok-session") groups.SuperGrok.push(model);
@@ -107,6 +108,7 @@ export const useModelSelection = ({ initialModels = [] }: UseModelSelectionProps
             settings.defaultLocalModel,
             settings.defaultOpenAIModel,
             settings.defaultOpenRouterModel,
+            settings.defaultDeepSeekModel,
             settings.defaultGeminiModel,
             settings.defaultGrokModel,
             settings.defaultGrokSessionModel,

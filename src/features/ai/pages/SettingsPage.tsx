@@ -83,6 +83,7 @@ export default function SettingsPage() {
     const allModels = settings?.availableModels || [];
     const openaiModels = allModels.filter(m => m.provider === "openai");
     const openrouterModels = allModels.filter(m => m.provider === "openrouter");
+    const deepseekModels = allModels.filter(m => m.provider === "deepseek");
     const geminiModels = allModels.filter(m => m.provider === "gemini");
     const localModels = allModels.filter(m => m.provider === "local");
     const grokModels = allModels.filter(m => m.provider === "grok");
@@ -205,6 +206,21 @@ export default function SettingsPage() {
                                     onSaveKey={key => updateKeyMutation.mutate({ provider: "openrouter", key })}
                                     onRefresh={() => refreshModelsMutation.mutate("openrouter")}
                                     onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "openrouter", modelId })}
+                                />
+
+                                <ProviderCard
+                                    provider="deepseek"
+                                    title="DeepSeek Configuration"
+                                    keyLabel="DeepSeek API Key"
+                                    keyPlaceholder="Enter your DeepSeek API key"
+                                    storedKey={settings?.deepseekKey}
+                                    models={deepseekModels}
+                                    defaultModel={settings?.defaultDeepSeekModel}
+                                    isKeyMutating={updateKeyMutation.isPending}
+                                    isRefreshing={refreshModelsMutation.isPending}
+                                    onSaveKey={key => updateKeyMutation.mutate({ provider: "deepseek", key })}
+                                    onRefresh={() => refreshModelsMutation.mutate("deepseek")}
+                                    onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "deepseek", modelId })}
                                 />
 
                                 <ProviderCard

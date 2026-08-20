@@ -9,6 +9,9 @@ export const API_URLS = {
     /** OpenRouter API base URL */
     OPENROUTER_BASE: "https://openrouter.ai/api/v1",
 
+    /** DeepSeek official API base URL */
+    DEEPSEEK_BASE: "https://api.deepseek.com/v1",
+
     /** xAI (Grok) official API base URL */
     XAI_BASE: "https://api.x.ai/v1",
 

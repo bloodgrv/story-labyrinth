@@ -94,7 +94,7 @@ export const lorebookExportSchema = z.object({
 });
 
 // AI Model schema
-const aiProviderSchema = z.enum(["openai", "openrouter", "local", "gemini", "grok", "grok-session", "grok-oauth"]);
+const aiProviderSchema = z.enum(["openai", "openrouter", "deepseek", "local", "gemini", "grok", "grok-session", "grok-oauth"]);
 
 const aiModelSchema = z.object({
     id: z.string(),
@@ -106,6 +106,7 @@ const aiModelSchema = z.object({
 export const aiSettingsSchema = baseEntitySchema.extend({
     openaiKey: z.string().optional(),
     openrouterKey: z.string().optional(),
+    deepseekKey: z.string().optional(),
     geminiKey: z.string().optional(),
     grokKey: z.string().optional(),
     grokSessionCookie: z.string().optional(),
@@ -118,6 +119,7 @@ export const aiSettingsSchema = baseEntitySchema.extend({
     defaultLocalModel: z.string().optional(),
     defaultOpenAIModel: z.string().optional(),
     defaultOpenRouterModel: z.string().optional(),
+    defaultDeepSeekModel: z.string().optional(),
     defaultGeminiModel: z.string().optional(),
     defaultGrokModel: z.string().optional(),
     defaultGrokSessionModel: z.string().optional(),

@@ -14,7 +14,7 @@ import { FEATURE_KEYS } from "../../src/types/aiSettings.js";
 
 // Kept as a plain string[] (not FeatureProvider[]) since this is a runtime validation boundary
 // over unvalidated request bodies, not a typed context.
-const VALID_FEATURE_PROVIDERS: string[] = ["local", "openai", "openrouter", "grok", "grok-oauth", "local-inprocess"];
+const VALID_FEATURE_PROVIDERS: string[] = ["local", "openai", "openrouter", "deepseek", "gemini", "grok", "grok-oauth", "local-inprocess"];
 
 // "local-inprocess" has no HTTP client — it's only meaningful for the "embedding" feature (see
 // docs/Local_Embeddings_Design.md and the matching UI restriction in FeatureEndpointsCard.tsx).
@@ -39,7 +39,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100
 // disaster-recovery backup feature, not a shareable artifact like the per-story export — but it
 // still ends up as a plain JSON file wherever the browser saves downloads, which is a materially
 // different (and easily overlooked) exposure surface than a settings API response held only in
-// browser memory. Every raw secret aiSettings carries — the four static provider keys, the Grok
+// browser memory. Every raw secret aiSettings carries — the five static provider keys, the Grok
 // session cookie, both Grok OAuth tokens, and any per-feature override key buried in
 // featureEndpoints — is stripped from the exported row. A restored backup needs those re-entered
 // once; deliberately not attempting to preserve them across export/import, per explicit user
@@ -49,6 +49,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100
 const SECRET_AI_SETTINGS_FIELDS = [
     "openaiKey",
     "openrouterKey",
+    "deepseekKey",
     "geminiKey",
     "grokKey",
     "grokSessionCookie",

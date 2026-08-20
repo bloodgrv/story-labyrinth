@@ -60,6 +60,7 @@ function EditSystemPromptDialog({ prompt, open, onOpenChange }: EditSystemPrompt
 const PROVIDER_GROUP_LABEL: Record<AIProvider, string> = {
     openai: "OpenAI",
     openrouter: "OpenRouter",
+    deepseek: "DeepSeek",
     local: "Local",
     gemini: "Gemini",
     grok: "Grok (xAI)",

@@ -190,7 +190,7 @@ export interface Prompt extends BaseEntity {
 }
 
 // AI Provider and Model types
-export type AIProvider = "openai" | "openrouter" | "local" | "gemini" | "grok" | "grok-session" | "grok-oauth";
+export type AIProvider = "openai" | "openrouter" | "deepseek" | "local" | "gemini" | "grok" | "grok-session" | "grok-oauth";
 
 export interface AIModel {
     id: string;
@@ -203,6 +203,7 @@ export interface AIModel {
 export interface AISettings extends BaseEntity {
     openaiKey?: string;
     openrouterKey?: string;
+    deepseekKey?: string;
     geminiKey?: string;
     grokKey?: string;
     grokSessionCookie?: string;
@@ -215,6 +216,7 @@ export interface AISettings extends BaseEntity {
     defaultLocalModel?: string;
     defaultOpenAIModel?: string;
     defaultOpenRouterModel?: string;
+    defaultDeepSeekModel?: string;
     defaultGeminiModel?: string;
     defaultGrokModel?: string;
     defaultGrokSessionModel?: string;

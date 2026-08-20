@@ -40,18 +40,25 @@ export type FeatureKey =
 // https://api.x.ai/v1 connections and fit the same `new OpenAI({baseURL, apiKey})` shape as
 // every other provider here.
 //
+// "gemini" IS included, even though its live-chat path (GeminiProvider.ts) uses the native
+// @google/genai SDK for streaming — server-side (aiClientFactory.ts), it goes through Gemini's own
+// OpenAI-compatible endpoint (https://ai.google.dev/gemini-api/docs/openai) instead, which is a
+// plain `new OpenAI({baseURL, apiKey})` client like everything else here. Every job consumer only
+// ever needs a non-streaming chat.completions.create call, which that endpoint fully supports.
+//
 // "local-inprocess" is a different kind of thing entirely: it runs an embedding model directly
 // inside the Node server (server/services/localEmbeddingService.ts, via @huggingface/transformers)
 // with no HTTP client at all. Valid only for the "embedding" feature — enforced in the Settings UI
 // (FeatureEndpointsCard.tsx) and server-side (routes/admin.ts) — since it has no way to serve any
 // other feature.
-export type FeatureProvider = "local" | "openai" | "openrouter" | "grok" | "grok-oauth" | "local-inprocess";
+export type FeatureProvider = "local" | "openai" | "openrouter" | "deepseek" | "gemini" | "grok" | "grok-oauth" | "local-inprocess";
 
 export type FeatureEndpoint = {
     provider: FeatureProvider;
     // For "local": the base URL of the OpenAI-compatible server (e.g. http://192.168.1.5:1234/v1)
     // For "openrouter": optional custom base URL (defaults to https://openrouter.ai/api/v1)
-    // For "openai"/"grok"/"grok-oauth": not used (always api.openai.com / api.x.ai)
+    // For "openai"/"deepseek"/"gemini"/"grok"/"grok-oauth": not used (always api.openai.com /
+    // api.deepseek.com / generativelanguage.googleapis.com / api.x.ai)
     apiUrl?: string | null;
     // API key for the provider. For "local" this is ignored (sent as "local"). For "grok-oauth"
     // this is ignored too — it always uses the single global xAI OAuth connection, refreshed

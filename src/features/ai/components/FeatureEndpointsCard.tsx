@@ -20,12 +20,14 @@ const PROVIDER_LABELS: Record<FeatureProvider, string> = {
     local: "Local",
     openai: "OpenAI",
     openrouter: "OpenRouter",
+    deepseek: "DeepSeek",
+    gemini: "Gemini",
     grok: "Grok (xAI)",
     "grok-oauth": "Grok (xAI OAuth)",
     "local-inprocess": "Local (in-process)"
 };
 
-const PROVIDERS: FeatureProvider[] = ["local", "openai", "openrouter", "grok", "grok-oauth"];
+const PROVIDERS: FeatureProvider[] = ["local", "openai", "openrouter", "deepseek", "gemini", "grok", "grok-oauth"];
 
 // Runs entirely inside the Node server (server/services/localEmbeddingService.ts) — no HTTP
 // endpoint, no live /models list to query, and only one supported model. Valid only for the

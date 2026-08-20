@@ -1,6 +1,7 @@
 import { API_URLS } from "@/constants/urls";
 import type { AIProvider } from "@/types/story";
 import {
+    DeepSeekProvider,
     GeminiProvider,
     GrokOAuthProvider,
     GrokProvider,
@@ -18,6 +19,7 @@ export class AIProviderFactory {
         this.providers.set("local", new LocalAIProvider(localApiUrl));
         this.providers.set("openai", new OpenAIProvider());
         this.providers.set("openrouter", new OpenRouterProvider());
+        this.providers.set("deepseek", new DeepSeekProvider());
         this.providers.set("gemini", new GeminiProvider());
         this.providers.set("grok", new GrokProvider());
         this.providers.set("grok-session", new GrokSessionProvider());

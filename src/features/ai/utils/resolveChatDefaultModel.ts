@@ -5,12 +5,13 @@ import type { AIModel, AIProvider, AISettings, ChatMode } from "@/types/story";
 // cloud provider is still configured (M3, decision B — "implicit", no separate primary-provider
 // dropdown in v1). grok-session is deliberately excluded from this list (never was in the doc's
 // priority order — it's a Grok sub-variant reached via cookie, not a first-class settings default).
-const CLOUD_PRIORITY: AIProvider[] = ["grok", "openrouter", "openai", "gemini", "grok-oauth"];
+const CLOUD_PRIORITY: AIProvider[] = ["grok", "openrouter", "deepseek", "openai", "gemini", "grok-oauth"];
 
 const DEFAULT_MODEL_FIELD: Record<AIProvider, keyof AISettings> = {
     local: "defaultLocalModel",
     openai: "defaultOpenAIModel",
     openrouter: "defaultOpenRouterModel",
+    deepseek: "defaultDeepSeekModel",
     gemini: "defaultGeminiModel",
     grok: "defaultGrokModel",
     "grok-session": "defaultGrokSessionModel",
@@ -34,6 +35,8 @@ function isProviderConfigured(provider: AIProvider, settings: AISettings): boole
             return !!settings.openaiKey;
         case "openrouter":
             return !!settings.openrouterKey;
+        case "deepseek":
+            return !!settings.deepseekKey;
         case "gemini":
             return !!settings.geminiKey;
         case "grok":

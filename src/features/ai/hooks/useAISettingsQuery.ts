@@ -268,6 +268,7 @@ const providerName = (provider: AIProvider): string => {
     const names: Record<AIProvider, string> = {
         openai: "OpenAI",
         openrouter: "OpenRouter",
+        deepseek: "DeepSeek",
         local: "Local",
         gemini: "Gemini",
         grok: "Grok (xAI)",

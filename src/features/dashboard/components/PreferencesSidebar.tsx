@@ -48,6 +48,11 @@ export function PreferencesSidebar({ aiSettings, featureEndpoints }: Preferences
             model: aiSettings?.defaultOpenRouterModel ?? undefined
         },
         {
+            label: "DeepSeek",
+            configured: !!aiSettings?.deepseekKey && !!aiSettings?.defaultDeepSeekModel,
+            model: aiSettings?.defaultDeepSeekModel ?? undefined
+        },
+        {
             label: "Gemini",
             configured: !!aiSettings?.geminiKey && !!aiSettings?.defaultGeminiModel,
             model: aiSettings?.defaultGeminiModel ?? undefined

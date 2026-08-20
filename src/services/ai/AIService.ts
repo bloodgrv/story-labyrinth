@@ -43,6 +43,9 @@ export class AIService {
         if (this.settings.openrouterKey)
             this.providerFactory.initializeProvider("openrouter", this.settings.openrouterKey);
 
+        if (this.settings.deepseekKey)
+            this.providerFactory.initializeProvider("deepseek", this.settings.deepseekKey);
+
         if (this.settings.geminiKey)
             this.providerFactory.initializeProvider("gemini", this.settings.geminiKey);
 
@@ -66,6 +69,7 @@ export class AIService {
         const keyFieldMap: Record<string, keyof AISettings> = {
             openai: "openaiKey",
             openrouter: "openrouterKey",
+            deepseek: "deepseekKey",
             gemini: "geminiKey",
             grok: "grokKey",
             "grok-session": "grokSessionCookie"
@@ -184,6 +188,7 @@ export class AIService {
         const keyMap: Record<string, string | undefined> = {
             openai: this.settings?.openaiKey,
             openrouter: this.settings?.openrouterKey,
+            deepseek: this.settings?.deepseekKey,
             gemini: this.settings?.geminiKey,
             grok: this.settings?.grokKey,
             "grok-session": this.settings?.grokSessionCookie,
@@ -229,6 +234,14 @@ export class AIService {
 
     getDefaultOpenRouterModel(): string | undefined {
         return this.settings?.defaultOpenRouterModel;
+    }
+
+    getDeepSeekKey(): string | undefined {
+        return this.settings?.deepseekKey;
+    }
+
+    getDefaultDeepSeekModel(): string | undefined {
+        return this.settings?.defaultDeepSeekModel;
     }
 
     getGeminiKey(): string | undefined {
@@ -277,6 +290,7 @@ export class AIService {
             local: "defaultLocalModel",
             openai: "defaultOpenAIModel",
             openrouter: "defaultOpenRouterModel",
+            deepseek: "defaultDeepSeekModel",
             gemini: "defaultGeminiModel",
             grok: "defaultGrokModel",
             "grok-session": "defaultGrokSessionModel",
