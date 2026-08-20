@@ -6,9 +6,11 @@ import {
     History,
     Inbox,
     ListChecks,
+    Loader2,
     type LucideIcon,
     Menu,
     MessagesSquare,
+    Save,
     ScanSearch,
     SlidersHorizontal,
     StickyNote,
@@ -19,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { DownloadMenu } from "@/components/ui/DownloadMenu";
 import { Button } from "@/components/ui/button";
+import { useSaveManuscriptBackupMutation } from "@/features/stories/hooks/useStoriesQuery";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -130,6 +133,7 @@ export function EditorToolsPanel({
     const visibleSidebarButtons = sidebarButtons.filter(
         b => (b.id === "approvals" || b.id === "context" ? !!selectedEditorChat : true)
     );
+    const saveManuscriptBackupMutation = useSaveManuscriptBackupMutation();
     const approvalsBadge =
         approvalsCount > 0 ? (
             <Badge variant="secondary" className="font-normal ml-2">
@@ -238,6 +242,24 @@ export function EditorToolsPanel({
                             label="Download"
                             className="mx-2 justify-start"
                         />
+                    )}
+
+                    {currentStoryId && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn("mx-2", collapsed ? "justify-center px-0 w-8" : "justify-start")}
+                            disabled={saveManuscriptBackupMutation.isPending}
+                            onClick={() => saveManuscriptBackupMutation.mutate(currentStoryId)}
+                            title="Save a human-readable manuscript backup to local disk"
+                        >
+                            {saveManuscriptBackupMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                            ) : (
+                                <Save className="h-4 w-4 shrink-0" />
+                            )}
+                            {!collapsed && <span className="ml-2">Save Manuscript</span>}
+                        </Button>
                     )}
                 </div>
 

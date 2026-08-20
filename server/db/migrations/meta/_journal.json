@@ -575,6 +575,13 @@
       "when": 1787195266532,
       "tag": "0081_flawless_bucky",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "6",
+      "when": 1787200312858,
+      "tag": "0082_simple_blue_shield",
+      "breakpoints": true
     }
   ]
 }

@@ -66,6 +66,18 @@ export const useUpdateStoryMutation = () => {
     });
 };
 
+// Manuscript Failsafe Save — writes/overwrites the story's human-readable local backup file.
+export const useSaveManuscriptBackupMutation = () =>
+    useMutation({
+        mutationFn: (id: string) => storiesApi.saveManuscriptBackup(id),
+        onSuccess: () => {
+            toast.success("Manuscript backup saved");
+        },
+        onError: (error: Error) => {
+            toast.error(`Failed to save manuscript backup: ${error.message}`);
+        }
+    });
+
 // Delete story mutation
 export const useDeleteStoryMutation = () => {
     const queryClient = useQueryClient();

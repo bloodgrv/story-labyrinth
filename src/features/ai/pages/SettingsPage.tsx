@@ -37,6 +37,7 @@ import { GuideTabs } from "@/features/guide/components/GuideTabs";
 import { HumanizerSettingsCard } from "@/features/humanizer/components/HumanizerSettingsCard";
 import { AutoHumanizerSettingsCard } from "@/features/auto-humanizer/components/AutoHumanizerSettingsCard";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { McpConnectionsSettingsCard } from "@/features/mcp/components/McpConnectionsSettingsCard";
 import { TtsSettingsCard } from "@/features/tts/components/TtsSettingsCard";
 import type { ChatMode } from "@/types/story";
 
@@ -46,7 +47,20 @@ import type { ChatMode } from "@/types/story";
 // Guide/Users/Scanner were left-sidebar workspace tools; moved here to declutter that rail — Users
 // stays owner-gated (see isOwner below), Scanner reuses the same story-scoped panel and just asks
 // for a story if none is selected yet.
-const SECTIONS = ["appearance", "providers", "local", "routing", "writing", "logs", "data", "trash", "guide", "scanner", "users"] as const;
+const SECTIONS = [
+    "appearance",
+    "providers",
+    "local",
+    "routing",
+    "writing",
+    "integrations",
+    "logs",
+    "data",
+    "trash",
+    "guide",
+    "scanner",
+    "users"
+] as const;
 type Section = (typeof SECTIONS)[number];
 
 export default function SettingsPage() {
@@ -123,6 +137,11 @@ export default function SettingsPage() {
                             <TabsTrigger value="writing" className="justify-start w-full data-[state=active]:bg-muted">
                                 Writing tools
                             </TabsTrigger>
+                            {isOwner && (
+                                <TabsTrigger value="integrations" className="justify-start w-full data-[state=active]:bg-muted">
+                                    Integrations
+                                </TabsTrigger>
+                            )}
                             <TabsTrigger value="logs" className="justify-start w-full data-[state=active]:bg-muted">
                                 Logs
                             </TabsTrigger>
@@ -292,6 +311,12 @@ export default function SettingsPage() {
                                 <WriterPrefsCard />
                                 <PlaybookPacksSettingsCard />
                             </TabsContent>
+
+                            {isOwner && (
+                                <TabsContent value="integrations" className="mt-0 space-y-6">
+                                    <McpConnectionsSettingsCard storyId={currentStoryId ?? null} />
+                                </TabsContent>
+                            )}
 
                             <TabsContent value="logs" className="mt-0 space-y-6">
                                 <TransfersLogCard />

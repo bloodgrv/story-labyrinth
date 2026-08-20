@@ -35,6 +35,7 @@ export { writerPrefsSettingsApi } from "./writerPrefsSettingsClient";
 export { humanizerApi } from "./humanizerClient";
 export { autoHumanizerApi } from "./autoHumanizerClient";
 export { lorebookApi } from "./lorebookClient";
+export { mcpConnectionsApi } from "./mcpConnectionsClient";
 export { nameGeneratorApi } from "./nameGeneratorClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
 export { outlineImportApi } from "./outlineImportClient";
@@ -71,7 +72,10 @@ export const storiesApi = {
         fetchJSON<Story>(`/stories/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: string) => fetchJSON<{ success: boolean }>(`/stories/${id}`, { method: "DELETE" }),
     exportStory: (id: string) => fetchJSON<StoryExport>(`/stories/${id}/export`),
-    importStory: (file: File) => uploadFile<Story>("/stories/import", file)
+    importStory: (file: File) => uploadFile<Story>("/stories/import", file),
+    // Manuscript Failsafe Save — writes/overwrites the story's human-readable local backup file.
+    saveManuscriptBackup: (id: string) =>
+        fetchJSON<{ success: boolean; path: string; savedAt: string }>(`/stories/${id}/manuscript-backup`, { method: "POST" })
 };
 
 // Series API

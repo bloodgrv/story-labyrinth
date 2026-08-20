@@ -8,6 +8,7 @@ import { migrateSceneBeatPromptType, patchStaleSystemPrompts, seedSystemPrompts 
 import { blockViewerMutations, requireAuth, requireOwner } from "./middleware/auth.js";
 import { renderStatusPage } from "./routes/statusPage.js";
 import { getCurrentJobIds, start as startJobRunner, stop as stopJobRunner } from "./services/jobRunner.js";
+import { writeAllManuscriptBackups } from "./services/manuscriptBackupService.js";
 import { seedShippedPlaybookPacks } from "./services/playbookPackService.js";
 import adminRouter from "./routes/admin.js";
 import agentJobsRouter from "./routes/agentJobs.js";
@@ -25,6 +26,7 @@ import grammarRouter from "./routes/grammar.js";
 import humanizerRouter from "./routes/humanizer.js";
 import autoHumanizerRouter from "./routes/autoHumanizer.js";
 import lorebookRouter from "./routes/lorebook.js";
+import mcpConnectionsRouter from "./routes/mcpConnections.js";
 import nameGeneratorRouter from "./routes/nameGenerator.js";
 import notesRouter from "./routes/notes.js";
 import outlineRouter from "./routes/outline.js";
@@ -63,7 +65,11 @@ let jobRunnerStarted = false;
 // No graceful shutdown handling existed anywhere in this codebase before this — needed now so
 // stopJobRunner() gets a chance to let an in-flight job finish before the process exits. Shared
 // by SIGTERM/SIGINT and the /_status restart & shutdown actions below.
+//
+// Manuscript Failsafe Save's shutdown hook lives here too — best-effort, wrapped so a backup
+// failure (or a slow one) never blocks or meaningfully delays actual shutdown.
 const shutdown = async () => {
+    await writeAllManuscriptBackups().catch(error => console.error("Manuscript backup pass failed on shutdown:", error));
     await stopJobRunner();
     server.close(() => process.exit(0));
 };
@@ -130,6 +136,10 @@ app.use("/api/ai", requireOwner, aiRouter);
 app.use("/api/brainstorm", brainstormRouter);
 app.use("/api/notes", notesRouter);
 app.use("/api/admin", requireOwner, adminRouter);
+// MCP Tool Connections (M0, docs/MCP_Tool_Connections_Design.md) — every route touches
+// owner-only data (URLs, bearer tokens), so the whole router sits under requireOwner rather
+// than TTS's per-route split.
+app.use("/api/mcp/connections", requireOwner, mcpConnectionsRouter);
 // System-level infrastructure (LLM-spend-triggering, story-wide reindexing) that a
 // viewer/editor has no legitimate reason to poke at directly — matching /api/admin/ai/users.
 app.use("/api/agent/jobs", requireOwner, agentJobsRouter);

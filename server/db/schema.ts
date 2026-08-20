@@ -1702,3 +1702,40 @@ export const playbookPacks = sqliteTable(
         keyStyleIdx: index("playbookpack_key_style_idx").on(table.playbookKey, table.style)
     })
 );
+
+// MCP Connections table (M0, docs/MCP_Tool_Connections_Design.md) — registered external
+// Streamable HTTP MCP servers a chat can later call tools on (M1+). Owner-only CRUD (design
+// §3.1). `bearerToken` is the one secret column here — always redacted to a `hasToken` boolean
+// on the wire, same B31/TTS posture as `ttsSettings.providers[*].apiKey`. `allowPrivateNetwork`
+// is the per-connection SSRF opt-in (design §2.4/§3.2) for self-hosted/LAN targets.
+// `toolsCatalogue` caches the connection's own `tools/list` result (name/description/inputSchema
+// per tool) so a chat toggle (M2) never has to hit the remote server just to render its context
+// block — populated only by the "Refresh tools" action, never implicitly.
+export const mcpConnections = sqliteTable(
+    "mcpConnections",
+    {
+        id: text("id").primaryKey(),
+        name: text("name").notNull(),
+        // Only 'streamable_http' is valid in v1 — a free column (not an enum) so a later stdio
+        // transport (design §2.3, explicitly deferred) doesn't need a schema migration.
+        transport: text("transport").notNull().default("streamable_http"),
+        url: text("url").notNull(),
+        bearerToken: text("bearerToken"),
+        allowPrivateNetwork: integer("allowPrivateNetwork", { mode: "boolean" }).notNull().default(false),
+        // 'global' (default, every story) | 'story' (pinned to one story via storyId) — design §3.1.
+        scope: text("scope").notNull().default("global"),
+        storyId: text("storyId").references(() => stories.id, { onDelete: "cascade" }),
+        enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+        toolsCatalogue: text("toolsCatalogue", { mode: "json" }).notNull().default("[]"), // {name, description, inputSchema}[]
+        lastToolsFetch: integer("lastToolsFetch", { mode: "timestamp" }),
+        lastToolsError: text("lastToolsError"),
+        createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+        updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+        // Trash / Restore — see series.deletedAt comment above.
+        deletedAt: integer("deletedAt", { mode: "timestamp" })
+    },
+    table => ({
+        scopeIdx: index("mcpconnection_scope_idx").on(table.scope),
+        storyIdIdx: index("mcpconnection_story_id_idx").on(table.storyId)
+    })
+);

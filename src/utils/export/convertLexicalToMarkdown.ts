@@ -1,4 +1,4 @@
-import type { LexicalEditorState, SerializedLexicalNode } from "./types";
+import type { LexicalEditorState, SerializedLexicalNode } from "./types.js";
 
 /**
  * Converts Lexical JSON content to Markdown
@@ -59,11 +59,11 @@ export function convertLexicalToMarkdown(jsonContent: string): string {
         const indent = "  ".repeat(depth);
         const lines: string[] = [];
 
-        (node.children ?? []).forEach((child, index) => {
+        (node.children ?? []).forEach((child: SerializedLexicalNode, index: number) => {
             const marker = isOrdered ? `${index + 1}.` : "-";
             const checkbox = child.checked !== undefined ? (child.checked ? "[x] " : "[ ] ") : "";
-            const inlineChildren = (child.children ?? []).filter(c => c.type !== "list");
-            const nestedLists = (child.children ?? []).filter(c => c.type === "list");
+            const inlineChildren = (child.children ?? []).filter((c: SerializedLexicalNode) => c.type !== "list");
+            const nestedLists = (child.children ?? []).filter((c: SerializedLexicalNode) => c.type === "list");
             const inlineText = inlineChildren.map(processNode).join("");
 
             lines.push(`${indent}${marker} ${checkbox}${inlineText}`);
@@ -74,7 +74,7 @@ export function convertLexicalToMarkdown(jsonContent: string): string {
     };
 
     if (editorState.root?.children)
-        editorState.root.children.forEach(node => {
+        editorState.root.children.forEach((node: SerializedLexicalNode) => {
             const text = processNode(node);
             if (text) lines.push(text);
         });

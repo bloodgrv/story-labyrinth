@@ -5,6 +5,7 @@ import multer from "multer";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { generateEpub } from "../services/epubGenerator.js";
+import { writeManuscriptBackup } from "../services/manuscriptBackupService.js";
 import { indexNote, indexOutlineItem } from "../services/ragIndexService.js";
 import { migrateSceneBeatNodesInContent } from "../services/sceneBeatContentMigration.js";
 
@@ -541,6 +542,26 @@ export default createCrudRouter({
                 res.setHeader("Content-Type", "application/epub+zip");
                 res.setHeader("Content-Disposition", `attachment; filename="${req.params.id}.epub"`);
                 res.send(epubBuffer);
+            })
+        );
+
+        // Manuscript Failsafe Save (docs/CURRENT_BACKLOG.md) — writes/overwrites the one
+        // human-readable Markdown backup file for this story on local disk, independent of the
+        // DB. Manual trigger from the Editor's tool rail; the same writeManuscriptBackup is also
+        // called best-effort for every story on server shutdown (server/index.ts).
+        router.post(
+            "/:id/manuscript-backup",
+            asyncHandler(async (req, res) => {
+                const [error, savedPath] = await attemptPromise(() => writeManuscriptBackup(req.params.id));
+                if (error) {
+                    res.status(500).json({ error: "Failed to save manuscript backup", details: error.message });
+                    return;
+                }
+                if (!savedPath) {
+                    res.status(404).json({ error: "Story not found" });
+                    return;
+                }
+                res.json({ success: true, path: savedPath, savedAt: new Date().toISOString() });
             })
         );
     }

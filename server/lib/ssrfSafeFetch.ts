@@ -35,12 +35,21 @@ const isPrivateIPv6 = (ip: string): boolean => {
     return false;
 };
 
+export interface SsrfOptions {
+    // Per-connection opt-in (docs/MCP_Tool_Connections_Design.md §2.4/§3.2) — short-circuits the
+    // private/loopback/link-local/CGNAT checks below for self-hosted/LAN targets the owner has
+    // explicitly trusted. Protocol validation and the localhost-hostname check still always apply.
+    // Off by default so every existing caller (webSearchService.ts, epubGenerator.ts) is unaffected.
+    allowPrivate?: boolean;
+}
+
 // Validates protocol + resolves the hostname so a DNS answer can't point at an internal target the
 // URL text itself doesn't reveal ("DNS rebinding") — every resolved address is checked, not just
 // the first. Throws SsrfBlockedError on anything disallowed; returns the parsed URL on success.
-export const assertPublicUrl = async (rawUrl: string): Promise<URL> => {
+export const assertPublicUrl = async (rawUrl: string, options: SsrfOptions = {}): Promise<URL> => {
     const parsed = new URL(rawUrl);
     if (!["http:", "https:"].includes(parsed.protocol)) throw new SsrfBlockedError(`Blocked protocol: ${parsed.protocol}`);
+    if (options.allowPrivate) return parsed;
 
     const hostname = parsed.hostname;
     if (hostname === "localhost" || hostname.endsWith(".localhost")) throw new SsrfBlockedError(`Blocked hostname: ${hostname}`);
@@ -67,10 +76,15 @@ export const assertPublicUrl = async (rawUrl: string): Promise<URL> => {
 // fetch() wrapper that re-validates on every redirect hop (manual redirect handling — the plain
 // `follow` mode would let a first-hop-safe URL redirect straight to a private address after the
 // check already passed).
-export const ssrfSafeFetch = async (rawUrl: string, init: RequestInit = {}, maxRedirects = 5): Promise<Response> => {
+export const ssrfSafeFetch = async (
+    rawUrl: string,
+    init: RequestInit = {},
+    maxRedirects = 5,
+    options: SsrfOptions = {}
+): Promise<Response> => {
     let currentUrl = rawUrl;
     for (let hop = 0; hop <= maxRedirects; hop++) {
-        const parsed = await assertPublicUrl(currentUrl);
+        const parsed = await assertPublicUrl(currentUrl, options);
         const res = await fetch(parsed, { ...init, redirect: "manual" });
         const location = res.headers.get("location");
         if (res.status >= 300 && res.status < 400 && location) {
