@@ -12,6 +12,7 @@ import multiviewRaw from "../content/multiview.mdx?raw";
 import nameGeneratorRaw from "../content/name-generator.mdx?raw";
 import notesRaw from "../content/notes.mdx?raw";
 import outlineRaw from "../content/outline.mdx?raw";
+import playbooksRaw from "../content/playbooks.mdx?raw";
 import promptsRaw from "../content/prompts.mdx?raw";
 import relationshipsRaw from "../content/relationships.mdx?raw";
 import researchRaw from "../content/research.mdx?raw";
@@ -30,6 +31,7 @@ const RAW_BY_TOPIC_ID: Record<string, string> = {
     "settings-nav": settingsNavRaw,
     advanced: advancedRaw,
     lorebook: lorebookRaw,
+    playbooks: playbooksRaw,
     "locations-maps": locationsMapsRaw,
     "story-timeline": storyTimelineRaw,
     "ai-review": aiReviewRaw,

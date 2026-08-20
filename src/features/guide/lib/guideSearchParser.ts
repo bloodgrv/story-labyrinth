@@ -21,6 +21,7 @@ export const GUIDE_TOPIC_META: { id: string; label: string }[] = [
     { id: "settings-nav", label: "Settings & Navigation" },
     { id: "advanced", label: "Advanced Guide" },
     { id: "lorebook", label: "Lorebook Guide" },
+    { id: "playbooks", label: "Playbook Packs" },
     { id: "locations-maps", label: "Locations & Maps" },
     { id: "story-timeline", label: "Story Timeline" },
     { id: "ai-review", label: "AI Review" },

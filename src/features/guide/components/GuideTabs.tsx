@@ -16,6 +16,7 @@ import MultiViewGuide from "../content/multiview.mdx";
 import NameGeneratorGuide from "../content/name-generator.mdx";
 import NotesGuide from "../content/notes.mdx";
 import OutlineGuide from "../content/outline.mdx";
+import PlaybooksGuide from "../content/playbooks.mdx";
 import PromptGuide from "../content/prompts.mdx";
 import RelationshipsGuide from "../content/relationships.mdx";
 import ResearchGuide from "../content/research.mdx";
@@ -36,6 +37,7 @@ export function GuideTabs() {
                 <TabsTrigger value="settings-nav">Settings & Navigation</TabsTrigger>
                 <TabsTrigger value="advanced">Advanced Guide</TabsTrigger>
                 <TabsTrigger value="lorebook">Lorebook Guide</TabsTrigger>
+                <TabsTrigger value="playbooks">Playbook Packs</TabsTrigger>
                 <TabsTrigger value="locations-maps">Locations & Maps</TabsTrigger>
                 <TabsTrigger value="story-timeline">Story Timeline</TabsTrigger>
                 <TabsTrigger value="ai-review">AI Review</TabsTrigger>
@@ -75,6 +77,12 @@ export function GuideTabs() {
             <TabsContent value="lorebook" className="space-y-4">
                 <GuideProvider>
                     <LorebookGuide components={mdxComponents} />
+                </GuideProvider>
+            </TabsContent>
+
+            <TabsContent value="playbooks" className="space-y-4">
+                <GuideProvider>
+                    <PlaybooksGuide components={mdxComponents} />
                 </GuideProvider>
             </TabsContent>
 
