@@ -1,6 +1,7 @@
 import { AlertTriangle, ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -97,7 +98,10 @@ export default function SettingsPage() {
                         <ArrowLeft className="h-4 w-4" />
                         Back
                     </Button>
-                    <h1 className="text-3xl font-bold ml-4">Settings</h1>
+                    <div className="flex items-center gap-3 ml-4">
+                        <BrandMark className="h-9" />
+                        <h1 className="text-3xl font-bold">Settings</h1>
+                    </div>
                 </div>
 
                 <Tabs value={section} onValueChange={value => setSection(value as Section)} orientation="vertical">
