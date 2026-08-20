@@ -36,6 +36,7 @@ export { humanizerApi } from "./humanizerClient";
 export { autoHumanizerApi } from "./autoHumanizerClient";
 export { lorebookApi } from "./lorebookClient";
 export { mcpConnectionsApi } from "./mcpConnectionsClient";
+export { mcpServerApi } from "./mcpServerClient";
 export { nameGeneratorApi } from "./nameGeneratorClient";
 export { outlineApi, outlineCharactersApi } from "./outlineClient";
 export { outlineImportApi } from "./outlineImportClient";

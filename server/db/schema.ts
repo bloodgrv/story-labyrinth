@@ -1745,3 +1745,19 @@ export const mcpConnections = sqliteTable(
         storyIdIdx: index("mcpconnection_story_id_idx").on(table.storyId)
     })
 );
+
+// MCP Server Expose Settings (M4, docs/MCP_Tool_Connections_Design.md §4) — single global row,
+// same get-or-create-singleton shape as humanizerSettings above. Controls whether this app's own
+// /mcp Streamable HTTP endpoint (server-side, outside the mcpConnections direction above) is
+// reachable at all. `tokenHash` is a SHA-256 hex digest of the raw install bearer token — the raw
+// value is never persisted (mirrors sessions' own hash-only token storage, server/services/
+// authService.ts, since this token authenticates INBOUND calls only and is never reconstructed or
+// sent anywhere by this app, unlike mcpConnections.bearerToken above which is a credential
+// belonging to someone else's server and must stay plaintext to be echoed back out on every call).
+export const mcpServerSettings = sqliteTable("mcpServerSettings", {
+    id: text("id").primaryKey(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    tokenHash: text("tokenHash"),
+    tokenCreatedAt: integer("tokenCreatedAt", { mode: "timestamp" }),
+    updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+});

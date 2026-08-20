@@ -56,6 +56,15 @@ export default defineConfig(() => ({
             "/api": {
                 target: "http://localhost:3001",
                 changeOrigin: true
+            },
+            // M4 (docs/MCP_Tool_Connections_Design.md §4.1) — the /mcp protocol endpoint is a new
+            // top-level mount (not under /api, see server/index.ts), so it needs its own proxy
+            // entry too, or McpServerExposeCard.tsx's displayed endpoint URL (window.location.origin
+            // + "/mcp") would be correct in production (single Express origin) but unreachable from
+            // the Vite dev origin.
+            "/mcp": {
+                target: "http://localhost:3001",
+                changeOrigin: true
             }
         },
         host: true

@@ -38,6 +38,7 @@ import { HumanizerSettingsCard } from "@/features/humanizer/components/Humanizer
 import { AutoHumanizerSettingsCard } from "@/features/auto-humanizer/components/AutoHumanizerSettingsCard";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { McpConnectionsSettingsCard } from "@/features/mcp/components/McpConnectionsSettingsCard";
+import { McpServerExposeCard } from "@/features/mcp/components/McpServerExposeCard";
 import { TtsSettingsCard } from "@/features/tts/components/TtsSettingsCard";
 import type { ChatMode } from "@/types/story";
 
@@ -315,6 +316,7 @@ export default function SettingsPage() {
                             {isOwner && (
                                 <TabsContent value="integrations" className="mt-0 space-y-6">
                                     <McpConnectionsSettingsCard storyId={currentStoryId ?? null} />
+                                    <McpServerExposeCard />
                                 </TabsContent>
                             )}
 

@@ -589,6 +589,13 @@
       "when": 1787202975959,
       "tag": "0083_great_shatterstar",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "6",
+      "when": 1787234656426,
+      "tag": "0084_smart_speed",
+      "breakpoints": true
     }
   ]
 }

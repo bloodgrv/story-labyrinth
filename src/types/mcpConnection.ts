@@ -71,3 +71,19 @@ export interface McpToolCallRequest {
     chatId: string;
     requestId?: string;
 }
+
+// M4 (docs/MCP_Tool_Connections_Design.md §4) — this app's own /mcp server-expose state. Never
+// carries the raw token (only hasToken) — see McpServerRotateTokenResult below for the one-time
+// exception on rotate.
+export interface McpServerSettings {
+    enabled: boolean;
+    hasToken: boolean;
+    tokenCreatedAt: Date | null;
+}
+
+// The raw install token — present ONLY in a rotate-token response, never persisted client-side
+// beyond the component that shows it once.
+export interface McpServerRotateTokenResult {
+    token: string;
+    tokenCreatedAt: Date;
+}

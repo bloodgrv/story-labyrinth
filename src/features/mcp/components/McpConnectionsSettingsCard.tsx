@@ -18,8 +18,8 @@ interface McpConnectionsSettingsCardProps {
 
 // MCP Tool Connections (M0-M3, docs/MCP_Tool_Connections_Design.md) — owner-only list+dialog CRUD,
 // mirrors PlaybookPacksPanel.tsx's shape. Chat integration (per-chat "Include MCP tools" toggle,
-// propose→Accept tool calls) is wired up as of M2-M3. Only the server-expose side (M4, "Expose as
-// MCP server") isn't built yet.
+// propose→Accept tool calls) is wired up as of M2-M3. The server-expose side (M4, "Expose as MCP
+// server") is a separate sibling card, McpServerExposeCard.tsx, mounted alongside this one.
 export function McpConnectionsSettingsCard({ storyId }: McpConnectionsSettingsCardProps) {
     const { data: connections, isLoading } = useMcpConnectionsQuery();
     const deleteMutation = useDeleteMcpConnectionMutation();
@@ -101,10 +101,6 @@ export function McpConnectionsSettingsCard({ storyId }: McpConnectionsSettingsCa
                         ))}
                     </div>
                 )}
-
-                <div className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
-                    Expose this app as an MCP server — coming later (M4).
-                </div>
             </CardContent>
 
             <McpConnectionEditorDialog connection={null} createStoryId={storyId} open={createOpen} onOpenChange={setCreateOpen} />

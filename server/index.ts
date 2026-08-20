@@ -27,6 +27,8 @@ import humanizerRouter from "./routes/humanizer.js";
 import autoHumanizerRouter from "./routes/autoHumanizer.js";
 import lorebookRouter from "./routes/lorebook.js";
 import mcpConnectionsRouter from "./routes/mcpConnections.js";
+import mcpServerRouter from "./routes/mcpServer.js";
+import mcpServerSettingsRouter from "./routes/mcpServerSettings.js";
 import nameGeneratorRouter from "./routes/nameGenerator.js";
 import notesRouter from "./routes/notes.js";
 import outlineRouter from "./routes/outline.js";
@@ -140,6 +142,13 @@ app.use("/api/admin", requireOwner, adminRouter);
 // owner-only data (URLs, bearer tokens), so the whole router sits under requireOwner rather
 // than TTS's per-route split.
 app.use("/api/mcp/connections", requireOwner, mcpConnectionsRouter);
+// M4 — Settings CRUD for exposing this app's own /mcp endpoint (enable/disable, rotate/revoke the
+// install bearer token). Owner-only, same posture as the connections router above.
+app.use("/api/mcp-server", requireOwner, mcpServerSettingsRouter);
+// M4 — the actual /mcp protocol endpoint. Deliberately mounted OUTSIDE /api (design §4.1) so it
+// does not inherit the session-cookie requireAuth gate above — external MCP clients have no
+// browser session; mcpServer.ts's own bearer-token middleware gates it instead.
+app.use("/mcp", mcpServerRouter);
 // System-level infrastructure (LLM-spend-triggering, story-wide reindexing) that a
 // viewer/editor has no legitimate reason to poke at directly — matching /api/admin/ai/users.
 app.use("/api/agent/jobs", requireOwner, agentJobsRouter);
