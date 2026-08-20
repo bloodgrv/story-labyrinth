@@ -1,11 +1,12 @@
 import { attemptPromise } from "@jfdi/attempt";
 import type { InferSelectModel } from "drizzle-orm";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
-import { type Request, type Response, Router } from "express";
+import { Router } from "express";
 import multer from "multer";
 import { nanoid } from "nanoid";
 import { db } from "../db/client.js";
 import { aiChats, chapters, lorebookEntries, orgFolders, series, stories } from "../db/schema.js";
+import { asyncHandler } from "../lib/asyncHandler.js";
 import { migrateSceneBeatNodesInContent } from "../services/sceneBeatContentMigration.js";
 
 // Trash / Restore (14-day soft-delete, docs/CURRENT_BACKLOG.md) — the real cascading delete this
@@ -35,14 +36,6 @@ type ImportedOrgFolder = InferSelectModel<typeof orgFolders>;
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 const seriesRouter = Router();
-
-const asyncHandler = (fn: (req: Request, res: Response) => Promise<void>) => async (req: Request, res: Response) => {
-    const [error] = await attemptPromise(() => fn(req, res));
-    if (error) {
-        console.error("Error:", error);
-        res.status(500).json({ error: error.message || "Server error" });
-    }
-};
 
 // GET /series - List all series
 seriesRouter.get(

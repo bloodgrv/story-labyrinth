@@ -703,7 +703,15 @@ export const storyTimelines = sqliteTable(
         deletedAt: integer("deletedAt", { mode: "timestamp" })
     },
     table => ({
-        storyIdIdx: index("storytimelines_story_id_idx").on(table.storyId)
+        storyIdIdx: index("storytimelines_story_id_idx").on(table.storyId),
+        // Partial unique index — only one spine (isDefault) row per story. Backstop for
+        // ensureSpineTimeline's select-then-insert race (B10): concurrent pin creations (e.g. WB
+        // chat's "Accept all" on a timeline-pin-proposal batch) could each see "no spine yet" and
+        // insert their own, splitting pins across duplicate spines so the board silently showed
+        // fewer pins than were actually created. Mirrors storyGraphEdges's own verified-working
+        // partial index (see DECISIONS.md) — ensureSpineTimeline now catches the constraint
+        // violation and re-selects the winning row instead of surfacing a spurious error.
+        uniqueSpineIdx: uniqueIndex("storytimelines_unique_spine_idx").on(table.storyId).where(sql`isDefault = 1`)
     })
 );
 

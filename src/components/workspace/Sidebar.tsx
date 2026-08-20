@@ -57,10 +57,13 @@ const tools = [
     // Story Timeline (T6, TL1, docs/Story_Timeline_Design.md) — peer of Maps (design's own "UI
     // surfaces" table), same requiresStory posture.
     { id: "story-timeline" as WorkspaceTool, label: "Timeline", icon: Clock, requiresStory: true },
-    // AI Review (AR2, docs/AI_Review_Design.md) — new sidebar tool per design lock #6, unlike
-    // Scanner (below this comment historically, never actually wired into this rail — see
-    // RagScannerPanel.tsx's own stale comment about it).
+    // AI Review (AR2, docs/AI_Review_Design.md) — new sidebar tool per design lock #6.
     { id: "ai-review" as WorkspaceTool, label: "AI Review", icon: ClipboardCheck, requiresStory: true }
+    // "scanner" deliberately not in the main rail — moved to Settings > Scanner tab in the
+    // 2026-07-23 declutter pass (commit c640bca) alongside Guide/Users. Still reachable at
+    // Settings > Scanner; RagScannerTool/RagScannerPanel are unchanged, just relocated. See B7
+    // in docs/BUGS_2026-08-19.md — flagged as a doc/reality mismatch, resolved by updating the
+    // docs rather than restoring this nav entry.
     // "playbooks" deliberately not in the main rail — it's occasional pack-management config, not
     // a desk you visit repeatedly, and its story-scope distinction from Settings' Writing Tools tab
     // confused users without guidance. Reachable via Settings > Writing tools (now story-aware) and

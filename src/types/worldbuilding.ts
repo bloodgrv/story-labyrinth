@@ -292,4 +292,13 @@ export interface ChatContext {
     relevantTimelinePins: ChatContextTimelinePinExcerpt[];
     // Empty unless the chat's includeGuide toggle is on — see getChatContext.
     relevantGuideSections: ChatContextGuideExcerpt[];
+    // B6 (docs/BUGS_2026-08-19.md) — full, non-RAG-ranked list of this story's character-category
+    // Lorebook entries (names only), present whenever lorebook is in scope for this chat type/
+    // toggle (same boolean as relevantCodexEntries' search gating — see chatContextService.ts's
+    // getChatContext). Grounds the model against inventing/duplicating named characters, closing
+    // the gap relevantCodexEntries' relevance-ranked top-8 cap leaves open for anything not
+    // semantically close to the current turn. characterRosterTruncated is true only when the
+    // story's real cast exceeds the resolver's sanity cap.
+    characterRoster: { id: string; name: string }[];
+    characterRosterTruncated: boolean;
 }

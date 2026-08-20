@@ -83,8 +83,22 @@ function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
 
     const neighborhoodQuery = useNeighborhoodQuery(storyId, viewMode === "ego" ? centerEntryId : null, depth);
 
-    const displayedNodes: StoryGraphNode[] = viewMode === "ego" ? (neighborhoodQuery.data?.nodes ?? []) : allNodes;
-    const displayedEdges: StoryGraphEdge[] = viewMode === "ego" ? (neighborhoodQuery.data?.edges ?? []) : (fullGraphQuery.data?.edges ?? []);
+    // Plain ternaries here (pre-existing code) fell back to a literal `[]` via `?? []` whenever
+    // neighborhoodQuery.data was undefined — a brand-new array reference every render, not just
+    // every fetch. The layout effect below depends on these, so an unstable reference reran it on
+    // every render, which called setFlowNodes/setFlowEdges with yet another new-reference `[]`,
+    // triggering another render — a genuine infinite loop (not just a rare race), reproduced via
+    // "Maximum update depth exceeded" whenever this component unmounts while ego view's
+    // neighborhoodQuery is disabled/data-less (e.g. centerEntryId momentarily null). Memoizing
+    // keeps the reference stable across renders unless the underlying data actually changes.
+    const displayedNodes: StoryGraphNode[] = useMemo(
+        () => (viewMode === "ego" ? (neighborhoodQuery.data?.nodes ?? []) : allNodes),
+        [viewMode, neighborhoodQuery.data, allNodes]
+    );
+    const displayedEdges: StoryGraphEdge[] = useMemo(
+        () => (viewMode === "ego" ? (neighborhoodQuery.data?.edges ?? []) : (fullGraphQuery.data?.edges ?? [])),
+        [viewMode, neighborhoodQuery.data, fullGraphQuery.data]
+    );
 
     const handleOpenEntry = (id: string) => {
         setPendingLorebookEntryId(id);
@@ -272,6 +286,14 @@ function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
                             onPaneClick={() => setSelectedNodeId(null)}
                             nodeTypes={nodeTypes}
                             edgeTypes={edgeTypes}
+                            // B8 — xyflow's connect-snap radius is in flow-space, not screen
+                            // pixels, so it shrinks right along with node size as the canvas zooms
+                            // out (the reported repro was ~58px nodes) — the default (20) is tuned
+                            // for 100% zoom, where drag-to-connect worked reliably. Raised well
+                            // above default so a drag started near — not precisely on — a node's
+                            // edge still snaps to its handle at the zoom levels this graph is
+                            // actually used at, rather than silently falling through to "move node."
+                            connectionRadius={40}
                             fitView
                             proOptions={{ hideAttribution: true }}
                             // React Flow ships its own light/dark palette via CSS vars, keyed off

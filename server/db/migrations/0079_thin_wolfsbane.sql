@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `storytimelines_unique_spine_idx` ON `storyTimelines` (`storyId`) WHERE isDefault = 1;

@@ -122,7 +122,12 @@ export function ChatSystemPromptControl({
             </Tabs>
 
             <Select
-                value={selectedModel?.id}
+                // B11 — Radix's Select renders a hidden native <select> for form semantics; a
+                // value prop starting undefined (selectedModel resolves asynchronously on mount)
+                // then later becoming a real id is exactly React's "uncontrolled to controlled"
+                // trigger. "" isn't a real model id, so it just keeps the placeholder showing
+                // until selectedModel resolves, with the component controlled from the first render.
+                value={selectedModel?.id ?? ""}
                 onValueChange={id => {
                     const model = availableModels.find(m => m.id === id);
                     if (model) onSelectModel(model);

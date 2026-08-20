@@ -2,6 +2,7 @@ import { attemptPromise } from "@jfdi/attempt";
 import { eq } from "drizzle-orm";
 import express from "express";
 import { db, schema } from "../db/client.js";
+import { asyncHandler } from "../lib/asyncHandler.js";
 import { requireOwner } from "../middleware/auth.js";
 import { getTtsProviderAdapter } from "../services/ttsProviders.js";
 import type { TtsAvailableVoices, TtsProviderConfig, TtsProviderConfigs } from "../../src/types/ttsSettings.js";
@@ -32,15 +33,6 @@ const redactSettings = (settings: TtsSettingsRow) => ({
     )
 });
 
-const asyncHandler =
-    (fn: (req: express.Request, res: express.Response) => Promise<void>) =>
-    async (req: express.Request, res: express.Response) => {
-        const [error] = await attemptPromise(() => fn(req, res));
-        if (error) {
-            console.error("Error:", error);
-            res.status(500).json({ error: error.message || "Server error" });
-        }
-    };
 
 router.get(
     "/settings",

@@ -81,24 +81,36 @@ export const ensureSpineTimeline = async (storyId: string): Promise<StoryTimelin
         .limit(1);
 
     const now = new Date();
-    const [row] = await db
-        .insert(schema.storyTimelines)
-        .values({
-            id: randomUUID(),
-            storyId,
-            title: "Spine",
-            isDefault: true,
-            orientation: "horizontal",
-            swimlanesEnabled: false,
-            storyStartMode: "chapter_one",
-            storyStartChapterId: firstChapter?.id ?? null,
-            storyStartPinId: null,
-            storyStartManualWhenJson: null,
-            createdAt: now,
-            updatedAt: now
-        })
-        .returning();
-    return rowToTimeline(row);
+    try {
+        const [row] = await db
+            .insert(schema.storyTimelines)
+            .values({
+                id: randomUUID(),
+                storyId,
+                title: "Spine",
+                isDefault: true,
+                orientation: "horizontal",
+                swimlanesEnabled: false,
+                storyStartMode: "chapter_one",
+                storyStartChapterId: firstChapter?.id ?? null,
+                storyStartPinId: null,
+                storyStartManualWhenJson: null,
+                createdAt: now,
+                updatedAt: now
+            })
+            .returning();
+        return rowToTimeline(row);
+    } catch (err) {
+        // B10 — a concurrent call (e.g. multiple pins from a WB chat "Accept all" batch, each its
+        // own request) can race this select-then-insert and lose to the partial unique index
+        // above. Fall back to the winning row instead of surfacing a spurious 500.
+        const [winner] = await db
+            .select()
+            .from(schema.storyTimelines)
+            .where(and(eq(schema.storyTimelines.storyId, storyId), eq(schema.storyTimelines.isDefault, true)));
+        if (winner) return rowToTimeline(winner);
+        throw err;
+    }
 };
 
 export const listTimelinesForStory = async (storyId: string): Promise<StoryTimeline[]> => {

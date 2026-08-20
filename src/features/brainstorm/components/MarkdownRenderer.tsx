@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { Children, isValidElement, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
@@ -22,6 +22,16 @@ interface CodeComponentProps {
     className?: string;
     children?: ReactNode;
 }
+
+// B11 — react-markdown/rehype-raw will happily parse a block-level raw HTML tag (e.g. a model
+// hallucinating a literal `<pre>` inline, no blank line before it — see B3's malformed-HTML chat
+// messages) as a child of whatever paragraph it appeared in, producing invalid `<p><pre>...` DOM
+// that React warns about ("In HTML, <pre> cannot be a descendant of <p>"). The `p` override below
+// downgrades to a `<div>` whenever any child is one of these, so the wrapper element always
+// matches the content instead of assuming every paragraph child is inline.
+const BLOCK_LEVEL_TAGS = new Set(["pre", "div", "table", "ul", "ol", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6", "hr"]);
+const hasBlockLevelChild = (children: ReactNode): boolean =>
+    Children.toArray(children).some(child => isValidElement(child) && typeof child.type === "string" && BLOCK_LEVEL_TAGS.has(child.type));
 
 export default function MarkdownRenderer({ content, className, onDelete, onEdit, showDelete }: MarkdownRendererProps) {
     if (!content) return null;
@@ -72,7 +82,12 @@ export default function MarkdownRenderer({ content, className, onDelete, onEdit,
                     remarkPlugins={[remarkGfm]}
                     rehypePlugins={[rehypeRaw, rehypeSanitize]}
                     components={{
-                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                        p: ({ children }) =>
+                            hasBlockLevelChild(children) ? (
+                                <div className="mb-2 last:mb-0">{children}</div>
+                            ) : (
+                                <p className="mb-2 last:mb-0">{children}</p>
+                            ),
                         // P0.4 S2 — Research citations render as real markdown links (see
                         // chatContextService.ts's RESEARCH_FRAMING); without this override they'd
                         // navigate the whole SPA tab away instead of opening in a new one. Applies
@@ -85,20 +100,17 @@ export default function MarkdownRenderer({ content, className, onDelete, onEdit,
                         ),
                         code: ({ inline, className, children, ...props }: CodeComponentProps) => {
                             const match = /language-(\w+)/.exec(className || "");
-                            return !inline ? (
-                                <pre className="overflow-x-auto p-2 bg-muted rounded text-xs whitespace-pre-wrap break-all">
-                                    <code className={match ? `language-${match[1]}` : ""} {...props}>
-                                        {children}
-                                    </code>
-                                </pre>
-                            ) : (
-                                <code className="bg-muted px-1 py-0.5 rounded text-xs" {...props}>
+                            // Non-inline code is already wrapped by the `pre` override below —
+                            // wrapping it again here nested a second, redundant `<pre>` inside the
+                            // first (B11: found while investigating the pre-inside-p warning below).
+                            return (
+                                <code className={cn("text-xs", inline && "bg-muted px-1 py-0.5 rounded", match && `language-${match[1]}`)} {...props}>
                                     {children}
                                 </code>
                             );
                         },
                         pre: ({ children }) => (
-                            <pre className="overflow-x-auto p-0 bg-transparent whitespace-pre-wrap break-all">
+                            <pre className="overflow-x-auto p-2 bg-muted rounded whitespace-pre-wrap break-all">
                                 {children}
                             </pre>
                         )

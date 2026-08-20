@@ -1740,7 +1740,14 @@ export function ChatInterface({
         // fresh from this exact turn's real context, so item ids the model needs for
         // edit/reorder/delete fences are never more than one message stale.
         const needsOutlineTree = isOutlineChat && text.trim() && storyId;
-        if (!needsResearch && !needsCodexSearch && !needsGuide && !needsOutlineTree) return undefined;
+        // B6 (docs/BUGS_2026-08-19.md) — same "is lorebook in scope" condition needsCodexSearch
+        // uses, extended to Brainstorm (the other surface B6 reproduced on) when its own
+        // includeLorebook toggle is on. Fetched fresh every turn like needsOutlineTree above,
+        // not from the mount-time codexContext snapshot — same staleness class B18 already fixed
+        // once for the outline tree.
+        const needsCharacterRoster =
+            (isWorldBuildingChat || isEditorChat || isOutlineChat || (isBrainstormChat && toggles.includeLorebook)) && text.trim() && storyId;
+        if (!needsResearch && !needsCodexSearch && !needsGuide && !needsOutlineTree && !needsCharacterRoster) return undefined;
 
         const ctx = await chatsApi.getContext(selectedChat.id, text);
         const blocks: (string | false | undefined)[] = [];
@@ -1790,6 +1797,15 @@ export function ChatInterface({
             );
         }
 
+        if (needsCharacterRoster) {
+            const rosterText = ctx.characterRoster.map(c => `- ${c.name}`).join("\n");
+            const truncatedNote = ctx.characterRosterTruncated ? `\n(+ more not shown)` : "";
+            blocks.push(
+                rosterText &&
+                    `[ESTABLISHED CAST — every real character-category Lorebook entry in this story; the complete list, not just what's contextually relevant right now]\nDo not invent a new named character, and do not present a name that isn't in this list as if it were already established. If you need a character who genuinely isn't here, either ask the user or clearly flag them as new (propose via a codex-proposal new_entry, or say explicitly "this is a new character") — never silently treat an unlisted name as canon. This applies just as much to minor, incidental, or one-line characters (a caller, a bystander, a voice on a recording) as to major ones — a quick walk-on doesn't exempt a name from this list. Before naming any new character, check it against every name below: never reuse an established name for a different person, and never coin a name that's a near-miss of one already on this list (a shared surname, a one-letter variant, a homophone) — that kind of near-duplicate is more confusing than an unrelated new name, since it reads as the same person until a reader checks closely.\n${rosterText}${truncatedNote}`
+            );
+        }
+
         if (needsGuide) {
             const guideText = ctx.relevantGuideSections
                 .map(s => `- ${s.topicLabel}${s.subTabLabel ? ` › ${s.subTabLabel}` : ""} — ${s.heading}: ${s.excerpt}`)
@@ -1803,10 +1819,29 @@ export function ChatInterface({
         return blocks.filter(Boolean).join("\n\n") || undefined;
     };
 
+    // B21/B14 — the composer's Send button gave zero visual feedback (not disabled, icon
+    // unchanged, text uncleared) during computeExtraContext's network round-trip (context/RAG
+    // search for WB/Editor/Outline/Research chats) that runs BEFORE generate() ever sets
+    // isGenerating true. A real click there looked like it had done nothing, so a second click —
+    // landing on this same still-"Send" button before the first click's work resolved — was the
+    // natural response; without a re-entrancy guard that second click re-ran doSend concurrently
+    // instead of being a no-op. isSubmittingRef guards synchronously (state alone lags a render
+    // behind a same-tick second click); isSubmitting drives the composer's isGenerating prop so
+    // it flips to its "Stop" rendering the instant Send is clicked, not once generate() begins.
+    const isSubmittingRef = useRef(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const doSend = async () => {
-        const extraContext = await computeExtraContext(input);
-        await generate(input, extraContext);
-        setInput("");
+        if (isSubmittingRef.current) return;
+        isSubmittingRef.current = true;
+        setIsSubmitting(true);
+        try {
+            const extraContext = await computeExtraContext(input);
+            await generate(input, extraContext);
+            setInput("");
+        } finally {
+            isSubmittingRef.current = false;
+            setIsSubmitting(false);
+        }
     };
 
     // Context/Token Meter (T4, M4) — soft-warn confirm only, never a hard block on the estimate
@@ -2175,7 +2210,7 @@ export function ChatInterface({
             />
             <MessageInputArea
                 input={input}
-                isGenerating={isGenerating}
+                isGenerating={isGenerating || isSubmitting}
                 selectedPrompt={selectedPrompt}
                 onInputChange={setInput}
                 onSend={handleSubmit}

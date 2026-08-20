@@ -1,5 +1,5 @@
 import { attemptPromise } from "@jfdi/attempt";
-import { type Request, type Response, Router } from "express";
+import { Router } from "express";
 import {
     appendMessage,
     archiveChat,
@@ -27,21 +27,13 @@ import {
 import { getCodexEntry } from "../services/codexRepository.js";
 import { resolveEntityIdsByName } from "../services/ragScanner.js";
 import { getChatContext } from "../services/chatContextService.js";
+import { asyncHandler } from "../lib/asyncHandler.js";
 import type { ChatType, WorldBuildingTemplateSlug } from "../../src/types/worldbuilding.js";
 import type { ChatMessage } from "../../src/types/story.js";
 import type { CodexPendingStatus, CodexState } from "../../src/types/codex.js";
 import type { LorebookEntry } from "../../src/types/story.js";
 
 const router = Router();
-
-const asyncHandler = (fn: (req: Request, res: Response) => Promise<void>) =>
-    async (req: Request, res: Response) => {
-        const [error] = await attemptPromise(() => fn(req, res));
-        if (error) {
-            console.error("Chat error:", error);
-            res.status(500).json({ error: error.message || "Server error" });
-        }
-    };
 
 // ── GET /api/chats/templates ──────────────────────────────────────────────────
 // List all built-in World-Building Chat templates.

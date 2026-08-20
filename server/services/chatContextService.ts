@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray, ne, or } from "drizzle-orm";
 import type {
     ChatContext,
     ChatContextChapterPassage,
@@ -30,6 +30,10 @@ import { getSpineChronologyExcerpt } from "./storyTimelineService.js";
 import { searchGuideForChat } from "./guideSearchService.js";
 
 const RELEVANT_ENTRIES_LIMIT = 8;
+// B6 (docs/BUGS_2026-08-19.md) — the character roster is deliberately NOT RAG-ranked/capped like
+// RELEVANT_ENTRIES_LIMIT above; this ceiling only guards against a pathologically large cast, not
+// relevance filtering. Names-only, so even 300 entries is cheap.
+const CHARACTER_ROSTER_CAP = 300;
 const SEARCH_POOL_SIZE = RELEVANT_ENTRIES_LIMIT * 2;
 
 // Shared by both World-Building and Editor chats — the ```codex-proposal fenced-block
@@ -753,6 +757,36 @@ const resolveAvailableNameRegions = async (storyId: string | null): Promise<stri
     return [...new Set(pools.map(p => p.region))].sort();
 };
 
+// B6 (docs/BUGS_2026-08-19.md) — the full, deterministic list of this story's character-category
+// Lorebook entries, independent of RAG relevance ranking. resolveCodexEntries below only ever
+// surfaces the top RELEVANT_ENTRIES_LIMIT entries semantically similar to the current turn's
+// text, which silently omits any established character not close to that turn's topic — exactly
+// what let the model invent/duplicate names in QA. Names only, ordered alphabetically. Scoping
+// conditions (global/story/series level) mirror aiReviewService.ts's resolveCastForChapters,
+// minus its occurrence-count text matching — we want the complete roster, not just who's
+// mentioned in a specific passage.
+const resolveCharacterRoster = async (storyId: string): Promise<{ roster: { id: string; name: string }[]; truncated: boolean }> => {
+    const [story] = await db.select({ seriesId: schema.stories.seriesId }).from(schema.stories).where(eq(schema.stories.id, storyId));
+
+    const conditions = [
+        and(eq(schema.lorebookEntries.category, "character"), eq(schema.lorebookEntries.level, "global")),
+        and(eq(schema.lorebookEntries.category, "character"), eq(schema.lorebookEntries.level, "story"), eq(schema.lorebookEntries.scopeId, storyId))
+    ];
+    if (story?.seriesId) {
+        conditions.push(
+            and(eq(schema.lorebookEntries.category, "character"), eq(schema.lorebookEntries.level, "series"), eq(schema.lorebookEntries.scopeId, story.seriesId))
+        );
+    }
+
+    const rows = await db
+        .select({ id: schema.lorebookEntries.id, name: schema.lorebookEntries.name })
+        .from(schema.lorebookEntries)
+        .where(or(...conditions))
+        .orderBy(schema.lorebookEntries.name);
+
+    return { roster: rows.slice(0, CHARACTER_ROSTER_CAP), truncated: rows.length > CHARACTER_ROSTER_CAP };
+};
+
 // `excludeIds` keeps anchor/related entries (resolveAnchorAndRelated, below) from being listed
 // twice if RAG search also happens to surface them.
 const resolveCodexEntries = async (
@@ -1331,7 +1365,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         playbookPackSexuality,
         availableNameRegions,
         timelinePins,
-        guideSections
+        guideSections,
+        characterRosterResult
     ] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
         includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
@@ -1356,7 +1391,13 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
             ? resolveAvailableNameRegions(chat.storyId)
             : Promise.resolve([]),
         includeTimeline && chat.storyId ? getSpineChronologyExcerpt(chat.storyId) : Promise.resolve([]),
-        includeGuide ? Promise.resolve(resolveGuideSections(effectiveQuery)) : Promise.resolve([])
+        includeGuide ? Promise.resolve(resolveGuideSections(effectiveQuery)) : Promise.resolve([]),
+        // B6 — reuses the same "is lorebook in scope for this chat" boolean entityTypes already
+        // encodes above (always-on for Editor/WorldBuilding/Outline, toggle-gated for Brainstorm/
+        // Research/Notes) rather than a new toggle.
+        entityTypes.includes("lorebook_entry") && chat.storyId
+            ? resolveCharacterRoster(chat.storyId)
+            : Promise.resolve({ roster: [], truncated: false })
     ]);
 
     return {
@@ -1388,6 +1429,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         focusedNote,
         playbookPack: { concrete: playbookPackConcrete, psych: playbookPackPsych, sexuality: playbookPackSexuality },
         relevantTimelinePins: timelinePins,
-        relevantGuideSections: guideSections
+        relevantGuideSections: guideSections,
+        characterRoster: characterRosterResult.roster,
+        characterRosterTruncated: characterRosterResult.truncated
     };
 };

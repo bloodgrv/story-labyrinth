@@ -1,5 +1,5 @@
 import { MessageSquarePlus, Save } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Editor from "react-simple-wysiwyg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,16 @@ interface NoteEditorContentProps {
 function NoteEditorContent({ note, updateMutation }: NoteEditorContentProps) {
     const [content, setContent] = useState(note.content);
     const [title, setTitle] = useState(note.title);
+
+    // Local content/title are only seeded from `note` on mount — any external write (e.g. the
+    // "Rework in chat" flow's own Save, which mutates the note from a sibling chat-rail component)
+    // updates the server and the react-query cache but never touches this state, leaving the
+    // editor showing stale text until the note is closed and reopened. Resync whenever the
+    // underlying note changes identity or gets a newer `updatedAt`.
+    useEffect(() => {
+        setContent(note.content);
+        setTitle(note.title);
+    }, [note.id, note.updatedAt]);
 
     const handleSaveTitle = () => {
         const trimmed = title.trim();

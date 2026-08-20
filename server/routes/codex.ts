@@ -1,6 +1,6 @@
-import { attemptPromise } from "@jfdi/attempt";
-import { type Request, type Response, Router } from "express";
+import { Router } from "express";
 import { z } from "zod";
+import { asyncHandler } from "../lib/asyncHandler.js";
 import { parseJson } from "../lib/json.js";
 import {
     getCodexEntry,
@@ -21,15 +21,6 @@ import {
 import { detectNewEntitiesForChapter } from "../services/entityDetector.js";
 
 const router = Router();
-
-const asyncHandler = (fn: (req: Request, res: Response) => Promise<void>) =>
-    async (req: Request, res: Response) => {
-        const [error] = await attemptPromise(() => fn(req, res));
-        if (error) {
-            console.error("Codex error:", error);
-            res.status(500).json({ error: error.message || "Server error" });
-        }
-    };
 
 // Normalise a raw lorebookEntries row for the wire — parse JSON columns.
 const transformEntry = (row: Awaited<ReturnType<typeof getCodexEntry>>) => {

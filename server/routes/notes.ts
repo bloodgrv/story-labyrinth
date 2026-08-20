@@ -65,8 +65,13 @@ export default createCrudRouter({
         router.put(
             "/:id",
             asyncHandler(async (req, res) => {
-                const { id: _id, createdAt: _createdAt, ...updates } = req.body;
+                const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...updates } = req.body;
                 if (typeof updates.content === "string") updates.content = sanitizeNoteHtml(updates.content); // B42
+                // Was previously never set on update at all (only at create), so "Last updated"
+                // stayed frozen at creation time forever and nothing external (e.g. the "Rework in
+                // chat" flow, which saves the note from a sibling chat-rail component) could signal
+                // the open NoteEditor to resync its own stale local state off a changed timestamp.
+                updates.updatedAt = new Date();
                 const [existing] = await db.select().from(table).where(eq(table.id, req.params.id));
                 if (!existing) {
                     res.status(404).json({ error: "Note not found" });

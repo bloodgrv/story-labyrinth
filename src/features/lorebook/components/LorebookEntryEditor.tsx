@@ -353,7 +353,7 @@ function WorldBuildingChatPanel({
                 {templates.map(template => (
                     <DropdownMenuItem
                         key={template.slug}
-                        onClick={() => void handleCreateFromTemplate(template.slug, template.name)}
+                        onSelect={() => void handleCreateFromTemplate(template.slug, template.name)}
                     >
                         {template.name}
                     </DropdownMenuItem>

@@ -42,8 +42,9 @@ interface RagScannerPanelProps {
     storyId: string;
 }
 
-// Story-wide "Scanner" sidebar tool (Sidebar.tsx "scanner" entry). Same hooks/IssueCard as
-// ChapterScannerDrawer.tsx (the editor right-rail counterpart) — this view is unscoped by
+// Story-wide "Scanner" tool, reachable via Settings > Scanner (moved out of the main sidebar
+// rail in the 2026-07-23 declutter pass — see Sidebar.tsx's own comment). Same hooks/IssueCard
+// as ChapterScannerDrawer.tsx (the editor right-rail counterpart) — this view is unscoped by
 // chapter and adds scan history + cross-navigation into the Editor tool.
 export function RagScannerPanel({ storyId }: RagScannerPanelProps) {
     const isOwner = useIsOwner();
