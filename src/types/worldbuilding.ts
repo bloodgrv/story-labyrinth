@@ -301,4 +301,10 @@ export interface ChatContext {
     // story's real cast exceeds the resolver's sanity cap.
     characterRoster: { id: string; name: string }[];
     characterRosterTruncated: boolean;
+    // MCP M2, docs/MCP_Tool_Connections_Design.md §3.3 — empty unless the chat's includeMcpTools
+    // toggle is on. Flattened per-tool list from every enabled, in-scope MCP connection's cached
+    // tools/list result (see chatContextService.ts's resolveMcpToolCatalogue). truncated mirrors
+    // characterRosterTruncated's "cap + honest disclosure" shape (design §3.3's "N tools omitted").
+    mcpToolCatalogue: { connectionId: string; connectionName: string; toolName: string; description: string }[];
+    mcpToolCatalogueTruncated: boolean;
 }

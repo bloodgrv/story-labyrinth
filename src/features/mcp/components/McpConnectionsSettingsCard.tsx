@@ -16,9 +16,10 @@ interface McpConnectionsSettingsCardProps {
     storyId: string | null;
 }
 
-// MCP Tool Connections (M0, docs/MCP_Tool_Connections_Design.md) — owner-only list+dialog CRUD,
-// mirrors PlaybookPacksPanel.tsx's shape. Chat integration (M2-M3) and the server-expose side
-// (M4, "Expose as MCP server") aren't built yet — this card is client-connection management only.
+// MCP Tool Connections (M0-M3, docs/MCP_Tool_Connections_Design.md) — owner-only list+dialog CRUD,
+// mirrors PlaybookPacksPanel.tsx's shape. Chat integration (per-chat "Include MCP tools" toggle,
+// propose→Accept tool calls) is wired up as of M2-M3. Only the server-expose side (M4, "Expose as
+// MCP server") isn't built yet.
 export function McpConnectionsSettingsCard({ storyId }: McpConnectionsSettingsCardProps) {
     const { data: connections, isLoading } = useMcpConnectionsQuery();
     const deleteMutation = useDeleteMcpConnectionMutation();
@@ -32,8 +33,8 @@ export function McpConnectionsSettingsCard({ storyId }: McpConnectionsSettingsCa
                 <div>
                     <CardTitle>MCP Connections</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                        Register external Streamable HTTP MCP servers. Chat tool-calling against these connections isn't
-                        wired up yet — this is connection management only for now.
+                        Register external Streamable HTTP MCP servers. Enable one, refresh its tools, then arm a chat's
+                        own "Include MCP tools" toggle to let it propose calling them.
                     </p>
                 </div>
                 <Button size="sm" onClick={() => setCreateOpen(true)}>

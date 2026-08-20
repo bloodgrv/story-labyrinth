@@ -63,6 +63,8 @@ import { MapSketchProposalCard } from "./MapSketchProposalCard";
 import { useResolveOrCreateMapForLocationMutation } from "@/features/story-maps/hooks/useStoryMapsQuery";
 import { TimelinePinProposalCard } from "@/features/story-timeline/components/TimelinePinProposalCard";
 import { useCreatePinMutation } from "@/features/story-timeline/hooks/useStoryTimelineQuery";
+import { McpToolCallProposalCard } from "@/features/mcp/components/McpToolCallProposalCard";
+import { useMcpToolCallMutation } from "@/features/mcp/hooks/useMcpConnectionsQuery";
 import { useCreateChatMutation, useUpdateChatMutation } from "../hooks/useChatQuery";
 import { useChatMessageGeneration } from "../hooks/useChatMessageGeneration";
 import { useChatSystemPrompt } from "../hooks/useChatSystemPrompt";
@@ -82,6 +84,7 @@ import type { ParsedPsychProposal } from "../services/parsePsychProposal";
 import type { ParsedSexualityProposal } from "../services/parseSexualityProposal";
 import type { ParsedTimelinePinProposalItem } from "../services/parseTimelinePinProposal";
 import type { PlaceState } from "@/types/story";
+import type { McpToolCallProposal } from "@/types/mcpConnection";
 import type { MapSketchProposal } from "@/types/storyMaps";
 
 type NonCreateOutlineProposal = ParsedOutlineEditProposal | ParsedOutlineReorderProposal | ParsedOutlineDeleteProposal;
@@ -428,6 +431,23 @@ export function ChatInterface({
             // never the full linked-entry body (design doc's own "not full linked bodies" line).
             const timelineText = context.relevantTimelinePins.map(p => `- ${p.title} (${p.when})${p.blurb ? `: ${p.blurb}` : ""}`).join("\n");
 
+            // MCP M2, docs/MCP_Tool_Connections_Design.md §3.3 — only non-empty when includeMcpTools
+            // is on. Budget/honesty pattern mirrors characterRosterTruncated's "(+ more not shown)"
+            // note (see the per-turn computeExtraContext block below for that precedent) and the
+            // design's own "empty catalogue → honest 'no tools; don't invent'" requirement.
+            // connectionId must be included verbatim — it's a real UUID the model has to copy
+            // into the fence exactly (design §3.5 "use the connectionId ... exactly as shown"),
+            // not something it can derive from the human-readable connection name.
+            const mcpToolCatalogueText = context.mcpToolCatalogue
+                .map(t => `- ${t.connectionName} / ${t.toolName} (connectionId: ${t.connectionId}): ${t.description}`)
+                .join("\n");
+            const mcpToolCatalogueTruncatedNote = context.mcpToolCatalogueTruncated ? "\n(+ more tools omitted)" : "";
+            const mcpToolCatalogueBlock =
+                toggles.includeMcpTools && context.mcpToolCatalogue.length === 0
+                    ? "[MCP TOOLS AVAILABLE]\nNo MCP tools are currently available; do not invent one."
+                    : mcpToolCatalogueText &&
+                      `[MCP TOOLS AVAILABLE]\n${mcpToolCatalogueText}${mcpToolCatalogueTruncatedNote}`;
+
             // B18 fix (2026-08-19): the outline tree used to be built HERE, once, at mount/chat-
             // select time, then never rebuilt for the rest of the conversation — this effect's own
             // dependency array (below) has nothing that changes when outline items are created,
@@ -520,6 +540,7 @@ export function ChatInterface({
                     `[PROJECT MEMORY — approved facts]\nApproved project facts/notes relevant to this conversation. Treat as established unless it conflicts with the Codex, in which case the Codex wins.\n${memoriesText}`,
                 timelineText &&
                     `[STORY TIMELINE — established chronology]\nOrdered pins from the story's Spine timeline. Treat as established unless it conflicts with the Codex, in which case the Codex wins.\n${timelineText}`,
+                mcpToolCatalogueBlock,
                 // Guide is deliberately NOT included in this mount-time block — see
                 // computeExtraContext below, which refreshes it per-message against the user's
                 // actual live text (this block only ever refetches on chat.title, same reasoning
@@ -569,6 +590,7 @@ export function ChatInterface({
         toggles.includeOutline,
         toggles.includeMemory,
         toggles.includeTimeline,
+        toggles.includeMcpTools,
         toggles.includeLorebook,
         toggles.includeChapterSummaries,
         isBrainstormChat,
@@ -800,6 +822,12 @@ export function ChatInterface({
     // rejecting one item removes it from that message's array; the card auto-hides once empty.
     const [timelinePinProposals, setTimelinePinProposals] = useState<Record<string, ParsedTimelinePinProposalItem[]>>({});
     const createTimelinePinMutation = useCreatePinMutation(storyId ?? "");
+
+    // MCP M2, docs/MCP_Tool_Connections_Design.md §3.3 — same "array per message, accept/reject
+    // removes just that item" shape as timelinePinProposals above (a reply can propose more than
+    // one distinct tool call). Available on every chat type, not just World-Building.
+    const [mcpToolCallProposals, setMcpToolCallProposals] = useState<Record<string, McpToolCallProposal[]>>({});
+    const mcpToolCallMutation = useMcpToolCallMutation();
 
     // Outline chats only (P0.4 R5) — "create" proposals are persisted immediately (same mechanism
     // the retired bulk-Generate button used, see handleOutlineProposals below); edit/reorder/
@@ -1109,6 +1137,7 @@ export function ChatInterface({
         onMapSketchProposal: (messageId, proposal) => setMapSketchProposals(prev => ({ ...prev, [messageId]: proposal })),
         onNameProposal: (messageId, proposal) => setNameProposals(prev => ({ ...prev, [messageId]: proposal })),
         onTimelinePinProposal: (messageId, items) => setTimelinePinProposals(prev => ({ ...prev, [messageId]: items })),
+        onMcpToolCallProposal: (messageId, proposals) => setMcpToolCallProposals(prev => ({ ...prev, [messageId]: proposals })),
         // Notes chats only (P0.4 K2/K4) — same "persist immediately as a durable checklist row"
         // posture as onOverviewProposal/onHandoffPackets above; NotesChecklistTray.tsx handles the
         // "Accept all" write.
@@ -1227,6 +1256,34 @@ export function ChatInterface({
     const handleAcceptAllTimelinePins = (messageId: string) => {
         const items = timelinePinProposals[messageId] ?? [];
         items.forEach(item => handleAcceptTimelinePin(messageId, item));
+    };
+
+    const dismissMcpToolCallProposal = (messageId: string, item: McpToolCallProposal) =>
+        setMcpToolCallProposals(prev => {
+            const next = (prev[messageId] ?? []).filter(existing => existing !== item);
+            if (next.length === 0) {
+                const { [messageId]: _removed, ...rest } = prev;
+                return rest;
+            }
+            return { ...prev, [messageId]: next };
+        });
+
+    // MCP M1/M2 — Accept performs the real server-side tools/call and, on success, feeds the
+    // returned chat row (now carrying a new tool_result message) straight into onChatUpdate so it
+    // renders immediately, same as every other server-mutation success path in this file. A
+    // pre-call rejection (design §3.2 — disabled/out-of-scope/unknown-tool/bad-args/duplicate)
+    // surfaces via the mutation's own toast (useMcpToolCallMutation) and leaves the card in place
+    // — nothing to dismiss, since no message was written.
+    const handleAcceptMcpToolCall = (messageId: string, item: McpToolCallProposal) => {
+        mcpToolCallMutation.mutate(
+            { connectionId: item.connectionId, data: { toolName: item.toolName, args: item.args, chatId: selectedChat.id } },
+            {
+                onSuccess: chat => {
+                    onChatUpdate(chat);
+                    dismissMcpToolCallProposal(messageId, item);
+                }
+            }
+        );
     };
 
     const dismissNoteProposal = (messageId: string) =>
@@ -2005,6 +2062,7 @@ export function ChatInterface({
                     const mapSketchProposal = mapSketchProposals[messageId];
                     const nameProposal = storyId ? nameProposals[messageId] : undefined;
                     const timelinePinProposalsForMessage = storyId ? timelinePinProposals[messageId] : undefined;
+                    const mcpToolCallProposalsForMessage = mcpToolCallProposals[messageId];
                     const overviewChecklistItem = overviewChecklistItemsByMessage[messageId];
                     const handoffChecklistItems = handoffChecklistItemsByMessage[messageId];
                     if (
@@ -2020,6 +2078,7 @@ export function ChatInterface({
                         !mapSketchProposal &&
                         !nameProposal &&
                         !timelinePinProposalsForMessage?.length &&
+                        !mcpToolCallProposalsForMessage?.length &&
                         !overviewChecklistItem &&
                         !handoffChecklistItems?.length
                     )
@@ -2151,6 +2210,14 @@ export function ChatInterface({
                                     onReject={item => dismissTimelinePinProposal(messageId, item)}
                                     onAcceptAll={() => handleAcceptAllTimelinePins(messageId)}
                                     isSubmitting={createTimelinePinMutation.isPending}
+                                />
+                            )}
+                            {mcpToolCallProposalsForMessage && mcpToolCallProposalsForMessage.length > 0 && (
+                                <McpToolCallProposalCard
+                                    items={mcpToolCallProposalsForMessage}
+                                    onAccept={item => handleAcceptMcpToolCall(messageId, item)}
+                                    onReject={item => dismissMcpToolCallProposal(messageId, item)}
+                                    isSubmitting={mcpToolCallMutation.isPending}
                                 />
                             )}
                         </>

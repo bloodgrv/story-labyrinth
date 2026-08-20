@@ -4,14 +4,31 @@ import express from "express";
 import { z } from "zod";
 import { db, schema } from "../db/client.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
-import { getConnection, listConnections, redactConnection, refreshConnectionTools } from "../services/mcpConnectionService.js";
+import {
+    callConnectionTool,
+    getConnection,
+    listConnections,
+    redactConnection,
+    refreshConnectionTools
+} from "../services/mcpConnectionService.js";
 
 // M0 (docs/MCP_Tool_Connections_Design.md) — owner-only CRUD for registered MCP connections, plus
-// the "Refresh tools" action. Whole router sits under requireOwner at the mount point in
-// server/index.ts (every route here touches owner-only data — no per-route split needed, unlike
-// tts.ts where most routes just use an already-stored secret).
+// the "Refresh tools" action. M1 adds the actual tool-call route. Whole router sits under
+// requireOwner at the mount point in server/index.ts (every route here touches owner-only data —
+// no per-route split needed, unlike tts.ts where most routes just use an already-stored secret).
 
 const router = express.Router();
+
+// M1/M3 — body for the real tool-call route (design §3.2/§3.5). args defaults to {} (the fence
+// contract's own default); requestId is the optional double-submit guard token.
+const callBodySchema = z
+    .object({
+        toolName: z.string().min(1),
+        args: z.record(z.string(), z.unknown()).default({}),
+        chatId: z.string().min(1),
+        requestId: z.string().min(1).max(100).optional()
+    })
+    .strict();
 
 const upsertBodySchema = z
     .object({
@@ -138,6 +155,26 @@ router.post(
             return;
         }
         res.json({ success: result.success, error: result.error, connection: redactConnection(result.connection) });
+    })
+);
+
+// M1 — the real tool-call route (design §3.2/§3.3/§3.5). Chat-side Accept posts here; every
+// rejection branch inside callConnectionTool maps straight to its own status/error, success maps
+// to the updated chat row (same shape POST /:chatId/messages already returns).
+router.post(
+    "/:id/call",
+    asyncHandler(async (req, res) => {
+        const parsed = callBodySchema.safeParse(req.body);
+        if (!parsed.success) {
+            res.status(400).json({ error: "Invalid tool call payload", details: parsed.error.issues });
+            return;
+        }
+        const outcome = await callConnectionTool(req.params.id, parsed.data);
+        if (!outcome.ok) {
+            res.status(outcome.status).json({ error: outcome.error });
+            return;
+        }
+        res.json(outcome.chat);
     })
 );
 

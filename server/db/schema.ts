@@ -216,6 +216,12 @@ export const aiChats = sqliteTable(
         // the guide isn't story-scoped and doesn't fit hybridSearch's required storyId partition.
         // Available on every chat type (app-usage questions aren't tied to one desk), default off.
         includeGuide: integer("includeGuide", { mode: "boolean" }).notNull().default(false),
+        // MCP M2, docs/MCP_Tool_Connections_Design.md §3.3 — opt-in gate for surfacing the compact
+        // catalogue of enabled, in-scope MCP tool connections (and the mcp-tool-call-proposal fence
+        // instructions) in this chat's context. Same posture as includeGuide: available on every
+        // chat type (Editor/WB/Outline/Research/Notes/Brainstorm all get the toggle per design
+        // §3.3's own desk list), default off, no per-item gate on the other side.
+        includeMcpTools: integer("includeMcpTools", { mode: "boolean" }).notNull().default(false),
         // Brainstorm-only opt-in gates (P0.4 B0-B4, docs/Chat_Panel_Integrations_Design.md §5) —
         // unlike every other chat type, lorebook search is OFF by default for Brainstorm (it's an
         // intake hub, not grounded in established Codex state the way WB/Editor/Outline are); see

@@ -131,6 +131,20 @@ export function ChatContextPanelContent({ selectedChat, promptType, toggles }: C
                         Include Guide (app usage help)
                     </Label>
                 </div>
+                {/* MCP tool connections (M2, docs/MCP_Tool_Connections_Design.md §3.3) — same
+                    "every chat type" posture as Guide above, since MCP tool access isn't tied to
+                    one desk either. Off by default; the model only sees a tool catalogue and the
+                    proposal-fence instructions once this is on. */}
+                <div className="flex items-center gap-2">
+                    <Switch
+                        id={`${selectedChat.id}-include-mcp-tools`}
+                        checked={toggles.includeMcpTools}
+                        onCheckedChange={toggles.toggleIncludeMcpTools}
+                    />
+                    <Label htmlFor={`${selectedChat.id}-include-mcp-tools`} className="text-sm font-normal">
+                        Include MCP tools (external tool calls)
+                    </Label>
+                </div>
             </div>
 
             {usesCodexTray && (

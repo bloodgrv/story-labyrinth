@@ -1,7 +1,7 @@
 # MCP Tool Connections — Design
 
 **Project:** Story Labyrinth  
-**Status:** **LOCKED** 2026-08-20 (grill + lean packs) — not built  
+**Status:** **LOCKED** 2026-08-20 (grill + lean packs) — **M0–M3 shipped 2026-08-20 (v1 client acceptance complete)**; M4 (server expose) not built  
 **Backlog:** P3 epic **M0–M3** (client v1) + **M4** (server Phase 1.5); supersedes placeholder “Obsidian integration / Hermes design only”  
 **Audience:** Hermes (architecture) + Claude Code (implementation, once promoted to build)  
 **Related:** `docs/Chat_Shuttle_Design.md` (propose→open/confirm tray precedent), `docs/Agent_Framework_And_Project_Memory_Design.md` (per-feature endpoint + propose→approve memory), `chatContextService.ts` (opt-in toggle + system-prompt-instruction injection), `server/lib/ssrfSafeFetch.ts` (SSRF posture), B31/B32/B39 (secrets redaction, browser generation, fence trust)
@@ -182,10 +182,10 @@ Integrations → **Expose as MCP server** card: off by default; endpoint URL + t
 
 | ID | Scope | Notes |
 |----|--------|------|
-| **M0** | Schema + Settings CRUD + secret redaction + LAN flag + Refresh `tools/list` cache | Owner-only |
-| **M1** | `POST .../call` + SSRF/LAN + timeout/size + schema check | Smoke without full chat OK |
-| **M2** | `includeMcpTools` + instructions + parse + card + Accept → server-written `tool_result` | v1 vertical slice |
-| **M3** | Zod/harden double-submit, catalogue budget UX, Guide blurb | v1 acceptance with M2 |
+| **M0** | Schema + Settings CRUD + secret redaction + LAN flag + Refresh `tools/list` cache | Owner-only — ✅ shipped 2026-08-20 (`0e33ae4c`) |
+| **M1** | `POST .../call` + SSRF/LAN + timeout/size + schema check | Smoke without full chat OK — ✅ shipped 2026-08-20 |
+| **M2** | `includeMcpTools` + instructions + parse + card + Accept → server-written `tool_result` | v1 vertical slice — ✅ shipped 2026-08-20 |
+| **M3** | Zod/harden double-submit, catalogue budget UX, Guide blurb | v1 acceptance with M2 — ✅ shipped 2026-08-20 |
 | **M4** | Expose `/mcp` + token UI + read tools | Phase 1.5; after client proven |
 | **Later** | Auto-allow reads; stdio; writes→pending; slow-tool jobs | Update path only |
 
@@ -206,6 +206,8 @@ Integrations → **Expose as MCP server** card: off by default; endpoint URL + t
 7. No provider tool-loop; no stdio; no server `/mcp` required for v1 done.
 
 **M4 extra:** external client with bearer can `tools/list` + read tools only; server off by default.
+
+**Live-verified 2026-08-20**, criteria 1–7 all confirmed end to end against a real (disposable, local-only) Streamable HTTP MCP test server — see `DECISIONS.md`'s "MCP Tool Connections — M1-M3" entry for the full trail, including a real bug caught and fixed live (the client-side tool catalogue text shown to the model omitted `connectionId`, so the model's first real proposal echoed the connection's display name instead of its UUID and 404'd on Accept).
 
 ---
 

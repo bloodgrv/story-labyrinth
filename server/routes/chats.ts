@@ -166,6 +166,7 @@ router.get(
 //   includeMemory: boolean         — Project Memory chat-level gate (C1, Agent_Framework_And_Project_Memory_Design.md §4.5)
 //   includeTimeline: boolean       — Story Timeline compact chronology gate (TL8, Story_Timeline_Design.md)
 //   includeGuide: boolean          — app-usage Guide reference gate, every chat type
+//   includeMcpTools: boolean       — MCP tool catalogue + fence-instructions gate, every chat type (MCP_Tool_Connections_Design.md §3.3)
 //   includeLorebook: boolean       — Brainstorm-only lorebook search opt-in (P0.4 B0-B4)
 //   includeChapterSummaries: bool  — Brainstorm-only chapter titles+summaries opt-in (P0.4 B0-B4)
 //   brainstormStyle: string        — Light|Standard|Grill-me (P0.4 B0-B4)
@@ -200,6 +201,7 @@ router.patch(
             includeMemory,
             includeTimeline,
             includeGuide,
+            includeMcpTools,
             includeLorebook,
             includeChapterSummaries,
             brainstormStyle,
@@ -227,6 +229,7 @@ router.patch(
             includeMemory?: boolean;
             includeTimeline?: boolean;
             includeGuide?: boolean;
+            includeMcpTools?: boolean;
             includeLorebook?: boolean;
             includeChapterSummaries?: boolean;
             brainstormStyle?: string;
@@ -274,6 +277,7 @@ router.patch(
         if (includeMemory !== undefined) metaFields.includeMemory = includeMemory;
         if (includeTimeline !== undefined) metaFields.includeTimeline = includeTimeline;
         if (includeGuide !== undefined) metaFields.includeGuide = includeGuide;
+        if (includeMcpTools !== undefined) metaFields.includeMcpTools = includeMcpTools;
         if (includeLorebook !== undefined) metaFields.includeLorebook = includeLorebook;
         if (includeChapterSummaries !== undefined) metaFields.includeChapterSummaries = includeChapterSummaries;
         if (brainstormStyle !== undefined) metaFields.brainstormStyle = brainstormStyle;

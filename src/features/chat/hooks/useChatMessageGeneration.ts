@@ -34,7 +34,9 @@ import { parseMapSketchProposal } from "../services/parseMapSketchProposal";
 import { parseShuttleProposal } from "../services/parseShuttleProposal";
 import type { ParsedTimelinePinProposalItem } from "../services/parseTimelinePinProposal";
 import { parseTimelinePinProposal } from "../services/parseTimelinePinProposal";
+import { parseMcpToolCallProposal } from "../services/parseMcpToolCallProposal";
 import type { PlaceState } from "@/types/story";
+import type { McpToolCallProposal } from "@/types/mcpConnection";
 import type { MapSketchProposal } from "@/types/storyMaps";
 import { useApproveProposalMutation, useCreateProposalMutation } from "./useCodexProposalsQuery";
 import type { HandoffPacket, NoteSplitProposalPayload, OverviewProposalPayload, ShuttlePayload } from "@/types/brainstorm";
@@ -97,6 +99,11 @@ interface UseChatMessageGenerationParams {
     // only, TL7 — see chatContextService.ts's TIMELINE_PIN_INSTRUCTIONS). Not persisted server-side
     // — ephemeral until each item is individually accepted (creates a real pin) or rejected.
     onTimelinePinProposal?: (messageId: string, items: ParsedTimelinePinProposalItem[]) => void;
+    // Called when a reply contains one or more ```mcp-tool-call-proposal blocks (any chat type
+    // with includeMcpTools on, MCP M2 — see chatContextService.ts's MCP_TOOLS_INSTRUCTIONS). Not
+    // persisted server-side until each item is individually Accepted (a real server-side MCP call
+    // that writes a durable tool_result message) or Rejected (dismissed, no call, no message).
+    onMcpToolCallProposal?: (messageId: string, proposals: McpToolCallProposal[]) => void;
     // Called when a reply contains a ```note-split-proposal block (Notes chats only, P0.4 K2 —
     // see chatContextService.ts's NOTE_SPLIT_PROPOSAL_INSTRUCTIONS). Same "persist immediately as
     // a durable brainstormChecklist row" posture as onOverviewProposal/onHandoffPackets above.
@@ -173,6 +180,7 @@ export const useChatMessageGeneration = ({
     onShuttleProposal,
     onNameProposal,
     onTimelinePinProposal,
+    onMcpToolCallProposal,
     autoAcceptCodex,
     onUsage
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
@@ -265,7 +273,8 @@ export const useChatMessageGeneration = ({
                 const { cleanedContent: afterMapSketchStrip, mapSketchProposal } = parseMapSketchProposal(afterSheetSpanStrip);
                 const { cleanedContent: afterShuttleStrip, proposal: shuttleProposal } = parseShuttleProposal(afterMapSketchStrip);
                 const { cleanedContent: afterNameStrip, proposal: nameProposal } = parseNameProposal(afterShuttleStrip);
-                const { cleanedContent, timelinePinProposals } = parseTimelinePinProposal(afterNameStrip);
+                const { cleanedContent: afterTimelinePinStrip, timelinePinProposals } = parseTimelinePinProposal(afterNameStrip);
+                const { cleanedContent, proposals: mcpToolCallProposals } = parseMcpToolCallProposal(afterTimelinePinStrip);
 
                 // A reply that's ENTIRELY a fenced block (no conversational wrapper at all) strips
                 // down to an empty string here — the server's message-append route rejects empty
@@ -383,6 +392,7 @@ export const useChatMessageGeneration = ({
                 if (nameProposal && assistantMessage) onNameProposal?.(assistantMessage.id, nameProposal);
                 if (timelinePinProposals && timelinePinProposals.length > 0 && assistantMessage)
                     onTimelinePinProposal?.(assistantMessage.id, timelinePinProposals);
+                if (mcpToolCallProposals.length > 0 && assistantMessage) onMcpToolCallProposal?.(assistantMessage.id, mcpToolCallProposals);
             });
 
             endAiActivity(activityId);
@@ -420,6 +430,7 @@ export const useChatMessageGeneration = ({
             onShuttleProposal,
             onNameProposal,
             onTimelinePinProposal,
+            onMcpToolCallProposal,
             autoAcceptCodex,
             onUsage
         ]

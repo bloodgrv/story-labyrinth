@@ -43,6 +43,7 @@ export type UpdateChatMetaFields = Partial<{
     includeMemory: boolean;
     includeTimeline: boolean;
     includeGuide: boolean;
+    includeMcpTools: boolean;
     includeLorebook: boolean;
     includeChapterSummaries: boolean;
     brainstormStyle: string;
@@ -175,6 +176,7 @@ export const updateChatMeta = async (
     if (fields.includeMemory !== undefined) updates.includeMemory = fields.includeMemory;
     if (fields.includeTimeline !== undefined) updates.includeTimeline = fields.includeTimeline;
     if (fields.includeGuide !== undefined) updates.includeGuide = fields.includeGuide;
+    if (fields.includeMcpTools !== undefined) updates.includeMcpTools = fields.includeMcpTools;
     if (fields.includeLorebook !== undefined) updates.includeLorebook = fields.includeLorebook;
     if (fields.includeChapterSummaries !== undefined) updates.includeChapterSummaries = fields.includeChapterSummaries;
     if (fields.brainstormStyle !== undefined) updates.brainstormStyle = fields.brainstormStyle;

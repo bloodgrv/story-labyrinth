@@ -1,4 +1,4 @@
-import { Copy, Edit, GitBranch, Loader2, RefreshCw, Send, Sparkles, StickyNote, Trash2, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Copy, Edit, GitBranch, Loader2, RefreshCw, Send, Sparkles, StickyNote, Trash2, Wrench, X } from "lucide-react";
 import type { ReactNode } from "react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -163,7 +163,12 @@ export function ChatMessageList({
                             className={`max-w-[85%] rounded-lg px-4 py-3 ${
                                 message.role === "user"
                                     ? "bg-primary text-primary-foreground raycast-user-bubble"
-                                    : "bg-muted"
+                                    // MCP M2 — tool_result is neither user nor assistant; a dashed
+                                    // border keeps it visually distinct from a plain assistant
+                                    // reply (design §3.4 "distinct kind").
+                                    : message.role === "tool_result"
+                                      ? "bg-muted border border-dashed border-border"
+                                      : "bg-muted"
                             }`}
                         >
                             {editingMessageId === message.id ? (
@@ -220,6 +225,24 @@ export function ChatMessageList({
                                                 <div className="mt-3 space-y-2">{renderProposalsForMessage(message.id)}</div>
                                             )}
                                         </>
+                                    ) : message.role === "tool_result" && message.toolResult ? (
+                                        // MCP M2, docs/MCP_Tool_Connections_Design.md §3.4 — "Tool ·
+                                        // {connection} / {tool}" label + status icon, then the
+                                        // capped/truncated result (or error) text server-wrote.
+                                        <div>
+                                            <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                                <Wrench className="h-3 w-3" />
+                                                <span>
+                                                    Tool · {message.toolResult.connectionName} / {message.toolResult.toolName}
+                                                </span>
+                                                {message.toolResult.status === "success" ? (
+                                                    <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                                ) : (
+                                                    <AlertCircle className="h-3 w-3 text-destructive" />
+                                                )}
+                                            </div>
+                                            <MarkdownRenderer content={message.content} />
+                                        </div>
                                     ) : (
                                         <MarkdownRenderer content={message.content} />
                                     )}

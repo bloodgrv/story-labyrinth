@@ -142,6 +142,19 @@ const APPEND_MAX_ATTEMPTS = 5;
  * right outcome, not something a user needs to resolve. `updateChatMessages`'s conditional UPDATE
  * (not a separate check-then-write) is what makes each attempt itself race-free.
  */
+// Shared by appendMessage (below) and appendToolResultMessage (MCP M1/M2,
+// docs/MCP_Tool_Connections_Design.md) — both are "assign id/timestamp, retry on a lost
+// messagesVersion race" appends that only differ in what message shape they build.
+const appendMessageInternal = async (chatId: string, newMessage: ChatMessage): Promise<ChatRow> => {
+    for (let attempt = 0; attempt < APPEND_MAX_ATTEMPTS; attempt++) {
+        const chat = await getOrThrow(chatId);
+        const updated = await updateChatMessages(chatId, [...chat.messages, newMessage], chat.messagesVersion);
+        if (updated) return updated;
+        // Lost the race — another write landed between our read and write. Loop re-reads fresh.
+    }
+    throw new Error(`Failed to append message to chat after repeated conflicts: ${chatId}`);
+};
+
 export const appendMessage = async (
     chatId: string,
     role: "user" | "assistant",
@@ -152,22 +165,32 @@ export const appendMessage = async (
 ): Promise<ChatRow> => {
     if (!content.trim()) throw new Error("Message content cannot be empty");
 
-    const newMessage: ChatMessage = {
+    return appendMessageInternal(chatId, {
         id: crypto.randomUUID(),
         role,
         content: content.trim(),
         timestamp: new Date(),
         ...(usage ? { usage } : {})
-    };
-
-    for (let attempt = 0; attempt < APPEND_MAX_ATTEMPTS; attempt++) {
-        const chat = await getOrThrow(chatId);
-        const updated = await updateChatMessages(chatId, [...chat.messages, newMessage], chat.messagesVersion);
-        if (updated) return updated;
-        // Lost the race — another write landed between our read and write. Loop re-reads fresh.
-    }
-    throw new Error(`Failed to append message to chat after repeated conflicts: ${chatId}`);
+    });
 };
+
+// MCP M1/M2 (docs/MCP_Tool_Connections_Design.md §2.2/§3.4) — the one and only writer of
+// role:"tool_result" messages. Deliberately a separate function rather than widening
+// appendMessage's role param: appendMessage backs the client-facing POST /:chatId/messages route,
+// and a tool_result message must only ever be server-written from a real MCP call result, never
+// forgeable by a client POST.
+export const appendToolResultMessage = async (
+    chatId: string,
+    toolResult: NonNullable<ChatMessage["toolResult"]>,
+    content: string
+): Promise<ChatRow> =>
+    appendMessageInternal(chatId, {
+        id: crypto.randomUUID(),
+        role: "tool_result",
+        content,
+        timestamp: new Date(),
+        toolResult
+    });
 
 // Thrown by replaceMessages on a lost optimistic-concurrency race — routes/chats.ts's PATCH
 // handler catches this specifically to respond 409 with the current chat, distinct from every

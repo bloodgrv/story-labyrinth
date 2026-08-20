@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { mcpConnectionsApi } from "@/services/api/client";
-import type { McpConnectionUpsertRequest } from "@/types/mcpConnection";
+import type { McpConnectionUpsertRequest, McpToolCallRequest } from "@/types/mcpConnection";
 
 export const mcpConnectionsKeys = {
     all: ["mcpConnections"] as const,
@@ -62,3 +62,15 @@ export const useRefreshMcpToolsMutation = () => {
         onError: () => toast.error("Failed to refresh tools")
     });
 };
+
+// M1/M2 — Accept on an mcp-tool-call-proposal card. No cache invalidation of mcpConnectionsKeys
+// here (a call never mutates a connection row); the caller's own onSuccess is responsible for
+// feeding the returned chat row back into the chat's own state (see ChatInterface.tsx's
+// handleAcceptMcpToolCall). A pre-call rejection (disabled/out-of-scope/unknown-tool/bad-args/
+// duplicate) surfaces via this toast — design §3.3/§3.4: those never write a transcript message,
+// so a toast is the only feedback the user gets for that branch.
+export const useMcpToolCallMutation = () =>
+    useMutation({
+        mutationFn: ({ connectionId, data }: { connectionId: string; data: McpToolCallRequest }) => mcpConnectionsApi.callTool(connectionId, data),
+        onError: (error: Error) => toast.error(error.message || "Failed to call tool")
+    });

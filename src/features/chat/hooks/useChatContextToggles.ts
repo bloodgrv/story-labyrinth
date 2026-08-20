@@ -22,6 +22,7 @@ type ToggleField =
     | "includeMemory"
     | "includeTimeline"
     | "includeGuide"
+    | "includeMcpTools"
     | "includeLorebook"
     | "includeChapterSummaries"
     | "autoInsertProse"
@@ -36,6 +37,7 @@ const readToggles = (chat: AIChat | null) => ({
     includeMemory: chat?.includeMemory ?? false,
     includeTimeline: chat?.includeTimeline ?? false,
     includeGuide: chat?.includeGuide ?? false,
+    includeMcpTools: chat?.includeMcpTools ?? false,
     includeLorebook: chat?.includeLorebook ?? false,
     includeChapterSummaries: chat?.includeChapterSummaries ?? false,
     autoInsertProse: chat?.autoInsertProse ?? false,
@@ -70,6 +72,7 @@ export function useChatContextToggles(
     const [includeMemory, setIncludeMemory] = useState(initial.includeMemory);
     const [includeTimeline, setIncludeTimeline] = useState(initial.includeTimeline);
     const [includeGuide, setIncludeGuide] = useState(initial.includeGuide);
+    const [includeMcpTools, setIncludeMcpTools] = useState(initial.includeMcpTools);
     const [includeLorebook, setIncludeLorebook] = useState(initial.includeLorebook);
     const [includeChapterSummaries, setIncludeChapterSummaries] = useState(initial.includeChapterSummaries);
     const [autoInsertProse, setAutoInsertProse] = useState(initial.autoInsertProse);
@@ -92,6 +95,7 @@ export function useChatContextToggles(
         setIncludeMemory(next.includeMemory);
         setIncludeTimeline(next.includeTimeline);
         setIncludeGuide(next.includeGuide);
+        setIncludeMcpTools(next.includeMcpTools);
         setIncludeLorebook(next.includeLorebook);
         setIncludeChapterSummaries(next.includeChapterSummaries);
         setAutoInsertProse(next.autoInsertProse);
@@ -129,6 +133,7 @@ export function useChatContextToggles(
     const toggleIncludeMemory = withUpdate("includeMemory", setIncludeMemory);
     const toggleIncludeTimeline = withUpdate("includeTimeline", setIncludeTimeline);
     const toggleIncludeGuide = withUpdate("includeGuide", setIncludeGuide);
+    const toggleIncludeMcpTools = withUpdate("includeMcpTools", setIncludeMcpTools);
     const toggleIncludeLorebook = withUpdate("includeLorebook", setIncludeLorebook);
     const toggleIncludeChapterSummaries = withUpdate("includeChapterSummaries", setIncludeChapterSummaries);
     const toggleAutoInsertProse = withUpdate("autoInsertProse", setAutoInsertProse);
@@ -143,6 +148,7 @@ export function useChatContextToggles(
         !isResearchChat && !isNotesChat && includeMemory && "Memory",
         !isResearchChat && !isNotesChat && includeTimeline && "Timeline",
         includeGuide && "Guide",
+        includeMcpTools && "MCP tools",
         (isBrainstormChat || isResearchChat || isNotesChat) && includeLorebook && "Lorebook",
         isResearchChat && webSearchEnabled && "Web search",
         isBrainstormChat && includeChapterSummaries && "Chapter summaries",
@@ -163,6 +169,8 @@ export function useChatContextToggles(
         toggleIncludeTimeline,
         includeGuide,
         toggleIncludeGuide,
+        includeMcpTools,
+        toggleIncludeMcpTools,
         includeLorebook,
         toggleIncludeLorebook,
         includeChapterSummaries,

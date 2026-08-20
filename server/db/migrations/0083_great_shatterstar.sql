@@ -1,0 +1,1 @@
+ALTER TABLE `aiChats` ADD `includeMcpTools` integer DEFAULT false NOT NULL;

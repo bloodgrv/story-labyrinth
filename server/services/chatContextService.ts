@@ -28,8 +28,13 @@ import { DEFAULT_SEARCH_ENTITY_TYPES, type RagEntityType, type SearchResult } fr
 import { fetchPage, searchWeb, type FetchedPage } from "./webSearchService.js";
 import { getSpineChronologyExcerpt } from "./storyTimelineService.js";
 import { searchGuideForChat } from "./guideSearchService.js";
+import { listChatVisibleConnections } from "./mcpConnectionService.js";
 
 const RELEVANT_ENTRIES_LIMIT = 8;
+// MCP M2, docs/MCP_Tool_Connections_Design.md §3.3 "Budget | Hard token/tool cap; visible 'N tools
+// omitted' if truncated" — mirrors CHARACTER_ROSTER_CAP's shape (cap + honest truncated flag)
+// rather than RELEVANT_ENTRIES_LIMIT's silent slice, since the design explicitly wants disclosure.
+const MCP_TOOL_CATALOGUE_LIMIT = 20;
 // B6 (docs/BUGS_2026-08-19.md) — the character roster is deliberately NOT RAG-ranked/capped like
 // RELEVANT_ENTRIES_LIMIT above; this ceiling only guards against a pathologically large cast, not
 // relevance filtering. Names-only, so even 300 entries is cheap.
@@ -682,6 +687,23 @@ const SHEET_SPAN_PROPOSAL_INSTRUCTIONS = (entryName: string): string =>
     `sheet-span-proposal in the same reply. Outside of a "[LOREBOOK SHEET SPAN REWORK]" message, ignore this and ` +
     `keep using sheet-proposal (the entire sheet) as instructed above for ${entryName}.`;
 
+// MCP M2, docs/MCP_Tool_Connections_Design.md §3.3/§3.5 — fence contract + doctrine. Only
+// meaningful alongside a non-empty catalogue block (built client-side, ChatInterface.tsx), which
+// is why "never fabricate" is spelled out explicitly: an armed-but-empty catalogue is a real state
+// (design §3.3's own "empty catalogue → honest 'no tools; don't invent'").
+const MCP_TOOLS_INSTRUCTIONS =
+    "If a list of available MCP tools appears in your context, you may propose calling ONE of them " +
+    "when it would genuinely help. Never fabricate a tool call result yourself, never claim you " +
+    "already called a tool, and never invent a tool or connection that isn't in the list. To " +
+    "propose a call, include a fenced block in this exact form:\n\n" +
+    "```mcp-tool-call-proposal\n" +
+    '{ "connectionId": "...", "toolName": "...", "args": { }, "reason": "..." }\n' +
+    "```\n\n" +
+    "Use the connectionId and toolName exactly as shown in the tool list. `reason` should briefly " +
+    "explain why this call would help. You may include more than one such fenced block in a single " +
+    "reply if more than one distinct call is genuinely useful. If no tool list appears in your " +
+    "context, or the list is empty, don't emit this fence at all.";
+
 // Assemble the effective system prompt for a chat: chat-type framing + template hint (World-
 // Building only). Extend the framing constants above — not the template catalogue — when
 // adding further global system instructions.
@@ -692,6 +714,7 @@ const buildSystemPrompt = (
     includeMemory?: boolean,
     includePsychModule?: boolean,
     includeSexualityModule?: boolean,
+    includeMcpTools?: boolean,
     availableNameRegions: string[] = [],
     anchorEntry?: { entryId: string; name: string; category: string; sheetBody?: string | null }
 ): string => {
@@ -700,11 +723,14 @@ const buildSystemPrompt = (
     // research/notes) get the addendum; computing it once here keeps that in sync automatically
     // rather than needing to remember to add it at each of the 5 return sites below.
     const regionsAddendum = nameRegionsAddendum(availableNameRegions);
+    // Unlike regionsAddendum, MCP applies to every chat type (design §3.3's desk list explicitly
+    // includes Research and Notes) — computed once, appended at every return site below.
+    const mcpAddendum = includeMcpTools ? `\n\n${MCP_TOOLS_INSTRUCTIONS}` : "";
 
-    if (chatType === "editor") return PROSE_PROPOSAL_INSTRUCTIONS + regionsAddendum;
-    if (chatType === "outline") return OUTLINE_FRAMING + resolveStyleHint(OUTLINE_STYLE_HINTS, style) + regionsAddendum;
-    if (chatType === "research") return RESEARCH_FRAMING;
-    if (chatType === "notes") return NOTES_FRAMING;
+    if (chatType === "editor") return PROSE_PROPOSAL_INSTRUCTIONS + regionsAddendum + mcpAddendum;
+    if (chatType === "outline") return OUTLINE_FRAMING + resolveStyleHint(OUTLINE_STYLE_HINTS, style) + regionsAddendum + mcpAddendum;
+    if (chatType === "research") return RESEARCH_FRAMING + mcpAddendum;
+    if (chatType === "notes") return NOTES_FRAMING + mcpAddendum;
     if (chatType === "brainstorm") {
         return (
             BRAINSTORM_FRAMING +
@@ -719,7 +745,8 @@ const buildSystemPrompt = (
             NAME_PROPOSAL_INSTRUCTIONS +
             "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user " +
             "sees them, so don't reference the fenced blocks themselves in your prose; just talk about the proposal naturally." +
-            regionsAddendum
+            regionsAddendum +
+            mcpAddendum
         );
     }
 
@@ -742,11 +769,12 @@ const buildSystemPrompt = (
         const moduleAddendum =
             (includePsychModule ? `\n\n${PSYCH_MODULE_INSTRUCTIONS}` : "") +
             (includeSexualityModule ? `\n\n${SEXUALITY_MODULE_INSTRUCTIONS}` : "");
-        return `${withStyle}${moduleAddendum}${sheetAddendum}${regionsAddendum}`;
+        return `${withStyle}${moduleAddendum}${sheetAddendum}${regionsAddendum}${mcpAddendum}`;
     }
-    if (templateSlug === "locations") return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}\n\n${MAP_SKETCH_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}`;
-    if (templateSlug === "timeline") return `${withStyle}\n\n${TIMELINE_PIN_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}`;
-    return withStyle + sheetAddendum + regionsAddendum;
+    if (templateSlug === "locations")
+        return `${withStyle}\n\n${PLACE_SHEET_INSTRUCTIONS}\n\n${MAP_SKETCH_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}${mcpAddendum}`;
+    if (templateSlug === "timeline") return `${withStyle}\n\n${TIMELINE_PIN_INSTRUCTIONS}${sheetAddendum}${regionsAddendum}${mcpAddendum}`;
+    return withStyle + sheetAddendum + regionsAddendum + mcpAddendum;
 };
 
 // Global ∪ story ∪ series name-pool regions currently installed (reuses the exact same scope
@@ -785,6 +813,26 @@ const resolveCharacterRoster = async (storyId: string): Promise<{ roster: { id: 
         .orderBy(schema.lorebookEntries.name);
 
     return { roster: rows.slice(0, CHARACTER_ROSTER_CAP), truncated: rows.length > CHARACTER_ROSTER_CAP };
+};
+
+// MCP M2 — flattens every enabled, in-scope connection's cached tools/list result into one
+// compact per-tool list for the prompt. Capped + truncated flag (see MCP_TOOL_CATALOGUE_LIMIT
+// above), same "cap + honest disclosure" shape as resolveCharacterRoster.
+const resolveMcpToolCatalogue = async (
+    includeMcpTools: boolean,
+    storyId: string | null
+): Promise<{ catalogue: { connectionId: string; connectionName: string; toolName: string; description: string }[]; truncated: boolean }> => {
+    if (!includeMcpTools) return { catalogue: [], truncated: false };
+    const connections = await listChatVisibleConnections(storyId);
+    const entries = connections.flatMap(connection =>
+        (connection.toolsCatalogue as { name: string; description: string }[]).map(tool => ({
+            connectionId: connection.id,
+            connectionName: connection.name,
+            toolName: tool.name,
+            description: tool.description
+        }))
+    );
+    return { catalogue: entries.slice(0, MCP_TOOL_CATALOGUE_LIMIT), truncated: entries.length > MCP_TOOL_CATALOGUE_LIMIT };
 };
 
 // `excludeIds` keeps anchor/related entries (resolveAnchorAndRelated, below) from being listed
@@ -1282,6 +1330,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
     // doesn't fit hybridSearch's required storyId partition (see guideSearchService.ts's own
     // header comment). Works identically for story-scoped and story-less (e.g. Research) chats.
     const includeGuide = chat.includeGuide === true;
+    // MCP M2 — available on every chat type (design §3.3), same posture as includeGuide above.
+    const includeMcpTools = chat.includeMcpTools === true;
     const isBrainstorm = chatType === "brainstorm";
     const isResearch = chatType === "research";
     const isNotes = chatType === "notes";
@@ -1366,7 +1416,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         availableNameRegions,
         timelinePins,
         guideSections,
-        characterRosterResult
+        characterRosterResult,
+        mcpToolCatalogueResult
     ] = await Promise.all([
         resolveCodexEntries(searchResults, anchorIds),
         includeChapters ? resolveChapterPassages(searchResults, anchorChapterIds) : Promise.resolve([]),
@@ -1397,7 +1448,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         // Research/Notes) rather than a new toggle.
         entityTypes.includes("lorebook_entry") && chat.storyId
             ? resolveCharacterRoster(chat.storyId)
-            : Promise.resolve({ roster: [], truncated: false })
+            : Promise.resolve({ roster: [], truncated: false }),
+        resolveMcpToolCatalogue(includeMcpTools, chat.storyId)
     ]);
 
     return {
@@ -1408,6 +1460,7 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
             includeMemory,
             includePsychModule,
             includeSexualityModule,
+            includeMcpTools,
             availableNameRegions,
             anchorEntries.find(e => e.role === "anchor")
         ),
@@ -1431,6 +1484,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
         relevantTimelinePins: timelinePins,
         relevantGuideSections: guideSections,
         characterRoster: characterRosterResult.roster,
-        characterRosterTruncated: characterRosterResult.truncated
+        characterRosterTruncated: characterRosterResult.truncated,
+        mcpToolCatalogue: mcpToolCatalogueResult.catalogue,
+        mcpToolCatalogueTruncated: mcpToolCatalogueResult.truncated
     };
 };

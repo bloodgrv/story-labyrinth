@@ -54,3 +54,20 @@ export interface McpRefreshToolsResult {
     error?: string;
     connection?: McpConnection;
 }
+
+// M2 — a single parsed ```mcp-tool-call-proposal fence item (design §3.5). args defaults to {}
+// per the fence contract; reason is required for the card to render (design §3.3).
+export interface McpToolCallProposal {
+    connectionId: string;
+    toolName: string;
+    args: Record<string, unknown>;
+    reason: string;
+}
+
+// M1/M2 — body for POST /mcp/connections/:id/call.
+export interface McpToolCallRequest {
+    toolName: string;
+    args: Record<string, unknown>;
+    chatId: string;
+    requestId?: string;
+}

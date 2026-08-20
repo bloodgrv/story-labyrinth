@@ -100,6 +100,10 @@ export interface AIChat extends BaseEntity {
     // Opt-in gate for surfacing relevant Guide (app documentation, not story content) sections —
     // available on every chat type, default false. See chatContextService.ts's getChatContext.
     includeGuide?: boolean;
+    // MCP M2, docs/MCP_Tool_Connections_Design.md §3.3 — opt-in gate for the compact MCP tool
+    // catalogue + mcp-tool-call-proposal fence instructions. Available on every chat type
+    // (Editor/WB/Outline/Research/Notes/Brainstorm), default false. See chatContextService.ts.
+    includeMcpTools?: boolean;
     // Brainstorm-only opt-in gates (P0.4 B0-B4, docs/Chat_Panel_Integrations_Design.md §5) —
     // lorebook search and chapter titles+summaries are OFF by default for Brainstorm, unlike
     // every other chat type. Ignored for any other chatType. Defaults false server-side.
@@ -143,7 +147,10 @@ export interface AIChat extends BaseEntity {
 
 export interface ChatMessage {
     id: string;
-    role: "user" | "assistant";
+    // "tool_result" (MCP M1/M2, docs/MCP_Tool_Connections_Design.md §2.2/§3.4) is a distinct third
+    // kind, never user/assistant — always server-written from a real MCP tools/call result, never
+    // client-forgeable (see server/services/chatService.ts's appendToolResultMessage).
+    role: "user" | "assistant" | "tool_result";
     content: string;
     timestamp: Date;
     // Optional edit metadata
@@ -155,6 +162,15 @@ export interface ChatMessage {
     // only this pass, via stream_options.include_usage — see LocalAIProvider.generate()).
     // Assistant messages only; absent for every other provider or if usage wasn't reported.
     usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+    // Present only when role === "tool_result" — which connection/tool produced this message and
+    // whether the call succeeded, for the transcript's "Tool · {connection} / {tool}" label.
+    toolResult?: {
+        connectionId: string;
+        connectionName: string;
+        toolName: string;
+        status: "success" | "error";
+        durationMs: number;
+    };
 }
 
 // Prompt related types

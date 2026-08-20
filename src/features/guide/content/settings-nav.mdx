@@ -24,6 +24,7 @@ Settings is organized as a vertical sub-nav, in this order:
 | **Local**          | Local model connection, Context Meter settings                             |
 | **Feature routing** | Per-feature model/endpoint assignment (writing vs. scanner vs. embeddings, etc.) |
 | **Writing tools**   | Text-to-Speech, Humanizer, Auto Humanizer, Grammar, Writer Prefs           |
+| **Integrations** (owners only) | MCP tool connections — see below                              |
 | **Logs**           | Transfers log, Recent jobs                                                  |
 | **Data**           | Demo-data deletion                                                          |
 | **Guide**          | This guide                                                                   |
@@ -47,12 +48,24 @@ Press **Cmd/Ctrl+K** anywhere in the app to open a searchable command palette �
 
 A small dot-and-count control appears in the top bar's right-hand cluster (owners only) whenever background work — a scan, a Codex-update suggestion, an AI Review, etc. — is queued or running, or when one has failed. Amber and pulsing means work is in progress; red means something failed and hasn't been dismissed yet (red always wins if both are true). It's hidden entirely when nothing needs your attention. Click it to see the list, jump to the tool a job belongs to when one applies, retry a failure, or dismiss it. The **All jobs →** link at the bottom goes to Settings' **Logs** tab for the full history.
 
-## 6. Troubleshooting
+## 6. MCP Tool Connections (Owners Only)
+
+_Path: Settings → **Integrations**_
+
+Register an external [MCP](https://modelcontextprotocol.io) server (Streamable HTTP only — the same "just a URL" shape as the Local model connection) so chats can call its tools. Give it a name, the endpoint URL, an optional bearer token, and whether it's allowed to reach private/LAN addresses (off by default — turn this on only for a self-hosted server on your own network). New connections start **disabled** and scoped to **every story** by default; you can pin one to a single story instead, and it stays off until you flip it on. Click **Refresh tools** to fetch and cache the server's tool list — a chat can't propose calling a tool it hasn't been refreshed since.
+
+Once a connection is enabled, arm the **Include MCP tools** toggle on any individual chat (Editor, World-Building, Outline, Research, Notes, or Brainstorm — it's off by default everywhere) to let that chat's model see a compact list of the tools currently in scope. The model can then propose a call; you'll see a card with the connection, tool name, arguments, and the model's stated reason — **Accept** actually runs it and adds the result to the conversation as its own distinct message, **Reject** discards the proposal with no call made. Nothing is ever called silently.
+
+> [!NOTE]
+> A bearer token, once saved, is never shown again — only whether one is set. Use **Rotate/clear** to change or remove it.
+
+## 7. Troubleshooting
 
 | Problem                                       | What's happening                                                                                             |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Can't find Theme, Guide, Users, or the Scanner | They moved into **Settings** — see the table above for which tab                                                |
 | "New tab" button doesn't appear                | It only shows once a story is selected — open or create a story first                                          |
+| A chat's model won't propose an MCP tool call  | Check: the connection is **enabled**, its **Refresh tools** succeeded recently, it's in scope for that chat's story (or set to every story), and the chat's own **Include MCP tools** toggle is on |
 | Selected tools don't all open in new tabs      | Your browser blocked the popups after the first one — allow popups for this site and try again (see the callout above) |
 | Scanner tab says "Select a story to use the Scanner" | The Scanner is story-scoped — pick a story from the dashboard first, then come back to Settings → Scanner |
 
