@@ -547,7 +547,7 @@ router.post(
 
             if (!existingEntry) {
                 const nameToResolve = (entryName ?? rawEntryId ?? "").toLowerCase().trim();
-                if (nameToResolve) {
+                if (nameToResolve && chat.storyId) {
                     const nameMap = await resolveEntityIdsByName(chat.storyId);
                     let resolvedId = nameMap.get(nameToResolve);
                     if (!resolvedId) {

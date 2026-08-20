@@ -133,6 +133,7 @@ export interface BrainstormExtractResult {
     overview: OverviewProposalPayload | null;
     handoffs: HandoffPacket[];
     droppedCount: number;
+    handoffCallFailed: boolean;
 }
 
 const runOverviewExtraction = async (client: OpenAI, model: string, userContent: string): Promise<OverviewProposalPayload | null> => {
