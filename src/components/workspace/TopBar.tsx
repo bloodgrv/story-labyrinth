@@ -36,11 +36,11 @@ export const TopBar = ({ onOpenCommandPalette }: TopBarProps) => {
         <header className="border-b raycast-hairline bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 sticky top-0 z-40 safe-area-inset-top">
             <div className="flex h-14 items-center px-2 sm:px-4 gap-2 sm:gap-4">
                 {/* App Title - hidden on mobile */}
-                <div className="hidden sm:flex items-center whitespace-nowrap">
+                <div className="hidden sm:flex items-center whitespace-nowrap shrink-0">
                     <img
                         src={wordmarkSrc}
                         alt="Story Labyrinth"
-                        className="h-9 w-auto transition-[filter] duration-300 hover:[filter:drop-shadow(0_0_6px_hsl(var(--brand-ember)/0.55))]"
+                        className="h-9 w-auto shrink-0 transition-[filter] duration-300 hover:[filter:drop-shadow(0_0_6px_hsl(var(--brand-ember)/0.55))]"
                     />
                 </div>
 

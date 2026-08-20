@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router";
+import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GuideTabs } from "../components/GuideTabs";
@@ -14,9 +15,10 @@ export default function GuidePage() {
                     <ArrowLeft className="h-4 w-4" />
                     Back
                 </Button>
-                <h1 className="text-3xl font-bold ml-4">
-                    <span className="font-display font-semibold">Story Labyrinth</span> Guide
-                </h1>
+                <div className="flex items-center gap-3 ml-4">
+                    <BrandMark className="h-9" />
+                    <span className="text-3xl font-bold">Guide</span>
+                </div>
             </div>
 
             <Card>
