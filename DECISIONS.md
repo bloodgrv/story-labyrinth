@@ -626,6 +626,24 @@ Implements `docs/Agent_Framework_And_Project_Memory_Design.md` §4 (Steps B1–B
 
 ---
 
+## Agent Framework — Writer Preferences Auto-Distill, Load-Bearing Decisions
+
+User request: Settings' "Writer Preferences" card (cross-project `writer_pref` browsing, P1.1) only ever populated via the manual "New Note" button — no job produced global rows, confirmed by reading `distillMemoryJob.ts`'s hard `if (!job.storyId) throw` guard. Since this is a single-user, password-gated app, the user wanted the AI to actually learn craft/workflow preferences across every story, not wait on manual notes. Cross-project `writer_pref` browsing was explicitly Phase C ("do not build now") in the original design doc; this closes that gap with a real distillation job, confirmed with the user via two clarifying questions before building: a new cross-story job (not a "promote from story" button), triggered periodically in the background, opt-in.
+
+**`distill_writer_prefs` is the one distill/suggest job in this codebase allowed to auto-enqueue.** Every other one (`distill_memory`, `suggest_codex_updates`, `graph_suggest_edges`, `timeline_suggest_pins`) is manual-`POST /api/agent/jobs`-only, "background LLM spend must not surprise the user." This job earns the exception the same way `rag_scan_story` did: a new singleton settings table, `writerPrefsSettings` (`autoDistillEnabled`, default **false**, same GET-auto-creates-row/PUT-by-id shape as `grammarSettings`), gates `jobRunner.ts`'s schedule tick — `maybeEnqueuePeriodic("distill_writer_prefs", null, 24h)` only fires when the row's flag is on. A manual "Check now" button (`useSuggestWriterPrefsMutation`, mirrors `useSuggestGraphEdgesMutation`) works regardless of the toggle, same dual-path precedent as unattended scans + "Scan now."
+
+**Bounded input, not a full chat-history mine.** The job queries `aiChats` for rows touched since the last successful run (`getLastCompletedAt("distill_writer_prefs", null)`, 14-day fallback on first run) across every story plus global chats, keeps only `role: "user"` messages newer than that cutoff, and caps the total at 400 (most recent first) before ever calling the model — same "cap it, don't mine everything" discipline as `graph_suggest_edges`'s 60-entry cap. Zero qualifying messages means zero LLM calls, not an empty-result API round trip — a quiet week costs nothing.
+
+**Reused the existing `agent_memory_distill` FeatureKey rather than adding a new one.** Both jobs are "distill agent memory," just different input scope (one scan's findings vs. cross-story recent chat messages); a second FeatureKey would be config surface with no real routing need behind it yet.
+
+**Extracted `distillMemoryJob.ts`'s candidate parser into a shared module** (`distillCandidateParser.ts`) rather than duplicating the ~30-line JSON-array parse/validate function — both jobs return the identical `{memoryKey, category, title, body, evidence}` shape.
+
+**The new job's own system prompt forces `category: "writer_pref"` unconditionally** (unlike `distill_memory`'s open 6-category prompt) and is explicitly instructed to only propose *recurring* patterns across the sampled messages, not one-off statements — "a missed preference costs nothing, a wrong one costs trust," directly in the prompt text, since a single offhand remark shouldn't calcify into a standing cross-project rule.
+
+**Still fully within the existing propose→approve doctrine.** `proposeMemory` (unchanged) is called with `storyId: null`; every candidate lands `status: "pending"` in Writer Preferences' own Pending tab, identical review flow to a user-typed note or a `distill_memory` proposal. Nothing this job produces is ever active without a human clicking Approve.
+
+---
+
 ## Project Saves — Phase 1 (Codex Layer: Restore + Timeline UI)
 
 **Decision:** `CLAUDE.md` names "Project Saves split into Codex + Story layers with separate visual timelines" as roadmap item 9, but that one line was — confirmed via three parallel explorations before any code was written — the entire spec that has ever existed for this feature: no design doc, no prior git history, no archived planning docs. Given the real scope (two genuinely separate save systems, two timeline UIs) and no Hermes-style spec to lean on for the edge-case decisions the way Agent Framework Phase A/B had, this was scoped down with the user first via three direct questions rather than guessed at: **Codex layer first** (the Story/chapter layer — `chapters` has zero versioning of any kind today, and autosave destructively overwrites content every ~1s — is a deliberate, separate future phase, not started here), saves are **hybrid** (automatic snapshot creation, which already existed via `codexSnapshots`, plus optional manual naming, which didn't), and restore is **per-item** (one Codex entry at a time, matching how `codexSnapshots` already works — not a whole-project rollback bundling multiple entries).

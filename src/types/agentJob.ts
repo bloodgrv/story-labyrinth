@@ -7,6 +7,7 @@ export type AgentJobType =
     | "rag_scan_story"
     | "prune_history"
     | "distill_memory"
+    | "distill_writer_prefs"
     | "suggest_codex_updates"
     | "graph_suggest_edges"
     | "timeline_suggest_pins"
@@ -15,6 +16,12 @@ export type AgentJobType =
 // distill_memory is never auto-enqueued by jobRunner.ts's schedule tick (Phase B) — same
 // "background LLM spend must not surprise the user" reasoning as rag_scan_story. It's only
 // ever created via the manual POST /api/agent/jobs route.
+// distill_writer_prefs is the ONE exception to every distill_*/suggest_* job's "never
+// auto-enqueued" rule above — it IS auto-enqueued by jobRunner.ts's schedule tick, but only when
+// writerPrefsSettings.autoDistillEnabled is on (default false). This mirrors the app's one other
+// opt-in-periodic-LLM-job precedent, stories.unattendedScanEnabled -> rag_scan_story. Always
+// global (storyId: null) — see distillWriterPrefsJob.ts. Still manually enqueueable too via the
+// same POST /api/agent/jobs route (Writer Preferences' "Check now" button).
 // suggest_codex_updates (C5, docs/CURRENT_BACKLOG.md P0.3) follows the exact same precedent —
 // never auto-enqueued, manual POST /api/agent/jobs only (see codexCompileJob.ts).
 // graph_suggest_edges (P1.2 G1.5+, docs/CURRENT_BACKLOG.md) follows the same precedent —

@@ -31,6 +31,7 @@ export { codexApi } from "./codexClient";
 export { deskTransfersApi } from "./deskTransfersClient";
 export { foldersApi } from "./foldersClient";
 export { grammarApi } from "./grammarClient";
+export { writerPrefsSettingsApi } from "./writerPrefsSettingsClient";
 export { humanizerApi } from "./humanizerClient";
 export { autoHumanizerApi } from "./autoHumanizerClient";
 export { lorebookApi } from "./lorebookClient";

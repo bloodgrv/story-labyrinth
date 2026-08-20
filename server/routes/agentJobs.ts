@@ -11,6 +11,7 @@ const JOB_TYPES: AgentJobType[] = [
     "rag_scan_story",
     "prune_history",
     "distill_memory",
+    "distill_writer_prefs",
     "suggest_codex_updates",
     "graph_suggest_edges",
     "timeline_suggest_pins",

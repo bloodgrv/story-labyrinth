@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { agentMemoriesApi } from "@/services/api/client";
+import { agentJobsApi, agentMemoriesApi } from "@/services/api/client";
 import type { AgentMemoryCategory, AgentMemoryStatus } from "@/types/agentMemory";
 
 type ProjectMemoryListParams = { storyId?: string; status?: AgentMemoryStatus; global?: boolean };
@@ -69,5 +69,25 @@ export const useSetMemoryPinnedMutation = () => {
     return useMutation({
         mutationFn: ({ id, pinned }: { id: string; pinned: boolean }) => agentMemoriesApi.revise(id, { pinned }),
         ...invalidateAndToast(queryClient, "Pin updated")
+    });
+};
+
+// Manually enqueues distill_writer_prefs (always global — no storyId). Mirrors
+// useSuggestGraphEdgesMutation in useStoryGraphQuery.ts: fire-and-forget enqueue, no job polling —
+// the Pending tab's own query is what the user checks afterward.
+export const useSuggestWriterPrefsMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: () => agentJobsApi.enqueue({ jobType: "distill_writer_prefs" }),
+        onSuccess: job => {
+            queryClient.invalidateQueries({ queryKey: projectMemoryKeys.all });
+            queryClient.invalidateQueries({ queryKey: ["agentJobs"] });
+            toast.success(
+                job.status === "running" || job.status === "queued"
+                    ? "Checking recent chat activity for writer preferences…"
+                    : "A writer-preferences check already ran recently"
+            );
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to queue writer-preferences check")
     });
 };

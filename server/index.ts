@@ -44,6 +44,7 @@ import storyMapsRouter from "./routes/storyMaps.js";
 import storyTimelineRouter from "./routes/storyTimeline.js";
 import ttsRouter from "./routes/tts.js";
 import usersRouter from "./routes/users.js";
+import writerPrefsSettingsRouter from "./routes/writerPrefsSettings.js";
 
 // ES module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -167,6 +168,7 @@ app.use("/api/humanizer", humanizerRouter);
 app.use("/api/auto-humanizer", autoHumanizerRouter);
 app.use("/api/beats", beatsRouter);
 app.use("/api/grammar", grammarRouter);
+app.use("/api/writer-prefs", writerPrefsSettingsRouter);
 app.use("/api/outline", outlineRouter);
 app.use("/api/outline-characters", outlineCharactersRouter);
 app.use("/api/outline-import", outlineImportRouter);

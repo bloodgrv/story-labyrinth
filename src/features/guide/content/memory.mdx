@@ -36,7 +36,15 @@ A **pending** memory gets **Approve** / **Reject**. Anything **pending or active
 - **Chat context** — any chat's "Context & memory" section has an **Include project memory** toggle (off by default). When on, active memories (pinned ones guaranteed, others via relevance search) are included.
 - **Scanner** — the RAG Scanner can read active memory for contradiction checks when opted in per-scan, alongside its own Codex/Timeline checks.
 
-## 5. Troubleshooting
+## 5. Writer Preferences (cross-project)
+
+*Path: **Settings → Writing tools → Writer Preferences***
+
+A separate, story-independent view of the same memory system, scoped to `writer_pref` notes that apply across every project rather than one story. **New Note** here always lands globally.
+
+An **Auto-learn from chat activity** toggle (off by default) lets a daily background pass review your recent chat messages across every story, looking for genuinely recurring craft/workflow patterns — not one-off story facts — and propose them here as **pending** rows, same review step as anything else. **Check now** runs the same check immediately, regardless of the toggle.
+
+## 6. Troubleshooting
 
 | Problem | What's happening |
 | --- | --- |

@@ -17,6 +17,7 @@ export const JOB_TYPE_LABELS: Record<AgentJobType, string> = {
     rag_scan_story: "Story scan",
     prune_history: "History cleanup",
     distill_memory: "Memory distillation",
+    distill_writer_prefs: "Writer preferences check",
     suggest_codex_updates: "Codex update suggestions",
     graph_suggest_edges: "Relationship suggestions",
     timeline_suggest_pins: "Timeline pin suggestions",

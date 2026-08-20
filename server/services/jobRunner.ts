@@ -12,6 +12,7 @@ import {
 import { runAiReviewDeepJob, runAiReviewQuickJob } from "./jobs/aiReviewJobs.js";
 import { runSuggestCodexUpdatesJob } from "./jobs/codexCompileJob.js";
 import { runDistillMemoryJob } from "./jobs/distillMemoryJob.js";
+import { runDistillWriterPrefsJob } from "./jobs/distillWriterPrefsJob.js";
 import { runGraphSuggestEdgesJob } from "./jobs/graphSuggestEdgesJob.js";
 import { runReconcileIndexJob } from "./jobs/reconcileIndexJob.js";
 import { runPruneHistoryJob } from "./jobs/pruneHistoryJob.js";
@@ -50,6 +51,9 @@ const PRUNE_HISTORY_CADENCE_MS = 24 * 60 * 60_000; // global
 // opted in via stories.unattendedScanEnabled (default false). No per-story interval setting —
 // see that column's own schema.ts comment for why a single fixed cadence was chosen.
 const UNATTENDED_SCAN_CADENCE_MS = 24 * 60 * 60_000;
+// distill_writer_prefs — same daily cadence class, gated behind writerPrefsSettings.autoDistillEnabled
+// (default false) instead of a per-story column since this job is always global.
+const WRITER_PREFS_DISTILL_CADENCE_MS = 24 * 60 * 60_000;
 
 type JobHandler = (job: AgentJob) => Promise<unknown>;
 
@@ -59,6 +63,7 @@ const HANDLERS: Record<AgentJobType, JobHandler> = {
     rag_scan_story: runRagScanStoryJob,
     prune_history: runPruneHistoryJob,
     distill_memory: runDistillMemoryJob,
+    distill_writer_prefs: runDistillWriterPrefsJob,
     suggest_codex_updates: runSuggestCodexUpdatesJob,
     graph_suggest_edges: runGraphSuggestEdgesJob,
     timeline_suggest_pins: runTimelineSuggestPinsJob,
@@ -143,6 +148,13 @@ const runScheduleTick = async (): Promise<void> => {
         // distill_memory (Phase B) is excluded from the schedule tick — never auto-chained after
         // a scan completes either (see distillMemoryJob.ts's own comment). Manual
         // POST /api/agent/jobs only.
+
+        // distill_writer_prefs is the one distill_*/suggest_* job that IS scheduled here — but
+        // only when writerPrefsSettings.autoDistillEnabled is on (default off). See
+        // distillWriterPrefsJob.ts's own comment for why this job earns the exception.
+        const [writerPrefsRow] = await db.select().from(schema.writerPrefsSettings);
+        if (writerPrefsRow?.autoDistillEnabled)
+            await maybeEnqueuePeriodic("distill_writer_prefs", null, WRITER_PREFS_DISTILL_CADENCE_MS);
     } catch (error) {
         console.error("jobRunner: schedule tick failed:", (error as Error).message);
     }

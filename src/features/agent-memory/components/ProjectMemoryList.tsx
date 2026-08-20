@@ -94,7 +94,9 @@ function MemoryCard({ memory }: MemoryCardProps) {
                 <div className="flex items-center gap-2 min-w-0 flex-wrap">
                     <Badge variant="secondary">{AGENT_MEMORY_CATEGORY_LABELS[memory.category]}</Badge>
                     {(memory.sourceJobId || memory.sourceScanId) && (
-                        <span className="text-xs text-muted-foreground">via scan</span>
+                        <span className="text-xs text-muted-foreground">
+                            {memory.sourceEvidence?.[0]?.source === "chat" ? "via chat activity" : "via scan"}
+                        </span>
                     )}
                 </div>
                 <div className="flex gap-1 shrink-0">

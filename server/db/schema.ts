@@ -431,6 +431,17 @@ export const grammarSettings = sqliteTable("grammarSettings", {
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
 });
 
+// Singleton settings row gating the distill_writer_prefs background job (jobRunner.ts) — same
+// GET-auto-creates-default-row / PUT-by-id shape as grammarSettings above. Default false: this is
+// the second opt-in-periodic-LLM-job precedent after stories.unattendedScanEnabled, and every
+// other distill/suggest job in this codebase stays manual-trigger-only, so auto-enqueueing an LLM
+// call must never be a silent default.
+export const writerPrefsSettings = sqliteTable("writerPrefsSettings", {
+    id: text("id").primaryKey(),
+    autoDistillEnabled: integer("autoDistillEnabled", { mode: "boolean" }).notNull().default(false),
+    createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
+});
+
 // Lorebook Entries table
 export const lorebookEntries = sqliteTable(
     "lorebookEntries",
