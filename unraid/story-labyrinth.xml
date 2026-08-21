@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>story-labyrinth</Name>
+  <Repository>bloodgrv/story-labyrinth:latest</Repository>
+  <Registry>https://hub.docker.com/r/bloodgrv/story-labyrinth</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/bloodgrv/story-labyrinth/issues</Support>
+  <Project>https://github.com/bloodgrv/story-labyrinth</Project>
+  <Overview>
+    Story Labyrinth — a purpose-built fork of The Story Nexus for long-form fiction writing:
+    Codex-tracked character/place state, world-building chats, outline/timeline/map tools,
+    RAG-backed continuity scanning, and AI-assisted drafting. Single-account, password-protected
+    on first run. All data (SQLite DB + uploaded images) lives under the appdata path you set
+    below — back that folder up to back up everything.
+
+    After starting the container, open the WebUI and follow the one-time "Create Your Account"
+    screen. AI features need a provider configured afterward in Settings -&gt; Providers &amp; keys
+    (OpenAI/OpenRouter/Grok/Gemini/local endpoint, or the built-in local in-process embedding
+    model for RAG — no external key needed for that one).
+  </Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:3000]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/bloodgrv/story-labyrinth/main/unraid/story-labyrinth.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/bloodgrv/story-labyrinth/main/public/icons/icon-512.png</Icon>
+  <!-- This image doesn't do linuxserver.io-style dynamic PUID/PGID env-var remapping at startup
+       (see entrypoint.sh) -- docker-compose.yml sets the run-as user via the container's `user:`
+       directive, not an env var the app reads. --user is the raw-docker-run equivalent of that
+       same directive. 99:100 (nobody:users) is Unraid's own default appdata ownership; change
+       both this and the Appdata folder's ownership together if you use a different user. -->
+  <ExtraParams>--user 99:100</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="WebUI Port" Target="3000" Default="3000" Mode="tcp" Description="Port the app listens on inside the container and is published on the host. Change the host-side value if 3000 is already taken on your Unraid box." Type="Port" Display="always" Required="true" Mask="false">3000</Config>
+  <Config Name="Appdata" Target="/app/data" Default="/mnt/user/appdata/story-labyrinth" Mode="rw" Description="Everything the app owns lives here: the SQLite database, uploaded lorebook/map images, and the local embedding model cache. Back this folder up to back up the whole app. Must be owned by the same uid:gid the container runs as (see ExtraParams above) -- Unraid's own appdata default (99:100) already matches." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/story-labyrinth</Config>
+</Container>
