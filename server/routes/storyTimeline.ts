@@ -1,5 +1,6 @@
 import { attemptPromise } from "@jfdi/attempt";
 import express from "express";
+import { z } from "zod";
 import {
     addMembership,
     approvePin,
@@ -25,6 +26,40 @@ import {
 // blockViewerMutations, already applied globally in server/index.ts) — matches storyMaps.ts's
 // posture, no requireOwner.
 const router = express.Router();
+
+// B39 extension (docs/CURRENT_BACKLOG.md P2 residual) — this route is the real write path for
+// the WB timeline template's `timeline-pin-proposal` fence (TL7, single item and Accept All),
+// as well as manual pin creation from the board UI. Previously each field was pulled off
+// `req.body` individually with an ad hoc `as` cast and no runtime type check on most of
+// them (e.g. `relativeOffsetYears as number | null` accepted whatever the client sent, including
+// a string, straight into the DB) — same "AI fence trust = client-parse -> API body" gap B39
+// closed for the codex-proposal route. `.strict()` so an unexpected field is a clean 400.
+const timelinePinCreateBodySchema = z
+    .object({
+        title: z.string().min(1),
+        blurb: z.string().nullable().optional(),
+        whenKind: z.enum(["relative", "fuzzy", "civil"]),
+        relativeOffsetYears: z.number().nullable().optional(),
+        fuzzyPhrase: z.string().nullable().optional(),
+        civilDate: z.string().nullable().optional(),
+        linkType: z.enum(["chapter", "lorebook", "note"]).nullable().optional(),
+        linkId: z.string().nullable().optional(),
+        timelineId: z.string().optional(),
+        manuscriptStatus: z.enum(["planned", "written"]).optional()
+    })
+    .strict();
+const timelinePinUpdateBodySchema = z
+    .object({
+        title: z.string().min(1).optional(),
+        blurb: z.string().nullable().optional(),
+        whenKind: z.enum(["relative", "fuzzy", "civil"]).optional(),
+        relativeOffsetYears: z.number().nullable().optional(),
+        fuzzyPhrase: z.string().nullable().optional(),
+        civilDate: z.string().nullable().optional(),
+        manualOrder: z.number().optional(),
+        manuscriptStatus: z.enum(["planned", "written"]).optional()
+    })
+    .strict();
 
 router.get("/stories/:storyId/timelines", async (req, res) => {
     const [error, result] = await attemptPromise(() => listTimelinesForStory(req.params.storyId));
@@ -127,30 +162,27 @@ router.get("/stories/:storyId/timeline-pins/by-link/:linkType/:linkId", async (r
 });
 
 router.post("/stories/:storyId/timeline-pins", async (req, res) => {
+    const parsed = timelinePinCreateBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: "Invalid timeline pin payload", details: parsed.error.issues });
+        return;
+    }
     const { title, blurb, whenKind, relativeOffsetYears, fuzzyPhrase, civilDate, linkType, linkId, timelineId, manuscriptStatus } =
-        req.body as Record<string, unknown>;
-    if (typeof title !== "string" || !title.trim()) {
-        res.status(400).json({ error: "title is required" });
-        return;
-    }
-    if (typeof whenKind !== "string" || !["relative", "fuzzy", "civil"].includes(whenKind)) {
-        res.status(400).json({ error: "whenKind must be one of relative|fuzzy|civil" });
-        return;
-    }
+        parsed.data;
 
     const [error, result] = await attemptPromise(() =>
         createPin({
             storyId: req.params.storyId,
             title,
-            blurb: (blurb as string | null | undefined) ?? null,
-            whenKind: whenKind as "relative" | "fuzzy" | "civil",
-            relativeOffsetYears: (relativeOffsetYears as number | null | undefined) ?? null,
-            fuzzyPhrase: (fuzzyPhrase as string | null | undefined) ?? null,
-            civilDate: (civilDate as string | null | undefined) ?? null,
-            linkType: (linkType as "chapter" | "lorebook" | "note" | null | undefined) ?? null,
-            linkId: (linkId as string | null | undefined) ?? null,
-            timelineId: timelineId as string | undefined,
-            manuscriptStatus: manuscriptStatus === "written" ? "written" : manuscriptStatus === "planned" ? "planned" : undefined
+            blurb: blurb ?? null,
+            whenKind,
+            relativeOffsetYears: relativeOffsetYears ?? null,
+            fuzzyPhrase: fuzzyPhrase ?? null,
+            civilDate: civilDate ?? null,
+            linkType: linkType ?? null,
+            linkId: linkId ?? null,
+            timelineId,
+            manuscriptStatus
         })
     );
     if (error) {
@@ -161,21 +193,14 @@ router.post("/stories/:storyId/timeline-pins", async (req, res) => {
 });
 
 router.patch("/timeline-pins/:id", async (req, res) => {
-    const { title, blurb, whenKind, relativeOffsetYears, fuzzyPhrase, civilDate, manualOrder, manuscriptStatus } = req.body as Record<
-        string,
-        unknown
-    >;
+    const parsed = timelinePinUpdateBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: "Invalid timeline pin payload", details: parsed.error.issues });
+        return;
+    }
+    const { title, blurb, whenKind, relativeOffsetYears, fuzzyPhrase, civilDate, manualOrder, manuscriptStatus } = parsed.data;
     const [error, result] = await attemptPromise(() =>
-        updatePin(req.params.id, {
-            title: typeof title === "string" ? title : undefined,
-            blurb: blurb === undefined ? undefined : (blurb as string | null),
-            whenKind: whenKind as "relative" | "fuzzy" | "civil" | undefined,
-            relativeOffsetYears: relativeOffsetYears === undefined ? undefined : (relativeOffsetYears as number | null),
-            fuzzyPhrase: fuzzyPhrase === undefined ? undefined : (fuzzyPhrase as string | null),
-            civilDate: civilDate === undefined ? undefined : (civilDate as string | null),
-            manualOrder: typeof manualOrder === "number" ? manualOrder : undefined,
-            manuscriptStatus: manuscriptStatus === "written" ? "written" : manuscriptStatus === "planned" ? "planned" : undefined
-        })
+        updatePin(req.params.id, { title, blurb, whenKind, relativeOffsetYears, fuzzyPhrase, civilDate, manualOrder, manuscriptStatus })
     );
     if (error) {
         res.status(400).json({ error: "Failed to update timeline pin", details: error.message });

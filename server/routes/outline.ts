@@ -1,5 +1,6 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { and, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
 import type { OutlineReorderUpdate } from "../../src/types/outline.js";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
@@ -7,6 +8,42 @@ import { getCharacterArc } from "../services/outlineArcService.js";
 import { buildOutlineItemText, indexOutlineItem, removeEntityFromIndex } from "../services/ragIndexService.js";
 
 type OutlineItemRow = typeof schema.outlineItems.$inferSelect;
+
+// B39 extension (docs/CURRENT_BACKLOG.md P2 residual) — these two custom routes are real write
+// paths for AI-fence-originated content (the outline-proposal fence and Outline Import's Accept)
+// as well as manual outline editing, and previously spread `req.body` wholesale into the
+// insert/update (only id/createdAt stripped) — same mass-assignment shape B22 found for
+// lorebookEntries.imageFilename. `.strict()` so an unexpected field is a clean 400.
+const outlineItemCreateBodySchema = z
+    .object({
+        id: z.string().optional(),
+        storyId: z.string(),
+        parentId: z.string().nullable().optional(),
+        type: z.enum(["chapter", "scene"]).optional(),
+        title: z.string(),
+        summary: z.string().nullable().optional(),
+        wordCountTarget: z.number().nullable().optional(),
+        order: z.number().optional(),
+        source: z.enum(["manual", "ai_suggested"]).optional(),
+        status: z.enum(["confirmed", "pending", "rejected"]).optional(),
+        chapterId: z.string().nullable().optional(),
+        includeInAi: z.boolean().optional()
+    })
+    .strict();
+const outlineItemUpdateBodySchema = z
+    .object({
+        parentId: z.string().nullable().optional(),
+        type: z.enum(["chapter", "scene"]).optional(),
+        title: z.string().optional(),
+        summary: z.string().nullable().optional(),
+        wordCountTarget: z.number().nullable().optional(),
+        order: z.number().optional(),
+        source: z.enum(["manual", "ai_suggested"]).optional(),
+        status: z.enum(["confirmed", "pending", "rejected"]).optional(),
+        chapterId: z.string().nullable().optional(),
+        includeInAi: z.boolean().optional()
+    })
+    .strict();
 
 // Indexes or de-indexes an outline item per its own includeInAi flag (the Notes/Outline ↔ chat
 // bridge's per-item gate — docs/Notes_Outline_Chat_Bridges_Design.md). Same fire-and-forget /
@@ -50,11 +87,16 @@ export default createCrudRouter({
         router.post(
             "/",
             asyncHandler(async (req, res) => {
-                const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = req.body;
+                const parsed = outlineItemCreateBodySchema.safeParse(req.body);
+                if (!parsed.success) {
+                    res.status(400).json({ error: "Invalid outline item payload", details: parsed.error.issues });
+                    return;
+                }
+                const { id, ...rest } = parsed.data;
                 const now = new Date();
                 const [created] = await db
                     .insert(schema.outlineItems)
-                    .values({ id: req.body.id || crypto.randomUUID(), ...rest, createdAt: now, updatedAt: now })
+                    .values({ id: id || crypto.randomUUID(), ...rest, createdAt: now, updatedAt: now })
                     .returning();
                 syncOutlineItemIndex(created);
                 res.status(201).json(created);
@@ -66,7 +108,12 @@ export default createCrudRouter({
         router.put(
             "/:id",
             asyncHandler(async (req, res) => {
-                const { id: _id, createdAt: _createdAt, ...updates } = req.body;
+                const parsed = outlineItemUpdateBodySchema.safeParse(req.body);
+                if (!parsed.success) {
+                    res.status(400).json({ error: "Invalid outline item payload", details: parsed.error.issues });
+                    return;
+                }
+                const updates = parsed.data;
                 const [updated] = await db
                     .update(schema.outlineItems)
                     .set({ ...updates, updatedAt: new Date() })

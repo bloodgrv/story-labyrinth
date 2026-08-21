@@ -1,5 +1,6 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { db, schema } from "../db/client.js";
 import { createCrudRouter } from "../lib/crud.js";
 import { sanitizeNoteHtml } from "../lib/sanitizeHtml.js";
@@ -8,6 +9,37 @@ import { resolveNotesFolderId } from "../services/folderService.js";
 import { unlinkPinsForSource } from "../services/storyTimelineService.js";
 
 type NoteRow = typeof schema.notes.$inferSelect;
+
+// B39 extension (docs/CURRENT_BACKLOG.md P2 residual) — these two custom routes are real
+// write paths for AI-fence-originated content (note-proposal/note-split-proposal Accept), not
+// just the manual NoteEditor, and previously spread `req.body` wholesale into the insert/update
+// (only id/createdAt/updatedAt stripped) — same shape as B22's lorebookEntries.imageFilename
+// mass-assignment gap. `.strict()` so an unexpected field is a clean 400, not silently stored.
+const noteTypeSchema = z.enum(["idea", "research", "todo", "other"]);
+const noteCreateBodySchema = z
+    .object({
+        id: z.string().optional(),
+        storyId: z.string(),
+        title: z.string(),
+        content: z.string(),
+        type: noteTypeSchema,
+        includeInAi: z.boolean().optional(),
+        pinned: z.boolean().optional(),
+        folderId: z.string().nullable().optional(),
+        tags: z.array(z.string()).nullable().optional()
+    })
+    .strict();
+const noteUpdateBodySchema = z
+    .object({
+        title: z.string().optional(),
+        content: z.string().optional(),
+        type: noteTypeSchema.optional(),
+        includeInAi: z.boolean().optional(),
+        pinned: z.boolean().optional(),
+        folderId: z.string().nullable().optional(),
+        tags: z.array(z.string()).nullable().optional()
+    })
+    .strict();
 
 // Indexes or de-indexes a note per its own includeInAi flag (the Notes/Outline ↔ chat bridge's
 // per-item gate — docs/Notes_Outline_Chat_Bridges_Design.md). Fire-and-forget on index (mirrors
@@ -39,19 +71,24 @@ export default createCrudRouter({
         router.post(
             "/",
             asyncHandler(async (req, res) => {
+                const parsed = noteCreateBodySchema.safeParse(req.body);
+                if (!parsed.success) {
+                    res.status(400).json({ error: "Invalid note payload", details: parsed.error.issues });
+                    return;
+                }
                 // notesApi.create's own type (Omit<Note, "id"|"createdAt"|"updatedAt">) promises
                 // the caller never has to supply these — updatedAt was missing here despite that
                 // contract, which failed every create with a NOT NULL constraint error (found
                 // while verifying the Brainstorm handoff-to-Notes path, P0.4 B0-B4; also blocked
                 // the pre-existing "Save message as note"/note-proposal/New Note paths, all of
                 // which call this same route with no updatedAt in the body).
-                const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = req.body;
+                const { id, ...rest } = parsed.data;
                 // B42 (docs/CODE_REVIEW_2026-08-17.md) — content is raw HTML from
                 // react-simple-wysiwyg, hydrated straight into a contentEditable div's innerHTML
                 // on read, not rendered through React's escaped-text path.
-                if (typeof rest.content === "string") rest.content = sanitizeNoteHtml(rest.content);
+                rest.content = sanitizeNoteHtml(rest.content);
                 const now = new Date();
-                const data = { id: req.body.id || crypto.randomUUID(), ...rest, createdAt: now, updatedAt: now };
+                const data = { id: id || crypto.randomUUID(), ...rest, createdAt: now, updatedAt: now };
                 const [created] = await db.insert(table).values(data).returning();
                 syncNoteIndex(created as NoteRow);
                 res.status(201).json(created);
@@ -65,7 +102,12 @@ export default createCrudRouter({
         router.put(
             "/:id",
             asyncHandler(async (req, res) => {
-                const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...updates } = req.body;
+                const parsed = noteUpdateBodySchema.safeParse(req.body);
+                if (!parsed.success) {
+                    res.status(400).json({ error: "Invalid note payload", details: parsed.error.issues });
+                    return;
+                }
+                const updates: Record<string, unknown> = { ...parsed.data };
                 if (typeof updates.content === "string") updates.content = sanitizeNoteHtml(updates.content); // B42
                 // Was previously never set on update at all (only at create), so "Last updated"
                 // stayed frozen at creation time forever and nothing external (e.g. the "Rework in
@@ -82,7 +124,7 @@ export default createCrudRouter({
                 // mistake, 400 not 500, same convention.
                 if ("folderId" in updates) {
                     const [folderError, resolvedFolderId] = await attemptPromise(() =>
-                        resolveNotesFolderId(existing as NoteRow, { folderId: updates.folderId })
+                        resolveNotesFolderId(existing as NoteRow, { folderId: parsed.data.folderId })
                     );
                     if (folderError) {
                         res.status(400).json({ error: folderError.message });
