@@ -226,6 +226,16 @@ The script automatically bumps the version, pushes to GitHub, and opens the rele
 
 **Note**: Docker images are only built on releases, not on every commit to main.
 
+## Screenshots
+
+14 themes ship (plus a "System" option that follows your OS) — a few of them, to show the range:
+
+| | |
+|---|---|
+| ![Dashboard — Black & Sand](screenshots/dashboard-black-sand.png)<br>Dashboard — *Black & Sand* | ![Editor — Midnight](screenshots/editor-midnight.png)<br>Editor + docked chat — *Midnight* |
+| ![Lorebook — Ember](screenshots/lorebook-ember.png)<br>Lorebook/Codex — *Ember* | ![Story Timeline — Mid Slate](screenshots/timeline-mid-slate.png)<br>Story Timeline — *Mid Slate* |
+| ![Lorebook — Light](screenshots/lorebook-light.png)<br>Lorebook/Codex — *Light* | ![Lorebook — Forest](screenshots/lorebook-forest.png)<br>Lorebook/Codex — *Forest* |
+
 ## Project Structure
 
 ### Backend
