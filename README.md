@@ -1,12 +1,37 @@
 # Story Labyrinth
 
-*A personal, freeware fork of [The Story Nexus](https://github.com/JonSilver/TheStoryNexus) by Jon Silver — renamed Story Labyrinth, still evolving.*
+*A personal, freeware fork of [The Story Nexus](https://github.com/JonSilver/TheStoryNexus) by Jon Silver — renamed Story Labyrinth, extensively rebuilt since.*
 
-A powerful AI-driven story writing web application built with Express, React, and TypeScript.
+A self-hosted, AI-assisted writing workspace for long-form fiction, built around **continuity**: a Codex that tracks concrete character/place state over time (wardrobe, wounds, items, custom fields) with full snapshot history, a hybrid RAG index + scanner that checks your manuscript against it, and a set of purpose-built chat desks (world-building, outline, research, brainstorming, notes, and the main editor) — all gated behind an explicit propose → review → approve loop, never a silent AI write.
 
 ## Overview
 
-Story Labyrinth is a local-first web application designed for writers who want to leverage AI to enhance their creative writing process. It provides a comprehensive environment for creating, organizing, and developing stories with the assistance of AI-powered tools. Run it on your local machine or deploy it via Docker to access from any device on your network.
+Story Labyrinth is a local-first, single-tenant web application for writers who want AI woven into a real writing workflow without losing control of their own canon. It runs as one Express + SQLite server; every device on your network (or Tailscale tailnet) reaches the same story data through a browser, no separate desktop client. Deploy it with Docker (including a ready-made Unraid template) or run it directly with Node.
+
+## Key Features
+
+**Codex & continuity**
+- Lorebook entries (characters, locations, items, events, factions, notes...) with a markdown-first **Lore Sheet** per entry, plus optional structured **Codex state** (wardrobe/appearance/wounds/items/custom fields) for characters and locations that need concrete, trackable facts
+- Every Codex change goes through **propose → approve** — chat-suggested or user-typed, always reviewed before it lands, with full snapshot history and one-click restore per entry
+- Hidden **Secrets** with chapter-scoped reveal tracking, and an **AI Review** desk (Quick + staged Deep modes) that flags continuity/voice/line issues separately from the factual RAG scanner
+- Hybrid **RAG index** (SQLite FTS5 + vector search via `sqlite-vec`, with an optional fully local in-process embedding model — no external API key needed) powers both chat context and a dedicated continuity **Scanner**, chapter-scoped or story-wide, running as a background job with resumable scans
+- A **Relationship Graph** (character/location/faction connections, AI-suggested + pending review) and a **Story Timeline** (in-world chronology board, relative/fuzzy/civil dates, AI-proposed pins) round out the "what's true in this story" picture
+
+**Writing surfaces**
+- A Lexical-based rich text editor with chapter versioning (parallel AI-regenerated or manual draft tabs), linear undo/restore history, and an in-editor RAG Scanner + AI Review panel
+- **Maps** — sketch-canvas location maps (Excalidraw), AI-proposable, exportable to/from a location's place sheet
+- Six purpose-built chat desks, each with its own history and context rules: **World-Building** (per-template guided interviews, including optional psych/sexuality profile modules), **Outline**, **Research** (live web search, story-aware or global), **Editor** (docked alongside your chapter, with in-place selection rework), **Brainstorm** (project intake/orientation hub), and **Notes**
+- A **Chat Shuttle** for routing an off-topic question from any writing chat to Research without losing your place, and a durable per-story **checklist tray** for every AI handoff/proposal that's waiting on your review
+
+**AI & extensibility**
+- Multi-provider AI routing (OpenAI, OpenRouter, xAI Grok — including OAuth, Google Gemini, or a local OpenAI-compatible endpoint like LM Studio) with **per-feature endpoint overrides**, so writing and background jobs (scanning, embedding, etc.) can run on different machines
+- **MCP Tool Connections** — connect this app to your own external MCP servers (tool-calling from chat, propose → approve per call) and/or expose a small set of this app's own tools (lorebook search, chapter/notes/timeline reads) to an external MCP client via a bearer-token-gated server
+- Auto Humanizer, TTS narration (Speechify), Name Generator with 24 vendored region packs, and Character/World-Building "playbook packs" for guided interview depth
+- Project Memory (durable, approved facts a chat can draw on across sessions) and a per-story Activity indicator for background jobs
+
+**Everything else**
+- Multi-format document import (extract lorebook entries from an existing character bible/PDF/DOCX), baseline + Kindle-ready EPUB export, PDF/HTML/Markdown export
+- Owner/Editor/Viewer roles, 14-day soft-delete Trash across every entity type, and a Settings page covering providers/keys, feature routing, local embeddings, and background-job logs
 
 ## The Road to Here
 
@@ -20,35 +45,22 @@ The code quality has been improved significantly too, and I'm gradually ripping 
 
 I'm also in the process of reworking the UI/UX to be more of a writer's workspace.
 
-## Key Features
-
-- **Story Management**: Create and organize your stories with chapters, outlines, and summaries
-- **Rich Text Editor**: Write and edit your stories using a powerful Lexical-based editor
-- **AI Integration**: Generate content using AI models from OpenAI, Google Gemini, OpenRouter, or locally hosted models
-- **Custom Prompts**: Create and manage custom prompts to guide AI generation
-- **Editor Chat**: A docked AI conversation alongside your chapter, with prose you can accept directly into your story
-- **Lorebook**: Maintain a database of characters, locations, items, events, and notes for your story
-- **Local-First**: All your data is stored locally in a SQLite database
-- **Data Migration**: Import data from previous IndexedDB-based versions or export your current database
-
 ## Technology Stack
 
-- **Backend**: Express.js, SQLite, Drizzle ORM, better-sqlite3
-- **Frontend**: React, TypeScript, Vite, Tailwind CSS, Shadcn UI
-- **State Management**: TanStack Query v5
-- **Routing**: React Router v7
-- **Database**: SQLite with Drizzle ORM
-- **Text Editor**: Lexical v0.24.0
-- **UI Components**: Shadcn UI, Lucide React icons
-- **Notifications**: React Toastify
+- **Backend**: Express 5, SQLite (`better-sqlite3`), Drizzle ORM, `sqlite-vec` (hybrid FTS5 + vector RAG)
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, Shadcn UI, TanStack Query v5, React Router v7
+- **Text Editor**: Lexical v0.48
+- **Diagramming/canvas**: React Flow (Relationship Graph, legacy Story Map), Excalidraw (Maps)
+- **AI**: OpenAI-compatible clients for every provider (OpenAI, OpenRouter, xAI Grok incl. OAuth, Google Gemini, local endpoints), `@huggingface/transformers` for the optional local in-process embedding model, `@modelcontextprotocol/sdk` for MCP tool connections (client + server)
+- **Validation**: Zod
 - **Development**: tsx watch (backend), Vite HMR (frontend), concurrently
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 20+
-- npm or yarn
+- Node.js 22+ (the Docker image builds on `node:22-slim`; `canvas` — used for PDF image extraction on document import — needs Cairo/Pango/JPEG/GIF/RSVG system libs if you're not using Docker)
+- npm
 
 ### Development
 
@@ -136,6 +148,16 @@ Build and run from source:
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
+#### Unraid
+
+A ready-made [Community Applications template](unraid/story-labyrinth.xml) is included — in Unraid's Docker tab, **Add Container** → **Template** → paste:
+
+```
+https://raw.githubusercontent.com/bloodgrv/story-labyrinth/main/unraid/story-labyrinth.xml
+```
+
+It maps the WebUI port and an appdata volume, and sets the container to run as `99:100` (Unraid's own default appdata ownership) — this image doesn't do linuxserver.io-style dynamic PUID/PGID remapping at startup, so if you use a different appdata owner, update both the container's user and the folder's ownership together.
+
 ### Remote Access via Tailscale
 
 Rather than exposing the container to your LAN or the public internet, you can make it reachable only to devices on your [Tailscale](https://tailscale.com) network (tailnet). This pairs well with the app's Owner/Editor/Viewer login system: Tailscale gates *who can reach the server at all*, and the app's own login gates *what they can do once they're on it*.
@@ -204,28 +226,19 @@ The script automatically bumps the version, pushes to GitHub, and opens the rele
 
 **Note**: Docker images are only built on releases, not on every commit to main.
 
-## Screenshots
-
-![App Screenshot](screenshots/Home.jpg)
-![App Screenshot](screenshots/Stories.jpg)
-![App Screenshot](screenshots/Prompts.jpg)
-![App Screenshot](screenshots/Lorebook.jpg)
-![App Screenshot](screenshots/CreateChapter.jpg)
-![App Screenshot](screenshots/Editor.jpg)
-![App Screenshot](screenshots/GeneratedProse.jpg)
-
 ## Project Structure
 
 ### Backend
 
 - `server/` - Express.js API server
     - `db/` - Database schema, client, migrations, and seeding
-    - `routes/` - API route handlers (stories, chapters, prompts, lorebook, etc.)
+    - `routes/` - API route handlers (stories, chapters, lorebook, codex, chats, rag, storyTimeline, storyGraph, storyMaps, agentJobs, mcpConnections, mcpServer, etc.)
+    - `services/` - Business logic (RAG indexing/scanning, chat context assembly, AI client routing, background jobs, and one service per major feature)
     - `index.ts` - Server entry point
 
 ### Frontend
 
-- `src/features/` - Feature modules (stories, chapters, prompts, ai, lorebook, brainstorm, notes)
+- `src/features/` - Feature modules, one directory per major capability: `lorebook`, `chat`, `chapters`/`chapter-versions`/`chapter-history`, `outline`, `story-timeline`, `story-maps`, `story-graph` (Relationship Graph), `rag-scanner`, `ai-review`, `agent-memory` (Project Memory), `mcp`, `brainstorm`, `notes`, `playbooks`, `name-generator`, `auto-humanizer`, `tts`, `trash`, and more
     - `*/hooks/` - TanStack Query hooks for data fetching
     - `*/pages/` - Route components
     - `*/components/` - Feature-specific UI components
@@ -239,7 +252,7 @@ The script automatically bumps the version, pushes to GitHub, and opens the rele
 
 ### Database Export/Import
 
-Export and import your entire database from the AI Settings page:
+Export and import your entire database from Settings → Data:
 
 **Export**: Downloads a JSON file containing all your data (stories, chapters, prompts, lorebook entries, etc.)
 
@@ -271,6 +284,6 @@ Format:
 }
 ```
 
-# Roadmap/TODO
+## Roadmap
 
-- [ ] Replace the component-based guide with markdown-driven documentation presented by a small set of components.
+This fork has grown far beyond a single TODO list — current priorities and what's already shipped are tracked in [`docs/CURRENT_BACKLOG.md`](docs/CURRENT_BACKLOG.md), with the reasoning behind load-bearing decisions in [`DECISIONS.md`](DECISIONS.md). Both are kept current; trust them over anything else if they disagree.
