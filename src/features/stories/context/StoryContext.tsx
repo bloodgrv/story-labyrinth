@@ -1,6 +1,16 @@
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import type { GenerateNamesResponse, UsedNameType } from "@/types/nameGenerator";
 import type { LorebookEntry } from "@/types/story";
 import type { MapSketchElementSkeleton } from "@/types/storyMaps";
+
+export interface NameGeneratorRecentBatch {
+    id: string;
+    label: string;
+    result: GenerateNamesResponse;
+    // The kind this batch was generated with — not necessarily the panel's *current* kind
+    // selection, if the user switched Surname/First name between generates.
+    nameType: UsedNameType;
+}
 
 export type WorkspaceTool =
     | "stories"
@@ -105,6 +115,13 @@ interface StoryContextType {
     // the effect (a boolean set back to its own value wouldn't).
     chapterContentRefreshToken: number;
     refreshChapterContent: () => void;
+    // Name Generator's recent generate-batch results, keyed by storyId. Lives here rather than in
+    // NameGeneratorPanel's own state because switching workspace tools unmounts/remounts the panel
+    // (MainContent's tool switch is a plain conditional render, not a hide/show) — a local useState
+    // there loses every result the moment the user tabs away, same problem chatDrafts above solves
+    // for chat composer text.
+    nameGeneratorBatches: Record<string, NameGeneratorRecentBatch[]>;
+    setNameGeneratorBatches: (storyId: string, batches: NameGeneratorRecentBatch[]) => void;
 }
 
 const StoryContext = createContext<StoryContextType | undefined>(undefined);
@@ -150,6 +167,9 @@ export function StoryProvider({ children }: { children: ReactNode }) {
         setChatDrafts(prev => (text ? { ...prev, [chatId]: text } : Object.fromEntries(Object.entries(prev).filter(([id]) => id !== chatId))));
     const [chapterContentRefreshToken, setChapterContentRefreshToken] = useState(0);
     const refreshChapterContent = () => setChapterContentRefreshToken(token => token + 1);
+    const [nameGeneratorBatches, setNameGeneratorBatchesState] = useState<Record<string, NameGeneratorRecentBatch[]>>({});
+    const setNameGeneratorBatches = (storyId: string, batches: NameGeneratorRecentBatch[]) =>
+        setNameGeneratorBatchesState(prev => ({ ...prev, [storyId]: batches }));
 
     const [currentTool, setCurrentToolState] = useState<WorkspaceTool>(() => {
         const storedStoryId = localStorage.getItem(STORAGE_KEY_STORY_ID);
@@ -239,7 +259,9 @@ export function StoryProvider({ children }: { children: ReactNode }) {
                 chatDrafts,
                 setChatDraft,
                 chapterContentRefreshToken,
-                refreshChapterContent
+                refreshChapterContent,
+                nameGeneratorBatches,
+                setNameGeneratorBatches
             }}
         >
             {children}

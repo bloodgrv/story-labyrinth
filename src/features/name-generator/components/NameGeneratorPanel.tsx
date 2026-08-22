@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useStoryContext } from "@/features/stories/context/StoryContext";
-import type { GenerateKind, GenerateNamesResponse, NamePoolGender, UsedNameType } from "@/types/nameGenerator";
+import { useStoryContext, type NameGeneratorRecentBatch } from "@/features/stories/context/StoryContext";
+import type { GenerateKind, NamePoolGender, UsedNameType } from "@/types/nameGenerator";
 import {
     useAddFavoriteMutation,
     useFavoritesQuery,
@@ -25,15 +25,6 @@ import { ImportPoolDialog } from "./ImportPoolDialog";
 // hitting Generate again doesn't lose earlier suggestions the user hasn't picked from yet.
 const MAX_RECENT_BATCHES = 3;
 
-interface RecentBatch {
-    id: string;
-    label: string;
-    result: GenerateNamesResponse;
-    // The kind this batch was generated with — not necessarily the panel's *current* kind
-    // selection, if the user switched Surname/First name between generates.
-    nameType: UsedNameType;
-}
-
 // v1 core coverage (docs/Name_Generator_Design.md v0.4, locked decisions #2/#12) — used as a
 // fallback before the region list derived from actual pools (below) has loaded. NG5 import packs
 // can bring their own regions, so the Region select is derived from whatever pools actually exist
@@ -44,7 +35,7 @@ const FALLBACK_REGIONS = ["US", "UK"];
 const kindToNameType = (kind: GenerateKind): UsedNameType => (kind === "surname" ? "surname" : kind === "full_name" ? "full" : "first");
 
 export function NameGeneratorPanel() {
-    const { currentStoryId, setPendingLorebookSeed, setCurrentTool } = useStoryContext();
+    const { currentStoryId, setPendingLorebookSeed, setCurrentTool, nameGeneratorBatches, setNameGeneratorBatches } = useStoryContext();
     const [kind, setKind] = useState<GenerateKind>("first_name");
     const [gender, setGender] = useState<NamePoolGender | "any">("any");
     const [region, setRegion] = useState<string>("any");
@@ -52,10 +43,10 @@ export function NameGeneratorPanel() {
     const [count, setCount] = useState(5);
     const [maxLength, setMaxLength] = useState("");
     const [startsWith, setStartsWith] = useState("");
-    const [recentBatches, setRecentBatches] = useState<RecentBatch[]>([]);
     const [importOpen, setImportOpen] = useState(false);
 
     const storyId = currentStoryId ?? "";
+    const recentBatches = nameGeneratorBatches[storyId] ?? [];
     const generateMutation = useGenerateNamesMutation();
     const markUsedMutation = useMarkNameUsedMutation();
     const saveDefaultsMutation = useSaveStoryDefaultsMutation();
@@ -118,7 +109,8 @@ export function NameGeneratorPanel() {
             },
             {
                 onSuccess: data => {
-                    setRecentBatches(prev => [{ id: crypto.randomUUID(), label, result: data, nameType }, ...prev].slice(0, MAX_RECENT_BATCHES));
+                    const batch: NameGeneratorRecentBatch = { id: crypto.randomUUID(), label, result: data, nameType };
+                    setNameGeneratorBatches(storyId, [batch, ...recentBatches].slice(0, MAX_RECENT_BATCHES));
                     saveDefaultsMutation.mutate({
                         storyId,
                         era: usesGenderEra && era !== "any" ? era : null,
@@ -128,6 +120,10 @@ export function NameGeneratorPanel() {
                 }
             }
         );
+    };
+
+    const handleCloseBatch = (batchId: string) => {
+        setNameGeneratorBatches(storyId, recentBatches.filter(b => b.id !== batchId));
     };
 
     const handleCreateCodexEntry = (name: string) => {
@@ -187,9 +183,20 @@ export function NameGeneratorPanel() {
                             <CardTitle className="text-base">{batchIndex === 0 ? "Results" : "Earlier results"}</CardTitle>
                             <span className="text-xs text-muted-foreground">{batch.label}</span>
                         </div>
-                        {batch.result.excludedCount > 0 && (
-                            <Badge variant="outline">{batch.result.excludedCount} excluded (already used or a character name)</Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {batch.result.excludedCount > 0 && (
+                                <Badge variant="outline">{batch.result.excludedCount} excluded (already used or a character name)</Badge>
+                            )}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                title="Dismiss these results"
+                                onClick={() => handleCloseBatch(batch.id)}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </CardHeader>
                     <CardContent className="space-y-2">
                         {batch.nameType === "full" ? (
