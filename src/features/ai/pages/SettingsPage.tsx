@@ -41,6 +41,8 @@ import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { McpConnectionsSettingsCard } from "@/features/mcp/components/McpConnectionsSettingsCard";
 import { McpServerExposeCard } from "@/features/mcp/components/McpServerExposeCard";
 import { TtsSettingsCard } from "@/features/tts/components/TtsSettingsCard";
+import { UpdatesSettingsCard } from "@/features/ai/components/UpdatesSettingsCard";
+import { useUpdateModeQuery } from "@/features/ai/hooks/useUpdateQuery";
 import type { ChatMode } from "@/types/story";
 
 // Settings IA (S0, docs/Transfer_Log_And_Settings_IA_Design.md) — previously one long undifferentiated
@@ -59,6 +61,7 @@ const SECTIONS = [
     "logs",
     "data",
     "trash",
+    "updates",
     "guide",
     "scanner",
     "users"
@@ -80,6 +83,8 @@ export default function SettingsPage() {
     });
 
     const { data: settings, isLoading: isLoadingSettings } = useAISettingsQuery();
+    const { data: updateMode } = useUpdateModeQuery();
+    const isPortableBuild = updateMode?.portable ?? false;
 
     const updateKeyMutation = useUpdateAPIKeyMutation();
     const updateLocalUrlMutation = useUpdateLocalApiUrlMutation();
@@ -153,6 +158,11 @@ export default function SettingsPage() {
                             <TabsTrigger value="trash" className="justify-start w-full data-[state=active]:bg-muted">
                                 Trash
                             </TabsTrigger>
+                            {isOwner && isPortableBuild && (
+                                <TabsTrigger value="updates" className="justify-start w-full data-[state=active]:bg-muted">
+                                    Updates
+                                </TabsTrigger>
+                            )}
                             <TabsTrigger value="guide" className="justify-start w-full data-[state=active]:bg-muted">
                                 Guide
                             </TabsTrigger>
@@ -377,6 +387,12 @@ export default function SettingsPage() {
                             <TabsContent value="trash" className="mt-0 space-y-6">
                                 <TrashCard />
                             </TabsContent>
+
+                            {isOwner && isPortableBuild && (
+                                <TabsContent value="updates" className="mt-0 space-y-6">
+                                    <UpdatesSettingsCard />
+                                </TabsContent>
+                            )}
 
                             <TabsContent value="guide" className="mt-0">
                                 <GuideTabs />

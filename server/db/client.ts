@@ -25,6 +25,14 @@ if (!fs.existsSync(DB_PATH)) {
     }
 }
 
+// better-sqlite3 won't create a missing parent directory itself — throws "Cannot open database
+// because the directory does not exist" instead. Found live (2026-08-22) against the portable
+// build's release zip: Compress-Archive doesn't reliably preserve an empty directory, so a
+// from-scratch extract shipped with no data/ folder at all. Docker's entrypoint already
+// pre-creates /app/data, but this is a cheap, deployment-mode-agnostic belt-and-suspenders fix
+// rather than relying on every packaging path to remember to do it.
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+
 // Create SQLite connection
 const sqlite = new Database(DB_PATH);
 

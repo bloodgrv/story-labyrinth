@@ -18,6 +18,7 @@
         "build": "tsc && tsc --project server/tsconfig.json && vite build",
         "postbuild": "node server/scripts/copyGuideContent.mjs && node server/scripts/copyMigrations.mjs",
         "start": "cross-env NODE_ENV=production NODE_OPTIONS=--use-system-ca node dist/server/server/index.js",
+        "build:portable": "node scripts/build-portable.mjs",
         "test": "vitest run",
         "test:watch": "vitest",
         "db:generate": "drizzle-kit generate",

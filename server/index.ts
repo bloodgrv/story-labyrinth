@@ -47,6 +47,7 @@ import storyMapRouter from "./routes/storyMap.js";
 import storyMapsRouter from "./routes/storyMaps.js";
 import storyTimelineRouter from "./routes/storyTimeline.js";
 import ttsRouter from "./routes/tts.js";
+import updateRouter from "./routes/update.js";
 import usersRouter from "./routes/users.js";
 import writerPrefsSettingsRouter from "./routes/writerPrefsSettings.js";
 
@@ -152,6 +153,10 @@ app.use("/mcp", mcpServerRouter);
 // System-level infrastructure (LLM-spend-triggering, story-wide reindexing) that a
 // viewer/editor has no legitimate reason to poke at directly — matching /api/admin/ai/users.
 app.use("/api/agent/jobs", requireOwner, agentJobsRouter);
+// Portable-build self-updater (see scripts/portable-updater/) — inert (mode: "portable" false,
+// /check and /start both no-op) outside PORTABLE_BUILD=1, but still mounted unconditionally,
+// matching every other requireOwner-gated router here.
+app.use("/api/update", requireOwner, updateRouter);
 // Memory approval is an editorial decision (analogous to Codex proposal approval, editor-allowed
 // today), not system administration — no requireOwner here, matching /api/codex's auth level.
 app.use("/api/agent/memories", agentMemoriesRouter);

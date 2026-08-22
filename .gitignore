@@ -16,6 +16,11 @@ dist-ssr
 # downloaded ONNX weights, not source. See docs/Local_Embeddings_Design.md.
 .embedding-model-cache
 
+# Windows portable build output (scripts/build-portable.mjs) — generated, not source.
+.portable-build-cache
+portable-build
+Story-Labyrinth-portable-win-x64.zip
+
 # Editor directories and files
 .idea
 .DS_Store

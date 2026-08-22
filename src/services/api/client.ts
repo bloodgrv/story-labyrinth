@@ -48,6 +48,7 @@ export { storyMapsApi } from "./storyMapsClient";
 export { storyTimelineApi } from "./storyTimelineClient";
 export { trashApi } from "./trashClient";
 export { ttsApi } from "./ttsClient";
+export { updateApi } from "./updateClient";
 export { usersApi } from "./usersClient";
 
 // Auth API
