@@ -1,7 +1,15 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { type Request, type Response, Router } from "express";
-import { readCookie, sessionCookieOptions, SESSION_COOKIE_NAME } from "../middleware/auth.js";
-import { endSession, getLoginLockoutSeconds, isSetupComplete, login, registerUser, validateSession } from "../services/authService.js";
+import { readCookie, requireAuth, sessionCookieOptions, SESSION_COOKIE_NAME } from "../middleware/auth.js";
+import {
+    endSession,
+    getLoginLockoutSeconds,
+    isSetupComplete,
+    login,
+    registerUser,
+    setOnboardingTourCompleted,
+    validateSession
+} from "../services/authService.js";
 
 const router = Router();
 
@@ -29,8 +37,33 @@ router.get(
             setupComplete,
             authenticated: !!user,
             username: user?.username ?? null,
-            role: user?.role ?? null
+            role: user?.role ?? null,
+            // First-Start Tour (T11) — null while logged out, same posture as username/role above.
+            onboardingTourCompleted: user?.onboardingTourCompleted ?? null
         });
+    })
+);
+
+// PATCH /api/auth/me/onboarding-tour — self-service only (requireAuth, no requireOwner): any
+// authenticated role can write their own flag, since Replay (T11 design §7) is open to any role
+// that can open Guide, not just the owner who auto-starts. Body: { completed: boolean }
+router.patch(
+    "/me/onboarding-tour",
+    requireAuth,
+    asyncHandler(async (req, res) => {
+        const { completed } = req.body as { completed?: boolean };
+        if (typeof completed !== "boolean") {
+            res.status(400).json({ error: "completed (boolean) is required" });
+            return;
+        }
+        // requireAuth above guarantees req.authUser is set on every request that reaches here.
+        if (!req.authUser) {
+            res.status(401).json({ error: "Not authenticated" });
+            return;
+        }
+
+        const user = await setOnboardingTourCompleted(req.authUser.id, completed);
+        res.json({ onboardingTourCompleted: user.onboardingTourCompleted });
     })
 );
 

@@ -32,3 +32,14 @@ export const useAuthMutations = () => {
 
     return { register, login, logout };
 };
+
+// First-Start Tour (T11) — Skip/Finish write completed=true; Replay never writes false back
+// (auto-start must never re-arm from a manual replay, per the design's own persistence lock).
+export const useSetOnboardingTourCompletedMutation = () => {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (completed: boolean) => authApi.setOnboardingTourCompleted(completed),
+        onSuccess: () => qc.invalidateQueries({ queryKey: STATUS_KEY })
+    });
+};

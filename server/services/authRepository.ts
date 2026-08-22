@@ -43,7 +43,7 @@ export const getAllUsers = async (): Promise<UserRow[]> => db.select().from(sche
 
 export const updateUser = async (
     id: string,
-    changes: Partial<Pick<UserRow, "role" | "isActive" | "passwordHash">>
+    changes: Partial<Pick<UserRow, "role" | "isActive" | "passwordHash" | "onboardingTourCompleted">>
 ): Promise<UserRow | null> => {
     const [row] = await db.update(schema.users).set(changes).where(eq(schema.users.id, id)).returning();
     return row ?? null;

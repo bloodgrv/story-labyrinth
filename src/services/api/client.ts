@@ -60,7 +60,13 @@ export const authApi = {
         }),
     login: (username: string, password: string) =>
         fetchJSON<{ user: AuthUser }>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
-    logout: () => fetchJSON<{ success: boolean }>("/auth/logout", { method: "POST" })
+    logout: () => fetchJSON<{ success: boolean }>("/auth/logout", { method: "POST" }),
+    // First-Start Tour (T11) — self-service, any authenticated role (see server/routes/auth.ts).
+    setOnboardingTourCompleted: (completed: boolean) =>
+        fetchJSON<{ onboardingTourCompleted: boolean }>("/auth/me/onboarding-tour", {
+            method: "PATCH",
+            body: JSON.stringify({ completed })
+        })
 };
 
 // Stories API

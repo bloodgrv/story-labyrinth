@@ -1222,6 +1222,10 @@ export const users = sqliteTable(
         passwordHash: text("passwordHash").notNull(), // format: scrypt$<saltHex>$<hashHex> — see passwordService.ts
         role: text("role").notNull().default("owner"), // 'owner' | 'editor' | 'viewer'
         isActive: integer("isActive", { mode: "boolean" }).notNull().default(true),
+        // First-Start Tour (T11, docs/First_Start_Tour_Design.md) — per-user, server-side (not
+        // localStorage), so it survives across devices/browsers for the same account. Only gates
+        // auto-start (owner-only, once); Replay from Guide never re-arms it back to false.
+        onboardingTourCompleted: integer("onboardingTourCompleted", { mode: "boolean" }).notNull().default(false),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
     },
     table => ({

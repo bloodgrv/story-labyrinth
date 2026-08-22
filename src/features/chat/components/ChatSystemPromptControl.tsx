@@ -111,16 +111,19 @@ export function ChatSystemPromptControl({
 
     return (
         <div className="flex items-center gap-2 flex-wrap">
-            <Tabs value={mode} onValueChange={value => onModeChange(value as ChatMode)}>
-                <TabsList>
-                    <TabsTrigger value="cloud" className={mode === "cloud" ? "raycast-pill-active" : ""}>
-                        Cloud
-                    </TabsTrigger>
-                    <TabsTrigger value="local" className={mode === "local" ? "raycast-pill-active" : ""}>
-                        Local
-                    </TabsTrigger>
-                </TabsList>
-            </Tabs>
+            {/* First-Start Tour (T11, OT5) — Brainstorm micro-step 2a. */}
+            <div data-tour="chat-mode-toggle">
+                <Tabs value={mode} onValueChange={value => onModeChange(value as ChatMode)}>
+                    <TabsList>
+                        <TabsTrigger value="cloud" className={mode === "cloud" ? "raycast-pill-active" : ""}>
+                            Cloud
+                        </TabsTrigger>
+                        <TabsTrigger value="local" className={mode === "local" ? "raycast-pill-active" : ""}>
+                            Local
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </div>
 
             <Select
                 // B11 — Radix's Select renders a hidden native <select> for form semantics; a
@@ -134,7 +137,9 @@ export function ChatSystemPromptControl({
                     if (model) onSelectModel(model);
                 }}
             >
-                <SelectTrigger className="w-[220px]">
+                {/* First-Start Tour (T11, OT5) — Brainstorm micro-step 2b. Radix's Select.Root
+                    renders no DOM node of its own, so the anchor goes on the actual trigger. */}
+                <SelectTrigger className="w-[220px]" data-tour="chat-model-picker">
                     <SelectValue placeholder={modelsInMode.length ? "Select a model" : `No ${mode} models configured`} />
                 </SelectTrigger>
                 <SelectContent>

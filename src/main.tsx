@@ -6,6 +6,8 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { AuthGate } from "@/features/auth/components/AuthGate";
 import { StoryProvider } from "@/features/stories/context/StoryContext";
+import { TourProvider } from "@/features/tour/context/TourContext";
+import { TourOverlay } from "@/features/tour/components/TourOverlay";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MainLayout } from "./components/MainLayout";
@@ -37,19 +39,25 @@ ReactDOM.createRoot(rootElement).render(
                 <AuthGate>
                     <BrowserRouter>
                         <StoryProvider>
-                            <Suspense fallback={<PageLoadingFallback />}>
-                                <Routes>
-                                    <Route path="/" element={<Workspace />} />
-                                    <Route element={<MainLayout />}>
-                                        <Route path="/stories/:storyId/read" element={<StoryReader />} />
-                                        <Route path="/series" element={<SeriesListPage />} />
-                                        <Route path="/settings" element={<SettingsPage />} />
-                                        <Route path="/guide" element={<GuidePage />} />
-                                        <Route path="/dashboard/:storyId" element={<DashboardPage />} />
-                                        <Route path="/dashboard/:storyId/chats/:chatId" element={<ChatPage />} />
-                                    </Route>
-                                </Routes>
-                            </Suspense>
+                            {/* First-Start Tour (T11) — mounted above <Routes>, not inside
+                                Workspace, so it survives the Workspace <-> Settings <-> Guide
+                                route changes its own step spine navigates through. */}
+                            <TourProvider>
+                                <TourOverlay />
+                                <Suspense fallback={<PageLoadingFallback />}>
+                                    <Routes>
+                                        <Route path="/" element={<Workspace />} />
+                                        <Route element={<MainLayout />}>
+                                            <Route path="/stories/:storyId/read" element={<StoryReader />} />
+                                            <Route path="/series" element={<SeriesListPage />} />
+                                            <Route path="/settings" element={<SettingsPage />} />
+                                            <Route path="/guide" element={<GuidePage />} />
+                                            <Route path="/dashboard/:storyId" element={<DashboardPage />} />
+                                            <Route path="/dashboard/:storyId/chats/:chatId" element={<ChatPage />} />
+                                        </Route>
+                                    </Routes>
+                                </Suspense>
+                            </TourProvider>
                         </StoryProvider>
                         <ToastContainer />
                     </BrowserRouter>

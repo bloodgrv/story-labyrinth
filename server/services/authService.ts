@@ -16,7 +16,7 @@ import {
 } from "./authRepository.js";
 
 export type UserRole = "owner" | "editor" | "viewer";
-export type AuthUser = { id: string; username: string; role: UserRole; isActive: boolean };
+export type AuthUser = { id: string; username: string; role: UserRole; isActive: boolean; onboardingTourCompleted: boolean };
 export type AuthSession = { rawToken: string; expiresAt: Date };
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — a personal/local tool, not a bank
@@ -26,7 +26,8 @@ const toAuthUser = (row: UserRow): AuthUser => ({
     id: row.id,
     username: row.username,
     role: row.role as UserRole,
-    isActive: row.isActive
+    isActive: row.isActive,
+    onboardingTourCompleted: row.onboardingTourCompleted
 });
 
 // ── Session tokens ─────────────────────────────────────────────────────────────
@@ -219,6 +220,16 @@ export const setUserActive = async (id: string, isActive: boolean): Promise<Auth
     const user = await updateUser(id, { isActive });
     if (!user) throw new Error("User not found.");
     if (!isActive) await deleteSessionsForUser(id);
+    return toAuthUser(user);
+};
+
+// First-Start Tour (T11) — self-service, any authenticated role (only owners ever auto-start
+// the tour, but Replay is open to any role that can open Guide, and Skip/Finish from a replay
+// still needs somewhere to write). Never called with `false` — Replay intentionally never
+// re-arms auto-start (design §4's "Replay does not set completed back to false").
+export const setOnboardingTourCompleted = async (id: string, completed: boolean): Promise<AuthUser> => {
+    const user = await updateUser(id, { onboardingTourCompleted: completed });
+    if (!user) throw new Error("User not found.");
     return toAuthUser(user);
 };
 

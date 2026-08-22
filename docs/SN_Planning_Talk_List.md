@@ -2,7 +2,7 @@
 
 **Purpose:** Topics queued for design grill / home sessions — **not** built unless noted.  
 **SoT priority still:** `docs/CURRENT_BACKLOG.md`  
-**Updated:** 2026-08-21 (**T12 Local System Inject shipped in full** — LI0–LI5, promoted and built same day as lock, see `CURRENT_BACKLOG.md`/`DECISIONS.md`. **T11 First-Start Tour locked** — `docs/First_Start_Tour_Design.md`, OT0–OT8, not built. Prior: code review debt B22–B44. Ship-status headers may lag — trust `CURRENT_BACKLOG.md`)
+**Updated:** 2026-08-21 (**T11 First-Start Tour shipped in full** — OT0–OT8, promoted and built same day as lock, see `CURRENT_BACKLOG.md`/`DECISIONS.md`. **T12 Local System Inject shipped in full** — LI0–LI5, same day. Prior: code review debt B22–B44. Ship-status headers may lag — trust `CURRENT_BACKLOG.md`)
 
 ---
 
@@ -61,9 +61,9 @@
 When user says “SN Planning” or “talk list”:
 
 1. Re-read live `docs/CURRENT_BACKLOG.md` — this file can lag  
-2. Open / next candidates: **T11 First-Start Tour** (locked — promote · OT0–OT8); **T8** UX polish (**parked**, grill first); **Relations · note pins**; residual P2/P1. (AR/AS/AH/**T12** shipped — verify backlog.)  
+2. Open / next candidates: **T8** UX polish (**parked**, grill first); **Relations · note pins**; residual P2/P1. (AR/AS/AH/**T11**/**T12** shipped — verify backlog.)  
 3. One topic at a time; lock to `docs/` when decided  
-4. Don’t build **T8** until grilled + locked + promoted; don’t build **T11 Tour** until **promoted** (design locked). Don’t re-offer shipped AR/AS/AH/**T12** as unbuilt.  
+4. Don’t build **T8** until grilled + locked + promoted. Don’t re-offer shipped AR/AS/AH/**T11**/**T12** as unbuilt.  
 5. Don’t re-grill closed T1–T7 / KDP / L0–L5 / **T6** / **Maps v2** / **T5** / **T9** / **T10** unless user reopens  
 6. **T11 ≠ T8** — first-run **tour** (provider + Brainstorm chrome + Guide Replay) vs chrome polish of existing UI  
 7. Notes graph ≠ Notes desk — graph pins live under **Relations** later, not T7  
@@ -72,7 +72,7 @@ When user says “SN Planning” or “talk list”:
 10. **Activity Stoplight ≠** pending-review dots — machine busy vs needs-you  
 11. **Auto Humanizer ≠ manual Humanizer** — pipeline on Accept vs select+click; ≠ AI Review rewrite  
 12. **T12 Local Inject** — ✅ shipped (2026-08-21); global local-only; Settings edits body/presets; rail = toggle+dropdown only; never delete `{{codex_context}}` as the substitute  
-13. **T11 Tour** — owner auto-once; Replay on Guide top; Skip → Guide tip; OT* ≠ Lore Sheet FS*; no hard provider gate 
+13. **T11 Tour** — ✅ shipped (2026-08-21); owner auto-once; Replay on Guide top; Skip → Guide tip; OT* ≠ Lore Sheet FS*; no hard provider gate 
 
 ---
 

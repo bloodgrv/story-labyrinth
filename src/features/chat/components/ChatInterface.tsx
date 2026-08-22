@@ -1981,7 +1981,11 @@ export function ChatInterface({
                     not yet migrated keeps the original inline Collapsible unchanged. */}
                 {contextPanelMode !== "external" && (!isEditorChat || usesCodexTray) && (
                     <Collapsible open={contextMemoryExpanded} onOpenChange={setContextMemoryExpanded}>
-                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                        {/* First-Start Tour (T11, OT5) — Brainstorm micro-step 2d. */}
+                        <CollapsibleTrigger
+                            data-tour="chat-context-memory"
+                            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                        >
                             <ChevronRight className={`h-4 w-4 transition-transform ${contextMemoryExpanded ? "rotate-90" : ""}`} />
                             Context &amp; memory
                             {!contextMemoryExpanded && toggles.armedLabels.length > 0 && (

@@ -1,5 +1,8 @@
+import { RotateCcw } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTour } from "@/features/tour/context/TourContext";
 import { GuideSearch } from "./GuideSearch";
 import { GuideProvider, mdxComponents } from "./mdx";
 import AdvancedGuide from "../content/advanced.mdx";
@@ -29,9 +32,20 @@ import TtsGuide from "../content/tts.mdx";
 // guide topic tabs only need to be defined once.
 export function GuideTabs() {
     const [activeTab, setActiveTab] = useState("basics");
+    const tour = useTour();
 
     return (
         <Tabs defaultValue="basics" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            {/* First-Start Tour (T11, OT6) — "top of Guide" per design §7's placement lock; one
+                shared GuideTabs means one button covers both the standalone /guide route and the
+                Settings "Guide" tab. Starting always runs the full spine from Welcome (design's
+                own "prefer full spine from Welcome" lock) — it never re-arms auto-start (§4). */}
+            <div className="flex justify-end mb-2">
+                <Button variant="outline" size="sm" data-tour="guide-replay" onClick={() => tour.start()}>
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    Replay tour
+                </Button>
+            </div>
             <GuideSearch onSelectTopic={setActiveTab} />
             <TabsList className="flex flex-wrap h-auto justify-start gap-1 mb-8">
                 <TabsTrigger value="basics">Basics Guide</TabsTrigger>

@@ -80,7 +80,8 @@ export function MessageInputArea({
 
     return (
         <div className="border-t border-border p-4">
-            <div className="flex gap-2">
+            {/* First-Start Tour (T11, OT5) — Brainstorm micro-step 2c (composer + send together). */}
+            <div className="flex gap-2" data-tour="chat-composer">
                 <Textarea
                     ref={textareaRef}
                     value={input}

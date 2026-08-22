@@ -199,6 +199,11 @@ export default function SettingsPage() {
                                     </CardContent>
                                 </Card>
 
+                                {/* First-Start Tour (T11, OT4) — a composite anchor on the first
+                                    provider card is enough per the design's "whichever anchors
+                                    exist; one composite highlight OK." Local's own URL field is
+                                    an equally valid path, covered in the step's copy instead. */}
+                                <div data-tour="settings-providers-panel">
                                 <ProviderCard
                                     provider="openai"
                                     title="OpenAI Configuration"
@@ -213,6 +218,7 @@ export default function SettingsPage() {
                                     onRefresh={() => refreshModelsMutation.mutate("openai")}
                                     onDefaultModelChange={modelId => updateDefaultModelMutation.mutate({ provider: "openai", modelId })}
                                 />
+                                </div>
 
                                 <ProviderCard
                                     provider="openrouter"

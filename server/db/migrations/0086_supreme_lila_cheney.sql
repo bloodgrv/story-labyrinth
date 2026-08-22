@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `onboardingTourCompleted` integer DEFAULT false NOT NULL;
