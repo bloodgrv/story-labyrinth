@@ -5,13 +5,19 @@ import { useStoriesQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useTour } from "../context/TourContext";
 import { useTourAnchor } from "../hooks/useTourAnchor";
 
-const SPOTLIGHT_PADDING = 8;
-
-// First-Start Tour (T11, OT1/OT7) — the actual chrome: a dim backdrop with a cut-out "spotlight"
-// hole around the current step's target (design §5.1), plus a floating step card with progress
-// dots and Back/Next/Skip. Portaled to <body> and z-40, deliberately under Radix's own z-50
-// dialogs/popovers (design §5.1 "below critical system modals if conflict") so e.g. the Welcome
-// step's own CreateStoryDialog renders on top of the tour chrome, not under it.
+// First-Start Tour (T11, OT1/OT7) — the actual chrome: a floating step card with progress dots
+// and Back/Next/Skip. Portaled to <body> and z-40, deliberately under Radix's own z-50 dialogs/
+// popovers (design §5.1 "below critical system modals if conflict") so e.g. the Welcome step's
+// own CreateStoryDialog renders on top of the tour chrome, not under it.
+//
+// Previously drew a dimmed backdrop with a spotlight cutout around the current step's target
+// (useTourAnchor's `rect`). Dropped (2026-08-22) — every step's target is already fully
+// interactive while the tour is active (nothing here ever blocked clicks; pointer-events-none
+// on this wrapper always let them through), but the dimming made the rest of the page *look*
+// disabled, which read as "you're locked into whatever's lit up" even though switching tabs/
+// providers worked the whole time. useTourAnchor's "missing" status (the target string never
+// appearing in the DOM) is still surfaced via the copy below — only the rect-driven visual is
+// gone, so the hook keeps running just to detect that case.
 export function TourOverlay() {
     const tour = useTour();
     const { data: stories = [] } = useStoriesQuery();
@@ -30,30 +36,8 @@ export function TourOverlay() {
     const isFinalMicro = tour.isLast && tour.current.micros && tour.microIndex === tour.current.micros.length - 1;
     const nextIsDone = isFinalStep || isFinalMicro;
 
-    const spotlightBox =
-        anchor.status === "found" && anchor.rect
-            ? {
-                  top: anchor.rect.top - SPOTLIGHT_PADDING,
-                  left: anchor.rect.left - SPOTLIGHT_PADDING,
-                  width: anchor.rect.width + SPOTLIGHT_PADDING * 2,
-                  height: anchor.rect.height + SPOTLIGHT_PADDING * 2
-              }
-            : null;
-
     return createPortal(
         <div className="fixed inset-0 z-40 pointer-events-none">
-            {spotlightBox ? (
-                <div
-                    className="fixed rounded-lg transition-all duration-200"
-                    style={{
-                        ...spotlightBox,
-                        boxShadow: "0 0 0 9999px rgba(0,0,0,0.6)"
-                    }}
-                />
-            ) : (
-                <div className="fixed inset-0 bg-black/60" />
-            )}
-
             <div className="fixed bottom-6 right-6 w-[min(24rem,calc(100vw-3rem))] pointer-events-auto">
                 <div className="rounded-lg border border-border bg-popover text-popover-foreground shadow-xl p-5 space-y-3">
                     <div className="flex items-center gap-1.5">
