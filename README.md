@@ -1,6 +1,9 @@
-# Story Labyrinth
-
-*A personal, freeware fork of [The Story Nexus](https://github.com/JonSilver/TheStoryNexus) by Jon Silver — renamed Story Labyrinth, extensively rebuilt since.*
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/brand/wordmark-dark.png">
+    <img src="public/brand/wordmark-light.png" alt="Story Labyrinth" width="480">
+  </picture>
+</p>
 
 A self-hosted, AI-assisted writing workspace for long-form fiction, built around **continuity**: a Codex that tracks concrete character/place state over time (wardrobe, wounds, items, custom fields) with full snapshot history, a hybrid RAG index + scanner that checks your manuscript against it, and a set of purpose-built chat desks (world-building, outline, research, brainstorming, notes, and the main editor) — all gated behind an explicit propose → review → approve loop, never a silent AI write.
 
@@ -32,18 +35,6 @@ Story Labyrinth is a local-first, single-tenant web application for writers who 
 **Everything else**
 - Multi-format document import (extract lorebook entries from an existing character bible/PDF/DOCX), baseline + Kindle-ready EPUB export, PDF/HTML/Markdown export
 - Owner/Editor/Viewer roles, 14-day soft-delete Trash across every entity type, and a Settings page covering providers/keys, feature routing, local embeddings, and background-job logs
-
-## The Road to Here
-
-Based on [work started by Vijaykumar Bhattacharji](https://github.com/vijayk1989/TheStoryNexusTauriApp); now extensively rewritten, reworked and reimagined.
-
-I wasn't happy with the IndexedDB-based database because I couldn't share data between devices, and I wanted a more robust backend architecture. So I rewrote the backend using Express.js and SQLite with Drizzle ORM.
-
-I didn't like Tauri because I wanted a web app that could run on any device without installing a desktop app, and possibly from a Docker container on my home server. So it was goodbye Tauri.
-
-The code quality has been improved significantly too, and I'm gradually ripping out custom code in favor of established libraries and patterns.
-
-I'm also in the process of reworking the UI/UX to be more of a writer's workspace.
 
 ## Technology Stack
 
