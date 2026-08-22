@@ -22,14 +22,16 @@ export function LocalInjectRailControl({ idPrefix }: { idPrefix: string }) {
 
     if (!settings) return null;
 
-    const presets = settings.localInjectPresets;
+    // Defensive fallback — see server/routes/ai.ts's fresh-row fix note; guards against any
+    // future path that echoes back a partial settings object.
+    const presets = settings.localInjectPresets ?? [];
     const activePresetId = settings.localInjectActivePresetId ?? null;
 
     return (
         <div className="flex items-center gap-2">
             <Switch
                 id={`${idPrefix}-local-inject-enabled`}
-                checked={settings.localInjectEnabled}
+                checked={settings.localInjectEnabled ?? false}
                 onCheckedChange={checked => updateEnabledMutation.mutate(checked)}
             />
             <Label htmlFor={`${idPrefix}-local-inject-enabled`} className="text-sm font-normal">

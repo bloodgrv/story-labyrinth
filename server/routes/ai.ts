@@ -13,14 +13,29 @@ router.get(
     asyncHandler(async (_, res) => {
         const [settings] = await db.select().from(schema.aiSettings);
         if (!settings) {
-            const initial = {
+            // Explicitly pass every JSON-mode column here rather than leaving it to its SQL-level
+            // DEFAULT — found live against a genuinely fresh production DB (never caught in dev,
+            // since the dev DB already had a settings row from before these columns existed):
+            // when a `{mode:"json"}` column's value comes purely from SQLite's own DEFAULT clause
+            // (never passed through drizzle's own `.values()`), drizzle-orm's better-sqlite3 driver
+            // does NOT run its JSON deserializer on a later `.select()` of that row — it returns
+            // the raw stored string (`"[]"`), not a parsed array, crashing the client's
+            // `.find()`/`.map()` calls on it. `availableModels` never hit this because it's always
+            // been passed explicitly, every time, everywhere. Confirmed root cause directly against
+            // the raw DB: the exact same bytes, read back correctly as an array once the row's
+            // insert had explicitly included the column — so the fix is "never rely on a JSON-mode
+            // column's SQL DEFAULT," not a client-side workaround.
+            await db.insert(schema.aiSettings).values({
                 id: crypto.randomUUID(),
                 availableModels: [],
                 preferredMode: "cloud" as const,
-                createdAt: new Date()
-            };
-            await db.insert(schema.aiSettings).values(initial);
-            res.json(initial);
+                createdAt: new Date(),
+                localInjectEnabled: false,
+                localInjectBody: "",
+                localInjectPresets: []
+            });
+            const [freshlyInserted] = await db.select().from(schema.aiSettings);
+            res.json(freshlyInserted);
             return;
         }
 

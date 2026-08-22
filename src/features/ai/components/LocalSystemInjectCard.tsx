@@ -41,11 +41,13 @@ export function LocalSystemInjectCard() {
 
     if (!settings) return null;
 
-    const enabled = settings.localInjectEnabled;
-    const presets = settings.localInjectPresets;
+    const enabled = settings.localInjectEnabled ?? false;
+    // Defensive fallback — every real settings row has this by now, but guards against any
+    // future path that echoes back a partial object (see server/routes/ai.ts's own fix note).
+    const presets = settings.localInjectPresets ?? [];
     const activePresetId = settings.localInjectActivePresetId ?? null;
     const activePreset = presets.find(p => p.id === activePresetId) ?? null;
-    const body = bodyDirty ? bodyInput : settings.localInjectBody;
+    const body = bodyDirty ? bodyInput : (settings.localInjectBody ?? "");
 
     const handleBodyChange = (value: string) => {
         setBodyInput(value);
