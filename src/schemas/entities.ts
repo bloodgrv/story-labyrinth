@@ -102,6 +102,14 @@ const aiModelSchema = z.object({
     provider: aiProviderSchema
 });
 
+// Local System Inject (T12) — see src/types/story.ts's LocalInjectPreset.
+export const localInjectPresetSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    body: z.string(),
+    updatedAt: z.number()
+});
+
 // AI Settings schema
 export const aiSettingsSchema = baseEntitySchema.extend({
     openaiKey: z.string().optional(),
@@ -128,5 +136,9 @@ export const aiSettingsSchema = baseEntitySchema.extend({
     contextWindowOverride: z.number().nullable().optional(),
     softWarnNearLimit: z.boolean().optional(),
     softWarnThreshold: z.number().optional(),
-    localMaxOutputTokens: z.number().nullable().optional()
+    localMaxOutputTokens: z.number().nullable().optional(),
+    localInjectEnabled: z.boolean().optional(),
+    localInjectBody: z.string().optional(),
+    localInjectActivePresetId: z.string().nullable().optional(),
+    localInjectPresets: z.array(localInjectPresetSchema).optional()
 });

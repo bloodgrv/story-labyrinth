@@ -366,6 +366,14 @@ export const aiSettings = sqliteTable("aiSettings", {
     // reasoning-capable local models; a long system prompt (WB/Editor chats especially) can burn
     // the whole budget on reasoning and never reach content, silently. Null = use the default.
     localMaxOutputTokens: integer("localMaxOutputTokens"),
+    // Local System Inject (T12, docs/Local_System_Inject_Design.md) — global house-rules text,
+    // prepended to the system message only when the call's model provider is "local". Active body
+    // is authoritative for injection; localInjectActivePresetId is UX bookkeeping only ("which
+    // library row is selected"), not re-derived from it.
+    localInjectEnabled: integer("localInjectEnabled", { mode: "boolean" }).notNull().default(false),
+    localInjectBody: text("localInjectBody").notNull().default(""),
+    localInjectActivePresetId: text("localInjectActivePresetId"),
+    localInjectPresets: text("localInjectPresets", { mode: "json" }).notNull().default("[]"), // JSON: LocalInjectPreset[]
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull()
 });
 

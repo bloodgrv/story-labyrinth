@@ -2,7 +2,7 @@
 
 **Purpose:** Topics queued for design grill / home sessions — **not** built unless noted.  
 **SoT priority still:** `docs/CURRENT_BACKLOG.md`  
-**Updated:** 2026-08-18 (**Code review debt → backlog B22–B44** / `docs/CODE_REVIEW_2026-08-17.md`. Prior: Auto Humanizer / AI Review / Activity Stoplight / Sexuality shipped 2026-08-15 — headers below may lag; trust `CURRENT_BACKLOG.md`)
+**Updated:** 2026-08-21 (**T12 Local System Inject shipped in full** — LI0–LI5, promoted and built same day as lock, see `CURRENT_BACKLOG.md`/`DECISIONS.md`. **T11 First-Start Tour locked** — `docs/First_Start_Tour_Design.md`, OT0–OT8, not built. Prior: code review debt B22–B44. Ship-status headers may lag — trust `CURRENT_BACKLOG.md`)
 
 ---
 
@@ -26,6 +26,8 @@
 | **Activity Stoplight** | **Global running-work indicator** | Doc: `docs/Activity_Stoplight_Design.md`. TopBar lamp+count over `agentJobs`; expand task list; workspace `/` only; ≠ pending-review dots. Slices **AS0–AS5**. | **Locked 2026-08-14 — not built until promoted** |
 | **Auto Humanizer** | **Silent AI→editor commit pipeline + Editor Humanize sheet** | Doc: `docs/Auto_Humanizer_Design.md`. **Separate** from shipped manual Humanizer. Detect+threshold+tone; Accept prose hard silent. **Editor rail SimpleSheet `humanize`** hosts **both** Manual + Auto. Slices **AH0–AH8**. | ✅ **Shipped** (2026-08-15) — verify backlog |
 | **Code review debt** | **Hardening from 2026-08-17/18 audit** | Doc: `docs/CODE_REVIEW_2026-08-17.md`. Backlog **B22–B44** (path jail, SSRF, MultiView same-chapter LWW, Codex approve TOCTOU, chat switch state, secrets redaction, …). Pick slices; not one mega-PR. | **Open on backlog** |
+| **T11** | **First-start tour** | **Tour** (spotlight + card): first provider → Brainstorm chat basics → Guide/help + **Replay at Guide top**. Doc: `docs/First_Start_Tour_Design.md`. Owner auto-once; per-user `onboardingTourCompleted`; Skip points at Replay; test story OK; Next free on provider. Slices **OT0–OT8**. **≠** T8. **≠** playbook rewrite. | **Locked 2026-08-21 — not built until promoted** |
+| **T12** | **System prompts → Local System Inject** | **First slice locked:** global local-only house-rules inject + on/off + presets. Doc: `docs/Local_System_Inject_Design.md`. Settings → Local = body + preset CRUD; chat rail = toggle + preset dropdown only; one SoT; default Off; prepend on `provider===local`. **Guide topic required** (`local-system-inject.mdx` + search + settings-nav/prompts links). Slices **LI0–LI5**. Broader prompt inventory/rewrite still future under T12 umbrella if reopened. | **Locked 2026-08-21 — not built until promoted** |
 
 ---
 
@@ -59,16 +61,18 @@
 When user says “SN Planning” or “talk list”:
 
 1. Re-read live `docs/CURRENT_BACKLOG.md` — this file can lag  
-2. Open / next candidates: **AI Review** or **Activity Stoplight** (locked — promote to build); **Auto Humanizer** (locked — promote to build); **T8** UX polish (**parked**, grill first); **Relations · note pins** parked; P1 polish / residual bugs  
+2. Open / next candidates: **T11 First-Start Tour** (locked — promote · OT0–OT8); **T8** UX polish (**parked**, grill first); **Relations · note pins**; residual P2/P1. (AR/AS/AH/**T12** shipped — verify backlog.)  
 3. One topic at a time; lock to `docs/` when decided  
-4. Don’t build **T8** until **grilled + locked** (and promoted); don’t build **Auto Humanizer** until **promoted**  
+4. Don’t build **T8** until grilled + locked + promoted; don’t build **T11 Tour** until **promoted** (design locked). Don’t re-offer shipped AR/AS/AH/**T12** as unbuilt.  
 5. Don’t re-grill closed T1–T7 / KDP / L0–L5 / **T6** / **Maps v2** / **T5** / **T9** / **T10** unless user reopens  
-6. Don’t build **AI Review**, **Activity Stoplight**, or **Auto Humanizer** until **promoted**  
+6. **T11 ≠ T8** — first-run **tour** (provider + Brainstorm chrome + Guide Replay) vs chrome polish of existing UI  
 7. Notes graph ≠ Notes desk — graph pins live under **Relations** later, not T7  
 8. **T8 ≠ T1** — T1 locked chrome tokens; T8 is layout/hierarchy/polish with full tool surface kept  
 9. **AI Review ≠ Scanner** — craft/voice/dev vs factual Codex proof; separate queues  
 10. **Activity Stoplight ≠** pending-review dots — machine busy vs needs-you  
 11. **Auto Humanizer ≠ manual Humanizer** — pipeline on Accept vs select+click; ≠ AI Review rewrite  
+12. **T12 Local Inject** — ✅ shipped (2026-08-21); global local-only; Settings edits body/presets; rail = toggle+dropdown only; never delete `{{codex_context}}` as the substitute  
+13. **T11 Tour** — owner auto-once; Replay on Guide top; Skip → Guide tip; OT* ≠ Lore Sheet FS*; no hard provider gate 
 
 ---
 

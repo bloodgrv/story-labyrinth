@@ -1,0 +1,71 @@
+# Local System Inject
+
+Global house-rules text — style, content policy, "no em dashes," whatever you used to paste into LM Studio's own system prompt box — prepended to the system message, but only when you generate with a **local** model.
+
+> [!NOTE]
+> Story Labyrinth builds its own `messages` array for every AI call. LM Studio's (or any other local server's) GUI/preset system prompt never sees that call — it only applies inside LM Studio's own chat UI. If you've been setting a system prompt there and wondering why SL ignores it, this is why, and this feature is the fix.
+
+---
+
+## 1. What it is
+
+- **Global** — one instance-wide setting, not per-story or per-chat.
+- **Local only** — applies exclusively when the chat's active model is a **local** one. Cloud chats (OpenAI, OpenRouter, Gemini, Grok, etc.) never see it, even with the toggle on.
+- **Additive** — prepended ahead of Story Labyrinth's own system context (Codex facts, chat framing, proposal-fence instructions). It doesn't replace or remove any of that.
+
+## 2. What it is not
+
+- Not the same as a desk chat's **⋯ Edit system prompt** — that edits the shared prompt *template* for a chat type (e.g. "World-Building"), and applies to every provider, cloud or local. Local System Inject is a separate, always-local-only layer on top.
+- Not per-story or per-chat. One body, one on/off switch, for the whole app.
+- Not a way to sync LM Studio's own presets automatically — you paste the text here yourself.
+
+## 3. Where to edit — Settings
+
+_Path: **Settings → Local → Local system inject**_
+
+- **Enable for local models** toggle — off by default.
+- **Body** textarea — the full house-rules text.
+- **Preset** dropdown plus **Save as…**, **Update preset**, **Rename**, and delete — a small library of named bodies you can switch between without retyping.
+
+This is the only place with the full text editor and preset management. Everything else only toggles or picks from the library you build here.
+
+## 4. Where to control — in a chat
+
+Every desk chat's **Context & memory** panel has a compact **Local system inject** row: the same on/off toggle, plus a preset dropdown. No typing there — open Settings to edit the text itself.
+
+Because this is global state, flipping the toggle or switching presets from *any* chat updates *every* chat and Settings at once. There's no separate "was this on for this chat" — one switch, everywhere.
+
+## 5. How to use (recipe)
+
+1. Open **Settings → Local**.
+2. Paste your house rules into the **Body** textarea.
+3. Click **Save as…**, give it a name (e.g. "Erotica local"), to keep it in your preset library.
+4. Turn **Enable for local models** on.
+5. In a chat running a **local** model, confirm the rail's toggle is on and your preset is selected.
+6. Send a turn — the house rules apply to that local call only.
+
+## 6. Presets
+
+- **Apply** (picking a preset from either dropdown) loads its body as the active text.
+- Editing the body in Settings does **not** silently overwrite the selected preset — only clicking **Update preset** writes your edits back into the library.
+- Switch which preset is active from any chat's rail without opening Settings.
+
+## 7. Tips
+
+- Don't delete `{{codex_context}}` or other template tokens from a desk's system prompt to make room for house rules — this feature is additive on top, not a replacement.
+- A long inject body eats into your local model's context window — check the Context meter on a local chat if you're running close to the limit.
+- Cloud chats stay exactly as configured even with the toggle on — inject is local-only by design.
+
+## 8. Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| LM Studio's own preset seems ignored | Expected — LM Studio's GUI system prompt never reaches SL's API calls. Use Local System Inject instead. |
+| Toggle is on but nothing changes | The chat's active model must be **Local**, the body must be non-empty, and the toggle must be on — all three. |
+| Cloud chat still looks "clean" | By design — inject never applies to non-local providers, even with the toggle on. |
+| Can't type in the chat rail's inject row | By design — the rail only has a toggle and a preset picker; edit the body in Settings → Local. |
+| Changed the preset in one chat and every other chat changed too | By design — this is one global setting, not per-chat. |
+
+---
+
+Changes here save immediately — no separate publish step, same as the rest of Settings.

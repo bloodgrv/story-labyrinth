@@ -636,7 +636,17 @@ export function ChatInterface({
         selectedModel?.provider === "local"
             ? (aiSettings?.contextWindowOverride ?? selectedAIModel?.contextLength ?? null)
             : (selectedAIModel?.contextLength ?? null);
-    const contextEstimate = useContextEstimate(rawChatContext, selectedChat.messages, input, contextLimit);
+    // Local System Inject (T12) — only counts toward the meter when it will actually apply on
+    // send, same gating as useGenerateWithPrompt.ts's real prepend.
+    const activeLocalInjectBody =
+        selectedModel?.provider === "local" && aiSettings?.localInjectEnabled ? (aiSettings.localInjectBody ?? "") : "";
+    const contextEstimate = useContextEstimate(
+        rawChatContext,
+        selectedChat.messages,
+        input,
+        contextLimit,
+        activeLocalInjectBody
+    );
     const showContextMeter = selectedModel?.provider === "local" || lastUsage !== null;
 
     // Selection Rework Bridge context (docs/Chat_Panel_Integrations_Design.md §2.1) — kept

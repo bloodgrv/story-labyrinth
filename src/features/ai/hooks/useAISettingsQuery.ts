@@ -232,6 +232,91 @@ export const useRefreshModelsMutation = () => {
     });
 };
 
+// Local System Inject (T12) — Settings → Local's full editor + every desk chat rail's compact
+// toggle+preset control read/write these same mutations (single global SoT, design §2/§4).
+export const useUpdateLocalInjectEnabledMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (enabled: boolean) => aiService.updateLocalInjectEnabled(enabled),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: aiSettingsKeys.settings() }),
+        onError: () => toast.error("Failed to update local system inject")
+    });
+};
+
+export const useUpdateLocalInjectBodyMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (body: string) => aiService.updateLocalInjectBody(body),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: aiSettingsKeys.settings() });
+            toast.success("Local system inject saved");
+        },
+        onError: () => toast.error("Failed to save local system inject")
+    });
+};
+
+export const useApplyLocalInjectPresetMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (presetId: string | null) => aiService.applyLocalInjectPreset(presetId),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: aiSettingsKeys.settings() }),
+        onError: () => toast.error("Failed to apply preset")
+    });
+};
+
+export const useSaveLocalInjectPresetAsNewMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (name: string) => aiService.saveLocalInjectPresetAsNew(name),
+        onSuccess: preset => {
+            queryClient.invalidateQueries({ queryKey: aiSettingsKeys.settings() });
+            toast.success(`Saved preset "${preset.name}"`);
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to save preset")
+    });
+};
+
+export const useUpdateActiveLocalInjectPresetMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => aiService.updateActiveLocalInjectPreset(),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: aiSettingsKeys.settings() });
+            toast.success("Preset updated");
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to update preset")
+    });
+};
+
+export const useRenameLocalInjectPresetMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ presetId, name }: { presetId: string; name: string }) =>
+            aiService.renameLocalInjectPreset(presetId, name),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: aiSettingsKeys.settings() }),
+        onError: (error: Error) => toast.error(error.message || "Failed to rename preset")
+    });
+};
+
+export const useDeleteLocalInjectPresetMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (presetId: string) => aiService.deleteLocalInjectPreset(presetId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: aiSettingsKeys.settings() });
+            toast.success("Preset deleted");
+        },
+        onError: () => toast.error("Failed to delete preset")
+    });
+};
+
 export const useDisconnectGrokOAuthMutation = () => {
     const queryClient = useQueryClient();
 

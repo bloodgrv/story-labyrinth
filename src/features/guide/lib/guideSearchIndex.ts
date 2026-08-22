@@ -5,6 +5,7 @@ import brainstormRaw from "../content/brainstorm.mdx?raw";
 import chatFeaturesRaw from "../content/chat-features.mdx?raw";
 import concreteBeatsRaw from "../content/concrete-beats.mdx?raw";
 import focusSessionsRaw from "../content/focus-sessions.mdx?raw";
+import localSystemInjectRaw from "../content/local-system-inject.mdx?raw";
 import locationsMapsRaw from "../content/locations-maps.mdx?raw";
 import lorebookRaw from "../content/lorebook.mdx?raw";
 import memoryRaw from "../content/memory.mdx?raw";
@@ -29,6 +30,7 @@ export type { GuideSearchSection } from "./guideSearchParser";
 const RAW_BY_TOPIC_ID: Record<string, string> = {
     basics: basicsRaw,
     "settings-nav": settingsNavRaw,
+    "local-system-inject": localSystemInjectRaw,
     advanced: advancedRaw,
     lorebook: lorebookRaw,
     playbooks: playbooksRaw,

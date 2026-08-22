@@ -19,6 +19,7 @@ export interface GuideSearchSection {
 export const GUIDE_TOPIC_META: { id: string; label: string }[] = [
     { id: "basics", label: "Basics Guide" },
     { id: "settings-nav", label: "Settings & Navigation" },
+    { id: "local-system-inject", label: "Local System Inject" },
     { id: "advanced", label: "Advanced Guide" },
     { id: "lorebook", label: "Lorebook Guide" },
     { id: "playbooks", label: "Playbook Packs" },

@@ -9,6 +9,7 @@ import BrainstormGuide from "../content/brainstorm.mdx";
 import ChatFeaturesGuide from "../content/chat-features.mdx";
 import ConcreteBeatsGuide from "../content/concrete-beats.mdx";
 import FocusSessionsGuide from "../content/focus-sessions.mdx";
+import LocalSystemInjectGuide from "../content/local-system-inject.mdx";
 import LocationsMapsGuide from "../content/locations-maps.mdx";
 import LorebookGuide from "../content/lorebook.mdx";
 import MemoryGuide from "../content/memory.mdx";
@@ -35,6 +36,7 @@ export function GuideTabs() {
             <TabsList className="flex flex-wrap h-auto justify-start gap-1 mb-8">
                 <TabsTrigger value="basics">Basics Guide</TabsTrigger>
                 <TabsTrigger value="settings-nav">Settings & Navigation</TabsTrigger>
+                <TabsTrigger value="local-system-inject">Local System Inject</TabsTrigger>
                 <TabsTrigger value="advanced">Advanced Guide</TabsTrigger>
                 <TabsTrigger value="lorebook">Lorebook Guide</TabsTrigger>
                 <TabsTrigger value="playbooks">Playbook Packs</TabsTrigger>
@@ -65,6 +67,12 @@ export function GuideTabs() {
             <TabsContent value="settings-nav" className="space-y-4">
                 <GuideProvider>
                     <SettingsNavGuide components={mdxComponents} />
+                </GuideProvider>
+            </TabsContent>
+
+            <TabsContent value="local-system-inject" className="space-y-4">
+                <GuideProvider>
+                    <LocalSystemInjectGuide components={mdxComponents} />
                 </GuideProvider>
             </TabsContent>
 

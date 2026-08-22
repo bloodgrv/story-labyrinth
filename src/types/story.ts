@@ -216,6 +216,16 @@ export interface AIModel {
     enabled: boolean;
 }
 
+// Local System Inject (T12, docs/Local_System_Inject_Design.md) — a saved library entry a user
+// can apply/update from Settings → Local. `body` is the full inject text; `id` is UX bookkeeping
+// only (aiSettings.localInjectBody is what actually injects).
+export interface LocalInjectPreset {
+    id: string;
+    name: string;
+    body: string;
+    updatedAt: number; // epoch ms
+}
+
 export interface AISettings extends BaseEntity {
     openaiKey?: string;
     openrouterKey?: string;
@@ -246,6 +256,13 @@ export interface AISettings extends BaseEntity {
     // Local generation output budget override (2026-07-27) — see server/db/schema.ts's
     // aiSettings comment. Null = use AIService's hardcoded default.
     localMaxOutputTokens?: number | null;
+    // Local System Inject (T12) — see server/db/schema.ts's aiSettings comment. Active body is
+    // authoritative for injection; localInjectActivePresetId is just "which library row is
+    // selected" bookkeeping.
+    localInjectEnabled: boolean;
+    localInjectBody: string;
+    localInjectActivePresetId?: string | null;
+    localInjectPresets: LocalInjectPreset[];
 }
 
 // Chat Model Routing (docs/Chat_Model_Routing_And_Chrome_Design.md) — not a "current provider",

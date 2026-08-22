@@ -1,5 +1,6 @@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { LocalInjectRailControl } from "@/features/ai/components/LocalInjectRailControl";
 import type { ChatContextToggles } from "@/features/chat/hooks/useChatContextToggles";
 import type { AIChat, Prompt } from "@/types/story";
 
@@ -145,6 +146,10 @@ export function ChatContextPanelContent({ selectedChat, promptType, toggles }: C
                         Include MCP tools (external tool calls)
                     </Label>
                 </div>
+                {/* Local System Inject (T12) — global toggle + preset picker only, edit the body in
+                    Settings → Local. Shown on every chat type same as Guide/MCP above; only ever
+                    takes effect on local generations (useGenerateWithPrompt.ts). */}
+                <LocalInjectRailControl idPrefix={selectedChat.id} />
             </div>
 
             {usesCodexTray && (

@@ -1,7 +1,7 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { API_URLS } from "@/constants/urls";
 import { aiSettingsSchema } from "@/schemas/entities";
-import type { AIModel, AIProvider, AISettings, ChatMode, PromptMessage } from "@/types/story";
+import type { AIModel, AIProvider, AISettings, ChatMode, LocalInjectPreset, PromptMessage } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { aiApi } from "../api/client";
 import { AIProviderFactory } from "./AIProviderFactory";
@@ -346,6 +346,76 @@ export class AIService {
     // the override, falling back to DEFAULT_MAX_TOKENS.
     async updateLocalMaxOutputTokens(localMaxOutputTokens: number | null): Promise<void> {
         await this.updateSettingsField({ localMaxOutputTokens });
+    }
+
+    // Local System Inject (T12, docs/Local_System_Inject_Design.md) — global house-rules text,
+    // Settings + every chat rail read/write the same fields (single SoT, design §2). Active body
+    // is authoritative for injection; the preset library/id are UX bookkeeping only.
+    async updateLocalInjectEnabled(enabled: boolean): Promise<void> {
+        await this.updateSettingsField({ localInjectEnabled: enabled });
+    }
+
+    // Body edits never auto-write the library (design §3 "dirty" rule minimum bar) — only
+    // updateActiveLocalInjectPreset() below does that, via its own explicit "Update preset" button.
+    async updateLocalInjectBody(body: string): Promise<void> {
+        await this.updateSettingsField({ localInjectBody: body });
+    }
+
+    // null clears the "selected" id without touching the body (design §3 "None" row).
+    async applyLocalInjectPreset(presetId: string | null): Promise<void> {
+        if (!this.settings) throw new Error("Settings not initialized");
+        if (presetId === null) {
+            await this.updateSettingsField({ localInjectActivePresetId: null });
+            return;
+        }
+        const preset = this.settings.localInjectPresets.find(p => p.id === presetId);
+        if (!preset) throw new Error("Preset not found");
+        await this.updateSettingsField({ localInjectBody: preset.body, localInjectActivePresetId: preset.id });
+    }
+
+    async saveLocalInjectPresetAsNew(name: string): Promise<LocalInjectPreset> {
+        if (!this.settings) throw new Error("Settings not initialized");
+        const trimmed = name.trim();
+        if (!trimmed) throw new Error("Preset name required");
+        const preset: LocalInjectPreset = {
+            id: crypto.randomUUID(),
+            name: trimmed,
+            body: this.settings.localInjectBody,
+            updatedAt: Date.now()
+        };
+        await this.updateSettingsField({
+            localInjectPresets: [...this.settings.localInjectPresets, preset],
+            localInjectActivePresetId: preset.id
+        });
+        return preset;
+    }
+
+    async updateActiveLocalInjectPreset(): Promise<void> {
+        if (!this.settings) throw new Error("Settings not initialized");
+        const activeId = this.settings.localInjectActivePresetId;
+        if (!activeId) throw new Error("No active preset selected");
+        const body = this.settings.localInjectBody;
+        const presets = this.settings.localInjectPresets.map(p =>
+            p.id === activeId ? { ...p, body, updatedAt: Date.now() } : p
+        );
+        await this.updateSettingsField({ localInjectPresets: presets });
+    }
+
+    async renameLocalInjectPreset(presetId: string, name: string): Promise<void> {
+        if (!this.settings) throw new Error("Settings not initialized");
+        const trimmed = name.trim();
+        if (!trimmed) throw new Error("Preset name required");
+        const presets = this.settings.localInjectPresets.map(p => (p.id === presetId ? { ...p, name: trimmed } : p));
+        await this.updateSettingsField({ localInjectPresets: presets });
+    }
+
+    // Deleting the selected preset clears the active id but leaves the body untouched (design §3).
+    async deleteLocalInjectPreset(presetId: string): Promise<void> {
+        if (!this.settings) throw new Error("Settings not initialized");
+        const presets = this.settings.localInjectPresets.filter(p => p.id !== presetId);
+        const update: Partial<AISettings> = { localInjectPresets: presets };
+        if (this.settings.localInjectActivePresetId === presetId) update.localInjectActivePresetId = null;
+        await this.updateSettingsField(update);
     }
 
     getSettings(): AISettings | null {

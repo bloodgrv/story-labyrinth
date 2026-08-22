@@ -25,7 +25,12 @@ export const useContextEstimate = (
     context: ChatContext | null,
     messages: ChatMessage[],
     draftText: string,
-    limit: number | null
+    limit: number | null,
+    // Local System Inject (T12, design §7) — pass the active inject body only when it will
+    // actually apply (enabled + provider === "local" + non-empty), same gating useGenerateWithPrompt
+    // uses for the real send-path prepend. Kept as a separate slice rather than folded into
+    // "System" so the meter can show it's the inject, not app framing, eating the budget.
+    localInjectBody = ""
 ): ContextEstimate => {
     return useMemo(() => {
         const slice = (label: string, text: string): ContextSlice => ({ label, tokens: estimateTokens(text) });
@@ -33,6 +38,7 @@ export const useContextEstimate = (
         const slices: ContextSlice[] = context
             ? [
                   slice("System", context.systemPrompt),
+                  slice("Local inject", localInjectBody),
                   slice(
                       "Lore",
                       [
@@ -72,5 +78,5 @@ export const useContextEstimate = (
         const pctUsed = limit ? total / limit : null;
 
         return { slices: slices.filter(s => s.tokens > 0), total, limit, pctUsed };
-    }, [context, messages, draftText, limit]);
+    }, [context, messages, draftText, limit, localInjectBody]);
 };
