@@ -43,6 +43,42 @@ const AI_ONE_SHOT_ENDPOINTS: { pattern: RegExp; label: string }[] = [
 const matchAiOneShotLabel = (url: string): string | undefined =>
     AI_ONE_SHOT_ENDPOINTS.find(({ pattern }) => pattern.test(url.split("?")[0]))?.label;
 
+// Fields the client-side types (src/types/*.ts) declare as `Date` even though the server only
+// ever sends JSON, so `response.json()` alone hands back a string here — a real crash was found
+// live (2026-08-23) when code called `.getTime()` on one of these assuming the type was honest.
+// Reviving them back into actual Date instances at this one choke point makes every existing
+// `Date`-typed field true again, without touching the ~30 call sites that already defensively
+// wrap in `new Date(...)` (harmless either way — `new Date(aDateInstance)` also works) and without
+// risking false positives on unrelated string fields (exact key allowlist + strict ISO-timestamp
+// value check, not a blanket "any *At/*Date key" pattern).
+const DATE_FIELD_KEYS = new Set([
+    "createdAt",
+    "updatedAt",
+    "archivedAt",
+    "lastUpdated",
+    "timestamp",
+    "lastModelsFetch",
+    "sheetSyncedAt",
+    "queuedAt",
+    "startedAt",
+    "completedAt",
+    "lastAttemptAt",
+    "approvedAt",
+    "resolvedAt",
+    "lastToolsFetch",
+    "tokenCreatedAt",
+    "lastVoicesFetch"
+]);
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/;
+
+const reviveDates = (key: string, value: unknown) =>
+    typeof value === "string" && DATE_FIELD_KEYS.has(key) && ISO_DATE_RE.test(value) ? new Date(value) : value;
+
+const parseJSONWithDates = async (response: Response): Promise<unknown> => {
+    const text = await response.text();
+    return text ? JSON.parse(text, reviveDates) : undefined;
+};
+
 // Helper function for fetch requests
 export const fetchJSON = async <T>(url: string, options?: RequestInit): Promise<T> => {
     const aiLabel = matchAiOneShotLabel(url);
@@ -67,7 +103,7 @@ export const fetchJSON = async <T>(url: string, options?: RequestInit): Promise<
         // expect a resolved promise on success, not a thrown error.
         if (response.status === 204) return undefined as T;
 
-        return await response.json();
+        return (await parseJSONWithDates(response)) as T;
     } finally {
         if (activityId) endAiOneShot(activityId);
     }
@@ -132,7 +168,7 @@ export const uploadFile = async <T>(url: string, file: File, timeoutMs?: number,
             const message = error.details ? `${error.error}: ${error.details}` : error.error || "Upload failed";
             throw new Error(message);
         }
-        return await response.json();
+        return (await parseJSONWithDates(response)) as T;
     } finally {
         if (activityId) endAiOneShot(activityId);
     }

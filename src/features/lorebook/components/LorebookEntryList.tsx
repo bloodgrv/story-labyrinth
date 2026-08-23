@@ -98,9 +98,8 @@ export function LorebookEntryList({
                     return a.category.localeCompare(b.category);
                 case "importance":
                     return (a.metadata?.importance || "").localeCompare(b.metadata?.importance || "");
-                // createdAt arrives over the wire as a JSON string, not a real Date instance (no
-                // client-side coercion happens between fetch and this component) despite the
-                // LorebookEntry type claiming Date — `new Date(...)` here tolerates either.
+                // createdAt now arrives as a real Date via apiFactory.ts's reviver, but wrap
+                // defensively anyway — cheap, and tolerates a string if that ever regresses.
                 case "created":
                     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
                 case "custom": {
