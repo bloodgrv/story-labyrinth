@@ -2,7 +2,7 @@
 
 **Purpose:** Topics queued for design grill / home sessions — **not** built unless noted.  
 **SoT priority still:** `docs/CURRENT_BACKLOG.md`  
-**Updated:** 2026-08-21 (**T11 First-Start Tour shipped in full** — OT0–OT8, promoted and built same day as lock, see `CURRENT_BACKLOG.md`/`DECISIONS.md`. **T12 Local System Inject shipped in full** — LI0–LI5, same day. Prior: code review debt B22–B44. Ship-status headers may lag — trust `CURRENT_BACKLOG.md`)
+**Updated:** 2026-08-22 (**T13 Lorebook custom drag order** queued, not designed. Same day: **Mac portable design locked** — `docs/Mac_Portable_Design.md`, MP0–MP4, not built until promote. Prior 2026-08-21: **T11**/ **T12** shipped — verify backlog. Ship-status headers may lag — trust `CURRENT_BACKLOG.md`)
 
 ---
 
@@ -27,7 +27,9 @@
 | **Auto Humanizer** | **Silent AI→editor commit pipeline + Editor Humanize sheet** | Doc: `docs/Auto_Humanizer_Design.md`. **Separate** from shipped manual Humanizer. Detect+threshold+tone; Accept prose hard silent. **Editor rail SimpleSheet `humanize`** hosts **both** Manual + Auto. Slices **AH0–AH8**. | ✅ **Shipped** (2026-08-15) — verify backlog |
 | **Code review debt** | **Hardening from 2026-08-17/18 audit** | Doc: `docs/CODE_REVIEW_2026-08-17.md`. Backlog **B22–B44** (path jail, SSRF, MultiView same-chapter LWW, Codex approve TOCTOU, chat switch state, secrets redaction, …). Pick slices; not one mega-PR. | **Open on backlog** |
 | **T11** | **First-start tour** | **Tour** (spotlight + card): first provider → Brainstorm chat basics → Guide/help + **Replay at Guide top**. Doc: `docs/First_Start_Tour_Design.md`. Owner auto-once; per-user `onboardingTourCompleted`; Skip points at Replay; test story OK; Next free on provider. Slices **OT0–OT8**. **≠** T8. **≠** playbook rewrite. | **Locked 2026-08-21 — not built until promoted** |
-| **T12** | **System prompts → Local System Inject** | **First slice locked:** global local-only house-rules inject + on/off + presets. Doc: `docs/Local_System_Inject_Design.md`. Settings → Local = body + preset CRUD; chat rail = toggle + preset dropdown only; one SoT; default Off; prepend on `provider===local`. **Guide topic required** (`local-system-inject.mdx` + search + settings-nav/prompts links). Slices **LI0–LI5**. Broader prompt inventory/rewrite still future under T12 umbrella if reopened. | **Locked 2026-08-21 — not built until promoted** |
+| **T12** | **System prompts → Local System Inject** | **First slice locked:** global local-only house-rules inject + on/off + presets. Doc: `docs/Local_System_Inject_Design.md`. Settings → Local = body + preset CRUD; chat rail = toggle + preset dropdown only; one SoT; default Off; prepend on `provider===local`. **Guide topic required** (`local-system-inject.mdx` + search + settings-nav/prompts links). Slices **LI0–LI5**. Broader prompt inventory/rewrite still future under T12 umbrella if reopened. | ✅ **Shipped** (2026-08-21) — verify backlog |
+| **Mac portable** | **Windows-twin Mac zip** | Doc: `docs/Mac_Portable_Design.md`. Bundled Node + `.command` + `data/` + Updates; arm64 first; two zip kinds (fresh + update); build on macOS/CI only; MP0 shared Win updater fix. **≠** Docker-on-Mac. **≠** Electron. Slices **MP0–MP4** (+ optional MP5 x64). | **Locked 2026-08-22 — not built until promoted** |
+| **T13** | **Lorebook custom drag order** | Raised 2026-08-22: a "Custom" sort option for the Lorebook entry list, reordered by drag-and-drop, persisting across sessions. Today's sort (`LorebookEntryList.tsx`, now persisted per T-fix above) is Name/Category/Importance/Created only — all derived, no stored order. **No `manualOrder` column exists on `lorebookEntries`** (`schema.ts`). Real precedent already in-repo: Outline's chapter list does exactly this shape (`OutlineTree.tsx` — dnd-kit `SortableContext`+`arrayMove`, PATCH on drop). Rough slices: **LO0** schema (`manualOrder` nullable int on `lorebookEntries`, scoped by level+scopeId+category — ties/new entries fall back to createdAt); **LO1** server route to accept an ordered id list and rewrite `manualOrder` 1..N in one call (mirrors Outline's reorder mutation); **LO2** "Custom" sort option + drag reordering in List view (dnd-kit, vertical `SortableContext` — straightforward, matches Outline); **LO3** Card/grid view — open call whether v1 needs 2D grid drag (dnd-kit supports it via `rectSortingStrategy` but is fiddlier) or just displays the same stored order without drag support until reordered from List. Not designed/locked — grill scope (especially LO3) before building. | **Parked — not designed** |
 
 ---
 
@@ -49,6 +51,8 @@
 | **Scene Beat removal** | ✅ **Shipped** 2026-07-22 |
 | **Chat model routing + chrome** | **Shipped** |
 | Local in-process embeddings | **Shipped** IE0–IE6 |
+| Windows portable + Unraid/Docker publish | **Shipped** (portable 2026-08-21; Docker Hub 2026-08-22) — verify backlog |
+| **Mac portable** | **Design locked** `docs/Mac_Portable_Design.md` — MP0–MP4; promote to build |
 | Advanced export profiles | Neighbor of T3 — not T3 |
 | Spellcheck / LanguageTool depth | P3 open (light) |
 | Gemini provider polish | `docs/gemini-provider-plan.md` |

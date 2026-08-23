@@ -1,17 +1,24 @@
-// Builds the Windows portable release: a bundled Node runtime + production app code + an empty
-// data/ folder, laid out as scripts/portable-updater's self-updater expects (see
-// C:\Users\Reuben\.claude\plans\bubbly-floating-octopus.md for the full design, or
-// docs/ once that plan's summary lands there).
+// Builds a Story Labyrinth portable release: a bundled Node runtime + production app code + an
+// empty data/ folder, laid out as scripts/portable-updater's self-updater expects. See
+// docs/Mac_Portable_Design.md for the full cross-platform design (MP0-MP5); this script covers
+// MP0 (win-x64, two-zip split) and MP1/MP2 (mac-arm64/mac-x64 builder + launcher + README).
 //
-// Usage: node scripts/build-portable.mjs [--skip-build] [--out=<dir>]
-//   --skip-build   reuse the existing dist/ instead of running `npm run build` again (fast
-//                  iteration only — never use this for a real release)
-//   --out=<dir>    output root (default: portable-build/ at repo root)
+// Usage: node scripts/build-portable.mjs [--platform=win-x64|mac-arm64|mac-x64] [--skip-build] [--out=<dir>]
+//   --platform=<id>   which portable to build. Defaults to win-x64 on a Windows host, or
+//                     mac-arm64/mac-x64 on a Mac host (by arch) — must be passed explicitly on
+//                     any other host. mac-* builds refuse to run on non-darwin (see below).
+//   --skip-build      reuse the existing dist/ instead of running `npm run build` again (fast
+//                     iteration only — never use this for a real release)
+//   --out=<dir>       output root (default: portable-build/ at repo root)
 //
 // Every run adds a new versions/<version>/ folder. A from-scratch run (no existing --out dir)
-// also lays down the stable scaffold (Start.bat, README.txt, current-version.txt, updater/).
+// also lays down the stable scaffold (launcher, README.txt, current-version.txt, updater/).
 // Rebuilding into an existing --out dir never touches current-version.txt or other versions —
 // that's the running self-updater's job, not this script's.
+//
+// mac-* builds MUST run on darwin: better-sqlite3/sqlite-vec/canvas/onnxruntime-node are native
+// modules, and `npm ci` under a bundled darwin Node still needs a real darwin host to produce
+// (or compile) darwin binaries — there is no cross-build path from Windows.
 
 import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -30,9 +37,81 @@ const args = Object.fromEntries(
 );
 
 const NODE_RUNTIME_VERSION = "22.23.2";
+
+// One row per shippable portable target. Everything platform-specific (Node download shape,
+// where the node binary lands inside the runtime, which launcher/README asset to lay down)
+// lives here so the rest of the script stays platform-agnostic.
+const PLATFORMS = {
+    "win-x64": {
+        hostOS: "win32",
+        nodeUrl: v => `https://nodejs.org/dist/v${v}/node-v${v}-win-x64.zip`,
+        nodeArchiveExt: "zip",
+        nodeExtractedDirName: v => `node-v${v}-win-x64`,
+        nodeBinaryRelPath: ["node.exe"],
+        npmCliRelPath: ["node_modules", "npm", "bin", "npm-cli.js"],
+        launcherAsset: "Start Story Labyrinth.bat",
+        readmeAsset: "README.txt"
+    },
+    "mac-arm64": {
+        hostOS: "darwin",
+        nodeUrl: v => `https://nodejs.org/dist/v${v}/node-v${v}-darwin-arm64.tar.gz`,
+        nodeArchiveExt: "tar.gz",
+        nodeExtractedDirName: v => `node-v${v}-darwin-arm64`,
+        nodeBinaryRelPath: ["bin", "node"],
+        npmCliRelPath: ["lib", "node_modules", "npm", "bin", "npm-cli.js"],
+        launcherAsset: "Start Story Labyrinth.command",
+        readmeAsset: "README-mac.txt"
+    },
+    "mac-x64": {
+        hostOS: "darwin",
+        nodeUrl: v => `https://nodejs.org/dist/v${v}/node-v${v}-darwin-x64.tar.gz`,
+        nodeArchiveExt: "tar.gz",
+        nodeExtractedDirName: v => `node-v${v}-darwin-x64`,
+        nodeBinaryRelPath: ["bin", "node"],
+        npmCliRelPath: ["lib", "node_modules", "npm", "bin", "npm-cli.js"],
+        launcherAsset: "Start Story Labyrinth.command",
+        readmeAsset: "README-mac.txt"
+    }
+};
+
+// log/fail are defined before platform resolution below since resolvePlatformId() and the
+// host-OS gate both need fail() available at module-evaluation time (not inside a later-called
+// function) — using platformId in the prefix would be nicer but isn't known yet at this point.
+const log = message => console.log(`[build-portable] ${message}`);
+const fail = message => {
+    console.error(`[build-portable] FAILED: ${message}`);
+    process.exit(1);
+};
+
+function resolvePlatformId() {
+    if (typeof args.platform === "string") return args.platform;
+    if (process.platform === "win32") return "win-x64";
+    if (process.platform === "darwin") return process.arch === "arm64" ? "mac-arm64" : "mac-x64";
+    fail(
+        `Cannot infer --platform on host OS "${process.platform}" — pass one explicitly: ` +
+            `--platform=${Object.keys(PLATFORMS).join("|")}`
+    );
+}
+
+const platformId = resolvePlatformId();
+const platform = PLATFORMS[platformId];
+if (!platform) {
+    fail(`Unknown --platform=${platformId}. Valid: ${Object.keys(PLATFORMS).join("|")}`);
+}
+// Native modules (better-sqlite3/sqlite-vec/canvas/onnxruntime-node) can't be cross-installed —
+// `npm ci` must run under a bundled runtime of the SAME OS it'll ship for. This is the one hard
+// gate docs/Mac_Portable_Design.md calls out repeatedly: never let a Windows host produce a
+// mac-* zip (or vice versa) even if someone passes --platform to force it.
+if (process.platform !== platform.hostOS) {
+    fail(
+        `--platform=${platformId} must be built on ${platform.hostOS} (native modules can't be cross-installed). ` +
+            `This host is ${process.platform}.`
+    );
+}
+
 const outRoot = path.resolve(repoRoot, typeof args.out === "string" ? args.out : "portable-build");
 const cacheDir = path.join(repoRoot, ".portable-build-cache");
-const nodeCacheDir = path.join(cacheDir, `node-v${NODE_RUNTIME_VERSION}-win-x64`);
+const nodeCacheDir = path.join(cacheDir, `node-v${NODE_RUNTIME_VERSION}-${platformId}`);
 
 const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
 const version = pkg.version;
@@ -41,39 +120,42 @@ const versionDir = path.join(outRoot, "versions", version);
 const appDir = path.join(versionDir, "app");
 const nodeDir = path.join(versionDir, "node");
 
-const log = message => console.log(`[build-portable] ${message}`);
-const fail = message => {
-    console.error(`[build-portable] FAILED: ${message}`);
-    process.exit(1);
-};
-
 function run(command, cmdArgs, opts = {}) {
     execFileSync(command, cmdArgs, { stdio: "inherit", ...opts });
 }
 
+// Where the node binary lives inside a given <root>/node/ dir — same helper shape as server/
+// routes/update.ts's and update-runner.mjs's own nodeBinaryFor(), kept as separate copies since
+// this script, the server, and the updater are three independent runtimes.
+const nodeBinaryFor = root => path.join(root, "node", ...platform.nodeBinaryRelPath);
+
 async function ensureNodeRuntime() {
-    if (fs.existsSync(path.join(nodeCacheDir, "node.exe"))) {
+    const cachedBinary = path.join(nodeCacheDir, ...platform.nodeBinaryRelPath);
+    if (fs.existsSync(cachedBinary)) {
         log(`Node ${NODE_RUNTIME_VERSION} runtime already cached at ${nodeCacheDir}`);
         return;
     }
-    log(`Downloading Node ${NODE_RUNTIME_VERSION} win-x64 runtime...`);
+    log(`Downloading Node ${NODE_RUNTIME_VERSION} ${platformId} runtime...`);
     fs.mkdirSync(cacheDir, { recursive: true });
-    const zipUrl = `https://nodejs.org/dist/v${NODE_RUNTIME_VERSION}/node-v${NODE_RUNTIME_VERSION}-win-x64.zip`;
-    const zipPath = path.join(cacheDir, "node-runtime.zip");
-    const res = await fetch(zipUrl);
-    if (!res.ok) fail(`Node runtime download failed: HTTP ${res.status}`);
-    fs.writeFileSync(zipPath, Buffer.from(await res.arrayBuffer()));
+    const url = platform.nodeUrl(NODE_RUNTIME_VERSION);
+    const archivePath = path.join(cacheDir, `node-runtime.${platform.nodeArchiveExt}`);
+    const res = await fetch(url);
+    if (!res.ok) fail(`Node runtime download failed: HTTP ${res.status} (${url})`);
+    fs.writeFileSync(archivePath, Buffer.from(await res.arrayBuffer()));
 
-    const extractedName = `node-v${NODE_RUNTIME_VERSION}-win-x64`;
-    const extractParent = cacheDir;
-    run("powershell.exe", [
-        "-NoProfile",
-        "-NonInteractive",
-        "-Command",
-        `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${extractParent}' -Force`
-    ]);
-    fs.rmSync(zipPath, { force: true });
-    fs.renameSync(path.join(extractParent, extractedName), nodeCacheDir);
+    const extractedName = platform.nodeExtractedDirName(NODE_RUNTIME_VERSION);
+    if (platform.nodeArchiveExt === "zip") {
+        run("powershell.exe", [
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            `Expand-Archive -LiteralPath '${archivePath}' -DestinationPath '${cacheDir}' -Force`
+        ]);
+    } else {
+        run("tar", ["-xzf", archivePath, "-C", cacheDir]);
+    }
+    fs.rmSync(archivePath, { force: true });
+    fs.renameSync(path.join(cacheDir, extractedName), nodeCacheDir);
     log(`Node runtime cached at ${nodeCacheDir}`);
 }
 
@@ -116,17 +198,23 @@ function assembleApp() {
 function installProductionDeps() {
     log("Copying Node runtime into this version...");
     fs.cpSync(nodeCacheDir, nodeDir, { recursive: true });
+    if (process.platform !== "win32") {
+        // fs.cpSync generally preserves POSIX mode bits, but make the one binary that actually
+        // needs +x to run at all a hard guarantee rather than an assumption.
+        fs.chmodSync(nodeBinaryFor(versionDir), 0o755);
+    }
 
     log("Running npm ci --omit=dev under the bundled Node runtime...");
-    // THE fix: prepend the bundled node/ to PATH so native-module install scripts (better-
-    // sqlite3, sqlite-vec, onnxruntime-node) resolve THIS node.exe's ABI instead of whatever
-    // `node` is first on the system PATH — confirmed today that without this, better-sqlite3's
-    // prebuilt binary comes back built for the system Node and fails with ERR_DLOPEN_FAILED the
-    // first time something actually opens a Database (not on plain require(), which is why the
-    // boot smoke-test below has to actually instantiate one, not just import the module).
-    const nodeExe = path.join(nodeDir, "node.exe");
-    const npmCli = path.join(nodeDir, "node_modules", "npm", "bin", "npm-cli.js");
-    run(nodeExe, [npmCli, "ci", "--omit=dev"], {
+    // THE fix (originally found on Windows, applies identically on darwin): prepend the bundled
+    // node/ to PATH so native-module install scripts (better-sqlite3, sqlite-vec, onnxruntime-
+    // node) resolve THIS runtime's ABI instead of whatever `node` is first on the system PATH —
+    // confirmed that without this, better-sqlite3's prebuilt binary comes back built for the
+    // system Node and fails with ERR_DLOPEN_FAILED the first time something actually opens a
+    // Database (not on plain require(), which is why the boot smoke-test below has to actually
+    // instantiate one, not just import the module).
+    const nodeBinary = nodeBinaryFor(versionDir);
+    const npmCli = path.join(nodeDir, ...platform.npmCliRelPath);
+    run(nodeBinary, [npmCli, "ci", "--omit=dev"], {
         cwd: appDir,
         env: { ...process.env, PATH: `${nodeDir}${path.delimiter}${process.env.PATH}` }
     });
@@ -136,23 +224,24 @@ function laydownScaffold() {
     const isFromScratch = !fs.existsSync(path.join(outRoot, "current-version.txt"));
 
     fs.mkdirSync(path.join(outRoot, "data"), { recursive: true });
-    // Compress-Archive does not reliably preserve a truly empty directory — confirmed live: the
-    // v0.8.18 release zip shipped with no data/ folder at all, crashing on first boot (server/db/
-    // client.ts now also defends against this directly, but keep this belt-and-suspenders fix
-    // here too since a missing folder is a zip-tool footgun, not just a server one).
+    // Compress-Archive/zip do not reliably preserve a truly empty directory — confirmed live: the
+    // v0.8.18 Windows release zip shipped with no data/ folder at all, crashing on first boot
+    // (server/db/client.ts now also defends against this directly, but keep this belt-and-
+    // suspenders fix here too since a missing folder is a zip-tool footgun, not just a server one).
     fs.writeFileSync(path.join(outRoot, "data", ".keep"), "");
 
     if (isFromScratch) {
-        log("From-scratch build — laying down Start.bat, README.txt, current-version.txt, updater/");
+        log(`From-scratch build — laying down ${platform.launcherAsset}, README.txt, current-version.txt, updater/`);
         fs.writeFileSync(path.join(outRoot, "current-version.txt"), version);
         fs.cpSync(path.join(repoRoot, "scripts", "portable-updater"), path.join(outRoot, "updater"), { recursive: true });
-        fs.copyFileSync(
-            path.join(repoRoot, "scripts", "portable-assets", "Start Story Labyrinth.bat"),
-            path.join(outRoot, "Start Story Labyrinth.bat")
-        );
-        fs.copyFileSync(path.join(repoRoot, "scripts", "portable-assets", "README.txt"), path.join(outRoot, "README.txt"));
+
+        const launcherDest = path.join(outRoot, platform.launcherAsset);
+        fs.copyFileSync(path.join(repoRoot, "scripts", "portable-assets", platform.launcherAsset), launcherDest);
+        if (process.platform !== "win32") fs.chmodSync(launcherDest, 0o755);
+
+        fs.copyFileSync(path.join(repoRoot, "scripts", "portable-assets", platform.readmeAsset), path.join(outRoot, "README.txt"));
     } else {
-        log("Existing output dir — leaving current-version.txt, updater/, Start.bat, and other versions untouched.");
+        log("Existing output dir — leaving current-version.txt, updater/, launcher, and other versions untouched.");
     }
 }
 
@@ -162,7 +251,7 @@ async function smokeTest() {
     const dbPath = path.join(scratchDir, "story-labyrinth.db");
     const port = 34567;
 
-    const child = spawn(path.join(nodeDir, "node.exe"), [path.join(appDir, "dist", "server", "server", "index.js")], {
+    const child = spawn(nodeBinaryFor(versionDir), [path.join(appDir, "dist", "server", "server", "index.js")], {
         cwd: versionDir,
         env: { ...process.env, NODE_ENV: "production", PORT: String(port), DATABASE_PATH: dbPath },
         stdio: ["ignore", "pipe", "pipe"]
@@ -201,9 +290,10 @@ async function smokeTest() {
         const exited = new Promise(resolve => child.once("exit", resolve));
         child.kill();
         await Promise.race([exited, new Promise(r => setTimeout(r, 5000))]);
-        // SQLite's WAL files can stay briefly locked after the process exits on Windows — retry
-        // a few times rather than failing the whole build over scratch-dir cleanup, and give up
-        // quietly (it's in the OS temp dir either way) if it's still locked after that.
+        // SQLite's WAL files can stay briefly locked after the process exits (seen on Windows;
+        // harmless to retry the same way on darwin) — retry a few times rather than failing the
+        // whole build over scratch-dir cleanup, and give up quietly (it's in the OS temp dir
+        // either way) if it's still locked after that.
         for (let attempt = 0; attempt < 5; attempt++) {
             try {
                 fs.rmSync(scratchDir, { recursive: true, force: true });
@@ -229,17 +319,54 @@ async function waitForHealth(port, timeoutMs) {
     fail(`server never responded on :${port}/api/health within ${timeoutMs}ms`);
 }
 
-function zip() {
-    const zipName = "Story-Labyrinth-portable-win-x64.zip";
+// Two zip kinds, both produced from the same build (see docs/Mac_Portable_Design.md §3.4):
+//   - fresh-install: the whole outRoot (launcher, README, current-version.txt, empty data/,
+//     updater/, versions/<ver>/{node,app}) — for humans unzipping a brand-new install.
+//   - update payload: just the INTERIOR of versions/<ver>/ (top-level entries node/ and app/,
+//     no nested versions/<ver>/ wrapper) — this is what update-runner.mjs extracts straight
+//     into a new versions/<target>/ folder. Zipping the fresh-install root for that purpose
+//     was the actual Windows updater/asset-mismatch bug MP0 fixed: extracting a whole-root zip
+//     into versions/<target>/ would have nested Start.bat/data/updater/versions one level too
+//     deep instead of landing node/ and app/ where the updater expects them.
+//
+// Windows zips via PowerShell Compress-Archive (existing, unchanged); darwin zips via the
+// system `zip` command — `ditto` was the other documented option but `zip -ry` gives the exact
+// same "contents at top level, no wrapper folder" shape with more predictable, widely-understood
+// behavior, and matches the plain `zip` tooling a future Linux CI leg would use too.
+function zipFreshInstall() {
+    const zipName = `Story-Labyrinth-portable-${platformId}.zip`;
     const zipPath = path.join(repoRoot, zipName);
-    log(`Zipping ${outRoot} -> ${zipPath} ...`);
+    log(`Zipping fresh-install ${outRoot} -> ${zipPath} ...`);
     fs.rmSync(zipPath, { force: true });
-    run("powershell.exe", [
-        "-NoProfile",
-        "-NonInteractive",
-        "-Command",
-        `Compress-Archive -Path '${outRoot}\\*' -DestinationPath '${zipPath}' -CompressionLevel Optimal`
-    ]);
+    if (process.platform === "win32") {
+        run("powershell.exe", [
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            `Compress-Archive -Path '${outRoot}\\*' -DestinationPath '${zipPath}' -CompressionLevel Optimal`
+        ]);
+    } else {
+        run("zip", ["-ry", zipPath, "."], { cwd: outRoot });
+    }
+    log(`Done: ${zipPath}`);
+    return zipPath;
+}
+
+function zipUpdatePayload() {
+    const zipName = `Story-Labyrinth-portable-${platformId}-update.zip`;
+    const zipPath = path.join(repoRoot, zipName);
+    log(`Zipping update payload ${versionDir} {node,app} -> ${zipPath} ...`);
+    fs.rmSync(zipPath, { force: true });
+    if (process.platform === "win32") {
+        run("powershell.exe", [
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            `Compress-Archive -Path '${nodeDir}','${appDir}' -DestinationPath '${zipPath}' -CompressionLevel Optimal`
+        ]);
+    } else {
+        run("zip", ["-ry", zipPath, "node", "app"], { cwd: versionDir });
+    }
     log(`Done: ${zipPath}`);
     return zipPath;
 }
@@ -252,9 +379,12 @@ async function main() {
     installProductionDeps();
     laydownScaffold();
     await smokeTest();
-    const zipPath = zip();
-    log(`Portable build complete: ${zipPath}`);
-    log(`Upload with: gh release upload v${version} "${zipPath}#${path.basename(zipPath)}" -R bloodgrv/story-labyrinth`);
+    const freshZipPath = zipFreshInstall();
+    const updateZipPath = zipUpdatePayload();
+    log(`Portable build complete: ${freshZipPath}`);
+    log(`Upload both with:`);
+    log(`  gh release upload v${version} "${freshZipPath}#${path.basename(freshZipPath)}" -R bloodgrv/story-labyrinth`);
+    log(`  gh release upload v${version} "${updateZipPath}#${path.basename(updateZipPath)}" -R bloodgrv/story-labyrinth`);
 }
 
 main().catch(error => fail(error instanceof Error ? (error.stack ?? error.message) : String(error)));

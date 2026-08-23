@@ -52,13 +52,18 @@ const currentVersionFile = path.join(root, "current-version.txt");
 const newVersionDir = path.join(versionsDir, targetVersion);
 const downloadPath = path.join(versionsDir, `.download-${targetVersion}.zip`);
 
-const nodeExeFor = versionDir => path.join(versionDir, "node", "node.exe");
+// Single choke point for "where's the node binary for this version" — matches server/routes/
+// update.ts's own nodeBinaryFor helper (kept as two small copies rather than a shared import,
+// since this script is deliberately dependency-free / no relative import outside its own tree,
+// while update.ts's copy lives inside the TS server build). The day this gains a darwin branch
+// (mac-arm64: versions/<ver>/node/bin/node), there's exactly one line to change per file.
+const nodeBinaryFor = versionDir => path.join(versionDir, "node", "node.exe");
 const indexJsFor = versionDir => path.join(versionDir, "app", "dist", "server", "server", "index.js");
 
 const readCurrentVersion = () => fs.readFileSync(currentVersionFile, "utf8").trim();
 
 const spawnServer = (versionDir, extraEnv = {}) =>
-    spawn(nodeExeFor(versionDir), [indexJsFor(versionDir)], {
+    spawn(nodeBinaryFor(versionDir), [indexJsFor(versionDir)], {
         cwd: root,
         env: {
             ...process.env,
@@ -144,7 +149,7 @@ function extractZip() {
 }
 
 function sanityCheckExtracted() {
-    if (!fs.existsSync(nodeExeFor(newVersionDir)) || !fs.existsSync(indexJsFor(newVersionDir))) {
+    if (!fs.existsSync(nodeBinaryFor(newVersionDir)) || !fs.existsSync(indexJsFor(newVersionDir))) {
         throw new Error("extracted version is missing node.exe or dist/server/server/index.js");
     }
 }

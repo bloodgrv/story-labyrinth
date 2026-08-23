@@ -1,0 +1,5 @@
+# Shell/launcher scripts must keep LF endings regardless of the checkout platform's autocrlf
+# setting — a CRLF shebang line (`#!/bin/bash\r`) fails with "bad interpreter" on macOS/Linux.
+# Relevant here: scripts/portable-assets/Start Story Labyrinth.command (macOS portable launcher).
+*.command text eol=lf
+*.sh text eol=lf

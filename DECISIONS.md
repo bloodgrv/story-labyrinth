@@ -2778,3 +2778,37 @@ The practical takeaway (not a full explanation of drizzle's internals, which was
 **Live-verified against three successive from-scratch production boots** (fresh scratch DB each time, `NODE_ENV=production` against the real compiled `dist/`, a genuinely new account created each time) until the fix was fully confirmed: first boot reproduced the original crash exactly; second boot (after bug 1's fix alone) reproduced the second, JSON-deserialization crash; third boot (after both fixes) loaded Settings → Local cleanly, confirmed via a direct `fetch('/api/ai/settings')` that `localInjectPresets` came back as a real `Array` (`isArray: true`), and confirmed zero browser console errors. `npx tsc --noEmit` clean on both root and `server/tsconfig.json`; `oxlint` 0 errors on every touched file. All disposable diagnostic scripts and scratch DBs deleted afterward.
 
 **Not yet re-released** — user explicitly chose to land this on `main` only, not cut a `v0.8.18` release for it yet (asked directly via `AskUserQuestion`, given the bug's severity affects every fresh install regardless of deployment method — Docker included, since it's a pure server-side route bug with nothing packaging-specific about it). The currently published `v0.8.17` Docker image and portable zip both still carry the original bug; a future patch release should pick this commit up before anyone does a genuinely fresh install from either.
+
+---
+
+## Mac Portable Build — Design Locked (2026-08-22)
+
+**Decision:** User wants a **Mac portable** at the same product tier as the Windows portable (bundled Node + browser UI + `data/` folder + in-app Updates) — not Electron/Tauri, not a notarized `.app`, not App Store. Canonical design: `docs/Mac_Portable_Design.md`. Slices **MP0–MP4** (optional **MP5** Intel). Not built until promoted.
+
+**Load-bearing locks:**
+
+1. **Parity layout** with Windows: `Start Story Labyrinth.command`, `current-version.txt`, `data/`, `updater/`, `versions/<ver>/{node,app}`; env `PORTABLE_BUILD=1` + `DATABASE_PATH` under install root; console stays open while server runs.
+2. **Apple Silicon first** (`mac-arm64`). Intel (`mac-x64`) only on demand. No “use Rosetta on the arm64 zip” as the Intel plan.
+3. **Build host gate:** `mac-*` portable **must** be assembled on darwin (local Mac or GitHub `macos-14` arm64 runner). Refuse to produce darwin natives from a Windows-only `npm ci`. Same Node version pin as Windows (`NODE_RUNTIME_VERSION` in `build-portable.mjs`).
+4. **Two release assets per platform** — fresh-install zip (full tree for humans) **and** update zip (top-level `node/` + `app/` only for `update-runner.mjs` extract-into-`versions/<ver>/`). Names: `Story-Labyrinth-portable-mac-arm64.zip` + `…-mac-arm64-update.zip` (and win twins). This also **remediates** the Windows path where the builder currently zips the full install root while the updater sanity-checks a version-dir-shaped extract — MP0 is shared portable work, not Mac-only.
+5. **Platform-aware Updates:** replace hardcoded `Story-Labyrinth-portable-win-x64.zip` in `server/routes/update.ts` with `PORTABLE_PLATFORM` (launcher/builder-set) + `process.platform`/`arch` fallback; node binary helper `node.exe` vs `bin/node`; darwin extract via `unzip`.
+6. **Gatekeeper v1 = docs only** (Right-click Open / `xattr -dr com.apple.quarantine`). No code-sign/notarization pipeline in MP*.
+7. **CI-first for Mac** (primary SL dev host is Windows). Docker Desktop on Mac remains a separate, already-viable path and is not a substitute for the portable zip UX.
+
+**Explicitly deferred (same spirit as Windows portable v1):** Dock icon / `.app` wrapper, LaunchAgent autostart, menu bar, Homebrew cask, Sparkle, loopback-only default bind.
+
+**Backlog:** P3 row “Mac portable (Windows twin)” — MP0–MP5; promote before code.
+
+---
+
+## Mac Portable — MP0 (Portable Platform Matrix + Update-Payload Split) — ✅ Done (2026-08-23)
+
+**User-promoted directly ("Let's start on Mac Portable").** MP0 is shared portable-stack work — no darwin host needed — so it's the correct first slice even from this Windows dev machine; MP1+ (the actual Mac builder) needs a real macOS host and stays blocked on that.
+
+**What this fixes (a real, previously-shipping bug, not just prep work):** `build-portable.mjs` zipped the entire install root (`Start.bat`/`data/`/`current-version.txt`/`updater/`/`versions/<ver>/{node,app}`) into the one release asset `Story-Labyrinth-portable-win-x64.zip`, and `update.ts`/`update-runner.mjs` downloaded *that exact asset* and extracted it straight into `versions/<target>/`. That would have nested `Start.bat`/`data`/`updater`/`versions` one level too deep inside `versions/<target>/` instead of landing `node/` and `app/` where `sanityCheckExtracted()` actually looks for them — every in-app "Update now" click was pointed at a zip shape the updater can't consume correctly. Never hit in practice yet only because no release's Updates flow had been exercised end-to-end against a real newer tag.
+
+**Fix:** `build-portable.mjs` now produces **two** zips from one build: `zipFreshInstall()` (unchanged full-root behavior, for humans) and new `zipUpdatePayload()` (zips only `versions/<ver>/node` + `versions/<ver>/app`, so top-level entries are `node/` and `app/` with no wrapper — exactly what `update-runner.mjs`'s `extractZip()` already assumes). Named via a new `PLATFORM = "win-x64"` constant (`Story-Labyrinth-portable-win-x64.zip` / `…-win-x64-update.zip`), ready for MP1 to parameterize into `--platform`. `server/routes/update.ts` now looks for `PORTABLE_UPDATE_ASSET_NAME` (the `-update.zip` asset) in both `/check` and `/start` instead of the fresh-install name. Both `update.ts` and `update-runner.mjs` gained their own small `nodeBinaryFor(versionDir)` helper (two independent copies, not a shared import — `update-runner.mjs` is deliberately dependency-free with no relative imports outside its own tree, while `update.ts`'s copy lives inside the TS server build) replacing inline/duplicated `node.exe` path construction, so MP3's darwin branch (`node/bin/node`) has exactly one line to change per file later.
+
+**Live-verified** against a real build (`npm run build:portable -- --skip-build`, reusing the existing `dist/`): full `npm ci --omit=dev` under the bundled Node + boot smoke test passed, both zips produced. Inspected both zip shapes directly via `System.IO.Compression.ZipFile` (PowerShell): the update zip's only top-level entries are `node` and `app`, with `node/node.exe` and `app/dist/server/server/index.js` present at the exact paths the updater's sanity check requires; the fresh-install zip is unchanged (`data`/`updater`/`versions`/`current-version.txt`/`README.txt`/`Start Story Labyrinth.bat` at top level). `npx tsc --noEmit -p server/tsconfig.json` clean; `oxlint` on all three touched files shows only pre-existing unrelated `curly` warnings in `build-portable.mjs` (present before this change). Did not live-exercise the actual `/api/update/start` → download → extract → restart path end to end (needs a real second GitHub release to update *to*, not reproducible from a single local build) — the zip-shape and asset-name correctness above is the part MP0 was scoped to fix, and it's now provably correct at rest. Build artifacts (`portable-build/`, both test zips) cleaned up afterward, not committed.
+
+**Next:** MP1 (Mac builder path) needs a real macOS/`macos-14` CI host — blocked until one is available.

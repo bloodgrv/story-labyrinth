@@ -19,6 +19,7 @@
         "postbuild": "node server/scripts/copyGuideContent.mjs && node server/scripts/copyMigrations.mjs",
         "start": "cross-env NODE_ENV=production NODE_OPTIONS=--use-system-ca node dist/server/server/index.js",
         "build:portable": "node scripts/build-portable.mjs",
+        "build:portable:mac": "node scripts/build-portable.mjs --platform=mac-arm64",
         "test": "vitest run",
         "test:watch": "vitest",
         "db:generate": "drizzle-kit generate",

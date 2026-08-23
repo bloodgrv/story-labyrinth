@@ -15,9 +15,17 @@ const router = express.Router();
 
 const CURRENT_VERSION = pkg.version;
 const RELEASES_API = "https://api.github.com/repos/bloodgrv/story-labyrinth/releases/latest";
-const PORTABLE_ASSET_NAME = "Story-Labyrinth-portable-win-x64.zip";
+// The UPDATE payload (versions/<ver>/{node,app} only) — not the fresh-install zip humans
+// download from the release page. Extracting the fresh-install zip into versions/<target>/
+// would nest Start.bat/data/updater/versions one level too deep; see build-portable.mjs's
+// zipUpdatePayload() and docs/Mac_Portable_Design.md §3.4.
+const PORTABLE_UPDATE_ASSET_NAME = "Story-Labyrinth-portable-win-x64-update.zip";
 
 const isPortableBuild = () => process.env.PORTABLE_BUILD === "1";
+
+// Single choke point for "where's the node binary for this version" so the day this gains a
+// darwin branch (mac-arm64: versions/<ver>/node/bin/node), there's exactly one place to change.
+const nodeBinaryFor = (versionDir: string) => path.join(versionDir, "node", "node.exe");
 
 // This app's own tags are always plain x.y.z (see release history) — a full semver dependency
 // would be overkill for a three-number tuple compare.
@@ -65,7 +73,7 @@ router.get("/check", async (_req, res) => {
     }
 
     const latestVersion = release.tag_name.replace(/^v/, "");
-    const asset = release.assets.find(a => a.name === PORTABLE_ASSET_NAME);
+    const asset = release.assets.find(a => a.name === PORTABLE_UPDATE_ASSET_NAME);
 
     res.json({
         currentVersion: CURRENT_VERSION,
@@ -119,15 +127,15 @@ router.post("/start", async (_req, res) => {
         return;
     }
 
-    const asset = release.assets.find(a => a.name === PORTABLE_ASSET_NAME);
+    const asset = release.assets.find(a => a.name === PORTABLE_UPDATE_ASSET_NAME);
     if (!asset || !asset.digest) {
-        res.status(422).json({ error: "Latest release has no portable build asset" });
+        res.status(422).json({ error: "Latest release has no portable update asset" });
         return;
     }
 
     const root = portableRoot();
     const updaterEntry = path.join(root, "updater", "update-runner.mjs");
-    const nodeExe = path.join(root, "versions", CURRENT_VERSION, "node", "node.exe");
+    const nodeExe = nodeBinaryFor(path.join(root, "versions", CURRENT_VERSION));
     if (!fs.existsSync(updaterEntry) || !fs.existsSync(nodeExe)) {
         res.status(500).json({ error: "Updater not found in this install — was it built with scripts/build-portable.mjs?" });
         return;
