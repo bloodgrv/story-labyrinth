@@ -1,6 +1,6 @@
-// Self-updater for the Windows portable build only (see scripts/portable-updater/ and
-// scripts/build-portable.mjs). Docker's update path is `docker compose pull && up -d` and needs
-// no code here. This whole router still mounts unconditionally (matching every other
+// Self-updater for the portable builds (win-x64/mac-arm64/mac-x64 — see scripts/portable-updater/
+// and scripts/build-portable.mjs). Docker's update path is `docker compose pull && up -d` and
+// needs no code here. This whole router still mounts unconditionally (matching every other
 // requireOwner-gated router in server/index.ts) — GET /mode is how the frontend decides whether
 // to show anything at all, and /check and /start both refuse to act when not running in
 // portable mode, as defense in depth against a direct API call bypassing the hidden UI.
@@ -15,17 +15,37 @@ const router = express.Router();
 
 const CURRENT_VERSION = pkg.version;
 const RELEASES_API = "https://api.github.com/repos/bloodgrv/story-labyrinth/releases/latest";
+
+// Portable platform ids match scripts/build-portable.mjs's own PLATFORMS table. The launcher
+// (Start Story Labyrinth.command / .bat) sets PORTABLE_PLATFORM explicitly so a weird Node build
+// can never mis-detect; this is a fallback for anything that launches this process without going
+// through the launcher (e.g. a manual `node index.js` during dev of the portable path itself).
+// See docs/Mac_Portable_Design.md §3.7.
+type PortablePlatform = "win-x64" | "mac-arm64" | "mac-x64";
+
+const detectPlatform = (): PortablePlatform | null => {
+    const fromEnv = process.env.PORTABLE_PLATFORM;
+    if (fromEnv === "win-x64" || fromEnv === "mac-arm64" || fromEnv === "mac-x64") return fromEnv;
+    if (process.platform === "win32" && process.arch === "x64") return "win-x64";
+    if (process.platform === "darwin" && process.arch === "arm64") return "mac-arm64";
+    if (process.platform === "darwin" && process.arch === "x64") return "mac-x64";
+    return null;
+};
+
+const portablePlatform = detectPlatform();
+
 // The UPDATE payload (versions/<ver>/{node,app} only) — not the fresh-install zip humans
 // download from the release page. Extracting the fresh-install zip into versions/<target>/
 // would nest Start.bat/data/updater/versions one level too deep; see build-portable.mjs's
 // zipUpdatePayload() and docs/Mac_Portable_Design.md §3.4.
-const PORTABLE_UPDATE_ASSET_NAME = "Story-Labyrinth-portable-win-x64-update.zip";
+const updateAssetName = (platform: PortablePlatform): string => `Story-Labyrinth-portable-${platform}-update.zip`;
 
 const isPortableBuild = () => process.env.PORTABLE_BUILD === "1";
 
-// Single choke point for "where's the node binary for this version" so the day this gains a
-// darwin branch (mac-arm64: versions/<ver>/node/bin/node), there's exactly one place to change.
-const nodeBinaryFor = (versionDir: string) => path.join(versionDir, "node", "node.exe");
+// Single choke point for "where's the node binary for this version" — darwin ships node/bin/node
+// (the official tarball layout), win ships node/node.exe directly.
+const nodeBinaryFor = (versionDir: string, platform: PortablePlatform): string =>
+    platform === "win-x64" ? path.join(versionDir, "node", "node.exe") : path.join(versionDir, "node", "bin", "node");
 
 // This app's own tags are always plain x.y.z (see release history) — a full semver dependency
 // would be overkill for a three-number tuple compare.
@@ -58,7 +78,7 @@ const fetchLatestRelease = async (): Promise<GitHubRelease> => {
 const portableRoot = () => process.cwd();
 
 router.get("/mode", (_req, res) => {
-    res.json({ portable: isPortableBuild() });
+    res.json({ portable: isPortableBuild(), platform: portablePlatform });
 });
 
 // GET /api/update/check — resolves the latest GitHub release and compares against this running
@@ -66,6 +86,11 @@ router.get("/mode", (_req, res) => {
 // staleTime plus GitHub's 60/hr unauthenticated rate limit are plenty for a manual, single-
 // instance "Check for updates" click.
 router.get("/check", async (_req, res) => {
+    if (!portablePlatform) {
+        res.status(500).json({ error: "Could not determine this portable build's platform" });
+        return;
+    }
+
     const [error, release] = await attemptPromise(fetchLatestRelease);
     if (error) {
         res.status(502).json({ error: "Failed to check for updates", details: error.message });
@@ -73,7 +98,7 @@ router.get("/check", async (_req, res) => {
     }
 
     const latestVersion = release.tag_name.replace(/^v/, "");
-    const asset = release.assets.find(a => a.name === PORTABLE_UPDATE_ASSET_NAME);
+    const asset = release.assets.find(a => a.name === updateAssetName(portablePlatform));
 
     res.json({
         currentVersion: CURRENT_VERSION,
@@ -114,6 +139,10 @@ router.post("/start", async (_req, res) => {
         res.status(404).json({ error: "Not running in portable mode" });
         return;
     }
+    if (!portablePlatform) {
+        res.status(500).json({ error: "Could not determine this portable build's platform" });
+        return;
+    }
 
     const [error, release] = await attemptPromise(fetchLatestRelease);
     if (error) {
@@ -127,7 +156,7 @@ router.post("/start", async (_req, res) => {
         return;
     }
 
-    const asset = release.assets.find(a => a.name === PORTABLE_UPDATE_ASSET_NAME);
+    const asset = release.assets.find(a => a.name === updateAssetName(portablePlatform));
     if (!asset || !asset.digest) {
         res.status(422).json({ error: "Latest release has no portable update asset" });
         return;
@@ -135,7 +164,7 @@ router.post("/start", async (_req, res) => {
 
     const root = portableRoot();
     const updaterEntry = path.join(root, "updater", "update-runner.mjs");
-    const nodeExe = nodeBinaryFor(path.join(root, "versions", CURRENT_VERSION));
+    const nodeExe = nodeBinaryFor(path.join(root, "versions", CURRENT_VERSION), portablePlatform);
     if (!fs.existsSync(updaterEntry) || !fs.existsSync(nodeExe)) {
         res.status(500).json({ error: "Updater not found in this install — was it built with scripts/build-portable.mjs?" });
         return;
@@ -148,6 +177,7 @@ router.post("/start", async (_req, res) => {
         [
             updaterEntry,
             `--root=${root}`,
+            `--platform=${portablePlatform}`,
             `--target-version=${latestVersion}`,
             `--download-url=${asset.browser_download_url}`,
             `--digest=${asset.digest}`,

@@ -17,8 +17,9 @@
 // solve, because we never try to overwrite it.
 //
 // Usage:
-//   node update-runner.mjs --root=<portableRoot> --target-version=<x.y.z>
-//     --download-url=<url> --digest=sha256:<hex> --old-pid=<pid> --port=<port>
+//   node update-runner.mjs --root=<portableRoot> --platform=<win-x64|mac-arm64|mac-x64>
+//     --target-version=<x.y.z> --download-url=<url> --digest=sha256:<hex> --old-pid=<pid>
+//     --port=<port>
 
 import { spawn, execFileSync } from "node:child_process";
 import crypto from "node:crypto";
@@ -36,16 +37,22 @@ const args = Object.fromEntries(
 );
 
 const root = path.resolve(args.root);
+const platform = args.platform; // "win-x64" | "mac-arm64" | "mac-x64"
 const targetVersion = args["target-version"];
 const downloadUrl = args["download-url"];
 const expectedDigest = args.digest; // "sha256:<hex>"
 const oldPid = Number(args["old-pid"]);
 const port = args.port || "3000";
 
-if (!root || !targetVersion || !downloadUrl || !expectedDigest || !oldPid) {
+if (!root || !platform || !targetVersion || !downloadUrl || !expectedDigest || !oldPid) {
     console.error("[update-runner] missing required args");
     process.exit(1);
 }
+if (platform !== "win-x64" && platform !== "mac-arm64" && platform !== "mac-x64") {
+    console.error(`[update-runner] unknown --platform=${platform}`);
+    process.exit(1);
+}
+const isWindows = platform === "win-x64";
 
 const versionsDir = path.join(root, "versions");
 const currentVersionFile = path.join(root, "current-version.txt");
@@ -55,9 +62,9 @@ const downloadPath = path.join(versionsDir, `.download-${targetVersion}.zip`);
 // Single choke point for "where's the node binary for this version" — matches server/routes/
 // update.ts's own nodeBinaryFor helper (kept as two small copies rather than a shared import,
 // since this script is deliberately dependency-free / no relative import outside its own tree,
-// while update.ts's copy lives inside the TS server build). The day this gains a darwin branch
-// (mac-arm64: versions/<ver>/node/bin/node), there's exactly one line to change per file.
-const nodeBinaryFor = versionDir => path.join(versionDir, "node", "node.exe");
+// while update.ts's copy lives inside the TS server build). darwin ships the official
+// node/bin/node tarball layout; win ships node/node.exe directly.
+const nodeBinaryFor = versionDir => (isWindows ? path.join(versionDir, "node", "node.exe") : path.join(versionDir, "node", "bin", "node"));
 const indexJsFor = versionDir => path.join(versionDir, "app", "dist", "server", "server", "index.js");
 
 const readCurrentVersion = () => fs.readFileSync(currentVersionFile, "utf8").trim();
@@ -69,6 +76,7 @@ const spawnServer = (versionDir, extraEnv = {}) =>
             ...process.env,
             NODE_ENV: "production",
             PORTABLE_BUILD: "1",
+            PORTABLE_PLATFORM: platform,
             PORT: port,
             DATABASE_PATH: path.join(root, "data", "story-labyrinth.db"),
             ...extraEnv
@@ -141,16 +149,36 @@ function verifyDigest() {
 function extractZip() {
     writeStatus(root, { phase: "extracting", targetVersion });
     fs.rmSync(newVersionDir, { recursive: true, force: true });
-    execFileSync(
-        "powershell.exe",
-        ["-NoProfile", "-NonInteractive", "-Command", `Expand-Archive -LiteralPath '${downloadPath}' -DestinationPath '${newVersionDir}' -Force`],
-        { stdio: "ignore" }
-    );
+    fs.mkdirSync(newVersionDir, { recursive: true });
+    if (isWindows) {
+        execFileSync(
+            "powershell.exe",
+            ["-NoProfile", "-NonInteractive", "-Command", `Expand-Archive -LiteralPath '${downloadPath}' -DestinationPath '${newVersionDir}' -Force`],
+            { stdio: "ignore" }
+        );
+    } else {
+        // -o overwrite, -q quiet — the download zip's top-level entries are node/ and app/
+        // directly (see build-portable.mjs's zipUpdatePayload), same shape Expand-Archive above
+        // produces, so nothing else here needs to branch on platform.
+        execFileSync("/usr/bin/unzip", ["-o", "-q", downloadPath, "-d", newVersionDir], { stdio: "ignore" });
+        // fs.cpSync-style POSIX mode bits generally survive a zip round-trip, but make the one
+        // binary that actually needs +x to run at all a hard guarantee rather than an assumption
+        // (mirrors build-portable.mjs's own belt-and-suspenders chmod after assembling a version).
+        fs.chmodSync(nodeBinaryFor(newVersionDir), 0o755);
+        // Quarantine can otherwise re-attach to the freshly-extracted binary/app bundle on darwin
+        // and trip Gatekeeper on next launch — best-effort, ignore if xattr isn't present or the
+        // files were never quarantined in the first place (e.g. downloaded over a non-Safari path).
+        try {
+            execFileSync("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newVersionDir], { stdio: "ignore" });
+        } catch {
+            // not quarantined, or xattr unavailable — non-fatal
+        }
+    }
 }
 
 function sanityCheckExtracted() {
     if (!fs.existsSync(nodeBinaryFor(newVersionDir)) || !fs.existsSync(indexJsFor(newVersionDir))) {
-        throw new Error("extracted version is missing node.exe or dist/server/server/index.js");
+        throw new Error(`extracted version is missing ${isWindows ? "node.exe" : "node/bin/node"} or dist/server/server/index.js`);
     }
 }
 

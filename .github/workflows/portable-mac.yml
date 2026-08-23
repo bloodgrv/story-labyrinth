@@ -1,0 +1,68 @@
+name: Build Mac Portable
+
+# mac-arm64 only (P0 per docs/Mac_Portable_Design.md §3.3) — must run on a real darwin host,
+# hence macos-14 rather than any Linux/Windows runner. See scripts/build-portable.mjs's own
+# host-OS gate: this workflow can't accidentally cross-build the wrong platform's natives.
+on:
+    workflow_dispatch:
+    push:
+        tags:
+            - "v*"
+
+permissions:
+    contents: write
+
+jobs:
+    build-mac-arm64:
+        runs-on: macos-14
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            # Bootstrap Node only — build-portable.mjs downloads its own bundled runtime
+            # separately for the shipped portable (see NODE_RUNTIME_VERSION in that script).
+            - name: Set up Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Cache portable-build Node runtime download
+              uses: actions/cache@v4
+              with:
+                  path: .portable-build-cache
+                  key: portable-node-runtime-mac-arm64-${{ hashFiles('scripts/build-portable.mjs') }}
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build Mac portable (mac-arm64)
+              run: node scripts/build-portable.mjs --platform=mac-arm64
+
+            - name: Upload fresh-install zip artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: Story-Labyrinth-portable-mac-arm64
+                  path: Story-Labyrinth-portable-mac-arm64.zip
+                  if-no-files-found: error
+
+            - name: Upload update-payload zip artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: Story-Labyrinth-portable-mac-arm64-update
+                  path: Story-Labyrinth-portable-mac-arm64-update.zip
+                  if-no-files-found: error
+
+            # Only on a real tag push — workflow_dispatch runs (manual smoke/dry-run checks)
+            # produce build artifacts above but never touch a release.
+            - name: Upload both zips to the matching GitHub Release
+              if: startsWith(github.ref, 'refs/tags/v')
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh release upload "${{ github.ref_name }}" \
+                      "Story-Labyrinth-portable-mac-arm64.zip" \
+                      "Story-Labyrinth-portable-mac-arm64-update.zip" \
+                      --repo "${{ github.repository }}" \
+                      --clobber

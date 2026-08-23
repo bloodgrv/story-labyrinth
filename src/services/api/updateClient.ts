@@ -2,6 +2,7 @@ import { fetchJSON } from "./apiFactory";
 
 export interface UpdateModeResult {
     portable: boolean;
+    platform: "win-x64" | "mac-arm64" | "mac-x64" | null;
 }
 
 export interface UpdateCheckResult {
