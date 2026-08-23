@@ -66,14 +66,17 @@ router.put(
     "/settings/:id",
     asyncHandler(async (req, res) => {
         const { id: _id, createdAt: _createdAt, lastModelsFetch, ...updates } = req.body;
-        const result = await db
-            .update(schema.aiSettings)
-            .set({
-                ...updates,
-                ...(lastModelsFetch && { lastModelsFetch: new Date(lastModelsFetch) })
-            })
-            .where(eq(schema.aiSettings.id, req.params.id))
-            .returning();
+        const setValues = {
+            ...updates,
+            ...(lastModelsFetch && { lastModelsFetch: new Date(lastModelsFetch) })
+        };
+        // A body containing only id/createdAt/a falsy lastModelsFetch leaves `setValues`
+        // empty — drizzle's .set({}) throws "No values to set" instead of a clean response.
+        // Treat it as a no-op.
+        const result =
+            Object.keys(setValues).length === 0
+                ? await db.select().from(schema.aiSettings).where(eq(schema.aiSettings.id, req.params.id))
+                : await db.update(schema.aiSettings).set(setValues).where(eq(schema.aiSettings.id, req.params.id)).returning();
         const updated = Array.isArray(result) ? result[0] : result;
         res.json(updated);
     })

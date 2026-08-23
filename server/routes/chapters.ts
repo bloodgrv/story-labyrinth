@@ -84,7 +84,13 @@ export default createCrudRouter({
                 }
 
                 if (typeof updates.content !== "string") {
-                    const result = await db.update(table).set(updates).where(eq(table.id, req.params.id)).returning();
+                    // A body containing only id/createdAt/expectedContentVersion leaves `updates`
+                    // empty — drizzle's .set({}) throws "No values to set" instead of a clean
+                    // response. Treat it as a no-op: re-fetch and return the current row.
+                    const result =
+                        Object.keys(updates).length === 0
+                            ? await db.select().from(table).where(eq(table.id, req.params.id))
+                            : await db.update(table).set(updates).where(eq(table.id, req.params.id)).returning();
                     const updated = Array.isArray(result) ? result[0] : result;
                     if (!updated) {
                         res.status(404).json({ error: "Chapter not found" });
