@@ -56,12 +56,18 @@ jobs:
                   platforms: linux/amd64
 
             - name: Update Docker Hub description
+              # Needs DOCKERHUB_TOKEN to have Docker Hub's "Read, Write, Delete" scope — the
+              # narrower "Read & Write" scope is enough for docker/login-action's push above but
+              # 403s on this action's repository-description PATCH call (a stricter permission
+              # tier on Docker Hub's own API, not this action's fault). continue-on-error so a
+              # stale/under-scoped token only skips this cosmetic step, not the actual image push.
+              continue-on-error: true
               uses: peter-evans/dockerhub-description@v4
               with:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
                   repository: ${{ env.DOCKER_IMAGE }}
-                  short-description: ${{ github.event.repository.description }}
+                  short-description: "Self-hosted AI writing workspace for long-form fiction: Codex continuity, RAG scanning, WB chats"
                   readme-filepath: ./README.md
 
             - name: Image digest
