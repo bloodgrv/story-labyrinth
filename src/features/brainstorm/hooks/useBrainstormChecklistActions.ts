@@ -90,5 +90,10 @@ export function useBrainstormChecklistActions({ chatId, storyId, fromChatTitleSn
 
     const markDone = (id: string) => updateStatus.mutate({ id, status: "done" });
 
-    return { handleAcceptOverview, handleOpenHandoff, markDone, isBusy };
+    // Distinct from markDone — for a proposal that's stale/changed/no longer wanted, never acted
+    // on. Shares the "dismissed" status the schema/server already supported but no UI ever
+    // exposed (both land in the Done tab alongside "done").
+    const dismiss = (id: string) => updateStatus.mutate({ id, status: "dismissed" });
+
+    return { handleAcceptOverview, handleOpenHandoff, markDone, dismiss, isBusy };
 }

@@ -2135,6 +2135,10 @@ export function ChatInterface({
                                         brainstormChecklistActions.handleAcceptOverview(item);
                                         dismissOverviewChecklistItem(messageId);
                                     }}
+                                    onDismiss={item => {
+                                        brainstormChecklistActions.dismiss(item.id);
+                                        dismissOverviewChecklistItem(messageId);
+                                    }}
                                 />
                             )}
                             {handoffChecklistItems && handoffChecklistItems.length > 0 && (
@@ -2146,6 +2150,13 @@ export function ChatInterface({
                                         // Drop just this one item — the others in the same reply
                                         // (e.g. a WB handoff and a Notes handoff from one packet)
                                         // stay visible/actionable until opened themselves.
+                                        setHandoffChecklistItemsByMessage(prev => ({
+                                            ...prev,
+                                            [messageId]: (prev[messageId] ?? []).filter(candidate => candidate.id !== item.id)
+                                        }));
+                                    }}
+                                    onDismiss={item => {
+                                        brainstormChecklistActions.dismiss(item.id);
                                         setHandoffChecklistItemsByMessage(prev => ({
                                             ...prev,
                                             [messageId]: (prev[messageId] ?? []).filter(candidate => candidate.id !== item.id)

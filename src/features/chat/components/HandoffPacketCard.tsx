@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import type { BrainstormChecklistItem, HandoffPacket } from "@/types/brainstorm"
 interface HandoffPacketCardProps {
     items: BrainstormChecklistItem[];
     onOpen: (item: BrainstormChecklistItem) => void;
+    onDismiss: (item: BrainstormChecklistItem) => void;
     disabled?: boolean;
 }
 
@@ -14,7 +15,7 @@ interface HandoffPacketCardProps {
 // captured server-side (when the extraction pass succeeded at all, see B16) but never rendered
 // inline, only in the Approvals tray's "Handoffs" section. One reply can produce several handoff
 // items (one packet per destination), so this renders one row per item rather than one card.
-export function HandoffPacketCard({ items, onOpen, disabled }: HandoffPacketCardProps) {
+export function HandoffPacketCard({ items, onOpen, onDismiss, disabled }: HandoffPacketCardProps) {
     if (items.length === 0) return null;
 
     return (
@@ -35,10 +36,23 @@ export function HandoffPacketCard({ items, onOpen, disabled }: HandoffPacketCard
                                 </Badge>
                             </div>
                             <p className="text-sm whitespace-pre-wrap text-muted-foreground">{payload.summary}</p>
-                            <Button size="sm" onClick={() => onOpen(item)} disabled={disabled}>
-                                <ExternalLink className="h-4 w-4 mr-1" />
-                                Open
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button size="sm" onClick={() => onOpen(item)} disabled={disabled}>
+                                    <ExternalLink className="h-4 w-4 mr-1" />
+                                    Open
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-muted-foreground"
+                                    onClick={() => onDismiss(item)}
+                                    disabled={disabled}
+                                    title="Reject — no longer relevant, was never acted on"
+                                >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Reject
+                                </Button>
+                            </div>
                         </div>
                     );
                 })}

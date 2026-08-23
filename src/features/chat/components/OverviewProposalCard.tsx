@@ -1,4 +1,4 @@
-import { Check, ExternalLink } from "lucide-react";
+import { Check, ExternalLink, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import type { BrainstormChecklistItem, OverviewProposalPayload } from "@/types/b
 interface OverviewProposalCardProps {
     item: BrainstormChecklistItem;
     onAccept: (item: BrainstormChecklistItem) => void;
+    onDismiss: (item: BrainstormChecklistItem) => void;
     disabled?: boolean;
 }
 
@@ -24,7 +25,7 @@ const summarize = (payload: OverviewProposalPayload): { label: string; body: str
 // useBrainstormChecklistActions.ts) so accepting here and accepting from the tray behave
 // identically. Already resolved/opened items don't render this card at all (see ChatInterface.tsx
 // render-loop guard) — no separate "already handled" state needed here.
-export function OverviewProposalCard({ item, onAccept, disabled }: OverviewProposalCardProps) {
+export function OverviewProposalCard({ item, onAccept, onDismiss, disabled }: OverviewProposalCardProps) {
     const { label, body } = summarize(item.payload as OverviewProposalPayload);
 
     return (
@@ -41,6 +42,17 @@ export function OverviewProposalCard({ item, onAccept, disabled }: OverviewPropo
                     <Button size="sm" onClick={() => onAccept(item)} disabled={disabled}>
                         <Check className="h-4 w-4 mr-1" />
                         Accept
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-muted-foreground"
+                        onClick={() => onDismiss(item)}
+                        disabled={disabled}
+                        title="Reject — no longer relevant, was never acted on"
+                    >
+                        <X className="h-4 w-4 mr-1" />
+                        Reject
                     </Button>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <ExternalLink className="h-3 w-3" />

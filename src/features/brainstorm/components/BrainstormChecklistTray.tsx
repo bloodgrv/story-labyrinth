@@ -1,4 +1,4 @@
-import { Check, ExternalLink, Loader2 } from "lucide-react";
+import { Check, ExternalLink, Loader2, X } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
     const [openBatchItem, setOpenBatchItem] = useState<BrainstormChecklistItem | null>(null);
     const { data: items = [] } = useBrainstormChecklistQuery(chatId, statusTab);
     const updateStatus = useUpdateChecklistStatusMutation();
-    const { handleAcceptOverview, handleOpenHandoff, markDone, isBusy } = useBrainstormChecklistActions({
+    const { handleAcceptOverview, handleOpenHandoff, markDone, dismiss, isBusy } = useBrainstormChecklistActions({
         chatId,
         storyId,
         fromChatTitleSnapshot
@@ -63,7 +63,7 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
                         </Badge>
                         {item.status !== "pending" && (
                             <Badge variant={item.status === "done" ? "default" : "outline"} className="capitalize">
-                                {item.status}
+                                {item.status === "dismissed" ? "Rejected" : item.status}
                             </Badge>
                         )}
                     </div>
@@ -98,6 +98,17 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
                             <Button size="sm" variant="ghost" onClick={() => markDone(item.id)} disabled={updateStatus.isPending}>
                                 {updateStatus.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
                                 Mark done
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-muted-foreground"
+                                onClick={() => dismiss(item.id)}
+                                disabled={updateStatus.isPending}
+                                title="Reject — no longer relevant, was never acted on"
+                            >
+                                <X className="h-4 w-4 mr-1" />
+                                Reject
                             </Button>
                         </div>
                     )}
