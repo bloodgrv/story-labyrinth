@@ -10,6 +10,7 @@ import { CreateStoryDialog } from "@/features/stories/components/CreateStoryDial
 import { EditStoryDialog } from "@/features/stories/components/EditStoryDialog";
 import { useStoriesQuery } from "@/features/stories/hooks/useStoriesQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { storyExportService } from "@/services/storyExportService";
 import type { Story } from "@/types/story";
 import { StoriesToolHeader } from "./StoriesToolHeader";
@@ -24,7 +25,13 @@ export const StoriesTool = () => {
     const { setCurrentStoryId, setCurrentTool } = useStoryContext();
     const [editingStory, setEditingStory] = useState<Story | null>(null);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const [selectedSeriesFilter, setSelectedSeriesFilter] = useState<string>("all");
+    // Any stored value is trusted as-is (a stale series id just filters everything out until the
+    // user picks again) — no fixed enum to validate against since series ids are dynamic.
+    const [selectedSeriesFilter, setSelectedSeriesFilter] = usePersistedState<string>(
+        "sn-stories-series-filter",
+        "all",
+        (v): v is string => typeof v === "string"
+    );
 
     const seriesFilteredStories = useMemo(
         () =>

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { EMPTY_CODEX_STATE } from "@/features/lorebook/components/form/entryFormUtils";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { cn } from "@/lib/utils";
 import { codexApi } from "@/services/api/client";
 import type { CodexSecretItem, CodexState } from "@/types/codex";
@@ -35,7 +36,11 @@ interface SecretRow {
 // route) — this panel just aggregates across entries client-side and edits one entry's `secrets`
 // array at a time, same as toggling from inside that entry's own editor would.
 export function LorebookSecretsPanel({ storyId, entries, onOpenEntry, onChanged }: LorebookSecretsPanelProps) {
-    const [filter, setFilter] = useState<"all" | "hidden" | "revealed">("all");
+    const [filter, setFilter] = usePersistedState<"all" | "hidden" | "revealed">(
+        "sn-lorebook-secrets-filter",
+        "all",
+        (v): v is "all" | "hidden" | "revealed" => v === "all" || v === "hidden" || v === "revealed"
+    );
     const [busyId, setBusyId] = useState<string | null>(null);
     const chaptersQuery = useChaptersByStoryQuery(storyId ?? "");
     const chapterById = new Map((chaptersQuery.data ?? []).map(c => [c.id, c]));

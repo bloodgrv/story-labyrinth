@@ -12,6 +12,7 @@ import { MoveToFolderDialog } from "@/features/folders/components/MoveToFolderDi
 import { useFoldersQuery } from "@/features/folders/hooks/useFoldersQuery";
 import { getDescendantFolderIds, getFolderPath } from "@/features/folders/lib/folderTree";
 import { useNotesBrowseView } from "@/lib/useNotesBrowseView";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { cn } from "@/lib/utils";
 import type { Note } from "@/types/story";
 import { useCreateNoteMutation, useDeleteNoteMutation, useUpdateNoteMutation } from "../hooks/useNotesQuery";
@@ -48,8 +49,14 @@ export function NotesBrowsePane({ storyId, notes, onOpenNote }: NotesBrowsePaneP
     const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
     const [includeDescendants, setIncludeDescendants] = useState(true);
     const [thisFolderOnly, setThisFolderOnly] = useState(false);
-    const [pile, setPile] = useState<Pile>("all");
-    const [typeFilter, setTypeFilter] = useState<Note["type"] | "all">("all");
+    const [pile, setPile] = usePersistedState<Pile>("sn-notes-pile", "all", (v): v is Pile =>
+        v === "all" || v === "unfiled" || v === "pinned" || v === "armed" || v === "recent"
+    );
+    const [typeFilter, setTypeFilter] = usePersistedState<Note["type"] | "all">(
+        "sn-notes-type-filter",
+        "all",
+        (v): v is Note["type"] | "all" => v === "all" || NOTE_TYPES.some(t => t.value === v)
+    );
     const [search, setSearch] = useState("");
     const [isNewNoteDialogOpen, setIsNewNoteDialogOpen] = useState(false);
     const [movingNoteId, setMovingNoteId] = useState<string | null>(null);

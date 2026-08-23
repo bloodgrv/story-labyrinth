@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { groupPinsByTier, sortPins } from "@/features/story-timeline/lib/sortPins";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { cn } from "@/lib/utils";
 import type { StoryTimeline, TimelinePin } from "@/types/storyTimeline";
 import { useCreatePinMutation, useDeletePinMutation, useUpdatePinMutation, useUpdateTimelineMutation } from "../hooks/useStoryTimelineQuery";
@@ -313,7 +314,11 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
     const [zoom, setZoom] = useState(1);
     // Manual override for compact mode — auto-engages at low zoom (COMPACT_AUTO_ZOOM_THRESHOLD)
     // regardless of this flag, but this lets pins collapse to dots at any zoom level too.
-    const [compactMode, setCompactMode] = useState(false);
+    const [compactMode, setCompactMode] = usePersistedState<boolean>(
+        "sn-timeline-compact-mode",
+        false,
+        (v): v is boolean => typeof v === "boolean"
+    );
     const isCompact = compactMode || zoom <= COMPACT_AUTO_ZOOM_THRESHOLD;
     const boardRef = useRef<HTMLDivElement>(null);
     const createMutation = useCreatePinMutation(storyId);
@@ -424,7 +429,7 @@ export function TimelineBoard({ storyId, timeline, pins }: TimelineBoardProps) {
                             size="sm"
                             variant={compactMode ? "default" : "outline"}
                             className="gap-1.5"
-                            onClick={() => setCompactMode(v => !v)}
+                            onClick={() => setCompactMode(!compactMode)}
                             title="Compact — collapse pins to dots (also engages automatically at low zoom); hover a dot for its title, click to expand"
                         >
                             <Minimize2 className="h-3.5 w-3.5" />

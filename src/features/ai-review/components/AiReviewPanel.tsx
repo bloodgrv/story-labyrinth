@@ -10,6 +10,7 @@ import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { useAppendToScribble, formatScribbleBlock } from "@/features/chapters/hooks/useAppendToScribble";
 import { useChaptersByStoryQuery } from "@/features/chapters/hooks/useChaptersQuery";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
+import { usePersistedState } from "@/lib/usePersistedState";
 import type { AiReviewFindingStatus, AiReviewMode, AiReviewTag } from "@/types/aiReview";
 import {
     useReviewJobWithInvalidation,
@@ -50,11 +51,21 @@ interface AiReviewPanelProps {
 // framing.
 export function AiReviewPanel({ storyId }: AiReviewPanelProps) {
     const isOwner = useIsOwner();
-    const [statusTab, setStatusTab] = useState<AiReviewFindingStatus>("open");
-    const [tagFilter, setTagFilter] = useState<AiReviewTag | "all">("all");
+    const [statusTab, setStatusTab] = usePersistedState<AiReviewFindingStatus>(
+        "sn-ai-review-status-tab",
+        "open",
+        (v): v is AiReviewFindingStatus => STATUS_TABS.some(t => t.value === v)
+    );
+    const [tagFilter, setTagFilter] = usePersistedState<AiReviewTag | "all">(
+        "sn-ai-review-tag-filter",
+        "all",
+        (v): v is AiReviewTag | "all" => TAG_OPTIONS.some(t => t.value === v)
+    );
     const [selectedChapterIds, setSelectedChapterIds] = useState<Set<string>>(new Set());
     const [triggeredJobId, setTriggeredJobId] = useState<string | null>(null);
-    const [mode, setMode] = useState<AiReviewMode>("quick");
+    const [mode, setMode] = usePersistedState<AiReviewMode>("sn-ai-review-mode", "quick", (v): v is AiReviewMode =>
+        MODES.some(m => m.value === v)
+    );
     const [includeMemory, setIncludeMemory] = useState(false);
     const [includeTimeline, setIncludeTimeline] = useState(false);
     const [includeLine, setIncludeLine] = useState(false);

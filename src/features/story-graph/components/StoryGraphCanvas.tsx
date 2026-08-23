@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsOwner } from "@/features/auth/hooks/useCanEdit";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import { isDarkThemeId, useTheme } from "@/lib/theme-provider";
+import { usePersistedState } from "@/lib/usePersistedState";
 import type { StoryGraphEdge, StoryGraphNode } from "@/types/storyGraph";
 import {
     useGraphLayoutQuery,
@@ -66,7 +67,11 @@ function StoryGraphCanvasInner({ storyId }: StoryGraphCanvasProps) {
     const sortedNodes = useMemo(() => [...allNodes].sort((a, b) => a.name.localeCompare(b.name)), [allNodes]);
     const allNodesById = useMemo(() => new Map(allNodes.map(n => [n.id, n])), [allNodes]);
 
-    const [viewMode, setViewMode] = useState<"ego" | "full" | "pending">("ego");
+    const [viewMode, setViewMode] = usePersistedState<"ego" | "full" | "pending">(
+        "sn-story-graph-view-mode",
+        "ego",
+        (v): v is "ego" | "full" | "pending" => v === "ego" || v === "full" || v === "pending"
+    );
     const pendingQuery = usePendingEdgesQuery(storyId);
     const pendingCount = pendingQuery.data?.pending.length ?? 0;
     const [centerEntryId, setCenterEntryId] = useState<string | null>(null);
