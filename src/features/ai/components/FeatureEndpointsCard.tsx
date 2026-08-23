@@ -106,9 +106,25 @@ function FeatureEndpointRow({ featureKey, override, allModels, isSaving, onSave,
         });
     };
 
+    // Purely informational now that "Set global default" excludes this row entirely (it can't be
+    // silently clobbered anymore) — just a standing reminder that this one specifically needs an
+    // image-capable model, unlike every other row here which wants a text/chat model.
+    const isImageGeneration = featureKey === "image_generation";
+
     return (
-        <div className="flex flex-wrap items-center gap-2 py-2">
-            <span className="text-sm font-medium w-48 shrink-0">{FEATURE_LABELS[featureKey]}</span>
+        <div
+            className={
+                isImageGeneration
+                    ? "flex flex-wrap items-center gap-2 py-2 -mx-2 px-2 rounded-md border border-dashed border-muted-foreground/30"
+                    : "flex flex-wrap items-center gap-2 py-2"
+            }
+        >
+            <span className="text-sm font-medium w-48 shrink-0">
+                {FEATURE_LABELS[featureKey]}
+                {isImageGeneration && (
+                    <span className="block text-xs font-normal text-muted-foreground">needs an image-capable model</span>
+                )}
+            </span>
             <Select value={provider} onValueChange={handleProviderChange}>
                 <SelectTrigger className="w-44">
                     <SelectValue />
