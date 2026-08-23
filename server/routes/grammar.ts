@@ -30,11 +30,16 @@ router.put(
     "/settings/:id",
     asyncHandler(async (req, res) => {
         const { id: _id, createdAt: _createdAt, ...updates } = req.body;
-        const result = await db
-            .update(schema.grammarSettings)
-            .set(updates)
-            .where(eq(schema.grammarSettings.id, req.params.id))
-            .returning();
+        // A body containing only id/createdAt leaves `updates` empty — drizzle's .set({})
+        // throws "No values to set" instead of a clean response. Treat it as a no-op.
+        const result =
+            Object.keys(updates).length === 0
+                ? await db.select().from(schema.grammarSettings).where(eq(schema.grammarSettings.id, req.params.id))
+                : await db
+                      .update(schema.grammarSettings)
+                      .set(updates)
+                      .where(eq(schema.grammarSettings.id, req.params.id))
+                      .returning();
         const updated = Array.isArray(result) ? result[0] : result;
         res.json(updated);
     })

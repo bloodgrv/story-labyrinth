@@ -314,8 +314,13 @@ export default createCrudRouter({
                     if (resolvedFolderId !== undefined) updates.folderId = resolvedFolderId;
                 }
 
-                const result = await db.update(table).set(updates).where(eq(table.id, req.params.id)).returning();
-                const updated = Array.isArray(result) ? result[0] : result;
+                // A body containing only stripped fields (e.g. just { imageFilename }) leaves
+                // `updates` empty — drizzle's .set({}) throws "No values to set" rather than a
+                // clean response. Treat it as a no-op: re-fetch and return the current row.
+                const [updated] =
+                    Object.keys(updates).length === 0
+                        ? await db.select().from(table).where(eq(table.id, req.params.id))
+                        : await db.update(table).set(updates).where(eq(table.id, req.params.id)).returning();
                 if (!updated) {
                     res.status(404).json({ error: "Lorebook entry not found" });
                     return;

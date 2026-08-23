@@ -159,11 +159,14 @@ export const createCrudRouter = <
         asyncHandler(async (req, res) => {
             const { id: _id, createdAt: _createdAt, ...updates } = req.body;
             const column = table.id;
-            const result = await db
-                .update(table)
-                .set(coerceTimestampColumns(table, stripProtectedFields(updates, protectedFields)) as Partial<InferInsertModel<TTable>>)
-                .where(eq(column, req.params.id))
-                .returning();
+            const setValues = coerceTimestampColumns(table, stripProtectedFields(updates, protectedFields)) as Partial<InferInsertModel<TTable>>;
+            // A body containing only id/createdAt/protected fields leaves setValues empty —
+            // drizzle's .set({}) throws "No values to set" instead of a clean response. Treat
+            // it as a no-op: re-fetch and return the current row.
+            const result =
+                Object.keys(setValues).length === 0
+                    ? await db.select().from(table).where(eq(column, req.params.id))
+                    : await db.update(table).set(setValues).where(eq(column, req.params.id)).returning();
             const updated = Array.isArray(result) ? result[0] : result;
             if (!updated) {
                 res.status(404).json({ error: `${name} not found` });
