@@ -7,6 +7,7 @@ import { sanitizeNoteHtml } from "../lib/sanitizeHtml.js";
 import { buildNoteText, indexNote, removeEntityFromIndex } from "../services/ragIndexService.js";
 import { resolveNotesFolderId } from "../services/folderService.js";
 import { unlinkPinsForSource } from "../services/storyTimelineService.js";
+import { extractNoteProposal } from "../services/notesExtractService.js";
 
 type NoteRow = typeof schema.notes.$inferSelect;
 
@@ -152,6 +153,34 @@ export default createCrudRouter({
                 await db.update(table).set({ deletedAt: new Date() }).where(eq(table.id, req.params.id));
                 removeEntityFromIndex("note", req.params.id);
                 res.json({ success: true });
+            })
+        );
+
+        // POST /api/notes/extract-proposal — body: { replyText, userMessageText? }
+        // Reliability fix (2026-08-23, notesExtractService.ts's own comment): a narrow, isolated,
+        // non-streaming follow-up extraction pass over an already-generated Notes chat reply, since
+        // the reply's own note-proposal/note-split-proposal fence emission is unreliable —
+        // especially when the composer was seeded from a handoff and the model just replies
+        // conversationally instead of saving anything. Fired automatically by the client after
+        // every Notes chat reply that didn't already self-emit one of those fences. Always resolves
+        // (never 500s on "no provider"/model failure — extractNoteProposal degrades to an empty
+        // result), since this must never disrupt a chat turn that already succeeded.
+        router.post(
+            "/extract-proposal",
+            asyncHandler(async (req, res) => {
+                const { replyText, userMessageText } = req.body as { replyText?: unknown; userMessageText?: unknown };
+                if (typeof replyText !== "string" || !replyText.trim()) {
+                    res.status(400).json({ error: "replyText is required" });
+                    return;
+                }
+                const [error, result] = await attemptPromise(() =>
+                    extractNoteProposal(replyText, typeof userMessageText === "string" ? userMessageText : undefined)
+                );
+                if (error) {
+                    res.status(500).json({ error: "Failed to extract note proposal", details: error.message });
+                    return;
+                }
+                res.json(result);
             })
         );
     }

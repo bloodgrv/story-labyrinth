@@ -29,6 +29,7 @@ export type FeatureKey =
     | "sheet_sync" // "Sync structured fields" — LLM row/list extraction inside Lore Sheet sections (T5 FS3, sheetSyncService.ts)
     | "ai_review" // AI Review manuscript-editor pass — dev/continuity/voice/line findings (AR1, aiReviewService.ts)
     | "brainstorm_extract" // Isolated extraction pass over a Brainstorm reply for overview/handoff proposals (brainstormExtractService.ts) — separate from the main chat call since a single-purpose extraction prompt is far more reliable than asking the conversational reply to also self-emit fences
+    | "notes_extract" // Isolated extraction pass over a Notes chat reply for note-proposal/note-split-proposal (notesExtractService.ts) — same rationale as brainstorm_extract, catches the handoff-seeded-composer case where the model just replies conversationally instead of saving anything
     | "brainstorm_chat" // Brainstorm Chat AI calls (useChatSystemPrompt.ts's CHAT_FEATURE_KEYS)
     | "outline_chat" // Outline Chat AI calls (useChatSystemPrompt.ts's CHAT_FEATURE_KEYS)
     | "notes_chat" // Notes Chat AI calls (useChatSystemPrompt.ts's CHAT_FEATURE_KEYS)
@@ -94,6 +95,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
     sheet_sync: "Lore Sheet (Sync to Codex)",
     ai_review: "AI Review (Manuscript Editor)",
     brainstorm_extract: "Brainstorm (Extract Proposals)",
+    notes_extract: "Notes (Extract Proposals)",
     brainstorm_chat: "Brainstorm Chat",
     outline_chat: "Outline Chat",
     notes_chat: "Notes Chat",
@@ -126,6 +128,7 @@ export const FEATURE_KEYS: FeatureKey[] = [
     "sheet_sync",
     "ai_review",
     "brainstorm_extract",
+    "notes_extract",
     "brainstorm_chat",
     "outline_chat",
     "notes_chat",

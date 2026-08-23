@@ -5,7 +5,7 @@ import { useGenerateWithPrompt } from "@/features/ai/hooks/useGenerateWithPrompt
 import { useStreamingGeneration } from "@/features/ai/hooks/useStreamingGeneration";
 import { beginAiActivity, endAiActivity } from "@/features/activity/store/aiActivityStore";
 import type { WorkspaceTool } from "@/features/stories/context/StoryContext";
-import { brainstormApi, chatsApi } from "@/services/api/client";
+import { brainstormApi, chatsApi, notesApi } from "@/services/api/client";
 import type { AIChat, AllowedModel, ChatMessage, Prompt, PromptParserConfig } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { useUpdateChatMutation } from "./useChatQuery";
@@ -382,6 +382,27 @@ export const useChatMessageGeneration = ({
                     })();
                 }
                 if (noteSplitProposal && assistantMessage) onNoteSplitProposal?.(assistantMessage.id, noteSplitProposal);
+
+                // Reliability fix (2026-08-23, notesExtractService.ts's own comment) — same
+                // rationale as the Brainstorm extraction pass above: Notes' own
+                // NOTE_PROPOSAL_INSTRUCTIONS/NOTE_SPLIT_PROPOSAL_INSTRUCTIONS are unreliable during a
+                // normal conversational reply, most visibly when the composer was seeded from
+                // another desk's handoff (useBrainstormChecklistActions.ts's handleOpenHandoff) —
+                // the model just replies conversationally and nothing ever gets saved. Fires only
+                // when the main reply didn't already self-emit either fence type. Fire-and-forget:
+                // the chat turn has already succeeded and rendered.
+                if (selectedChat.chatType === "notes" && assistantMessage && !noteProposal && !noteSplitProposal) {
+                    const extractionMessageId = assistantMessage.id;
+                    void (async () => {
+                        const [extractError, result] = await attemptPromise(() => notesApi.extractProposal(fullResponse, input.trim()));
+                        if (extractError) {
+                            logger.warn("Notes proposal extraction failed:", extractError);
+                            return;
+                        }
+                        if (result.note) onNoteProposal?.(extractionMessageId, result.note);
+                        else if (result.split) onNoteSplitProposal?.(extractionMessageId, result.split);
+                    })();
+                }
                 if (psychProposal && assistantMessage) onPsychProposal?.(assistantMessage.id, psychProposal);
                 if (sexualityProposal && assistantMessage) onSexualityProposal?.(assistantMessage.id, sexualityProposal);
                 if (placeSheetProposal && assistantMessage) onPlaceSheetProposal?.(assistantMessage.id, placeSheetProposal);

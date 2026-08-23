@@ -149,6 +149,16 @@ export const grokOAuthApi = {
         })
 };
 
+// See server/services/notesExtractService.ts's own comment for why this exists — an isolated
+// follow-up extraction pass over an already-generated Notes chat reply, since the reply's own
+// note-proposal/note-split-proposal fence emission is unreliable (especially when the composer was
+// seeded from a handoff).
+export interface NotesExtractResult {
+    note: { title: string; content: string; type: "idea" | "research" | "todo" | "other" } | null;
+    split: { notes: { title: string; content: string; type: "idea" | "research" | "todo" | "other" }[] } | null;
+    callFailed: boolean;
+}
+
 // Notes API
 export const notesApi = {
     getByStory: (storyId: string) => fetchJSON<Note[]>(`/notes/story/${storyId}`),
@@ -157,7 +167,12 @@ export const notesApi = {
         fetchJSON<Note>("/notes", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Note>) =>
         fetchJSON<Note>(`/notes/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    delete: (id: string) => fetchJSON<{ success: boolean }>(`/notes/${id}`, { method: "DELETE" })
+    delete: (id: string) => fetchJSON<{ success: boolean }>(`/notes/${id}`, { method: "DELETE" }),
+    extractProposal: (replyText: string, userMessageText?: string) =>
+        fetchJSON<NotesExtractResult>("/notes/extract-proposal", {
+            method: "POST",
+            body: JSON.stringify({ replyText, userMessageText })
+        })
 };
 
 // World-Building Chats API (backed by /api/chats)
