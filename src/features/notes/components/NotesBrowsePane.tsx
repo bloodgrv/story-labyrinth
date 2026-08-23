@@ -194,6 +194,11 @@ export function NotesBrowsePane({ storyId, notes, onOpenNote }: NotesBrowsePaneP
                 </div>
             </div>
 
+            <p className="shrink-0 text-xs text-muted-foreground">
+                Notes are working material, not canon. To reach a chat outside Notes, a note needs its ✨ <strong>Include in AI</strong>{" "}
+                toggle on <em>and</em> that chat's own "Include Notes" toggle on — the Notes chat itself always sees every note regardless.
+            </p>
+
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                 <div className="flex-1 min-h-0 flex gap-4">
                     <NotesFolderSidebar

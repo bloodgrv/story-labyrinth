@@ -27,7 +27,11 @@ export function NoteLeafActions({ note, onTogglePinned, onToggleIncludeInAi, onM
             />
             <ActionButton
                 icon={Sparkles}
-                tooltip={note.includeInAi ? "Exclude from AI chats" : "Include in AI chats (non-canon working material)"}
+                tooltip={
+                    note.includeInAi
+                        ? "Exclude from AI chats"
+                        : "Include in AI chats (non-canon working material) — the destination chat's own \"Include Notes\" toggle must also be on. The Notes chat itself always sees every note regardless."
+                }
                 onClick={onToggleIncludeInAi}
                 size="sm"
                 className={note.includeInAi ? "text-primary" : undefined}
