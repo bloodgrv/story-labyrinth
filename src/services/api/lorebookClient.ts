@@ -47,6 +47,10 @@ export const lorebookApi = {
         fetchJSON<LorebookEntry>("/lorebook", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: Partial<LorebookEntry>) =>
         fetchJSON<LorebookEntry>(`/lorebook/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    // Custom drag order (T13, docs/Lorebook_Custom_Order_Design.md) — orderedIds must be every
+    // entry in exactly one level+scopeId+category+folderId bucket; the server 400s otherwise.
+    reorder: (orderedIds: string[]) =>
+        fetchJSON<LorebookEntry[]>("/lorebook/reorder", { method: "PATCH", body: JSON.stringify({ orderedIds }) }),
     delete: (id: string) => fetchJSON<{ success: boolean }>(`/lorebook/${id}`, { method: "DELETE" }),
     getGlobal: () => fetchJSON<LorebookEntry[]>("/lorebook/global"),
     getBySeries: (seriesId: string) => fetchJSON<LorebookEntry[]>(`/lorebook/series/${seriesId}`),

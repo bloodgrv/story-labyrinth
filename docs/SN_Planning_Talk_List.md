@@ -2,7 +2,7 @@
 
 **Purpose:** Topics queued for design grill / home sessions — **not** built unless noted.  
 **SoT priority still:** `docs/CURRENT_BACKLOG.md`  
-**Updated:** 2026-08-22 (**T13 Lorebook custom drag order** queued, not designed. Same day: **Mac portable design locked** — `docs/Mac_Portable_Design.md`, MP0–MP4, not built until promote. Prior 2026-08-21: **T11**/ **T12** shipped — verify backlog. Ship-status headers may lag — trust `CURRENT_BACKLOG.md`)
+**Updated:** 2026-08-23 (**T13 Lorebook custom drag order — ✅ shipped** LO0–LO5, same day as design lock. Doc: `docs/Lorebook_Custom_Order_Design.md`. Mac portable shipped MP0–MP4 — verify backlog. Ship-status may lag — trust `CURRENT_BACKLOG.md`)
 
 ---
 
@@ -29,7 +29,7 @@
 | **T11** | **First-start tour** | **Tour** (spotlight + card): first provider → Brainstorm chat basics → Guide/help + **Replay at Guide top**. Doc: `docs/First_Start_Tour_Design.md`. Owner auto-once; per-user `onboardingTourCompleted`; Skip points at Replay; test story OK; Next free on provider. Slices **OT0–OT8**. **≠** T8. **≠** playbook rewrite. | **Locked 2026-08-21 — not built until promoted** |
 | **T12** | **System prompts → Local System Inject** | **First slice locked:** global local-only house-rules inject + on/off + presets. Doc: `docs/Local_System_Inject_Design.md`. Settings → Local = body + preset CRUD; chat rail = toggle + preset dropdown only; one SoT; default Off; prepend on `provider===local`. **Guide topic required** (`local-system-inject.mdx` + search + settings-nav/prompts links). Slices **LI0–LI5**. Broader prompt inventory/rewrite still future under T12 umbrella if reopened. | ✅ **Shipped** (2026-08-21) — verify backlog |
 | **Mac portable** | **Windows-twin Mac zip** | Doc: `docs/Mac_Portable_Design.md`. Bundled Node + `.command` + `data/` + Updates; arm64 first; two zip kinds (fresh + update); build on macOS/CI only; MP0 shared Win updater fix. **≠** Docker-on-Mac. **≠** Electron. Slices **MP0–MP4** (+ optional MP5 x64). | **Locked 2026-08-22 — not built until promoted** |
-| **T13** | **Lorebook custom drag order** | Raised 2026-08-22: a "Custom" sort option for the Lorebook entry list, reordered by drag-and-drop, persisting across sessions. Today's sort (`LorebookEntryList.tsx`, now persisted per T-fix above) is Name/Category/Importance/Created only — all derived, no stored order. **No `manualOrder` column exists on `lorebookEntries`** (`schema.ts`). Real precedent already in-repo: Outline's chapter list does exactly this shape (`OutlineTree.tsx` — dnd-kit `SortableContext`+`arrayMove`, PATCH on drop). Rough slices: **LO0** schema (`manualOrder` nullable int on `lorebookEntries`, scoped by level+scopeId+category — ties/new entries fall back to createdAt); **LO1** server route to accept an ordered id list and rewrite `manualOrder` 1..N in one call (mirrors Outline's reorder mutation); **LO2** "Custom" sort option + drag reordering in List view (dnd-kit, vertical `SortableContext` — straightforward, matches Outline); **LO3** Card/grid view — open call whether v1 needs 2D grid drag (dnd-kit supports it via `rectSortingStrategy` but is fiddlier) or just displays the same stored order without drag support until reordered from List. Not designed/locked — grill scope (especially LO3) before building. | **Parked — not designed** |
+| **T13** | **Lorebook custom drag order** | Doc: `docs/Lorebook_Custom_Order_Design.md`. Cosmetic DB `manualOrder`; sort **Custom**; List+Cards; bucket `level+scopeId+category+folderId`; dual-drop reorder vs file; search disables rank drag; `PATCH /api/lorebook/reorder`. Slices **LO0–LO5**. | ✅ **Shipped** (2026-08-23) |
 
 ---
 
@@ -65,9 +65,9 @@
 When user says “SN Planning” or “talk list”:
 
 1. Re-read live `docs/CURRENT_BACKLOG.md` — this file can lag  
-2. Open / next candidates: **T8** UX polish (**parked**, grill first); **Relations · note pins**; residual P2/P1. (AR/AS/AH/**T11**/**T12** shipped — verify backlog.)  
+2. Open / next candidates: **T8** UX polish (**parked**, grill first); **Relations · note pins**; residual P2. (AR/AS/AH/**T11**/**T12**/**T13**/Mac portable shipped — verify backlog.)  
 3. One topic at a time; lock to `docs/` when decided  
-4. Don’t build **T8** until grilled + locked + promoted. Don’t re-offer shipped AR/AS/AH/**T11**/**T12** as unbuilt.  
+4. Don’t build **T8** until grilled + locked + promoted. Don’t re-offer shipped AR/AS/AH/**T11**/**T12**/**T13** as unbuilt.  
 5. Don’t re-grill closed T1–T7 / KDP / L0–L5 / **T6** / **Maps v2** / **T5** / **T9** / **T10** unless user reopens  
 6. **T11 ≠ T8** — first-run **tour** (provider + Brainstorm chrome + Guide Replay) vs chrome polish of existing UI  
 7. Notes graph ≠ Notes desk — graph pins live under **Relations** later, not T7  
@@ -76,7 +76,8 @@ When user says “SN Planning” or “talk list”:
 10. **Activity Stoplight ≠** pending-review dots — machine busy vs needs-you  
 11. **Auto Humanizer ≠ manual Humanizer** — pipeline on Accept vs select+click; ≠ AI Review rewrite  
 12. **T12 Local Inject** — ✅ shipped (2026-08-21); global local-only; Settings edits body/presets; rail = toggle+dropdown only; never delete `{{codex_context}}` as the substitute  
-13. **T11 Tour** — ✅ shipped (2026-08-21); owner auto-once; Replay on Guide top; Skip → Guide tip; OT* ≠ Lore Sheet FS*; no hard provider gate 
+13. **T11 Tour** — ✅ shipped (2026-08-21); owner auto-once; Replay on Guide top; Skip → Guide tip; OT* ≠ Lore Sheet FS*; no hard provider gate
+14. **T13 Custom order** — ✅ shipped (2026-08-23), same day as design lock; LO0–LO5; cosmetic only; dual-drop; no RAG meaning 
 
 ---
 

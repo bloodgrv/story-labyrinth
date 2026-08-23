@@ -2887,6 +2887,8 @@ The practical takeaway (not a full explanation of drizzle's internals, which was
 
 ## Lorebook Custom Drag Order (T13, LO0–LO5) — Load-Bearing Decisions (2026-08-23)
 
+**Status:** ✅ **Implemented in full 2026-08-23**, same day as design lock — all six slices (LO0–LO5, including the optional Guide blurb) shipped without a separate promote step.
+
 **Decision:** Authors get a **Custom** sort on the Lorebook browse list (List + Cards) with drag-reorder that persists in SQLite — cosmetic rank only.
 
 **Canonical design:** `docs/Lorebook_Custom_Order_Design.md`.
@@ -2898,13 +2900,20 @@ The practical takeaway (not a full explanation of drizzle's internals, which was
 4. **Dual drop** — same drag: drop among peers → dense 1..N reorder; drop on folder/Unfiled → existing filing + dest append. No separate reorder mode toggle.
 5. **Defaults** — NOT NULL int default 0; create/file/category-change **append** `max+1`; LO0 migrates existing rows per bucket by **name A–Z** → 1..N; no eager source densify on file.
 6. **API** — `PATCH /api/lorebook/reorder` with `{ orderedIds: string[] }`; server rejects mixed-bucket id lists; primary reorder path (not free-form PUT `manualOrder`).
-7. **Cards** — grid + linear 1..N (`rectSortingStrategy`); vertical-card stack allowed as implement escape hatch.
+7. **Cards** — grid + linear 1..N (`rectSortingStrategy`). The vertical-card-stack escape hatch was never needed — live-verified `rectSortingStrategy` against the folder sidebar with no rect-collision issue, so Cards keeps its normal grid chrome under Custom sort too.
 
-**Slices:** LO0 schema+migrate → LO1 reorder route+append → LO2 Custom sort UI → LO3 List+Cards drag+dual-drop → LO4 polish → LO5 optional Guide.
+**Slices:** LO0 schema+migrate → LO1 reorder route+append → LO2 Custom sort UI → LO3 List+Cards drag+dual-drop → LO4 polish → LO5 optional Guide. All six shipped 2026-08-23.
 
-**Backlog:** P3 row “Lorebook custom drag order (T13)” — **promote before code**.
+**Backlog:** P3 row "Lorebook custom drag order (T13)" — now marked ✅ Done.
 
 **Not:** filtered-merge drag while searching; category-wide spine; 2D pinboard; Importance replacement.
+
+**Implementation notes (beyond the design doc):**
+- `server/services/lorebookOrderService.ts` centralizes bucket math (`nextManualOrder`, `reorderLorebookEntries`) — the reorder route validates every id in the request shares one bucket before writing, 400ing on a mixed-bucket list rather than silently reordering a subset.
+- Client-side eligibility (Custom sort + empty search + "All categories" off + single-bucket visible set) lives in `LorebookEntryList.tsx`; it reports the current bucket's ordered ids up to `LorebookBrowsePanel.tsx` via a plain callback into a ref (not state) each render, since the shared `DndContext` that owns `onDragEnd` — needed there because a drag can also land on the folder sidebar outside this list's own subtree — has no other way to know the live order at drop time.
+- `SortableEntryLeaf.tsx` (dnd-kit `useSortable`) is the rank-drag sibling of the pre-existing `DraggableLeaf.tsx` (plain `useDraggable`, filing-only); both use the identical `data: { type: "lorebook-entry", leafId }` shape so a single `handleDragEnd` branch structure in `LorebookBrowsePanel.tsx` handles entry-over-folder (file) and entry-over-entry (reorder) drops without the two drag variants needing to know about each other.
+- Found and fixed, in passing, a real pre-existing bug independent of T13: `LorebookEntryList.tsx`'s "Created Date" sort called `.getTime()` directly on `entry.createdAt`, which arrives from the API as a JSON string, not a real `Date` — crashed the app to its error boundary the moment that sort option (or the new Custom sort's own createdAt tiebreak) was ever exercised. Patched locally with `new Date(x).getTime()` in both comparators; the systemic root cause (no date coercion anywhere between fetch and use) was spun off as a separate follow-up rather than fixed everywhere it might also apply.
+- Live-verified end to end against isolated copies of the dev database (never the shared one) across all three UI slices: LO1's reorder/append/mixed-bucket-400 via direct API calls; LO3's List and Cards drag-to-reorder, dual-drop-still-files, and all three drag-disable conditions (multi-bucket, active search, "All categories") via synthetic `PointerEvent` dispatch (dnd-kit's `PointerSensor` responds to programmatically dispatched pointer events the same as real ones, since it listens via plain `addEventListener` rather than checking `isTrusted`) — this harness's `computer` tool's `left_click_drag` requires a prior screenshot, which this session's Browser pane couldn't produce (pane not displayed / not compositing frames), so raw pointerdown/pointermove/pointerup dispatch became the only viable drag-simulation path; LO4's grip icon, `cursor: grab` affordance, and empty-bucket non-crash. `npx tsc --noEmit` clean throughout.
 
 ---
 

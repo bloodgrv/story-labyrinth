@@ -15,6 +15,7 @@ import {
     saveLorebookImage
 } from "../services/lorebookImageStorage.js";
 import { resolveLorebookFolderId } from "../services/folderService.js";
+import { bucketOf, nextManualOrder, reorderLorebookEntries } from "../services/lorebookOrderService.js";
 import { indexLorebookEntry, removeEntityFromIndex } from "../services/ragIndexService.js";
 import { improveSheetWithAI } from "../services/sheetMigrateService.js";
 import { syncSheetToCodex } from "../services/sheetSyncService.js";
@@ -246,10 +247,17 @@ export default createCrudRouter({
                     return;
                 }
 
+                const resolvedLevel = level || "story";
+                const resolvedScopeId = scopeId || null;
+
+                // Custom drag order (T13) — a newly created entry always starts Unfiled (this route
+                // has no folderId input) and appends to the end of its level+scope+category bucket.
+                const manualOrder = await nextManualOrder({ level: resolvedLevel, scopeId: resolvedScopeId, category, folderId: null });
+
                 const newEntry = {
                     id: req.body.id || crypto.randomUUID(),
-                    level: level || "story",
-                    scopeId: scopeId || null,
+                    level: resolvedLevel,
+                    scopeId: resolvedScopeId,
                     name,
                     description,
                     category,
@@ -258,13 +266,36 @@ export default createCrudRouter({
                     isDisabled: isDisabled || false,
                     createdAt: new Date(),
                     isDemo: isDemo || false,
-                    sheetBody: sheetBody || null
+                    sheetBody: sheetBody || null,
+                    manualOrder
                 };
 
                 const result = await db.insert(table).values(newEntry).returning();
                 const created = Array.isArray(result) ? result[0] : result;
                 void attemptPromise(() => indexLorebookEntry(created.id));
                 res.status(201).json(transform(created));
+            })
+        );
+
+        // PATCH /lorebook/reorder - Custom drag order (T13, docs/Lorebook_Custom_Order_Design.md).
+        // Body carries the full desired order for exactly one bucket (level+scopeId+category+
+        // folderId) — the service rejects a mixed-bucket id list with a 400 rather than silently
+        // reordering a subset. Registered ahead of the generic PUT/PATCH-less `/:id` routes so it
+        // never risks being shadowed by an id-shaped path segment.
+        router.patch(
+            "/reorder",
+            asyncHandler(async (req, res) => {
+                const { orderedIds } = req.body as { orderedIds?: unknown };
+                if (!Array.isArray(orderedIds) || orderedIds.length === 0 || !orderedIds.every(id => typeof id === "string")) {
+                    res.status(400).json({ error: "orderedIds must be a non-empty array of entry ids" });
+                    return;
+                }
+                const [error, updated] = await attemptPromise(() => reorderLorebookEntries(orderedIds));
+                if (error) {
+                    res.status(400).json({ error: error.message });
+                    return;
+                }
+                res.json(updated.map(transform));
             })
         );
 
@@ -292,7 +323,9 @@ export default createCrudRouter({
                 // its actual source. lorebookImageStorage.ts's own path-jail validation (B22)
                 // already makes an injected value harmless even without this, but this is the
                 // route B22's fix traced the vulnerability back to, so it gets the direct fix too.
-                const { id: _id, createdAt: _createdAt, imageFilename: _imageFilename, ...updates } = req.body;
+                // manualOrder (T13) is stripped the same way — PATCH /reorder is the only path
+                // allowed to set it directly, so this generic PUT never trusts a client-sent rank.
+                const { id: _id, createdAt: _createdAt, imageFilename: _imageFilename, manualOrder: _manualOrder, ...updates } = req.body;
 
                 // Resolve folderId (B9, docs/Folders_Org_Design.md) — validates an explicit
                 // choice against the entry's (possibly also-changing) level/scopeId/category, or
@@ -312,6 +345,14 @@ export default createCrudRouter({
                         return;
                     }
                     if (resolvedFolderId !== undefined) updates.folderId = resolvedFolderId;
+
+                    // Custom drag order (T13) — filing into a folder/Unfiled or changing category
+                    // moves the entry into a different bucket, so it appends to the end of the
+                    // destination rather than dragging its old rank along (Axis 3's "no eager
+                    // source densify" — the bucket it left is left as-is until its next drag).
+                    const destinationBucket = bucketOf({ ...existing, ...updates });
+                    if (destinationBucket.folderId !== existing.folderId || destinationBucket.category !== existing.category)
+                        updates.manualOrder = await nextManualOrder(destinationBucket);
                 }
 
                 const result = await db.update(table).set(updates).where(eq(table.id, req.params.id)).returning();

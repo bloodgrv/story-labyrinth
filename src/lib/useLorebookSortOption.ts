@@ -2,10 +2,10 @@ import { useCallback, useState } from "react";
 
 const STORAGE_KEY = "sn-lorebook-sort-by";
 
-export type LorebookSortOption = "name" | "category" | "importance" | "created";
+export type LorebookSortOption = "name" | "category" | "importance" | "created" | "custom";
 
 const isSortOption = (value: string | null): value is LorebookSortOption =>
-    value === "name" || value === "category" || value === "importance" || value === "created";
+    value === "name" || value === "category" || value === "importance" || value === "created" || value === "custom";
 
 const readStored = (): LorebookSortOption => {
     const raw = window.localStorage.getItem(STORAGE_KEY);

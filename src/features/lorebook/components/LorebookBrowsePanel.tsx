@@ -1,7 +1,7 @@
 import { DndContext, type DragEndEvent, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Download, Loader2, Lock, Plus, RefreshCw, Upload } from "lucide-react";
-import type { ChangeEvent } from "react";
+import { type ChangeEvent, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -10,7 +10,7 @@ import { LorebookFolderSidebar } from "@/features/folders/components/LorebookFol
 import { useReorderFoldersMutation } from "@/features/folders/hooks/useFoldersQuery";
 import type { OrgFolder } from "@/types/folders";
 import type { LorebookEntry } from "@/types/story";
-import { useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
+import { useReorderLorebookMutation, useUpdateLorebookMutation } from "../hooks/useLorebookQuery";
 import { CATEGORIES, type LorebookCategory } from "./form";
 import { LorebookEntryList } from "./LorebookEntryList";
 import { MultiEntryImportDialog } from "./MultiEntryImportDialog";
@@ -75,6 +75,12 @@ export function LorebookBrowsePanel({
 }: LorebookBrowsePanelProps) {
     const updateLorebookMutation = useUpdateLorebookMutation();
     const reorderFoldersMutation = useReorderFoldersMutation();
+    const reorderLorebookMutation = useReorderLorebookMutation();
+    // Custom drag order (T13) — LorebookEntryList owns sort/search state and writes its current
+    // rank-drag-eligible bucket order here on every render (see its own onOrderedIdsChange doc
+    // comment) so this shared DndContext's handleDragEnd always has an up-to-date list to compute
+    // arrayMove against, without this component needing to know about sort/search itself.
+    const orderedIdsRef = useRef<string[]>([]);
     // DraggableLeaf spreads pointer listeners across the whole card/row (no dedicated drag
     // handle), so the default zero-distance PointerSensor treats the sub-pixel movement in an
     // ordinary click as a drag start and swallows the click before LorebookEntryCard/Row's
@@ -109,7 +115,7 @@ export function LorebookBrowsePanel({
             | { type?: string; leafId?: string; folderId?: string; parentId?: string | null }
             | undefined;
         const overData = over.data.current as
-            | { type?: string; targetFolderId?: string | null; folderId?: string; parentId?: string | null }
+            | { type?: string; targetFolderId?: string | null; folderId?: string; parentId?: string | null; leafId?: string }
             | undefined;
 
         const overFolderId: string | null | undefined =
@@ -119,6 +125,24 @@ export function LorebookBrowsePanel({
 
         if (activeData?.type === "lorebook-entry" && overFolderId !== undefined) {
             updateLorebookMutation.mutate({ id: activeData.leafId as string, data: { folderId: overFolderId ?? null } });
+            return;
+        }
+
+        // Custom drag order (T13, Axis 4's dual-drop) — dropping one entry directly onto a
+        // sibling (both registered via SortableEntryLeaf's useSortable, only when
+        // LorebookEntryList decided the visible set is rank-drag eligible) reorders instead of
+        // filing. orderedIdsRef always reflects that same eligible set, so a mismatch here (id
+        // not found) only happens if the set changed between render and drop — bail rather than
+        // guess.
+        if (activeData?.type === "lorebook-entry" && overData?.type === "lorebook-entry") {
+            const activeId = activeData.leafId as string;
+            const overId = overData.leafId as string;
+            if (activeId === overId) return;
+            const currentOrder = orderedIdsRef.current;
+            const oldIndex = currentOrder.indexOf(activeId);
+            const newIndex = currentOrder.indexOf(overId);
+            if (oldIndex === -1 || newIndex === -1) return;
+            reorderLorebookMutation.mutate(arrayMove(currentOrder, oldIndex, newIndex));
             return;
         }
 
@@ -294,6 +318,9 @@ export function LorebookBrowsePanel({
                                         onOpenEntry={onOpenEntry}
                                         folders={folderProps.folders}
                                         crossCategoryEntries={allEntries}
+                                        onOrderedIdsChange={ids => {
+                                            orderedIdsRef.current = ids;
+                                        }}
                                     />
                                 ) : (
                                     <div className="text-center text-muted-foreground py-12">No {selectedCategory} entries yet</div>

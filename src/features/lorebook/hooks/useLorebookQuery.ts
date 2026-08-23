@@ -102,6 +102,19 @@ export const useUpdateLorebookMutation = () => {
     });
 };
 
+// Custom drag order (T13) — bulk sibling reorder within one bucket, mirrors
+// useReorderFoldersMutation's shape (LorebookBrowsePanel.tsx's handleDragEnd). No optimistic
+// update: a rank drag already knows its own target order visually, and the server response
+// (dense 1..N) is authoritative if it ever needs correcting.
+export const useReorderLorebookMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (orderedIds: string[]) => lorebookApi.reorder(orderedIds),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: lorebookKeys.all }),
+        onError: (error: Error) => toast.error(error.message || "Failed to reorder entries")
+    });
+};
+
 // Scribble autosave — silent (no toast, no full-list invalidation) since this fires on every
 // debounced keystroke, mirroring useUpdateChapterMutation's own silent-success pattern rather than
 // useUpdateLorebookMutation's toast+invalidate-all (which would spam toasts and thrash the list

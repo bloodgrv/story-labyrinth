@@ -370,6 +370,12 @@ export interface LorebookEntry extends BaseEntity {
     // Scribble — per-entry scratch pad, same shape/doctrine as Chapter.notes: never RAG-indexed or
     // chat-visible, bridges to a real Notes-desk note only via an explicit one-shot "Send to Notes".
     scribble?: ChapterNotes | null;
+    // Custom drag order (T13, docs/Lorebook_Custom_Order_Design.md) — cosmetic author-pinned
+    // browse rank only, no RAG/Codex/export/Relations meaning. Dense 1..N within its
+    // level+scopeId+category+folderId bucket; rewritten wholesale by PATCH /api/lorebook/reorder.
+    // Optional here (not on the DB row, which is NOT NULL default 0) because a create payload
+    // never sets it — the server always computes the append value — so treat a missing value as 0.
+    manualOrder?: number;
 }
 
 // Prompt Parser types

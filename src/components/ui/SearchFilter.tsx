@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 interface SearchFilterRenderProps<T> {
     filteredItems: T[];
     searchInput: ReactNode;
+    // Raw (unlowercased) search box value — lets a caller distinguish "no active search" from
+    // "search matched everything" (T13's rank-drag eligibility needs exactly that).
+    searchTerm: string;
 }
 
 interface SearchFilterProps<T> {
@@ -41,5 +44,5 @@ export const SearchFilter = <T,>({
         </div>
     );
 
-    return <>{children({ filteredItems, searchInput })}</>;
+    return <>{children({ filteredItems, searchInput, searchTerm })}</>;
 };

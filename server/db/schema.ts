@@ -500,7 +500,13 @@ export const lorebookEntries = sqliteTable(
         // desk only via an explicit one-shot "Send to Notes" convert (mirrors ChapterNotesEditor.tsx).
         scribble: text("scribble", { mode: "json" }),
         // Trash / Restore — see series.deletedAt comment above.
-        deletedAt: integer("deletedAt", { mode: "timestamp" })
+        deletedAt: integer("deletedAt", { mode: "timestamp" }),
+        // Custom drag order (T13, docs/Lorebook_Custom_Order_Design.md) — cosmetic author-pinned
+        // browse rank only, no RAG/Codex/export/Relations meaning. Peers = same
+        // level+scopeId+category+folderId bucket (folderId null = Unfiled); dense 1..N per
+        // bucket, rewritten wholesale by PATCH /api/lorebook/reorder. New/filed/re-categorized
+        // rows append (max+1 in destination bucket) rather than densifying the source bucket.
+        manualOrder: integer("manualOrder").notNull().default(0)
     },
     table => ({
         levelIdx: index("lorebook_level_idx").on(table.level),
