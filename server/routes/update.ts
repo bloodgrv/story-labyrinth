@@ -40,7 +40,7 @@ const portablePlatform = detectPlatform();
 // zipUpdatePayload() and docs/Mac_Portable_Design.md §3.4.
 const updateAssetName = (platform: PortablePlatform): string => `Story-Labyrinth-portable-${platform}-update.zip`;
 
-const isPortableBuild = () => process.env.PORTABLE_BUILD === "1";
+export const isPortableBuild = () => process.env.PORTABLE_BUILD === "1";
 
 // Single choke point for "where's the node binary for this version" — darwin ships node/bin/node
 // (the official tarball layout), win ships node/node.exe directly.

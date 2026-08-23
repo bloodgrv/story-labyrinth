@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runMigrations } from "./db/migrate.js";
@@ -47,7 +48,7 @@ import storyMapRouter from "./routes/storyMap.js";
 import storyMapsRouter from "./routes/storyMaps.js";
 import storyTimelineRouter from "./routes/storyTimeline.js";
 import ttsRouter from "./routes/tts.js";
-import updateRouter from "./routes/update.js";
+import updateRouter, { isPortableBuild } from "./routes/update.js";
 import usersRouter from "./routes/users.js";
 import writerPrefsSettingsRouter from "./routes/writerPrefsSettings.js";
 
@@ -71,10 +72,42 @@ let jobRunnerStarted = false;
 //
 // Manuscript Failsafe Save's shutdown hook lives here too — best-effort, wrapped so a backup
 // failure (or a slow one) never blocks or meaningfully delays actual shutdown.
-const shutdown = async () => {
+//
+// `relaunch` (portable builds only, see /_status/restart below): re-execs the exact command that
+// started this process — `process.execPath`/`process.argv`/`process.cwd()`/`process.env` are all
+// already correct as-is, since Start.bat/.command already `cd`s into the portable root and sets
+// PORT/DATABASE_PATH/PORTABLE_BUILD/PORTABLE_PLATFORM as real env vars before launching node, and
+// the update-runner's own respawn (scripts/portable-updater/update-runner.mjs) does the same.
+// Spawned detached + unref'd, and — critically — only AFTER server.close()'s callback fires (the
+// port is actually released by then), not before: spawning earlier would race the new process's
+// own app.listen() against this one still holding the port, and index.ts has no EADDRINUSE
+// handler on `server` (an unhandled 'error' event there crashes the process outright).
+const shutdown = async (relaunch = false) => {
     await writeAllManuscriptBackups().catch(error => console.error("Manuscript backup pass failed on shutdown:", error));
     await stopJobRunner();
-    server.close(() => process.exit(0));
+    server.close(() => {
+        if (relaunch) {
+            spawn(process.execPath, process.argv.slice(1), {
+                cwd: process.cwd(),
+                env: process.env,
+                detached: true,
+                stdio: "ignore"
+            }).unref();
+        }
+        process.exit(0);
+    });
+    // Real bug caught live while verifying the relaunch above: `server.close()`'s callback only
+    // fires once every already-accepted socket closes on its own — it does NOT close idle
+    // keep-alive connections, which this app's own frontend keeps producing (Activity Stoplight's
+    // 3s/20s job polling, etc.) as long as a browser tab is open. Verified directly: with a client
+    // still making periodic requests, the server kept happily answering new requests for 15+
+    // seconds after `.close()` was called and never actually went down — `restart`/`shutdown`
+    // would silently hang rather than complete, which is arguably worse than the "shuts down but
+    // doesn't come back" bug this whole change exists to fix. `closeAllConnections()` (Node
+    // 18.2+, well within this project's bundled Node 22) force-closes every open socket
+    // immediately after `.close()` stops accepting new ones, so the callback above fires promptly
+    // regardless of what else is still polling this server.
+    server.closeAllConnections();
 };
 
 // Run migrations, seed system prompts, and start the background job runner on startup.
@@ -212,28 +245,34 @@ app.get("/_status", requireAuth, requireOwner, (_req, res) => {
             port: PORT,
             dbPath: DB_PATH,
             jobRunnerStarted,
-            currentJobIds: getCurrentJobIds()
+            currentJobIds: getCurrentJobIds(),
+            isPortableBuild: isPortableBuild()
         })
     );
 });
-// B44 (docs/CODE_REVIEW_2026-08-17.md) — restart and shutdown are deliberately identical, not an
-// unfinished feature: a plain Node process has no way to relaunch itself, and under Docker's
-// `restart: unless-stopped` policy (every compose file here), Docker can't tell "the app exited
-// gracefully by request" apart from "the app exited and should come back" either way — both look
-// like a graceful exit that wasn't an explicit `docker stop`. So "restart" really means "exit and
-// trust whatever's supervising this process (Docker's restart policy, PM2, systemd, ...) to bring
-// it back" — there's no code-level distinction to make here without also coordinating with the
-// image's own entrypoint (a materially bigger change than this route pair). The status page's own
-// note (routes/statusPage.ts) already explains this to the person clicking the button; this is
-// the same explanation for whoever next reads this file and assumes two routes doing the exact
-// same thing must be a bug.
+// B44 (docs/CODE_REVIEW_2026-08-17.md), amended 2026-08-23 for portable restart — restart and
+// shutdown were deliberately identical, not an unfinished feature: a plain Node process has no
+// way to relaunch itself, and under Docker's `restart: unless-stopped` policy (every compose file
+// here), Docker can't tell "the app exited gracefully by request" apart from "the app exited and
+// should come back" either way. That reasoning still holds for Docker/dev — self-relaunching
+// inside a container wouldn't even work, since the container's namespace tears down (killing any
+// detached child) the moment its PID 1 process exits, which is exactly what `server.close()`'s
+// callback triggers. Portable builds are the genuine exception: there's no supervisor at all
+// (closing the console window IS the shutdown path), but there's also no container boundary
+// stopping a detached child from surviving its parent — and the self-updater already proves this
+// exact "spawn a new node process, then let the old one exit" shape works for real (`update.ts`/
+// `update-runner.mjs`). So on a portable build specifically, "restart" now really does restart:
+// shutdown's `relaunch` flag spawns a fresh copy of this exact process (see shutdown's own
+// comment) after the port is actually free. Everywhere else, "restart" still just means "exit and
+// trust whatever's supervising this process to bring it back" — the status page's own note
+// (routes/statusPage.ts) explains that to the person clicking the button on those builds.
 app.post("/_status/shutdown", requireAuth, requireOwner, (_req, res) => {
     res.json({ ok: true });
-    setTimeout(() => void shutdown(), 100);
+    setTimeout(() => void shutdown(false), 100);
 });
 app.post("/_status/restart", requireAuth, requireOwner, (_req, res) => {
     res.json({ ok: true });
-    setTimeout(() => void shutdown(), 100);
+    setTimeout(() => void shutdown(isPortableBuild()), 100);
 });
 
 // Serve static files in production

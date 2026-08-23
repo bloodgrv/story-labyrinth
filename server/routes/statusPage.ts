@@ -63,6 +63,10 @@ export interface StatusPageData {
     // P1.1 — the runner can now have several jobs in flight at once (one per distinct jobType),
     // not just one.
     currentJobIds: string[];
+    // Portable builds (win-x64/mac-arm64/mac-x64) genuinely restart on this button — see
+    // index.ts's `shutdown`'s own comment. Everywhere else (Docker/dev) it's still shutdown-only,
+    // relying on an external supervisor. The note below reflects whichever is actually true.
+    isPortableBuild: boolean;
 }
 
 export const renderStatusPage = (data: StatusPageData): string => {
@@ -161,9 +165,11 @@ export const renderStatusPage = (data: StatusPageData): string => {
   </div>
   <div id="actionResult"></div>
   <p class="note">
-    Restart gracefully stops the process; it only comes back automatically under a supervisor
-    that restarts on exit (e.g. Docker's <code>restart: unless-stopped</code> in production).
-    In local dev (<code>tsx watch</code>), you'll need to start it again manually.
+    ${
+        data.isPortableBuild
+            ? "Restart gracefully stops the process, then launches a fresh copy on the same port — the app should be reachable again within a few seconds. Shutdown just stops it (no relaunch)."
+            : "Restart gracefully stops the process; it only comes back automatically under a supervisor that restarts on exit (e.g. Docker's <code>restart: unless-stopped</code> in production). In local dev (<code>tsx watch</code>), you'll need to start it again manually."
+    }
   </p>
 </main>
 <script>
