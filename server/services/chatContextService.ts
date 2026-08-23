@@ -565,9 +565,12 @@ const PLACE_SHEET_INSTRUCTIONS =
 // runs (keeps Excalidraw's runtime out of the chat's own eager bundle).
 const MAP_SKETCH_INSTRUCTIONS =
     "This location can also have a hand-drawn sketch map (a room, building, or region layout) — a " +
-    "boxes-and-labels diagram, not a precise architectural drawing. Only propose one when the user " +
-    "actually asks you to sketch, draw, or lay out the place; never propose one unsolicited, since " +
-    "accepting one REPLACES any existing sketch for this location.\n\n" +
+    "boxes-and-labels diagram, not a precise architectural drawing. The instant the user asks you to sketch, " +
+    "draw, or lay out the place — even packed into their very first message, with no prior back-and-forth — " +
+    "you MUST respond with the fence below in that same reply; never describe the layout in prose instead and " +
+    "wait to be asked to formalize it, and never answer a direct request like that with clarifying questions. " +
+    "Never propose one unsolicited outside that trigger, since accepting one REPLACES any existing sketch for " +
+    "this location.\n\n" +
     "To propose a sketch, include a fenced block in this exact form:\n\n" +
     "```map-sketch-proposal\n" +
     '{"title": "short map title", "elements": [' +
@@ -576,6 +579,11 @@ const MAP_SKETCH_INSTRUCTIONS =
     '{"type": "arrow", "x": 0, "y": 0, "points": [[0, 0], [120, 0]]}' +
     "]}\n" +
     "```\n\n" +
+    "Worked example — user: \"can you sketch a quick layout of the safehouse?\" — your reply: a short " +
+    'confirmation sentence, THEN on its own the fence: ```map-sketch-proposal\n' +
+    '{"title": "Safehouse layout", "elements": [{"type": "rectangle", "x": 0, "y": 0, "width": 140, "height": 100, ' +
+    '"label": "Front room"}, {"type": "rectangle", "x": 160, "y": 0, "width": 100, "height": 100, "label": "Back room"}, ' +
+    '{"type": "arrow", "x": 140, "y": 50, "points": [[0, 0], [20, 0]]}]}\n```\n\n' +
     'Valid "type" values: rectangle, ellipse, diamond, text, arrow, line. x/y is each element\'s ' +
     "top-left corner, roughly within a 0-900 by 0-600 area (a larger scene can extend further) — " +
     'lay elements out so they don\'t overlap. A rectangle/ellipse/diamond can carry a "label" ' +
