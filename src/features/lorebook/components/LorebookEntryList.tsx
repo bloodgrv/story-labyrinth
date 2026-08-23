@@ -87,7 +87,9 @@ export function LorebookEntryList({
                 case "importance":
                     return (a.metadata?.importance || "").localeCompare(b.metadata?.importance || "");
                 case "created":
-                    return b.createdAt.getTime() - a.createdAt.getTime();
+                    // createdAt now arrives as a real Date via apiFactory.ts's reviver, but wrap
+                    // defensively anyway — cheap, and tolerates a string if that ever regresses.
+                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
                 default:
                     return 0;
             }
