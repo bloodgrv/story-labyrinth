@@ -48,8 +48,13 @@ const SEARCH_POOL_SIZE = RELEVANT_ENTRIES_LIMIT * 2;
 // and what src/features/chat/services/parseCodexProposals.ts extracts client-side.
 const CODEX_PROPOSAL_INSTRUCTIONS =
     "When you learn a new concrete fact, or a character/location/item's physical state changes, " +
-    "propose it as a Codex entry or update — never just state it in conversation as if it were " +
-    "already canon. All Codex changes require explicit user approval before they take effect.\n\n" +
+    "you MUST propose it as a Codex entry or update in that same reply — never just state it in " +
+    "conversation as if it were already canon, and never just describe the change in prose and wait " +
+    "to be asked to formalize it; the fence IS how you propose it. If the user directly asks you to " +
+    "write up or propose a character/location/item now — even packed into one message with no prior " +
+    "back-and-forth — that request itself is the trigger: respond with the fence immediately, never " +
+    "with clarifying questions instead of the proposal. All Codex changes require explicit user " +
+    "approval before they take effect.\n\n" +
     "To propose a Codex change, include a fenced block in this exact form:\n\n" +
     "```codex-proposal\n" +
     '{"type": "new_entry", "level": "story", "name": "...", "description": "...", "category": "character", "tags": ["..."]}\n' +
@@ -107,10 +112,15 @@ const NOTE_PROPOSAL_INSTRUCTIONS =
 // (same posture as prose-proposal/note-proposal) — Accept calls the existing outline mutations
 // directly.
 const OUTLINE_PROPOSAL_INSTRUCTIONS =
-    "When you and the user agree on a structural change, propose it as an outline change — never just describe it in " +
-    "conversation as if it were already applied. All outline changes require explicit user approval before they take " +
-    "effect (new chapters/scenes appear immediately in the tree marked 'AI Suggested' for the user to accept/reject; " +
-    "edits/reorders/deletes show as a card in the chat for the user to accept/reject).\n\n" +
+    "When you and the user agree on a structural change, you MUST propose it as an outline change in that same " +
+    "reply — never just describe it in conversation as if it were already applied, and never just describe a " +
+    "chapter/scene breakdown in prose and wait to be asked to formalize it; the fence IS how you propose it. If " +
+    "the user directly asks you to write up or propose a chapter/scene breakdown now — even packed into one " +
+    "message with no prior back-and-forth — that request itself is the trigger: respond with the fence(s) " +
+    "immediately, never with clarifying questions instead of the proposal. All outline changes require explicit " +
+    "user approval before they take effect (new chapters/scenes appear immediately in the tree marked " +
+    "'AI Suggested' for the user to accept/reject; edits/reorders/deletes show as a card in the chat for the " +
+    "user to accept/reject).\n\n" +
     "To propose a new chapter or scene, include a fenced block in this exact form:\n\n" +
     "```outline-proposal\n" +
     '{"type": "create", "itemType": "chapter", "parentId": null, "title": "...", "summary": "...", "wordCountTarget": null}\n' +
@@ -483,10 +493,13 @@ const PROSE_PROPOSAL_INSTRUCTIONS =
 const PSYCH_MODULE_INSTRUCTIONS =
     "This character has an opt-in psychology module enabled — a writing aid, not tracked Codex state and " +
     "never enforced by any consistency check. Derive it from what the user actually says in this conversation, " +
-    "not assumptions — never propose a psych profile in your very first reply before any real interview has " +
-    "happened.\n\n" +
+    "not assumptions — don't propose a psych profile out of nowhere in your very first reply before any real " +
+    "interview has happened. BUT if the user directly asks you to write or propose the profile now, even in " +
+    "that same first message, treat it as an unambiguous trigger and respond with the fence immediately — " +
+    "never answer a direct request like that with interview questions instead of the proposal.\n\n" +
     "To propose a psychology profile (any subset of the fields — propose only what's actually been discussed), " +
-    "include a fenced block in this exact form:\n\n" +
+    "include a fenced block in this exact form. You MUST emit this fence to propose — never just describe the " +
+    "profile in prose and wait to be asked to formalize it:\n\n" +
     "```psych-proposal\n" +
     '{"mbti": "...", "enneagram": "...", "blurb": "a few sentences of freeform psychological description"}\n' +
     "```\n\n" +
@@ -502,10 +515,13 @@ const PSYCH_MODULE_INSTRUCTIONS =
 const SEXUALITY_MODULE_INSTRUCTIONS =
     "This character has an opt-in sexuality module enabled — a writing aid, not tracked Codex state and " +
     "never enforced by any consistency check. Derive it from what the user actually says in this conversation, " +
-    "not assumptions — never propose a sexuality profile in your very first reply before any real interview has " +
-    "happened.\n\n" +
+    "not assumptions — don't propose a sexuality profile out of nowhere in your very first reply before any " +
+    "real interview has happened. BUT if the user directly asks you to write or propose the profile now, even " +
+    "in that same first message, treat it as an unambiguous trigger and respond with the fence immediately — " +
+    "never answer a direct request like that with interview questions instead of the proposal.\n\n" +
     "To propose a sexuality profile (any subset of the fields — propose only what's actually been discussed), " +
-    "include a fenced block in this exact form:\n\n" +
+    "include a fenced block in this exact form. You MUST emit this fence to propose — never just describe the " +
+    "profile in prose and wait to be asked to formalize it:\n\n" +
     "```sexuality-proposal\n" +
     '{"orientation": "...", "dynamic": "...", "kinks": "...", "limits": "...", "blurb": "a few sentences of freeform description"}\n' +
     "```\n\n" +
@@ -522,10 +538,14 @@ const SEXUALITY_MODULE_INSTRUCTIONS =
 const PLACE_SHEET_INSTRUCTIONS =
     "This location has a light place sheet you can help fill in — a lightweight structured " +
     "summary, not tracked Codex state. Derive it from what's actually been discussed, not " +
-    "assumptions — never propose a place sheet in your very first reply before any real " +
-    "conversation about the place has happened.\n\n" +
+    "assumptions — don't propose a place sheet out of nowhere in your very first reply before any " +
+    "real conversation about the place has happened. BUT if the user directly asks you to write or " +
+    "propose the sheet now, even in that same first message, treat it as an unambiguous trigger and " +
+    "respond with the fence immediately — never answer a direct request like that with clarifying " +
+    "questions instead of the proposal.\n\n" +
     "To propose place-sheet fields (any subset — propose only what's actually been discussed), " +
-    "include a fenced block in this exact form:\n\n" +
+    "include a fenced block in this exact form. You MUST emit this fence to propose — never just " +
+    "describe the fields in prose and wait to be asked to formalize it:\n\n" +
     "```place-sheet-proposal\n" +
     '{"scale": "...", "biomeOrClimate": "...", "holder": "...", "dangerLevel": "...", ' +
     '"landmarks": ["..."], "exitsSummary": "...", "layoutMd": "ascii or markdown layout", "imageBrief": "...", ' +
@@ -576,9 +596,14 @@ const MAP_SKETCH_INSTRUCTIONS =
 // PlaceOnTimelineButton's own default) — no new server route needed.
 const TIMELINE_PIN_INSTRUCTIONS =
     "You can propose pins for the Story Timeline board — beats, prior events, or milestones discussed in this " +
-    "conversation. Derive them from what's actually been discussed, not assumptions — never propose pins in " +
-    "your very first reply before any real conversation about the story's chronology has happened.\n\n" +
-    "To propose one or more pins, include a fenced block in this exact form (a JSON ARRAY, even for a single pin):\n\n" +
+    "conversation. Derive them from what's actually been discussed, not assumptions — don't propose pins out " +
+    "of nowhere in your very first reply before any real conversation about the story's chronology has " +
+    "happened. BUT if the user directly asks you to write or propose pins now, even in that same first " +
+    "message, treat it as an unambiguous trigger and respond with the fence immediately — never answer a " +
+    "direct request like that with clarifying questions instead of the proposal.\n\n" +
+    "To propose one or more pins, include a fenced block in this exact form (a JSON ARRAY, even for a single " +
+    "pin). You MUST emit this fence to propose — never just describe the pins in prose and wait to be asked " +
+    "to formalize them:\n\n" +
     "```timeline-pin-proposal\n" +
     '[{"title": "short pin title", "blurb": "a sentence or two of context (optional)", ' +
     '"whenKind": "relative", "relativeOffsetYears": -6}]\n' +
@@ -645,14 +670,24 @@ const SHEET_PROPOSAL_INSTRUCTIONS = (
         "Sync step to turn it into concrete facts). " +
         skeletonLine +
         currentBlock +
-        "\n\nDerive content from what's actually been discussed in this conversation, not assumptions — never " +
-        "propose a sheet in your very first reply before any real conversation has happened. When you do " +
-        "propose, include the ENTIRE sheet (existing content plus your edits/additions), not just a diff — " +
-        "Accept replaces the sheet wholesale.\n\n" +
+        "\n\nDerive content from what's actually been discussed in this conversation, not assumptions — don't " +
+        "propose a sheet out of nowhere in your very first reply before any real conversation has happened. " +
+        "BUT if the user directly asks you to write, propose, or draft the sheet (or says something like " +
+        "\"write it up now\", \"go ahead\", \"give me the full proposal\") — even in that same first message, " +
+        "even packed with all the details at once — that request itself IS the real conversation. Treat it as " +
+        "an unambiguous trigger and respond with the fence immediately; never answer a direct request like that " +
+        "with clarifying questions instead of the proposal. You MUST emit the fence when you do propose — never " +
+        "just describe the sheet's content in prose and wait for the user to ask you to formalize it; the fence " +
+        "IS how you propose it (pending the user's Accept — never state or imply it's already applied). When " +
+        "you do propose, include the ENTIRE sheet (existing content plus your edits/additions), not just a " +
+        "diff — Accept replaces the sheet wholesale.\n\n" +
         "To propose sheet content, include a fenced block in this exact form:\n\n" +
         "```sheet-proposal\n" +
         "## Section Heading\n\ncontent...\n\n## Another Heading\n\ncontent...\n" +
         "```\n\n" +
+        "Worked example — user gives several details in one message and says \"write up the full proposal " +
+        "now\" — your reply: a short lead-in sentence, THEN on its own the fence: ```sheet-proposal\n" +
+        "## Core Identity\n\n...\n```\n\n" +
         "Propose at most one sheet-proposal per reply.\n\n" +
         `IMPORTANT — this overrides the codex-proposal instructions above for THIS entry (id: ${entryId}, name: ` +
         `"${entryName}"): when you learn a new fact ABOUT ${entryName} — physical description, personality, ` +
