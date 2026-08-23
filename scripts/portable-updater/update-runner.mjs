@@ -151,9 +151,21 @@ function extractZip() {
     fs.rmSync(newVersionDir, { recursive: true, force: true });
     fs.mkdirSync(newVersionDir, { recursive: true });
     if (isWindows) {
+        // Expand-Archive is dramatically slower than calling .NET's ZipFile API directly — its
+        // per-entry cmdlet/pipeline overhead dominates once an archive has tens of thousands of
+        // small files, which this one does (bundled Node runtime + a full node_modules). Measured
+        // 10+ minutes for a real ~55k-file update payload with Expand-Archive; ExtractToDirectory
+        // does the same extraction in seconds. newVersionDir is freshly rm'd+mkdir'd just above,
+        // so the two-arg (no-overwrite) overload — the only one available under Windows
+        // PowerShell 5.1's bundled .NET Framework, unlike pwsh's .NET Core — is safe to use as-is.
         execFileSync(
             "powershell.exe",
-            ["-NoProfile", "-NonInteractive", "-Command", `Expand-Archive -LiteralPath '${downloadPath}' -DestinationPath '${newVersionDir}' -Force`],
+            [
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                `Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('${downloadPath}', '${newVersionDir}')`
+            ],
             { stdio: "ignore" }
         );
     } else {
