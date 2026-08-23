@@ -106,19 +106,8 @@ function FeatureEndpointRow({ featureKey, override, allModels, isSaving, onSave,
         });
     };
 
-    // Flagged distinctly from every other row — "Set global default"/"Apply to all features"
-    // above will happily overwrite this with a plain text model, which can't generate images at
-    // all, so it needs to stand out enough that it actually gets double-checked afterward.
-    const isImageGeneration = featureKey === "image_generation";
-
     return (
-        <div
-            className={
-                isImageGeneration
-                    ? "flex flex-wrap items-center gap-2 py-2 -mx-2 px-2 rounded-md border border-amber-500/40 bg-amber-500/10"
-                    : "flex flex-wrap items-center gap-2 py-2"
-            }
-        >
+        <div className="flex flex-wrap items-center gap-2 py-2">
             <span className="text-sm font-medium w-48 shrink-0">{FEATURE_LABELS[featureKey]}</span>
             <Select value={provider} onValueChange={handleProviderChange}>
                 <SelectTrigger className="w-44">
@@ -175,13 +164,16 @@ interface GlobalDefaultApplyRowProps {
 
 // "Set global default" bulk picker — one provider/model choice, applied as an explicit
 // per-feature override to every feature at once, rather than making someone open all 17 rows
-// below and repeat the same Save click. Embeddings is deliberately excluded (never included in
-// `applyTargets`, never touched by Apply): it's a different kind of feature — "local-inprocess"
-// is a valid choice there and nowhere else, and its own row/model selection stays independent so
-// a broad "switch everything" action can never accidentally clobber it. This does NOT change the
-// underlying global-default *resolution* (aiClientFactory.ts's local -> openai -> openrouter ->
-// grok -> grok-oauth priority chain, unaffected) — it just writes the same explicit override
-// FeatureEndpointRow's own Save button would, to every applicable feature in one request.
+// below and repeat the same Save click. Embeddings and Image Generation are both deliberately
+// excluded (never included in `applyTargets`, never touched by Apply): Embeddings is a different
+// kind of feature entirely ("local-inprocess" is a valid choice there and nowhere else), and Image
+// Generation needs an actual image-capable model — a bulk text/chat pick can't generate images at
+// all, so silently overwriting it here would just break it. Both keep their own independent
+// row/model selection so a broad "switch everything" action can never accidentally clobber either.
+// This does NOT change the underlying global-default *resolution* (aiClientFactory.ts's
+// local -> openai -> openrouter -> grok -> grok-oauth priority chain, unaffected) — it just writes
+// the same explicit override FeatureEndpointRow's own Save button would, to every applicable
+// feature in one request.
 function GlobalDefaultApplyRow({ featureEndpoints, allModels, isSaving, onApply }: GlobalDefaultApplyRowProps) {
     const [stored] = useState(readStoredGlobalDefault);
     const [provider, setProviderState] = useState<FeatureProvider>(stored.provider);
@@ -209,7 +201,7 @@ function GlobalDefaultApplyRow({ featureEndpoints, allModels, isSaving, onApply 
         setProvider(value as FeatureProvider);
     };
 
-    const applyTargets = FEATURE_KEYS.filter(key => key !== "embedding");
+    const applyTargets = FEATURE_KEYS.filter(key => key !== "embedding" && key !== "image_generation");
 
     const handleConfirm = () => {
         if (!modelId) return;
@@ -228,12 +220,9 @@ function GlobalDefaultApplyRow({ featureEndpoints, allModels, isSaving, onApply 
         <div className="mb-4 pb-4 border-b">
             <p className="text-sm font-medium mb-2">Set global default</p>
             <p className="text-sm text-muted-foreground mb-3">
-                Pick a provider and model, then apply it to every feature below at once — except Embeddings, which
-                keeps its own separate setting (it's the only feature "Local (in-process)" is valid for).{" "}
-                <span className="text-amber-600 dark:text-amber-500">
-                    This also overwrites Image Generation — since a text/chat model can't generate images, you'll
-                    need to go back and set that one row to an actual image model afterward.
-                </span>
+                Pick a provider and model, then apply it to every feature below at once — except Embeddings (the only
+                feature "Local (in-process)" is valid for) and Image Generation (needs an actual image-capable
+                model), both of which keep their own separate setting.
             </p>
             <div className="flex flex-wrap items-center gap-2">
                 <Select value={provider} onValueChange={handleProviderChange}>
@@ -272,7 +261,7 @@ function GlobalDefaultApplyRow({ featureEndpoints, allModels, isSaving, onApply 
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
                 title="Apply to all features?"
-                description={`Sets every feature except Embeddings to ${PROVIDER_LABELS[provider]} / ${modelId ?? ""}, overwriting any per-feature overrides currently configured below. This includes Image Generation — remember to set that row back to a real image model afterward, since ${modelId ?? "this model"} can't generate images.`}
+                description={`Sets every feature except Embeddings and Image Generation to ${PROVIDER_LABELS[provider]} / ${modelId ?? ""}, overwriting any per-feature overrides currently configured below.`}
                 confirmLabel="Apply"
                 onConfirm={handleConfirm}
             />
