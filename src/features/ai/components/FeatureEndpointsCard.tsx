@@ -1,3 +1,4 @@
+import { attempt } from "@jfdi/attempt";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,29 @@ const PROVIDER_LABELS: Record<FeatureProvider, string> = {
 };
 
 const PROVIDERS: FeatureProvider[] = ["local", "openai", "openrouter", "deepseek", "gemini", "grok", "grok-oauth"];
+
+// "Set global default" is a one-shot picker, not a saved value (see GlobalDefaultApplyRow below)
+// — nothing server-side backs it, so without this it silently reset to Local/no-model every time
+// the user left Settings and came back, even right after they'd just picked a provider to apply.
+// Persisted client-side only, same localStorage-hook pattern as useLorebookSortOption.ts.
+const GLOBAL_DEFAULT_STORAGE_KEY = "sn-settings-global-default-endpoint";
+interface StoredGlobalDefault {
+    provider: FeatureProvider;
+    modelId?: string;
+    apiUrl: string;
+}
+const readStoredGlobalDefault = (): StoredGlobalDefault => {
+    const [error, parsed] = attempt(() => JSON.parse(window.localStorage.getItem(GLOBAL_DEFAULT_STORAGE_KEY) ?? "null"));
+    if (error || !parsed || typeof parsed !== "object") return { provider: "local", modelId: undefined, apiUrl: "" };
+    const record = parsed as Record<string, unknown>;
+    return {
+        provider: typeof record.provider === "string" ? (record.provider as FeatureProvider) : "local",
+        modelId: typeof record.modelId === "string" ? record.modelId : undefined,
+        apiUrl: typeof record.apiUrl === "string" ? record.apiUrl : ""
+    };
+};
+const writeStoredGlobalDefault = (value: StoredGlobalDefault) =>
+    window.localStorage.setItem(GLOBAL_DEFAULT_STORAGE_KEY, JSON.stringify(value));
 
 // Runs entirely inside the Node server (server/services/localEmbeddingService.ts) — no HTTP
 // endpoint, no live /models list to query, and only one supported model. Valid only for the
@@ -159,16 +183,30 @@ interface GlobalDefaultApplyRowProps {
 // grok -> grok-oauth priority chain, unaffected) — it just writes the same explicit override
 // FeatureEndpointRow's own Save button would, to every applicable feature in one request.
 function GlobalDefaultApplyRow({ featureEndpoints, allModels, isSaving, onApply }: GlobalDefaultApplyRowProps) {
-    const [provider, setProvider] = useState<FeatureProvider>("local");
-    const [modelId, setModelId] = useState<string | undefined>(undefined);
-    const [apiUrl, setApiUrl] = useState("");
+    const [stored] = useState(readStoredGlobalDefault);
+    const [provider, setProviderState] = useState<FeatureProvider>(stored.provider);
+    const [modelId, setModelIdState] = useState<string | undefined>(stored.modelId);
+    const [apiUrl, setApiUrlState] = useState(stored.apiUrl);
     const [confirmOpen, setConfirmOpen] = useState(false);
 
     const providerModels = allModels.filter(m => m.provider === provider);
 
+    const setProvider = (next: FeatureProvider) => {
+        setProviderState(next);
+        setModelIdState(undefined);
+        writeStoredGlobalDefault({ provider: next, modelId: undefined, apiUrl });
+    };
+    const setModelId = (next: string | undefined) => {
+        setModelIdState(next);
+        writeStoredGlobalDefault({ provider, modelId: next, apiUrl });
+    };
+    const setApiUrl = (next: string) => {
+        setApiUrlState(next);
+        writeStoredGlobalDefault({ provider, modelId, apiUrl: next });
+    };
+
     const handleProviderChange = (value: string) => {
         setProvider(value as FeatureProvider);
-        setModelId(undefined);
     };
 
     const applyTargets = FEATURE_KEYS.filter(key => key !== "embedding");

@@ -211,6 +211,22 @@ function WorldBuildingChatPanel({
     const { data: chats = [], isLoading: chatsLoading } = useChatsByStoryQuery(storyId, "worldbuilding");
     const pendingRework = usePendingRework();
 
+    const mostRecentChat = (candidates: AIChat[]): AIChat =>
+        [...candidates].sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime())[0];
+
+    // Auto-restore this entry's own most-recently-updated WB chat on (re)mount — e.g. switching
+    // tools/tabs and coming back to this entry — instead of always dropping back to the template
+    // picker even when this entry already has chats (mirrors OutlineChatRail/NotesChatRail's own
+    // story-wide auto-select, scoped to this entry's chats only since WB chats are anchored per
+    // entry). Only fires once entryId is known — a brand-new unsaved entry has no chats yet, so
+    // the template picker is still the correct first-open state.
+    useEffect(() => {
+        if (selectedChat || chatsLoading || !entryId) return;
+        const candidates = chats.filter(chat => chat.anchorEntryId === entryId);
+        if (candidates.length > 0) setSelectedChat(mostRecentChat(candidates));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chats, chatsLoading, selectedChat, entryId]);
+
     // Bridges a lorebook-field "Rework in chat" click (LorebookReworkButton.tsx) into this panel
     // via pendingReworkStore — mirrors EditorChatRail.tsx's find-or-create-on-rework effect, which
     // WB never had before (it always required picking a template manually). Finds a WB chat

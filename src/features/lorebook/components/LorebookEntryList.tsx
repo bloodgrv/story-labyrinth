@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { DraggableLeaf } from "@/features/folders/components/DraggableLeaf";
 import { getFolderPath } from "@/features/folders/lib/folderTree";
 import { useLorebookBrowseView } from "@/lib/useLorebookBrowseView";
+import { type LorebookSortOption, useLorebookSortOption } from "@/lib/useLorebookSortOption";
 import type { OrgFolder } from "@/types/folders";
 import type { LorebookEntry } from "@/types/story";
 import { logger } from "@/utils/logger";
@@ -46,8 +47,6 @@ interface LorebookEntryListProps {
     crossCategoryEntries?: LorebookEntry[];
 }
 
-type SortOption = "name" | "category" | "importance" | "created";
-
 export const lorebookMatchesSearch = (entry: LorebookEntry, term: string) =>
     [entry.name, entry.description, ...(entry.tags || [])].some(field => field?.toLowerCase().includes(term));
 
@@ -62,7 +61,7 @@ export function LorebookEntryList({
 }: LorebookEntryListProps) {
     const deleteMutation = useDeleteLorebookMutation();
     const updateMutation = useUpdateLorebookMutation();
-    const [sortBy, setSortBy] = useState<SortOption>("name");
+    const [sortBy, setSortBy] = useLorebookSortOption();
     const [deletingEntry, setDeletingEntry] = useState<LorebookEntry | null>(null);
     const [showDisabled, setShowDisabled] = useState(false);
     const [searchAllCategories, setSearchAllCategories] = useState(false);
@@ -146,7 +145,7 @@ export function LorebookEntryList({
                                         Show Disabled
                                     </Label>
                                 </div>
-                                <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                                <Select value={sortBy} onValueChange={(value: LorebookSortOption) => setSortBy(value)}>
                                     <SelectTrigger className="w-[150px] border-2 border-border">
                                         <SelectValue placeholder="Sort by..." />
                                     </SelectTrigger>

@@ -68,6 +68,9 @@ const SECTIONS = [
 ] as const;
 type Section = (typeof SECTIONS)[number];
 
+const SECTION_STORAGE_KEY = "sn-settings-section";
+const isSection = (value: string | null): value is Section => (SECTIONS as readonly string[]).includes(value ?? "");
+
 export default function SettingsPage() {
     const navigate = useNavigate();
     const isOwner = useIsOwner();
@@ -75,12 +78,19 @@ export default function SettingsPage() {
     const [localApiUrlInput, setLocalApiUrlInput] = useState("");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     // Supports deep links like /settings?section=logs (e.g. the Activity Stoplight's "All jobs →"
-    // footer link) — one-time initial value only, not kept in sync with the URL afterward.
+    // footer link) — one-time initial value only, not kept in sync with the URL afterward. Falls
+    // back to the last section the user was actually on (persisted to localStorage below) rather
+    // than always resetting to "appearance" when there's no deep-link param.
     const [searchParams] = useSearchParams();
-    const [section, setSection] = useState<Section>(() => {
+    const [section, setSectionState] = useState<Section>(() => {
         const requested = searchParams.get("section");
-        return (SECTIONS as readonly string[]).includes(requested ?? "") ? (requested as Section) : "appearance";
+        if (isSection(requested)) return requested;
+        return isSection(window.localStorage.getItem(SECTION_STORAGE_KEY)) ? (window.localStorage.getItem(SECTION_STORAGE_KEY) as Section) : "appearance";
     });
+    const setSection = (next: Section) => {
+        window.localStorage.setItem(SECTION_STORAGE_KEY, next);
+        setSectionState(next);
+    };
 
     const { data: settings, isLoading: isLoadingSettings } = useAISettingsQuery();
     const { data: updateMode } = useUpdateModeQuery();
