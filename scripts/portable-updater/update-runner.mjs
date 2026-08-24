@@ -171,20 +171,53 @@ function extractZip() {
     } else {
         // -o overwrite, -q quiet — the download zip's top-level entries are node/ and app/
         // directly (see build-portable.mjs's zipUpdatePayload), same shape Expand-Archive above
-        // produces, so nothing else here needs to branch on platform.
+        // produces, so nothing else here needs to branch on platform. A LEAN zip (see
+        // copyForwardUnchangedDeps below) only has app/ minus node_modules — unzip handles that
+        // identically, it just extracts fewer entries.
         execFileSync("/usr/bin/unzip", ["-o", "-q", downloadPath, "-d", newVersionDir], { stdio: "ignore" });
-        // fs.cpSync-style POSIX mode bits generally survive a zip round-trip, but make the one
-        // binary that actually needs +x to run at all a hard guarantee rather than an assumption
-        // (mirrors build-portable.mjs's own belt-and-suspenders chmod after assembling a version).
-        fs.chmodSync(nodeBinaryFor(newVersionDir), 0o755);
-        // Quarantine can otherwise re-attach to the freshly-extracted binary/app bundle on darwin
-        // and trip Gatekeeper on next launch — best-effort, ignore if xattr isn't present or the
-        // files were never quarantined in the first place (e.g. downloaded over a non-Safari path).
-        try {
-            execFileSync("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newVersionDir], { stdio: "ignore" });
-        } catch {
-            // not quarantined, or xattr unavailable — non-fatal
-        }
+    }
+}
+
+// A "lean" update zip (build-portable.mjs's zipUpdatePayload, when node/node_modules are
+// unchanged since the last release per its checked-in baseline) ships app/ only, minus
+// node_modules — no node/ at all. Detected here purely by absence, not a flag anywhere: if the
+// extract above didn't produce a node/ dir or an app/node_modules dir, copy both forward from
+// whichever version is currently installed and running (readCurrentVersion() — guaranteed to
+// still be on disk, since nothing here ever deletes an old versions/<x>/ folder). A full zip
+// leaves both already present post-extract, so this is a no-op in that case. Must run before
+// applyMacPostExtractFixups, which assumes node/ already exists.
+function copyForwardUnchangedDeps() {
+    const previousVersionDir = path.join(versionsDir, readCurrentVersion());
+    const newNodeDir = path.join(newVersionDir, "node");
+    const newNodeModulesDir = path.join(newVersionDir, "app", "node_modules");
+
+    if (!fs.existsSync(newNodeDir)) {
+        writeStatus(root, { phase: "extracting", targetVersion, detail: "copying unchanged Node runtime forward" });
+        fs.cpSync(path.join(previousVersionDir, "node"), newNodeDir, { recursive: true });
+    }
+    if (!fs.existsSync(newNodeModulesDir)) {
+        writeStatus(root, { phase: "extracting", targetVersion, detail: "copying unchanged node_modules forward" });
+        fs.cpSync(path.join(previousVersionDir, "app", "node_modules"), newNodeModulesDir, { recursive: true });
+    }
+}
+
+// Split out from extractZip so it always runs after copyForwardUnchangedDeps has guaranteed
+// node/ actually exists — a lean zip's own extract step never produces it directly.
+function applyMacPostExtractFixups() {
+    if (isWindows) return;
+    // fs.cpSync-style POSIX mode bits generally survive a zip round-trip (and a plain fs.cpSync
+    // copy-forward), but make the one binary that actually needs +x to run at all a hard guarantee
+    // rather than an assumption (mirrors build-portable.mjs's own belt-and-suspenders chmod after
+    // assembling a version).
+    fs.chmodSync(nodeBinaryFor(newVersionDir), 0o755);
+    // Quarantine can otherwise re-attach to the freshly-extracted binary/app bundle on darwin and
+    // trip Gatekeeper on next launch — best-effort, ignore if xattr isn't present or the files were
+    // never quarantined in the first place (e.g. downloaded over a non-Safari path, or copied
+    // forward from an already-cleared previous version).
+    try {
+        execFileSync("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newVersionDir], { stdio: "ignore" });
+    } catch {
+        // not quarantined, or xattr unavailable — non-fatal
     }
 }
 
@@ -223,6 +256,8 @@ async function main() {
     await downloadZip();
     verifyDigest();
     extractZip();
+    copyForwardUnchangedDeps();
+    applyMacPostExtractFixups();
     sanityCheckExtracted();
     fs.rmSync(downloadPath, { force: true });
 

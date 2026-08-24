@@ -21,6 +21,7 @@
 // (or compile) darwin binaries — there is no cross-build path from Windows.
 
 import { execFileSync, spawn } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -193,6 +194,21 @@ function assembleApp() {
     fs.cpSync(embeddingCacheSrc, path.join(appDir, ".embedding-model-cache"), { recursive: true });
 
     fs.cpSync(path.join(repoRoot, "scripts", "portable-updater"), path.join(appDir, "updater-src"), { recursive: true });
+
+    // Written unconditionally into every build (fresh + update alike) purely so a FUTURE update's
+    // decision logic (see zipUpdatePayload's lean/full check below) always has something on disk
+    // to compare against, once this version becomes the one someone is updating *from*. Deciding
+    // whether to skip node/+node_modules in an update zip is made once, at build time, against the
+    // repo-committed baseline in shippedDepsManifestPath — never on the client.
+    fs.writeFileSync(path.join(appDir, "deps-manifest.json"), JSON.stringify(computeDepsManifest(), null, 2));
+}
+
+// { nodeRuntimeVersion, packageLockSha256 } — the two things that actually determine whether
+// node/ and app/node_modules/ would come out byte-for-byte identical to a previous build. Nothing
+// else (app code, migrations, guide content, etc.) affects either folder's contents.
+function computeDepsManifest() {
+    const packageLockSha256 = crypto.createHash("sha256").update(fs.readFileSync(path.join(repoRoot, "package-lock.json"))).digest("hex");
+    return { nodeRuntimeVersion: NODE_RUNTIME_VERSION, packageLockSha256 };
 }
 
 function installProductionDeps() {
@@ -352,12 +368,48 @@ function zipFreshInstall() {
     return zipPath;
 }
 
+// Checked into the repo (unlike everything else this script writes) — it's the one piece of
+// cross-release state a "did node/node_modules change since the last shipped update?" check
+// needs, since a build only ever sees its own working tree, never a previous release's artifacts.
+// Deliberately NOT compared against git history/tags (would need `fetch-depth: 0` in CI and a
+// second checkout-at-tag just to read one file) — a plain committed JSON file the release process
+// updates alongside the version bump is simpler and just as reliable.
+const shippedDepsManifestPath = path.join(repoRoot, "scripts", "portable-updater", "shipped-deps-manifest.json");
+
+function readShippedDepsManifest() {
+    if (!fs.existsSync(shippedDepsManifestPath)) return null;
+    try {
+        return JSON.parse(fs.readFileSync(shippedDepsManifestPath, "utf8"));
+    } catch {
+        return null; // corrupt/unreadable — treat as "no baseline", falls through to a full build
+    }
+}
+
+const sameDepsManifest = (a, b) => !!a && !!b && a.nodeRuntimeVersion === b.nodeRuntimeVersion && a.packageLockSha256 === b.packageLockSha256;
+
+// Full update zip: node/ + app/ as a whole, byte-identical to what a fresh install ships — always
+// the safe fallback. A "lean" zip (node/node_modules unchanged since the last release, per the
+// checked-in baseline above) omits both entirely; update-runner.mjs then copies them forward from
+// the currently-installed version instead of re-downloading/re-extracting ~55k files that would
+// have come out identical anyway. When in doubt (no baseline yet, unreadable baseline, anything
+// mismatched) this always falls back to full — a lean zip is only ever produced when the manifests
+// provably match.
 function zipUpdatePayload() {
     const zipName = `Story-Labyrinth-portable-${platformId}-update.zip`;
     const zipPath = path.join(repoRoot, zipName);
-    log(`Zipping update payload ${versionDir} {node,app} -> ${zipPath} ...`);
+    const currentManifest = computeDepsManifest();
+    const isLean = sameDepsManifest(readShippedDepsManifest(), currentManifest);
+
+    log(
+        isLean
+            ? `Zipping LEAN update payload ${versionDir}/app (node/ and node_modules/ unchanged since the last release, omitted) -> ${zipPath} ...`
+            : `Zipping FULL update payload ${versionDir} {node,app} -> ${zipPath} ...`
+    );
     fs.rmSync(zipPath, { force: true });
-    if (process.platform === "win32") {
+
+    if (isLean) {
+        zipLeanAppOnly(zipPath);
+    } else if (process.platform === "win32") {
         run("powershell.exe", [
             "-NoProfile",
             "-NonInteractive",
@@ -367,8 +419,43 @@ function zipUpdatePayload() {
     } else {
         run("zip", ["-ry", zipPath, "node", "app"], { cwd: versionDir });
     }
+
+    if (!isLean) {
+        // Only advance the baseline once a FULL payload has actually shipped with these deps —
+        // this is what the *next* build's lean/full decision compares against. A lean build never
+        // touches this file: the baseline is already correct (that's exactly why it qualified).
+        fs.writeFileSync(shippedDepsManifestPath, JSON.stringify(currentManifest, null, 2));
+        log(`Updated ${path.relative(repoRoot, shippedDepsManifestPath)} — commit this alongside the version bump.`);
+    }
+
     log(`Done: ${zipPath}`);
     return zipPath;
+}
+
+// Stages a copy of appDir with node_modules stripped out, then zips just that — Compress-Archive
+// has no exclude flag, so on Windows this staging copy is the simplest way to get the same result
+// `zip -x` gives natively on darwin/Linux. Runs only during a release build, never on a user's
+// machine, so the extra disk I/O here is a non-issue.
+function zipLeanAppOnly(zipPath) {
+    if (process.platform === "win32") {
+        const stagingRoot = path.join(cacheDir, "lean-app-staging");
+        const stagedAppDir = path.join(stagingRoot, "app");
+        fs.rmSync(stagingRoot, { recursive: true, force: true });
+        fs.mkdirSync(stagingRoot, { recursive: true });
+        fs.cpSync(appDir, stagedAppDir, {
+            recursive: true,
+            filter: src => path.relative(appDir, src).split(path.sep)[0] !== "node_modules"
+        });
+        run("powershell.exe", [
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            `Compress-Archive -Path '${stagedAppDir}' -DestinationPath '${zipPath}' -CompressionLevel Optimal`
+        ]);
+        fs.rmSync(stagingRoot, { recursive: true, force: true });
+    } else {
+        run("zip", ["-ry", zipPath, "app", "-x", "app/node_modules/*"], { cwd: versionDir });
+    }
 }
 
 async function main() {
