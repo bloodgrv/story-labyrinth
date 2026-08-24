@@ -110,9 +110,16 @@ const clientFromEndpoint = async (endpoint: FeatureEndpoint, settings: AiSetting
 // genuinely available. Async only because of this one branch (a token refresh may need to hit the
 // network + persist a rotated token back to the DB, same as clientFromEndpoint's own case).
 const clientFromGlobalSettings = async (settings: AiSettingsRow): Promise<ClientAndModel | null> => {
-    if (settings.localApiUrl && settings.defaultLocalModel) {
+    // Requiring settings.localApiUrl here (an earlier version did) was inconsistent with
+    // clientFromEndpoint's own "local" case above, which already defaults a blank apiUrl to
+    // localhost:1234 (LM Studio's default) — a real gap: leaving the Local settings page's URL
+    // field blank, expecting the same "defaults to localhost:1234 like everywhere else" behavior
+    // this app already has for per-feature overrides, silently locked Local out of the global
+    // default chain (and, since resolveChatDefaultModel.ts's isProviderConfigured mirrors this same
+    // check client-side, out of the chat Local|Cloud toggle too) with no error surfaced anywhere.
+    if (settings.defaultLocalModel) {
         return {
-            client: new OpenAI({ baseURL: settings.localApiUrl, apiKey: "local" }),
+            client: new OpenAI({ baseURL: settings.localApiUrl || "http://localhost:1234/v1", apiKey: "local" }),
             model: settings.defaultLocalModel.replace("local/", "")
         };
     }

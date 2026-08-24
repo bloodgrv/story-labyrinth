@@ -34,7 +34,10 @@ export function PreferencesSidebar({ aiSettings, featureEndpoints }: Preferences
     const connections: ConnectionStatus[] = [
         {
             label: "Local (LM Studio / Ollama)",
-            configured: !!aiSettings?.localApiUrl && !!aiSettings?.defaultLocalModel,
+            // A blank URL defaults to localhost:1234 server-side (aiClientFactory.ts) — matches
+            // resolveChatDefaultModel.ts's own isProviderConfigured, so this dot doesn't say
+            // "not configured" for a setup that actually works.
+            configured: !!aiSettings?.defaultLocalModel,
             model: aiSettings?.defaultLocalModel?.replace("local/", "") ?? undefined
         },
         {

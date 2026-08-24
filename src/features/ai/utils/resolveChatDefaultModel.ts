@@ -25,12 +25,15 @@ function getDefaultModelIdForProvider(provider: AIProvider, settings: AISettings
 // A provider is "configured" for routing purposes when it has both a key/URL AND a chosen
 // default model — mirrors server/services/aiClientFactory.ts's clientFromGlobalSettings check,
 // just reimplemented client-side since that function isn't reachable from the browser bundle.
+// "local" needs only a default model: a blank URL defaults to localhost:1234 server-side (same as
+// every per-feature "local" override already does), so requiring one here too used to silently
+// block the chat Local|Cloud toggle for anyone who left that field blank expecting the same default.
 function isProviderConfigured(provider: AIProvider, settings: AISettings): boolean {
     const defaultModel = getDefaultModelIdForProvider(provider, settings);
     if (!defaultModel) return false;
     switch (provider) {
         case "local":
-            return !!settings.localApiUrl;
+            return true;
         case "openai":
             return !!settings.openaiKey;
         case "openrouter":
