@@ -9,9 +9,10 @@ import { useAuthMutations } from "../hooks/useAuthStatus";
 
 interface LoginPageProps {
     setupComplete: boolean;
+    instanceLabel?: string | null;
 }
 
-export function LoginPage({ setupComplete }: LoginPageProps) {
+export function LoginPage({ setupComplete, instanceLabel }: LoginPageProps) {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -40,6 +41,9 @@ export function LoginPage({ setupComplete }: LoginPageProps) {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 gap-6">
             <BrandMark className="h-[6.75rem]" />
+            {instanceLabel && (
+                <p className="text-sm font-medium text-muted-foreground -mt-4">{instanceLabel}</p>
+            )}
             <Card className="w-full max-w-sm">
                 <CardHeader className="text-center space-y-2">
                     <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">

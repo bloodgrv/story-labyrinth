@@ -1,6 +1,7 @@
 import { and, inArray, lt } from "drizzle-orm";
 import type { AgentJob } from "../../../src/types/agentJob.js";
 import { db, schema } from "../../db/client.js";
+import { deleteStaleLoginAttempts } from "../authRepository.js";
 import { pruneOldTransfers } from "../deskTransfersService.js";
 import { purgeExpiredTrash } from "../../lib/trash.js";
 
@@ -11,7 +12,7 @@ const RETENTION_DAYS = 30;
 
 export const runPruneHistoryJob = async (
     _job: AgentJob
-): Promise<{ deletedJobs: number; deletedTransfers: number; purgedTrash: number }> => {
+): Promise<{ deletedJobs: number; deletedTransfers: number; purgedTrash: number; deletedLoginAttempts: number }> => {
     const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60_000);
 
     const rows = await db
@@ -29,5 +30,10 @@ export const runPruneHistoryJob = async (
     // AgentJobType/scheduling path (see server/lib/trash.ts's TRASH_RETENTION_DAYS).
     const { purged: purgedTrash } = await purgeExpiredTrash();
 
-    return { deletedJobs: rows.length, deletedTransfers, purgedTrash };
+    // Remote Access RF1 (docs/Remote_Access_Funnel_Design.md) — durable login-attempt rows have
+    // no other cleanup path (unlike sessions' own opportunistic on-login delete), same "piggyback
+    // on this job's existing daily cadence" precedent as the two rules above.
+    const deletedLoginAttempts = await deleteStaleLoginAttempts(cutoff);
+
+    return { deletedJobs: rows.length, deletedTransfers, purgedTrash, deletedLoginAttempts };
 };

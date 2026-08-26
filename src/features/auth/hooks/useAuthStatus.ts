@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 import { authApi } from "@/services/api/client";
 
 const STATUS_KEY = ["auth", "status"] as const;
@@ -41,5 +42,16 @@ export const useSetOnboardingTourCompletedMutation = () => {
     return useMutation({
         mutationFn: (completed: boolean) => authApi.setOnboardingTourCompleted(completed),
         onSuccess: () => qc.invalidateQueries({ queryKey: STATUS_KEY })
+    });
+};
+
+// Remote Access — RF3 sidebar Remote toggle (docs/Remote_Access_Funnel_Design.md §5b).
+export const useSetRemoteSessionMutation = () => {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (enabled: boolean) => authApi.setRemoteSession(enabled),
+        onSuccess: () => qc.invalidateQueries({ queryKey: STATUS_KEY }),
+        onError: (error: Error) => toast.error(error.message || "Failed to update remote session setting")
     });
 };

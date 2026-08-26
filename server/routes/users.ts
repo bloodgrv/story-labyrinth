@@ -1,13 +1,16 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { type Request, type Response, Router } from "express";
+import { readCookie, SESSION_COOKIE_NAME } from "../middleware/auth.js";
 import {
     adminResetPassword,
     createUserByAdmin,
     listUsers,
+    revokeAllSessions,
     setUserActive,
     updateUserRole,
     type UserRole
 } from "../services/authService.js";
+import { getInstanceLabel, setInstanceLabel } from "../services/installSettingsService.js";
 
 const router = Router();
 
@@ -83,6 +86,41 @@ router.post(
         }
 
         res.json(await adminResetPassword(req.params.id, newPassword));
+    })
+);
+
+// POST /api/users/revoke-all-sessions — RF2 (docs/Remote_Access_Funnel_Design.md §6). Owner-only
+// (mounted requireOwner in server/index.ts, same as every other route on this router). Kills
+// every OTHER session across every account — a stolen/work-PC cookie recovery lever that doesn't
+// require a password reset — while keeping the caller's own current session alive.
+router.post(
+    "/revoke-all-sessions",
+    asyncHandler(async (req, res) => {
+        const currentToken = readCookie(req, SESSION_COOKIE_NAME);
+        const revoked = await revokeAllSessions(currentToken);
+        res.json({ revoked });
+    })
+);
+
+// GET/PATCH /api/users/instance-label — Remote Access login instance label (RF5). Owner-only,
+// matching every other route on this router (mounted requireOwner in server/index.ts). Body: { label }
+router.get(
+    "/instance-label",
+    asyncHandler(async (_req, res) => {
+        res.json({ instanceLabel: await getInstanceLabel() });
+    })
+);
+
+router.patch(
+    "/instance-label",
+    asyncHandler(async (req, res) => {
+        const { label } = req.body as { label?: string };
+        if (typeof label !== "string") {
+            res.status(400).json({ error: "label (string) is required" });
+            return;
+        }
+
+        res.json({ instanceLabel: await setInstanceLabel(label) });
     })
 );
 

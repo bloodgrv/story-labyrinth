@@ -1250,13 +1250,30 @@ export const sessions = sqliteTable(
             .notNull()
             .references(() => users.id, { onDelete: "cascade" }),
         createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-        expiresAt: integer("expiresAt", { mode: "timestamp" }).notNull()
+        expiresAt: integer("expiresAt", { mode: "timestamp" }).notNull(),
+        // Remote Access — RF3 (docs/Remote_Access_Funnel_Design.md §5). `remoteProfile` opts this
+        // one session (not the whole account) into the stricter 1-day-absolute/1-hour-idle policy
+        // via the sidebar Remote toggle — `expiresAt` above already carries the absolute ceiling for
+        // both profiles, `lastSeenAt` backs the idle half and is only enforced when this is true.
+        lastSeenAt: integer("lastSeenAt", { mode: "timestamp" }), // set on every new session; nullable only for rows that predate this column
+        remoteProfile: integer("remoteProfile", { mode: "boolean" }).notNull().default(false)
     },
     table => ({
         userIdIdx: index("session_user_id_idx").on(table.userId),
         expiresAtIdx: index("session_expires_at_idx").on(table.expiresAt)
     })
 );
+
+// Remote Access — RF1 durable login lockout (docs/Remote_Access_Funnel_Design.md §6). Replaces
+// authService.ts's old in-memory-only `Map` (wiped on every restart, the exact gap RF1 names) —
+// one row per throttle scope, `key` is either `user:<lowercased username>` or `ip:<remote addr>`
+// so both the per-username lockout and the coarser per-IP throttle share one table/mechanism.
+export const loginAttempts = sqliteTable("loginAttempts", {
+    key: text("key").primaryKey(),
+    failedCount: integer("failedCount").notNull().default(0),
+    lockedUntil: integer("lockedUntil", { mode: "timestamp" }),
+    updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+});
 
 // Outline Items table — Story Outlining feature. Two fixed levels only (per CLAUDE.md's bias
 // toward concrete, tractable scope over arbitrary generality): top-level rows are `type:
@@ -1777,5 +1794,15 @@ export const mcpServerSettings = sqliteTable("mcpServerSettings", {
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
     tokenHash: text("tokenHash"),
     tokenCreatedAt: integer("tokenCreatedAt", { mode: "timestamp" }),
+    updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
+});
+
+// Remote Access — Login Instance Label (RF5, docs/Remote_Access_Funnel_Design.md §5c) — single
+// global row, same get-or-create-singleton shape as mcpServerSettings above. `instanceLabel` is
+// an owner-set display string shown on the (public, logged-out) login page so the author can
+// confirm they've reached the right server when using Funnel/LAN URLs — never a username roster.
+export const installSettings = sqliteTable("installSettings", {
+    id: text("id").primaryKey(),
+    instanceLabel: text("instanceLabel"),
     updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull()
 });

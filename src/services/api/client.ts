@@ -67,6 +67,13 @@ export const authApi = {
         fetchJSON<{ onboardingTourCompleted: boolean }>("/auth/me/onboarding-tour", {
             method: "PATCH",
             body: JSON.stringify({ completed })
+        }),
+    // Remote Access — RF3 sidebar Remote toggle (docs/Remote_Access_Funnel_Design.md §5b).
+    // Self-service, any authenticated role — flips ONE session (this browser), not the account.
+    setRemoteSession: (enabled: boolean) =>
+        fetchJSON<{ remoteProfile: boolean; expiresAt: string }>("/auth/me/remote-session", {
+            method: "PATCH",
+            body: JSON.stringify({ enabled })
         })
 };
 

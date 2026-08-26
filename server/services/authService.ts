@@ -3,15 +3,21 @@ import { hashPassword, verifyPassword } from "./passwordService.js";
 import {
     createSession,
     createUser,
+    deleteAllSessionsExcept,
     deleteExpiredSessions,
+    deleteLoginAttempt,
     deleteSession,
     deleteSessionsForUser,
     getAllUsers,
+    getLoginAttempt,
     getSession,
     getUserById,
     getUserByUsername,
     getUserCount,
+    touchSessionLastSeen,
+    updateSessionRemoteProfile,
     updateUser,
+    upsertLoginAttempt,
     type UserRow
 } from "./authRepository.js";
 
@@ -19,7 +25,13 @@ export type UserRole = "owner" | "editor" | "viewer";
 export type AuthUser = { id: string; username: string; role: UserRole; isActive: boolean; onboardingTourCompleted: boolean };
 export type AuthSession = { rawToken: string; expiresAt: Date };
 
-const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — a personal/local tool, not a bank
+// Remote Access — RF3 (docs/Remote_Access_Funnel_Design.md §5). Two absolute-lifetime profiles
+// per session (not per account) — LOCAL is this app's long-standing default for a personal/local
+// tool, not a bank; REMOTE is the stricter policy the sidebar toggle opts one browser into.
+const LOCAL_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const REMOTE_SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 1 day
+const REMOTE_IDLE_MS = 60 * 60 * 1000; // 1 hour sliding idle — remote profile only
+const LAST_SEEN_TOUCH_THROTTLE_MS = 60 * 1000; // avoid a session-table write on every single request
 const SESSION_TOKEN_BYTES = 32;
 
 const toAuthUser = (row: UserRow): AuthUser => ({
@@ -38,17 +50,35 @@ const hashToken = (rawToken: string): string => createHash("sha256").update(rawT
 
 const issueSession = async (userId: string): Promise<AuthSession> => {
     const rawToken = randomBytes(SESSION_TOKEN_BYTES).toString("hex");
-    const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-    await createSession({ hashedToken: hashToken(rawToken), userId, expiresAt });
+    // Optional env default (RF3 design §5) — new logins start remote-profiled on an always-on
+    // Funnel host. The sidebar toggle can still flip this off per session afterward.
+    const remoteProfile = process.env.REMOTE_SESSION_DEFAULT === "1";
+    const expiresAt = new Date(Date.now() + (remoteProfile ? REMOTE_SESSION_DURATION_MS : LOCAL_SESSION_DURATION_MS));
+    await createSession({ hashedToken: hashToken(rawToken), userId, expiresAt, remoteProfile });
     return { rawToken, expiresAt };
 };
 
 export const validateSession = async (rawToken: string): Promise<AuthUser | null> => {
-    const session = await getSession(hashToken(rawToken));
+    const hashedToken = hashToken(rawToken);
+    const session = await getSession(hashedToken);
     if (!session) return null;
-    if (session.expiresAt.getTime() <= Date.now()) {
+
+    const now = Date.now();
+    if (session.expiresAt.getTime() <= now) {
         await deleteSession(session.id);
         return null;
+    }
+
+    // RF3 idle enforcement — remote-profile sessions only; the local/default profile has no idle
+    // timeout (design §5's own lock: "off = current 30d/no idle"). `lastSeenAt` falls back to
+    // `createdAt` only for a session created before this column existed.
+    if (session.remoteProfile) {
+        const lastSeenMs = (session.lastSeenAt ?? session.createdAt).getTime();
+        if (now - lastSeenMs > REMOTE_IDLE_MS) {
+            await deleteSession(session.id);
+            return null;
+        }
+        if (now - lastSeenMs > LAST_SEEN_TOUCH_THROTTLE_MS) await touchSessionLastSeen(session.id, new Date(now));
     }
 
     const user = await getUserById(session.userId);
@@ -60,35 +90,74 @@ export const endSession = async (rawToken: string): Promise<void> => {
     await deleteSession(hashToken(rawToken));
 };
 
-// ── Login attempt rate limiting ─────────────────────────────────────────────────
-// In-memory only (not persisted) — this is a defense-in-depth measure against brute
-// force, not the sole protection, and doesn't need to survive a server restart.
+// RF3 — read-only session metadata for GET /api/auth/status's UI hook (remoteProfile so the
+// sidebar toggle can render its current on/off state). Deliberately separate from validateSession
+// rather than widening that function's return shape, since requireAuth's callers only need AuthUser.
+export const getSessionRemoteInfo = async (rawToken: string): Promise<{ remoteProfile: boolean; expiresAt: Date } | null> => {
+    const session = await getSession(hashToken(rawToken));
+    if (!session) return null;
+    return { remoteProfile: session.remoteProfile, expiresAt: session.expiresAt };
+};
 
-const MAX_FAILED_ATTEMPTS = 5;
+// RF3 sidebar Remote toggle — self-service, flips ONE session (this browser), not every session
+// for the account. Turning ON rebases the absolute ceiling to exactly now+1day (never longer,
+// satisfying the design's "expiresAt = min(existing, remoteArmedAt + 1 day)" ceiling by
+// construction) and resets the idle clock; turning OFF returns to the local 30-day ceiling and
+// idle enforcement stops (remoteProfile=false skips the idle branch above entirely).
+export const setRemoteSession = async (
+    rawToken: string,
+    enabled: boolean
+): Promise<{ remoteProfile: boolean; expiresAt: Date } | null> => {
+    const hashedToken = hashToken(rawToken);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + (enabled ? REMOTE_SESSION_DURATION_MS : LOCAL_SESSION_DURATION_MS));
+    const updated = await updateSessionRemoteProfile(hashedToken, { remoteProfile: enabled, expiresAt, lastSeenAt: now });
+    if (!updated) return null;
+    return { remoteProfile: updated.remoteProfile, expiresAt: updated.expiresAt };
+};
+
+// RF2 (docs/Remote_Access_Funnel_Design.md §6) — owner "Revoke all sessions": recovers a
+// stolen/left-behind (e.g. work PC) cookie without a password reset, which was previously the
+// only lever (adminResetPassword already calls deleteSessionsForUser, but only for the one
+// account being reset). Keeps the caller's own current session alive — the owner is presumably
+// clicking this from a trusted device and shouldn't be logged out by their own click.
+export const revokeAllSessions = async (currentRawToken?: string | null): Promise<number> =>
+    deleteAllSessionsExcept(currentRawToken ? hashToken(currentRawToken) : null);
+
+// ── Login attempt rate limiting (RF1) ───────────────────────────────────────────
+// Durable (server/db/schema.ts's loginAttempts table) rather than the old in-memory-only
+// Map — a burst of failed logins right before a restart (crash, update, manual bounce) used
+// to wipe the lockout for free, exactly the gap docs/Remote_Access_Funnel_Design.md's RF1
+// names. Two independent scopes share the same table/mechanism: a tight per-username lockout
+// (unchanged threshold from the old in-memory version) plus a coarser per-IP throttle — the
+// IP throttle catches a single source hammering many different usernames, which the
+// per-username lockout alone can't. `ip` comes from Express's own `req.ip` (no `trust proxy`
+// configured — see routes/auth.ts) — behind a reverse proxy that doesn't forward the real
+// client address this degrades to a coarse global throttle, which is the explicitly-allowed
+// "IP (or coarse)" fallback in the design doc, not a bug.
+
+const MAX_FAILED_ATTEMPTS_PER_USERNAME = 5;
+const MAX_FAILED_ATTEMPTS_PER_IP = 20;
 const LOCKOUT_MS = 15 * 60 * 1000;
 
-type AttemptState = { failedCount: number; lockedUntil: number | null };
-const loginAttempts = new Map<string, AttemptState>();
+const usernameKey = (username: string): string => `user:${username.toLowerCase()}`;
+const ipKey = (ip: string): string => `ip:${ip}`;
 
-const getLockoutRemainingMs = (username: string): number => {
-    const state = loginAttempts.get(username.toLowerCase());
-    if (!state?.lockedUntil) return 0;
-    return Math.max(0, state.lockedUntil - Date.now());
+const getLockoutRemainingMs = async (key: string): Promise<number> => {
+    const row = await getLoginAttempt(key);
+    if (!row?.lockedUntil) return 0;
+    return Math.max(0, row.lockedUntil.getTime() - Date.now());
 };
 
-const recordFailedAttempt = (username: string): void => {
-    const key = username.toLowerCase();
-    const state = loginAttempts.get(key) ?? { failedCount: 0, lockedUntil: null };
-    state.failedCount += 1;
-    if (state.failedCount >= MAX_FAILED_ATTEMPTS) {
-        state.lockedUntil = Date.now() + LOCKOUT_MS;
-        state.failedCount = 0;
-    }
-    loginAttempts.set(key, state);
+const recordFailedAttempt = async (key: string, maxAttempts: number): Promise<void> => {
+    const row = await getLoginAttempt(key);
+    const failedCount = (row?.failedCount ?? 0) + 1;
+    const lockedUntil = failedCount >= maxAttempts ? new Date(Date.now() + LOCKOUT_MS) : (row?.lockedUntil ?? null);
+    await upsertLoginAttempt(key, { failedCount: failedCount >= maxAttempts ? 0 : failedCount, lockedUntil });
 };
 
-const clearAttempts = (username: string): void => {
-    loginAttempts.delete(username.toLowerCase());
+const clearAttempts = async (key: string): Promise<void> => {
+    await deleteLoginAttempt(key);
 };
 
 // ── Validation ─────────────────────────────────────────────────────────────────
@@ -138,34 +207,52 @@ export const registerUser = async (
 /**
  * Verify credentials and start a session. Returns null on any failure (unknown username,
  * wrong password, or currently locked out) — deliberately without distinguishing which,
- * so failed logins don't reveal whether a username exists.
+ * so failed logins don't reveal whether a username exists. `ip` is optional (RF1's per-IP
+ * throttle is skipped, not fatal, if the caller has no address to give it).
  */
-export const login = async (username: string, password: string): Promise<{ user: AuthUser; session: AuthSession } | null> => {
+export const login = async (
+    username: string,
+    password: string,
+    ip?: string | null
+): Promise<{ user: AuthUser; session: AuthSession } | null> => {
     await deleteExpiredSessions();
 
-    if (getLockoutRemainingMs(username) > 0) return null;
+    const uKey = usernameKey(username);
+    const iKey = ip ? ipKey(ip) : null;
+
+    if ((await getLockoutRemainingMs(uKey)) > 0) return null;
+    if (iKey && (await getLockoutRemainingMs(iKey)) > 0) return null;
 
     const user = await getUserByUsername(username);
     if (!user) {
         // Still hash something to keep timing roughly consistent with the "user exists"
         // path, rather than returning near-instantly for unknown usernames.
         await hashPassword(password);
-        recordFailedAttempt(username);
+        await recordFailedAttempt(uKey, MAX_FAILED_ATTEMPTS_PER_USERNAME);
+        if (iKey) await recordFailedAttempt(iKey, MAX_FAILED_ATTEMPTS_PER_IP);
         return null;
     }
 
     const valid = await verifyPassword(password, user.passwordHash);
     if (!valid || !user.isActive) {
-        recordFailedAttempt(username);
+        await recordFailedAttempt(uKey, MAX_FAILED_ATTEMPTS_PER_USERNAME);
+        if (iKey) await recordFailedAttempt(iKey, MAX_FAILED_ATTEMPTS_PER_IP);
         return null;
     }
 
-    clearAttempts(username);
+    await clearAttempts(uKey);
+    if (iKey) await clearAttempts(iKey);
     const session = await issueSession(user.id);
     return { user: toAuthUser(user), session };
 };
 
-export const getLoginLockoutSeconds = (username: string): number => Math.ceil(getLockoutRemainingMs(username) / 1000);
+// Reports whichever of the two scopes (username / IP) is locked for longer, so the client's
+// "try again in Ns" message reflects the real wait rather than just the username half.
+export const getLoginLockoutSeconds = async (username: string, ip?: string | null): Promise<number> => {
+    const uMs = await getLockoutRemainingMs(usernameKey(username));
+    const iMs = ip ? await getLockoutRemainingMs(ipKey(ip)) : 0;
+    return Math.ceil(Math.max(uMs, iMs) / 1000);
+};
 
 // ── Admin user management (owner-only, enforced at the route layer) ────────────────────
 

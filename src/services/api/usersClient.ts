@@ -11,5 +11,13 @@ export const usersApi = {
     setActive: (id: string, isActive: boolean) =>
         fetchJSON<AuthUser>(`/users/${id}/active`, { method: "PATCH", body: JSON.stringify({ isActive }) }),
     resetPassword: (id: string, newPassword: string) =>
-        fetchJSON<AuthUser>(`/users/${id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) })
+        fetchJSON<AuthUser>(`/users/${id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }),
+    // Remote Access — Login Instance Label (RF5, see docs/Remote_Access_Funnel_Design.md §5c)
+    setInstanceLabel: (label: string) =>
+        fetchJSON<{ instanceLabel: string | null }>("/users/instance-label", {
+            method: "PATCH",
+            body: JSON.stringify({ label })
+        }),
+    // Remote Access — Revoke All Sessions (RF2, see docs/Remote_Access_Funnel_Design.md §6)
+    revokeAllSessions: () => fetchJSON<{ revoked: number }>("/users/revoke-all-sessions", { method: "POST" })
 };

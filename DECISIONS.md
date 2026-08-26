@@ -4,6 +4,102 @@ Architecture decisions that are not obvious from the code or CLAUDE.md.
 
 ---
 
+## Remote Access — Tailscale Funnel + session hardening (RF0–RF4) — design locked
+
+**Decision:** Support **Tailscale Funnel** as a **work / no-TS browser escape hatch** beside existing **Serve** (tailnet-only). Not public multi-tenant hosting. No **tsnet** embed in the Node app — host CLI or Docker Tailscale sidecar only.
+
+**Session policy when Remote is on:** absolute max **1 day** (rebased when Remote arms) + server **1 hour** sliding idle (`lastSeenAt`). Remote **off** keeps today’s **30-day** absolute session and **no** idle. Primary arming control: **left sidebar toggle immediately above Logout** (any role; per-session `remoteProfile`). Toggle does **not** start/stop Funnel on the host. Optional env `REMOTE_SESSION_DEFAULT=1` for new logins only.
+
+**Hardening slices (not built until promoted):** RF0 docs/README Funnel · RF1 durable login lockout + login throttle · RF2 owner revoke-all sessions · RF3 session flags + 1d/1h + sidebar toggle · RF4 optional Owner TOTP · **RF5 login instance label** (Settings → Users; public on login via `/api/auth/status`). Daily work Funnel use expects P0 ops (`COOKIE_SECURE`, loopback/no WAN publish, Funnel ACL, strong passwords) + RF1–RF3.
+
+**Idle floor:** default idle **1h**; do not ship sub-15m default (writer UX). Client-only timers are not SoT.
+
+**Login label:** install-wide `instanceLabel` (owner-set, max 80). Empty = generic login copy. Does **not** list usernames publicly.
+
+**Canonical:** `docs/Remote_Access_Funnel_Design.md`
+
+**Date:** 2026-08-24
+
+---
+
+## Remote Access — RF5 (Login Instance Label) — shipped
+
+**Decision:** New single-row `installSettings` table (`id`/`instanceLabel`/`updatedAt`) — same get-or-create-singleton idiom as `mcpServerSettings`/`mcpServerAuthService.ts`, not a new generic pattern. `GET /api/auth/status` (already public/logged-out-safe) gained an `instanceLabel: string | null` field; write path is owner-only `GET`/`PATCH /api/users/instance-label` (mounted under the already-`requireOwner`-gated `/api/users` router, no new auth middleware needed). Server trims/caps at 80 chars and collapses an empty string to `null` — the UI never needs to distinguish "never set" from "cleared."
+
+**Client:** New "Instance label" card at the top of `UsersTool.tsx` (Settings → Users), reading/writing through `useAuthStatus`'s existing query (not a separate users-list field, since the label rides on `/auth/status`) — `useSetInstanceLabelMutation` invalidates the `["auth","status"]` key on success. `LoginPage.tsx` shows the label under the `BrandMark` only when non-empty; empty keeps the original generic "Story Labyrinth is password-protected" copy, per lock.
+
+**Live-verified** against the real dev server: save → toast → logout shows the label on the login page; clear → save → logout reverts to generic copy with no console errors. `npx tsc --noEmit` clean on both root and `server/tsconfig.json`.
+
+**Canonical:** `docs/Remote_Access_Funnel_Design.md` §5c
+
+**Date:** 2026-08-25
+
+---
+
+## Remote Access — RF1 (Durable Login Lockout + IP Throttle) — shipped
+
+**Decision:** Replaced `authService.ts`'s old in-memory-only `Map<username, {failedCount, lockedUntil}>` (wiped on every restart — the exact gap RF1 names) with a new durable `loginAttempts` table (`key`/`failedCount`/`lockedUntil`/`updatedAt`), `key` prefixed by scope (`user:<lowercased username>` or `ip:<address>`) so one table/mechanism covers two independent throttles: the existing per-username lockout (unchanged threshold, 5 failed attempts / 15min) plus a new coarser per-IP throttle (20 failed attempts / 15min) that catches a single source hammering many different usernames — a gap the per-username lockout alone can't close. A successful login clears both scopes for that IP, so shared/legit traffic isn't permanently penalized by an earlier bad-password streak from a different account on the same connection.
+
+**IP source:** plain `req.ip` — no `trust proxy` configured. Deliberately not blindly trusting `X-Forwarded-For` without knowing the deployment topology (LAN-direct vs. reverse-proxied) is safer than a false sense of per-client precision; behind a proxy that doesn't preserve the real client address this degrades to a coarse global throttle, which is the design doc's own explicitly-allowed "IP (or coarse)" fallback, not a cut corner.
+
+**Cleanup:** no per-row TTL — piggybacks on `pruneHistoryJob.ts`'s existing daily cadence (same precedent as Transfer Log / Trash pruning there) with the job's own 30-day retention window, rather than a new scheduled job type for one more narrow prune rule.
+
+**Live-verified** against the real dev server: 4 failed attempts against a scratch username stayed 401, the 5th correctly flipped to 429 and durably set `lockedUntil`; **restarted the server process** and confirmed the same scratch username was still locked out (`lockedUntil` unchanged) — the actual bug this slice fixes; the real `reuben` account logged in normally throughout (own username-scope untouched) and its successful login cleared the shared IP-scope counter; manually bumped the IP-scope `failedCount` to 19 and confirmed a **brand-new, never-before-seen username** from the same address tripped the IP lock on its first attempt, and a **second, different** brand-new username was also blocked — confirming the IP throttle's cross-username protection independent of the per-username one. `npx tsc --noEmit` clean on both root and `server/tsconfig.json`; `oxlint` clean on every touched file. All scratch `loginAttempts` rows cleaned up afterward.
+
+**Canonical:** `docs/Remote_Access_Funnel_Design.md` §6
+
+**Date:** 2026-08-25
+
+---
+
+## Remote Access — RF2 (Owner Revoke All Sessions) — shipped
+
+**Decision:** New owner-only `POST /api/users/revoke-all-sessions` (mounted under the already-`requireOwner` `/api/users` router) deletes every session row **except the caller's own current one** — `authRepository.ts`'s `deleteAllSessionsExcept(exceptHashedToken)` conditions the delete on `ne(sessions.id, ...)` rather than wiping the table unconditionally. The caller's own session is identified by re-hashing the raw cookie already on the request (`authService.ts`'s `revokeAllSessions`), not by any new session-identity concept. This recovers a stolen/left-behind (e.g. work PC) cookie without a password reset — previously the only lever (`adminResetPassword` already calls `deleteSessionsForUser`, but only for the one account being reset, and forces a password change as a side effect).
+
+**Scope:** global across every account, not per-user — matches the design doc's plain "Revoke all sessions" wording and the single-owner/small-household threat model (CLAUDE.md); a per-user variant wasn't asked for and would need its own UI slot. The "(+ optional session list)" half of RF2 was **not built** — no device/IP/last-seen listing — since RF3's `lastSeenAt` column doesn't exist yet and the design itself marks it optional; the done-bar ("stolen/work cookie recoverable without password change") doesn't need it.
+
+**UI:** new `RevokeAllSessionsCard` (extracted, with `InstanceLabelCard`, into `src/features/auth/components/RemoteAccessSettingsCards.tsx` rather than left inline in `UsersTool.tsx` — kept that file under the project's 250-line lint threshold and matches the existing one-card-per-file convention, e.g. `McpServerExposeCard.tsx`) — a plain button behind the existing `ConfirmDialog` component (same pattern as the MCP token revoke flow), since this is a real, if reversible-by-relogin, action affecting every other logged-in device.
+
+**Live-verified** against the real dev server: created a second real session for the `reuben` account via a separate cookie jar (simulating an "other device"), confirmed it worked (`authenticated: true`), clicked Revoke in the browser session, got a real "Signed out 59 other sessions" toast (the dev DB's accumulated session history) — then confirmed the browser's own session survived a hard reload (still on the editor, not bounced to login) while the separate cookie jar came back `authenticated: false`. `npx tsc --noEmit` clean on both root and `server/tsconfig.json`; `oxlint` clean on every touched file.
+
+**Canonical:** `docs/Remote_Access_Funnel_Design.md` §6
+
+**Date:** 2026-08-25
+
+---
+
+## Remote Access — RF3 (Session Flags + 1d/1h Policy + Sidebar Remote Toggle) — shipped
+
+**Decision:** New `sessions.lastSeenAt` (nullable — only rows created before this migration lack it) and `sessions.remoteProfile` (boolean, default false) columns. `remoteProfile` is a **per-session** flag, not per-account — the sidebar toggle declares "this browser is less trusted," not "log every device into the stricter policy." `validateSession` (`authService.ts`) keeps its existing unconditional absolute-expiry check (`expiresAt` already covers both profiles) and adds an idle branch that only runs when `remoteProfile` is true: kill the session if `now - lastSeenAt > 1h`, otherwise throttle-touch `lastSeenAt` at most once/minute (`touchSessionLastSeen`) so normal use doesn't turn every authenticated request into a session-table write.
+
+**Toggle semantics** (`setRemoteSession`, `PATCH /api/auth/me/remote-session`, self-service `requireAuth`, no `requireOwner` — any role can flip their own browser's posture): turning **ON** unconditionally rebases `expiresAt` to exactly `now + 1 day` and resets `lastSeenAt` — this by construction satisfies the design's "expiresAt = min(existing, remoteArmedAt + 1 day)" ceiling without needing the min() logic explicitly, since a freshly-set `now+1day` can never exceed itself. Turning **OFF** rebases `expiresAt` to `now + 30 days` (the local default) and idle enforcement stops naturally (`remoteProfile: false` skips the idle branch entirely, no separate "clear idle state" step needed). The route also re-issues the session cookie with a maxAge matching the new `expiresAt`, so the browser-side cookie lifetime tracks the real server-side ceiling instead of drifting from it — this also meant fixing `POST /auth/login`/`/auth/register` to set the cookie's maxAge from the actual issued session's `expiresAt` rather than a hardcoded 30-day constant that was previously always used verbatim (latent bug: harmless today since login always issued 30-day sessions, but would have silently mismatched cookie/session lifetimes the moment `REMOTE_SESSION_DEFAULT` below was ever used).
+
+**Optional env default:** `REMOTE_SESSION_DEFAULT=1` makes `issueSession` start new logins already remote-profiled (for an always-on Funnel host) — the sidebar toggle can still flip an individual session back to local afterward.
+
+**UI:** new `RemoteSessionToggle.tsx`, placed in **both** places `LogoutButton` already appears — `Sidebar.tsx`'s footer cluster (workspace shell, immediately above Logout per the design's locked placement) and `MainLayout.tsx`'s icon rail (the Settings/Guide/Series/Reader shell, which has its own separate Logout button) — rather than only the one the design doc explicitly named, since leaving the second shell without any Remote control would be a real gap, not a deliberate scope cut. Renders `Shield`/`ShieldCheck` + "Remote"/"Remote · On" (collapse-friendly: icon-only with the same tooltip in both states), reads current state from the existing `GET /api/auth/status` (now carrying a `remoteProfile` field, computed via a small separate `getSessionRemoteInfo` lookup rather than widening `validateSession`'s return shape, since `requireAuth`'s other callers only need the plain `AuthUser`).
+
+**"+ optional session list" / idle-remaining countdown:** not built — the design marks both optional and the toggle's copy is static ("1 day max, 1 hour idle"), not a live countdown; RF2's session-list gap note still applies.
+
+**Live-verified** against the real dev server, all via direct DB manipulation to avoid waiting out real timers: (1) toggled Remote ON, confirmed `expiresAt` landed at exactly `now+1day` and the sidebar/icon-rail button flipped to "Remote · On"; (2) rewound `lastSeenAt` 2 hours on a `remoteProfile=1` row and confirmed the very next authenticated navigation bounced to the login page **and** the session row was actually deleted server-side (not just a stale client redirect); (3) forced `expiresAt` into the past on a fresh remote-profiled session and confirmed the same absolute-ceiling kill fires independent of idle; (4) confirmed a `remoteProfile=0` session with the same 2-hour-old `lastSeenAt` is **not** killed (idle enforcement correctly scoped to remote-only); (5) confirmed the throttled touch actually advances `lastSeenAt` on real activity (5-minutes-stale row moved to within seconds of "now" after one authenticated request); (6) toggled OFF and confirmed `expiresAt` rebased to ~30 days and `remoteProfile` flipped back to 0; (7) confirmed the toggle renders correctly collapsed (icon-only, tooltip intact) and in both `Sidebar.tsx` and `MainLayout.tsx`. No console errors at any step. `npx tsc --noEmit` clean on both root and `server/tsconfig.json`; `oxlint` clean on every touched file (two pre-existing, unrelated `max-lines` warnings on already-long files left alone).
+
+**Canonical:** `docs/Remote_Access_Funnel_Design.md` §5, §5b
+
+**Date:** 2026-08-25
+
+---
+
+## T8 — UX/UI polish closed / satisfied (no dedicated epic)
+
+**Decision:** Talk-list **T8** (app-wide hierarchy/density/chrome quieting with full toolbox kept) is **closed/satisfied** as of 2026-08-23 on user direction (“we’ve done what I wanted”). **Not** a design-locked multi-slice ship. No `docs/T8_*` implement design and no T8 slice IDs.
+
+**Rationale:** The original discomfort with look/feel was addressed over subsequent work (T1 chrome tokens, T10 chat icon rails, brand/type, Tour, Local Inject, lorebook density/folders, Notes org, etc.). Keeping T8 “parked — grill first” would falsely re-offer a mega-polish epic.
+
+**Follow-up:** Any future polish is a **new named topic** after grill/lock — do not reopen T8 as open P3 by default.
+
+**Date:** 2026-08-23
+
+---
+
 ## B26 — Chat context toggles remember per chat (Lean A)
 
 **Decision:** Context & memory / auto-accept toggles stay as **per-`aiChats` row columns**. The UI re-seeds local toggle state whenever `selectedChat.id` changes (`useChatContextToggles`), and successful toggle PATCHes push the returned chat into the host’s sticky selection via optional `onChatUpdated` + invalidate chat list queries. Composer draft already lives in `StoryContext.chatDrafts[chatId]`; ChatInterface now reloads that map entry on id change. **Not** adopted: `key={selectedChat.id}` full ChatInterface remount (still available later if ephemeral proposal-card maps misbehave).

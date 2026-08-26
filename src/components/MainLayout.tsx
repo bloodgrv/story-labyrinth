@@ -1,6 +1,7 @@
 import { Home } from "lucide-react";
 import { Link, Outlet } from "react-router";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
+import { RemoteSessionToggle } from "@/features/auth/components/RemoteSessionToggle";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "./ui/button";
 
@@ -25,6 +26,7 @@ export function MainLayout() {
                 {/* Theme Toggle + Logout at Bottom */}
                 <div className="pb-4 flex flex-col items-center gap-1">
                     <ThemeToggle />
+                    <RemoteSessionToggle collapsed className="h-9 w-9" />
                     <LogoutButton collapsed className="h-9 w-9" />
                 </div>
             </div>

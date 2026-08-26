@@ -4,12 +4,15 @@ import { readCookie, requireAuth, sessionCookieOptions, SESSION_COOKIE_NAME } fr
 import {
     endSession,
     getLoginLockoutSeconds,
+    getSessionRemoteInfo,
     isSetupComplete,
     login,
     registerUser,
     setOnboardingTourCompleted,
+    setRemoteSession,
     validateSession
 } from "../services/authService.js";
+import { getInstanceLabel } from "../services/installSettingsService.js";
 
 const router = Router();
 
@@ -21,8 +24,6 @@ const asyncHandler = (fn: (req: Request, res: Response) => Promise<void>) => asy
     }
 };
 
-const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
-
 // GET /api/auth/status — public. Tells the client whether to show a first-run "create
 // account" form, a login form, or the app itself. Safe to call while logged out.
 router.get(
@@ -32,6 +33,14 @@ router.get(
 
         const token = readCookie(req, SESSION_COOKIE_NAME);
         const user = token ? await validateSession(token) : null;
+        // RF3 — only meaningful once `user` is non-null (validateSession above already dropped an
+        // idle/expired remote session), so a second lookup can't resurrect a session already killed.
+        const remoteInfo = user && token ? await getSessionRemoteInfo(token) : null;
+
+        // Remote Access — Login Instance Label (RF5): public even while logged out, so the
+        // login page itself can show it (the whole point is a "right server?" check before
+        // typing a password) — never a username roster, just this one owner-set string.
+        const instanceLabel = await getInstanceLabel();
 
         res.json({
             setupComplete,
@@ -39,8 +48,41 @@ router.get(
             username: user?.username ?? null,
             role: user?.role ?? null,
             // First-Start Tour (T11) — null while logged out, same posture as username/role above.
-            onboardingTourCompleted: user?.onboardingTourCompleted ?? null
+            onboardingTourCompleted: user?.onboardingTourCompleted ?? null,
+            instanceLabel,
+            // Remote Access — RF3 sidebar toggle state; null while logged out.
+            remoteProfile: remoteInfo?.remoteProfile ?? null
         });
+    })
+);
+
+// PATCH /api/auth/me/remote-session — RF3 sidebar Remote toggle. Self-service (requireAuth, no
+// requireOwner) — any authenticated role can declare "this browser is less trusted." Body:
+// { enabled: boolean }
+router.patch(
+    "/me/remote-session",
+    requireAuth,
+    asyncHandler(async (req, res) => {
+        const { enabled } = req.body as { enabled?: boolean };
+        if (typeof enabled !== "boolean") {
+            res.status(400).json({ error: "enabled (boolean) is required" });
+            return;
+        }
+
+        const token = readCookie(req, SESSION_COOKIE_NAME);
+        if (!token) {
+            res.status(401).json({ error: "Not authenticated" });
+            return;
+        }
+
+        const result = await setRemoteSession(token, enabled);
+        if (!result) {
+            res.status(401).json({ error: "Session expired or invalid" });
+            return;
+        }
+
+        res.cookie(SESSION_COOKIE_NAME, token, sessionCookieOptions(result.expiresAt.getTime() - Date.now()));
+        res.json({ remoteProfile: result.remoteProfile, expiresAt: result.expiresAt });
     })
 );
 
@@ -84,7 +126,7 @@ router.post(
         }
 
         const { user, session } = await registerUser(username, password);
-        res.cookie(SESSION_COOKIE_NAME, session.rawToken, sessionCookieOptions(SESSION_DURATION_MS));
+        res.cookie(SESSION_COOKIE_NAME, session.rawToken, sessionCookieOptions(session.expiresAt.getTime() - Date.now()));
         res.status(201).json({ user });
     })
 );
@@ -99,9 +141,9 @@ router.post(
             return;
         }
 
-        const result = await login(username, password);
+        const result = await login(username, password, req.ip);
         if (!result) {
-            const lockoutSeconds = getLoginLockoutSeconds(username);
+            const lockoutSeconds = await getLoginLockoutSeconds(username, req.ip);
             if (lockoutSeconds > 0) {
                 res.status(429).json({ error: `Too many failed attempts. Try again in ${lockoutSeconds}s.` });
                 return;
@@ -110,7 +152,11 @@ router.post(
             return;
         }
 
-        res.cookie(SESSION_COOKIE_NAME, result.session.rawToken, sessionCookieOptions(SESSION_DURATION_MS));
+        res.cookie(
+            SESSION_COOKIE_NAME,
+            result.session.rawToken,
+            sessionCookieOptions(result.session.expiresAt.getTime() - Date.now())
+        );
         res.json({ user: result.user });
     })
 );

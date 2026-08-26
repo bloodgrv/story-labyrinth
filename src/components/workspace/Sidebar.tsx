@@ -28,6 +28,7 @@ import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
+import { RemoteSessionToggle } from "@/features/auth/components/RemoteSessionToggle";
 import { usePendingPinsQuery } from "@/features/story-timeline/hooks/useStoryTimelineQuery";
 import { useStoryContext, type WorkspaceTool } from "@/features/stories/context/StoryContext";
 import { isDarkThemeId, useTheme } from "@/lib/theme-provider";
@@ -287,6 +288,7 @@ export const Sidebar = () => {
                         <Server className="h-4 w-4 shrink-0" />
                         {!collapsed && <span className="text-sm">Server</span>}
                     </Button>
+                    <RemoteSessionToggle collapsed={collapsed} className="w-full" />
                     <LogoutButton collapsed={collapsed} className="w-full" />
                     <Button
                         variant="ghost"

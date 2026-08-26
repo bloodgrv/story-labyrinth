@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { InstanceLabelCard, RevokeAllSessionsCard } from "@/features/auth/components/RemoteAccessSettingsCards";
 import {
     useCreateUserMutation,
     useResetPasswordMutation,
@@ -149,6 +150,9 @@ export function UsersTool() {
                     New User
                 </Button>
             </div>
+
+            <InstanceLabelCard />
+            <RevokeAllSessionsCard />
 
             {isLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

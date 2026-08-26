@@ -31,7 +31,9 @@ export function AuthGate({ children }: AuthGateProps) {
         );
     }
 
-    if (isError || !status?.authenticated) return <LoginPage setupComplete={status?.setupComplete ?? false} />;
+    if (isError || !status?.authenticated) {
+        return <LoginPage setupComplete={status?.setupComplete ?? false} instanceLabel={status?.instanceLabel} />;
+    }
 
     return <>{children}</>;
 }

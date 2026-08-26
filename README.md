@@ -185,6 +185,40 @@ If you're running `npm start` directly on a machine that already has `tailscaled
 tailscale serve --bg https / http://localhost:3000
 ```
 
+#### Funnel (browser access without Tailscale on the client)
+
+**RF0/RF1/RF2/RF3/RF5 shipped; RF4 (optional Owner TOTP) not built**: `docs/Remote_Access_Funnel_Design.md`.
+
+Use Funnel when you need the app from a machine that **cannot** run Tailscale cleanly (e.g. work PC). Anyone with the URL reaches the **login screen** — this is not multi-tenant public hosting. Prefer **Serve** for devices already on your tailnet.
+
+**Before enabling:**
+
+1. MagicDNS + HTTPS certs on the tailnet; Funnel allowed in ACL / node attrs.
+2. Do not WAN-publish the app port — use `BIND_HOST=127.0.0.1` or `docker-compose.tailscale.yml` (no host port).
+3. Set `COOKIE_SECURE=true` (Funnel is HTTPS).
+4. Strong Owner password; optional Editor user for a collaborator (SL account, not Tailscale).
+
+**Bare metal** (app on loopback):
+
+```bash
+tailscale funnel --bg https / http://127.0.0.1:3000
+tailscale funnel status
+# turn off when finished: tailscale funnel reset   # or version-specific off
+```
+
+**Docker sidecar** (after `docker-compose.tailscale.yml` is up):
+
+```bash
+docker exec story-labyrinth-tailscale \
+  tailscale funnel --bg https / http://localhost:3000
+```
+
+**Limits:** public hostname stays `*.ts.net`; listen ports **443** / **8443** / **10000** only; bandwidth caps apply.
+
+**In-app:** left sidebar **Remote** toggle **above Logout** — stricter session on *this browser* (1 day max, 1 hour idle). It does **not** start or stop Funnel on the host. An **Instance label** (Settings → Users) shows on the login page so you can confirm you're on the right server.
+
+**Shipped hardening:** durable login lockout + IP throttle (RF1), owner "Revoke all sessions" (RF2), the 1-day/1-hour session policy + toggle above (RF3), login instance label (RF5). Optional TOTP / Cloudflare Access (RF4) still parked — see the design doc.
+
 ## Release Process
 
 New releases are published via GitHub Releases, which automatically builds and pushes multi-architecture Docker images to Docker Hub.
