@@ -16,6 +16,7 @@ import outlineRaw from "../content/outline.mdx?raw";
 import playbooksRaw from "../content/playbooks.mdx?raw";
 import promptsRaw from "../content/prompts.mdx?raw";
 import relationshipsRaw from "../content/relationships.mdx?raw";
+import remoteAccessRaw from "../content/remote-access.mdx?raw";
 import researchRaw from "../content/research.mdx?raw";
 import settingsNavRaw from "../content/settings-nav.mdx?raw";
 import storyTimelineRaw from "../content/story-timeline.mdx?raw";
@@ -38,6 +39,7 @@ const RAW_BY_TOPIC_ID: Record<string, string> = {
     "story-timeline": storyTimelineRaw,
     "ai-review": aiReviewRaw,
     relationships: relationshipsRaw,
+    "remote-access": remoteAccessRaw,
     memory: memoryRaw,
     prompts: promptsRaw,
     "chat-features": chatFeaturesRaw,

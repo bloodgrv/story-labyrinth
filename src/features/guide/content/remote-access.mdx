@@ -1,0 +1,84 @@
+# Remote Access Guide
+
+Reach your own Story Labyrinth instance from a device that isn't on your Tailscale network — a work PC, a locked-down laptop, a hotel kiosk — without turning it into a public multi-tenant app.
+
+> [!NOTE]
+> This is a personal-use escape hatch, not public hosting. Anyone with the URL reaches the **login screen** — Story Labyrinth's own username/password auth is still the real door. Don't post the URL publicly; treat it like a house key.
+
+---
+
+## 1. Two ways in
+
+| Method | Use for |
+| --- | --- |
+| **Tailscale Serve** | Devices already on your tailnet (home machine, phone with Tailscale installed) |
+| **Tailscale Funnel** | Browser-only access from a device that **can't** run Tailscale cleanly (work PC) |
+
+Prefer Serve whenever you can — Funnel is the fallback for places you genuinely can't install Tailscale.
+
+## 2. One-time setup, before you ever turn Funnel on
+
+1. In your tailnet's admin settings, enable **MagicDNS** and **HTTPS certificates**, and make sure **Funnel** is allowed (ACL / node attributes).
+2. Keep the app off the LAN/WAN — it should only listen on loopback. Set `BIND_HOST=127.0.0.1` in your `.env` (bare metal), or run the `docker-compose.tailscale.yml` sidecar setup, which never publishes a host port.
+3. Set `COOKIE_SECURE=true` in your `.env` — required once Funnel (or Serve) is terminating HTTPS in front of the app.
+4. Use a strong Owner password. If someone else needs access, create them their own account (Settings → Users) rather than sharing yours.
+
+> [!IMPORTANT]
+> None of this is configured from inside the app — it's host/Tailscale-level setup, done once in your terminal or the Tailscale admin console.
+
+## 3. Turning Funnel on and off
+
+**Bare metal** (app listening on `127.0.0.1:3000`):
+
+```bash
+tailscale funnel --bg https / http://127.0.0.1:3000
+tailscale funnel status
+```
+
+Turn it off when you're done:
+
+```bash
+tailscale funnel reset
+```
+
+**Docker sidecar** (if you're running the bundled Tailscale sidecar container):
+
+```bash
+docker exec story-labyrinth-tailscale \
+  tailscale funnel --bg https / http://localhost:3000
+```
+
+Your public URL is `https://<machine>.<tailnet>.ts.net`. Only ports 443/8443/10000 work over Funnel, and Tailscale applies its own bandwidth caps — fine for writing and chat traffic, not for streaming media.
+
+## 4. In-app controls
+
+_Path: **Settings → Users** (owner-only) and the left sidebar_
+
+| Control | Where | What it does |
+| --- | --- | --- |
+| **Instance label** | Settings → Users | An owner-set name (e.g. "Reuben's den") shown on the login page — a "did I land on the right server?" check before typing a password. Empty by default; leaves the generic "password-protected" message in place until you set one. |
+| **Remote toggle** | Left sidebar, directly above **Log out** (also in the Settings/Guide icon rail) | Tightens **this one browser's session** to a 1-day absolute maximum with a 1-hour inactivity timeout, instead of the normal 30-day/no-idle-timeout session. Any role can flip it. |
+| **Revoke all sessions** | Settings → Users | Immediately signs out every *other* logged-in session across every account — no password reset needed. Your own current browser stays signed in. |
+
+> [!NOTE]
+> The Remote toggle does **not** start or stop Funnel itself — that's the host-level command in §3. It only changes how long *this browser's* login lasts.
+
+## 5. Recommended pattern
+
+1. At home, on the tailnet: use **Serve**, leave the Remote toggle off — normal 30-day sessions.
+2. On a work or shared machine: turn on Funnel on the host (§3), open the `.ts.net` URL, check the **instance label** matches before logging in, then flip the **Remote toggle on**.
+3. Forgot to log out somewhere, or think a session leaked? From a trusted device, click **Revoke all sessions**.
+4. Turn Funnel back off on the host when you're done with it — it's meant as an occasional escape hatch, not an always-on posture.
+
+## 6. Troubleshooting
+
+| Problem | What's happening |
+| --- | --- |
+| Login page shows generic "password-protected" text | No instance label is set yet — add one in Settings → Users |
+| Got logged out after about an hour of not touching the app | Remote is **on** for that browser and you hit the 1-hour idle timeout — this is expected; log back in |
+| Got logged out after exactly a day even though you were active | Remote's 1-day absolute limit — by design, doesn't extend no matter how active you were |
+| A device you thought was logged in isn't anymore | Someone (possibly you) clicked **Revoke all sessions** — that signs out every other session immediately |
+| Funnel URL isn't reachable at all | That's host/Tailscale setup, not an in-app setting — check `tailscale funnel status` and your tailnet's Funnel ACL |
+
+> [!NOTE]
+> There's no two-factor login yet (an optional TOTP step is designed but not built) — the current hardening is a strong password, a durable lockout after repeated failed logins, the Remote toggle's short sessions, and Revoke-all-sessions as a recovery lever.

@@ -23,6 +23,7 @@ import OutlineGuide from "../content/outline.mdx";
 import PlaybooksGuide from "../content/playbooks.mdx";
 import PromptGuide from "../content/prompts.mdx";
 import RelationshipsGuide from "../content/relationships.mdx";
+import RemoteAccessGuide from "../content/remote-access.mdx";
 import ResearchGuide from "../content/research.mdx";
 import SettingsNavGuide from "../content/settings-nav.mdx";
 import StoryTimelineGuide from "../content/story-timeline.mdx";
@@ -50,6 +51,7 @@ export function GuideTabs() {
             <TabsList className="flex flex-wrap h-auto justify-start gap-1 mb-8">
                 <TabsTrigger value="basics">Basics Guide</TabsTrigger>
                 <TabsTrigger value="settings-nav">Settings & Navigation</TabsTrigger>
+                <TabsTrigger value="remote-access">Remote Access</TabsTrigger>
                 <TabsTrigger value="local-system-inject">Local System Inject</TabsTrigger>
                 <TabsTrigger value="advanced">Advanced Guide</TabsTrigger>
                 <TabsTrigger value="lorebook">Lorebook Guide</TabsTrigger>
@@ -81,6 +83,12 @@ export function GuideTabs() {
             <TabsContent value="settings-nav" className="space-y-4">
                 <GuideProvider>
                     <SettingsNavGuide components={mdxComponents} />
+                </GuideProvider>
+            </TabsContent>
+
+            <TabsContent value="remote-access" className="space-y-4">
+                <GuideProvider>
+                    <RemoteAccessGuide components={mdxComponents} />
                 </GuideProvider>
             </TabsContent>
 

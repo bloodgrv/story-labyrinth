@@ -88,6 +88,16 @@ Architecture decisions that are not obvious from the code or CLAUDE.md.
 
 ---
 
+## Remote Access — Guide topic
+
+**Decision:** New top-level Guide topic `remote-access.mdx` (registered in `GuideTabs.tsx`'s tab list right after **Settings & Navigation**, plus `guideSearchParser.ts`'s `GUIDE_TOPIC_META` and `guideSearchIndex.ts`'s raw-import map — same three-file pattern every prior Guide topic addition has followed) — user asked for it directly after a plain-language walkthrough of how to actually use Remote Access, and explicitly asked for the Tailscale ops side too, not just the in-app controls. Covers both halves in one page since they're used together: **ops setup** (tailnet MagicDNS/HTTPS/ACL prerequisites, loopback bind, `COOKIE_SECURE`, the `tailscale funnel` bare-metal and Docker-sidecar enable/disable commands) and **in-app controls** (Instance label, the sidebar Remote toggle, Revoke all sessions), plus a recommended day-to-day pattern and a troubleshooting table. `settings-nav.mdx`'s Users row gets a one-line cross-reference pointing here. Live-verified: tab renders with correct headings/tables/callouts, guide search finds real matches for "funnel" across multiple sections of the new page, no console errors. `npx tsc --noEmit` clean; `oxlint` clean.
+
+**Canonical:** `docs/Remote_Access_Funnel_Design.md`; content lives in `src/features/guide/content/remote-access.mdx`
+
+**Date:** 2026-08-26
+
+---
+
 ## T8 — UX/UI polish closed / satisfied (no dedicated epic)
 
 **Decision:** Talk-list **T8** (app-wide hierarchy/density/chrome quieting with full toolbox kept) is **closed/satisfied** as of 2026-08-23 on user direction (“we’ve done what I wanted”). **Not** a design-locked multi-slice ship. No `docs/T8_*` implement design and no T8 slice IDs.
