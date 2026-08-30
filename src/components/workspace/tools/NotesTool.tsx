@@ -80,7 +80,7 @@ const loadStoredTabs = (storageKey: string | null): { tabs: NoteOpenTab[]; activ
 };
 
 export const NotesTool = () => {
-    const { currentStoryId, setPendingChatComposerSeed, pendingNoteId, setPendingNoteId } = useStoryContext();
+    const { currentStoryId, pendingChatComposerSeed, setPendingChatComposerSeed, pendingNoteId, setPendingNoteId } = useStoryContext();
     const tabsStorageKey = currentStoryId ? `notes-tabs-story-${currentStoryId}` : null;
 
     const [openTabs, setOpenTabs] = useState<NoteOpenTab[]>(() => loadStoredTabs(tabsStorageKey).tabs);
@@ -134,6 +134,13 @@ export const NotesTool = () => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pendingNoteId, notes, setPendingNoteId]);
+
+    // Brainstorm's "Handoff -> Notes" (and any other pendingChatComposerSeed producer targeting
+    // "notes") switches currentTool here but the chat rail is opt-in (chatOpen, K1) — without this,
+    // NotesChatRail never mounts to consume the seed and the handoff silently does nothing.
+    useEffect(() => {
+        if (pendingChatComposerSeed?.tool === "notes") setChatOpen(true);
+    }, [pendingChatComposerSeed]);
 
     const handleImportDump = (text: string) => {
         setPendingChatComposerSeed({ tool: "notes", text });
