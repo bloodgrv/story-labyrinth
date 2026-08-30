@@ -20,6 +20,14 @@ dist-ssr
 .portable-build-cache
 portable-build
 Story-Labyrinth-portable-win-x64.zip
+Story-Labyrinth-portable-win-x64-update.zip
+
+# Local Hermes planning-agent output — not source.
+.hermes/
+
+# App-generated manuscript backups and dev SQLite DBs — not source.
+data/manuscript-backups/
+*.db
 
 # Editor directories and files
 .idea
