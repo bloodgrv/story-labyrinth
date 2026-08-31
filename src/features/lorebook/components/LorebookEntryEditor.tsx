@@ -265,10 +265,16 @@ function WorldBuildingChatPanel({
         setInitialRework({ chatId: mostRecent.id, payload });
     }, [pendingRework, storyId, chats, chatsLoading, createMutation]);
 
+    // Titled "{entry name} — {template name}" rather than just the template name — a rail with
+    // several WB chats used to render as an indistinguishable wall of "Character Codex"/"Character
+    // Codex"/"Character Codex" since the template name alone carries no per-entry identity. Falls
+    // back to the bare template name only in the (rare) case an entry genuinely has no name yet.
     const handleCreateFromTemplate = async (templateSlug: WorldBuildingTemplateSlug, templateName: string) => {
-        const anchorEntryId = entryId ?? (await onEnsureEntry()).id;
+        const ensuredEntry = entryId ? entry : await onEnsureEntry();
+        const anchorEntryId = entryId ?? ensuredEntry!.id;
+        const title = ensuredEntry?.name ? `${ensuredEntry.name} — ${templateName}` : templateName;
         createMutation.mutate(
-            { storyId, chatType: "worldbuilding", templateSlug, title: templateName, anchorEntryId },
+            { storyId, chatType: "worldbuilding", templateSlug, title, anchorEntryId },
             { onSuccess: newChat => setSelectedChat(newChat) }
         );
     };
@@ -283,24 +289,29 @@ function WorldBuildingChatPanel({
     // "new" tab into a real "entry" tab (LorebookPage.tsx) and REMOUNTS this whole panel, wiping
     // any selectedChat/composerSeedText this instance would otherwise set. Phase 2 fires on that
     // fresh mount, now with a real entryId, and actually creates+selects the chat — consumed once
-    // via a ref guard so switching chats afterward can never re-trigger it. entryId's onEnsureEntry
-    // is itself idempotent (ensureLiveEntry returns the existing liveEntry once set), so phase 1
-    // can never double-create the entry even if this instance briefly re-renders before unmounting.
-    const consumedWorldBuildingSeedRef = useRef(false);
+    // per seed *object* (tracked by reference, not a one-shot boolean) so switching chats
+    // afterward can never re-trigger the same seed, but a genuinely new seed arriving later for an
+    // entry that already has a chat open (e.g. useLorebookPendingHandoffs.ts's dedupe-reuse path,
+    // which re-seeds an already-open entry tab) still spawns its own new chat instead of silently
+    // no-op'ing because *some* chat happened to already be selected. entryId's onEnsureEntry is
+    // itself idempotent (ensureLiveEntry returns the existing liveEntry once set), so phase 1 can
+    // never double-create the entry even if this instance briefly re-renders before unmounting.
+    const consumedSeedRef = useRef<WorldBuildingSeed | null>(null);
     useEffect(() => {
-        if (!initialWorldBuildingSeed || consumedWorldBuildingSeedRef.current || selectedChat) return;
+        if (!initialWorldBuildingSeed || initialWorldBuildingSeed === consumedSeedRef.current) return;
         if (!entryId) {
             void onEnsureEntry();
             return;
         }
-        consumedWorldBuildingSeedRef.current = true;
+        consumedSeedRef.current = initialWorldBuildingSeed;
         const template = getTemplate(initialWorldBuildingSeed.templateSlug);
+        const templateName = template?.defaultTitle ?? "World-Building";
         createMutation.mutate(
             {
                 storyId,
                 chatType: "worldbuilding",
                 templateSlug: initialWorldBuildingSeed.templateSlug,
-                title: template?.defaultTitle ?? "World-Building",
+                title: entry?.name ? `${entry.name} — ${templateName}` : templateName,
                 anchorEntryId: entryId
             },
             {

@@ -121,14 +121,19 @@ export default function LorebookPage({ storyId: propStoryId, seriesId: propSerie
     const activeTab = openTabs[activeTabIndex] ?? openTabs[0];
     const activeEntry = activeTab.kind === "entry" ? entries.find(e => e.id === activeTab.entryId) : undefined;
 
-    const openEntryTab = (entry: LorebookEntry) => {
+    // Optional `initialWorldBuildingSeed` lets a WB handoff for an entry that already exists
+    // (useLorebookPendingHandoffs.ts's dedupe path) still auto-start/seed a docked WB chat with
+    // the handoff's detail text — same mechanism a brand-new entry's handoff already used, just
+    // applied to an already-open or already-existing tab instead of only a fresh "new" tab.
+    const openEntryTab = (entry: LorebookEntry, seed?: WorldBuildingSeed) => {
         const existingIdx = openTabs.findIndex(t => t.kind === "entry" && t.entryId === entry.id);
         if (existingIdx >= 0) {
             setActiveTabIndex(existingIdx);
+            if (seed) setOpenTabs(prev => prev.map((t, i) => (i === existingIdx ? { ...t, initialWorldBuildingSeed: seed } : t)));
             return;
         }
         setActiveTabIndex(openTabs.length);
-        setOpenTabs(prev => [...prev, { kind: "entry", entryId: entry.id }]);
+        setOpenTabs(prev => [...prev, { kind: "entry", entryId: entry.id, initialWorldBuildingSeed: seed }]);
     };
 
     const openDraftTab = (draft: DocumentImportDraft) => {

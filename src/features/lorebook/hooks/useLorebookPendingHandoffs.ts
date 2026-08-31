@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { toast } from "react-toastify";
 import { useStoryContext } from "@/features/stories/context/StoryContext";
 import type { LorebookEntry } from "@/types/story";
+import { categoryToWbTemplate, type WorldBuildingSeed } from "@/types/worldbuilding";
 
 // Consumes two one-shot StoryContext handoff pointers for LorebookPage — the Relationships
 // graph's "open entry" pointer (pendingLorebookEntryId) and the Outline/Brainstorm/Name-Generator
@@ -11,7 +12,7 @@ import type { LorebookEntry } from "@/types/story";
 export function useLorebookPendingHandoffs(params: {
     entries: LorebookEntry[];
     isLoading: boolean;
-    openEntryTab: (entry: LorebookEntry) => void;
+    openEntryTab: (entry: LorebookEntry, seed?: WorldBuildingSeed) => void;
     openNewEntryTabWithSeed: (seed: { name: string; category: LorebookEntry["category"]; blurb: string; detail?: string }) => void;
 }): void {
     const { entries, isLoading, openEntryTab, openNewEntryTabWithSeed } = params;
@@ -36,7 +37,9 @@ export function useLorebookPendingHandoffs(params: {
     // other, so clicking Open on more than one produced duplicate entries with the same/similar
     // name instead of one card getting enriched. Now: if an entry with the same name (trimmed,
     // case-insensitive) already exists in the seed's category, open that real entry instead of a
-    // blank duplicate — the user can fold the new detail in via the entry's own WB chat.
+    // blank duplicate — and, just like the brand-new-entry path already did, still auto-start the
+    // entry's docked WB chat seeded with the handoff's detail text (seed.detail), so the actual
+    // "let's fold this in" conversation the handoff was proposing isn't lost.
     useEffect(() => {
         if (!pendingLorebookSeed || isLoading) return;
         const seed = pendingLorebookSeed;
@@ -44,7 +47,10 @@ export function useLorebookPendingHandoffs(params: {
             e => e.category === seed.category && e.name.trim().toLowerCase() === seed.name.trim().toLowerCase()
         );
         if (existing) {
-            openEntryTab(existing);
+            const wbSeed: WorldBuildingSeed | undefined = seed.detail
+                ? { templateSlug: categoryToWbTemplate(seed.category), composerText: seed.detail }
+                : undefined;
+            openEntryTab(existing, wbSeed);
             toast.info(`Already have an entry named "${existing.name}" — opened it instead of creating a duplicate.`);
         } else {
             openNewEntryTabWithSeed(seed);
