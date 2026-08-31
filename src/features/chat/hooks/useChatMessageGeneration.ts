@@ -367,8 +367,16 @@ export const useChatMessageGeneration = ({
                 // and neither type can be double-applied. Fire-and-forget: the chat turn has already
                 // succeeded and rendered: a missed or failed extraction should never surface as a
                 // disruptive error.
+                //
+                // 2026-08-30 — this pass is what actually fires "a card on every turn" during a
+                // distillation conversation (the extraction prompt's bar, "a loose idea worth
+                // capturing," is low enough that nearly every reply clears it). Gated on the new
+                // per-chat autoBrainstormCards toggle (default true, preserves today's behavior)
+                // so a chat can go quiet — the manual "Propose from this reply" button and the
+                // selection bar's "Suggest card" action (ChatMessageList.tsx) still work either way.
                 if (
                     selectedChat.chatType === "brainstorm" &&
+                    selectedChat.autoBrainstormCards !== false &&
                     assistantMessage &&
                     (!overviewProposal || handoffPackets.length === 0)
                 ) {

@@ -202,6 +202,18 @@ const OVERVIEW_PROPOSAL_INSTRUCTIONS = (includeMemory: boolean): string =>
     `${BRAINSTORM_SLOTS.map(s => s.key).join(", ")} — omit it otherwise. ` +
     '"noteType" must be one of: idea, research, todo, other. Propose at most one overview-proposal per reply.';
 
+// 2026-08-30 — appended to the Brainstorm system prompt when the chat's own autoBrainstormCards
+// toggle is off (see useChatContextToggles.ts/schema.ts's aiChats.autoBrainstormCards). The model's
+// own inline fence emission is already unreliable (see the background-extraction-pass comment in
+// useChatMessageGeneration.ts) so this mostly closes the gap for the rare case it does self-emit —
+// the real fix for "a card on every turn" is that background pass being skipped entirely when this
+// toggle is off (client-side gate, not this prompt).
+const AUTO_PROPOSAL_SUPPRESSED_ADDENDUM =
+    "\n\nThe user has turned off automatic card suggestions for this chat (a quiet distillation pass). Do NOT " +
+    "emit an overview-proposal or handoff-packet fence proactively, even once the conversation reaches a " +
+    "natural conclusion — only emit one if the user's own message explicitly asks you to save/lock in/" +
+    "propose/hand off something.";
+
 // Handoffs are lightweight suggestions, not deep creates — Brainstorm never builds outline items
 // or lorebook entries directly; the destination chat/tool governs the real work (docs/
 // Chat_Panel_Integrations_Design.md §5's "Direct outline items: none", "Direct lorebook/Codex
@@ -759,7 +771,8 @@ const buildSystemPrompt = (
     includeSexualityModule?: boolean,
     includeMcpTools?: boolean,
     availableNameRegions: string[] = [],
-    anchorEntry?: { entryId: string; name: string; category: string; sheetBody?: string | null }
+    anchorEntry?: { entryId: string; name: string; category: string; sheetBody?: string | null },
+    autoBrainstormCards?: boolean
 ): string => {
     // Only the four chat types whose framing/instructions above actually include
     // NAME_PROPOSAL_INSTRUCTIONS (editor/outline/worldbuilding/brainstorm — never
@@ -788,6 +801,7 @@ const buildSystemPrompt = (
             NAME_PROPOSAL_INSTRUCTIONS +
             "\n\nWrite your normal conversational reply around any blocks — they're stripped out before the user " +
             "sees them, so don't reference the fenced blocks themselves in your prose; just talk about the proposal naturally." +
+            (autoBrainstormCards === false ? AUTO_PROPOSAL_SUPPRESSED_ADDENDUM : "") +
             regionsAddendum +
             mcpAddendum
         );
@@ -1505,7 +1519,8 @@ export const getChatContext = async (chatId: string, query?: string, focusedNote
             includeSexualityModule,
             includeMcpTools,
             availableNameRegions,
-            anchorEntries.find(e => e.role === "anchor")
+            anchorEntries.find(e => e.role === "anchor"),
+            chat.autoBrainstormCards
         ),
         pendingProposals,
         projectSynopsis: storyRows[0]?.synopsis ?? null,

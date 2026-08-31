@@ -144,6 +144,9 @@ export interface AIChat extends BaseEntity {
     // Chat Shuttle H7 (docs/Chat_Shuttle_Design.md) — Editor/Outline/WB-only "always-shuttle" pref.
     // Defaults false server-side, same posture as autoAcceptCodex.
     autoShuttle?: boolean;
+    // Brainstorm-only "auto-suggest cards" opt-out (2026-08-30) — see schema.ts's own comment.
+    // Defaults TRUE server-side, unlike every other autoX field above.
+    autoBrainstormCards?: boolean;
     // Cosmetic org folder this chat is filed under (B9, docs/Folders_Org_Design.md) — null =
     // Unfiled. See src/types/folders.ts's OrgFolder.
     folderId?: string | null;

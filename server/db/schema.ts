@@ -288,6 +288,15 @@ export const aiChats = sqliteTable(
         // Research answer and never force-switches the user's current tool, per the design doc's
         // decision #1 ("No silent full auto-shuttle of answers in v1").
         autoShuttle: integer("autoShuttle", { mode: "boolean" }).notNull().default(false),
+        // Brainstorm-only "auto-suggest cards" opt-out (2026-08-30) — gates the background
+        // extraction pass (useChatMessageGeneration.ts, brainstormExtractService.ts) that fires
+        // after every Brainstorm reply and proposes an overview/handoff card on even a loose idea.
+        // Default TRUE, deliberately unlike every other autoX toggle above (which default false,
+        // opt-in) — this isn't a new active behavior, it's an opt-out for an existing default-on
+        // one, so defaulting true preserves current behavior for every existing chat. Turning it
+        // off leaves the manual "Propose from this reply" button and the selection-scoped
+        // "Suggest card" action (ChatMessageList.tsx) as the only ways to get a card.
+        autoBrainstormCards: integer("autoBrainstormCards", { mode: "boolean" }).notNull().default(true),
         // Character Guided Playbook Packs (Hybrid D, docs/Character_Guided_Playbook_Packs_Design.md)
         // — arm toggle for injecting a resolved playbookPacks row into context (§3's "Arm toggle").
         // Default false, mirrors includePsychModule's pattern exactly. Only ever offered/read when

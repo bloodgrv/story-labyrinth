@@ -901,15 +901,18 @@ export function ChatInterface({
     // so the manual "Propose from this reply" retry (handleProposeFromReply, ChatMessageList.tsx's
     // hover action) can reuse the exact same persist-and-log logic instead of duplicating it —
     // both the model's own (rare) self-emitted fence and the automatic/manual extraction-pass
-    // results need to land in the checklist tray identically.
+    // results need to land in the checklist tray identically. messageId is nullable — the
+    // selection-scoped "Suggest card" action (handleSuggestCardFromSelection below) isn't anchored
+    // to one specific message, so it persists to the checklist with no sourceMessageId and skips
+    // the per-message ephemeral-card bookkeeping (nothing to render an inline card under).
     const handleOverviewProposal = useCallback(
-        (messageId: string, proposal: OverviewProposalPayload) => {
+        (messageId: string | null, proposal: OverviewProposalPayload) => {
             if (!storyId) return;
             brainstormApi
                 .createChecklistItem({ chatId: selectedChat.id, storyId, kind: "overview_proposal", payload: proposal, sourceMessageId: messageId })
                 .then(item => {
                     queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] });
-                    setOverviewChecklistItemsByMessage(prev => ({ ...prev, [messageId]: item }));
+                    if (messageId) setOverviewChecklistItemsByMessage(prev => ({ ...prev, [messageId]: item }));
                     const fromDesk = selectedChat.chatType ?? "general";
                     if (proposal.proposalType !== "note" || fromDesk === "notes") return;
                     deskTransfersApi
@@ -930,7 +933,7 @@ export function ChatInterface({
     );
 
     const handleHandoffPackets = useCallback(
-        (messageId: string, packets: HandoffPacket[]) => {
+        (messageId: string | null, packets: HandoffPacket[]) => {
             if (!storyId) return;
             Promise.all(
                 packets.map(packet =>
@@ -961,7 +964,7 @@ export function ChatInterface({
                 )
             ).then(items => {
                 queryClient.invalidateQueries({ queryKey: ["brainstorm-checklist", selectedChat.id] });
-                setHandoffChecklistItemsByMessage(prev => ({ ...prev, [messageId]: items }));
+                if (messageId) setHandoffChecklistItemsByMessage(prev => ({ ...prev, [messageId]: items }));
             });
         },
         [storyId, selectedChat.id, selectedChat.chatType, selectedChat.title, queryClient]
@@ -1010,6 +1013,30 @@ export function ChatInterface({
                 toast.warning(`Captured ${result.handoffs.length} hand-off item(s) — ${result.droppedCount} couldn't be parsed.`);
         },
         [handleOverviewProposal, handleHandoffPackets, selectedChat.messages]
+    );
+
+    // "Suggest card" on the chat message list's text-selection bar (2026-08-30) — a narrower
+    // sibling of handleProposeFromReply above for when auto-suggest is off and the user only wants
+    // a card from the concluding chunk they highlighted, not the whole reply. Not anchored to one
+    // message (see handleOverviewProposal/handleHandoffPackets' nullable messageId above), so no
+    // preceding-user-message context is threaded through either — just the selected text itself.
+    const handleSuggestCardFromSelection = useCallback(
+        async (text: string) => {
+            const [error, result] = await attemptPromise(() => brainstormApi.extractProposals(text));
+            if (error) {
+                toast.error("Couldn't extract a card from that selection — try again.");
+                return;
+            }
+            if (result.overview) handleOverviewProposal(null, result.overview);
+            if (result.handoffs.length > 0) handleHandoffPackets(null, result.handoffs);
+            if (!result.overview && result.handoffs.length === 0 && result.droppedCount === 0) {
+                toast.info("Nothing to propose in that selection.");
+                return;
+            }
+            if (result.droppedCount > 0)
+                toast.warning(`Captured ${result.handoffs.length} hand-off item(s) — ${result.droppedCount} couldn't be parsed.`);
+        },
+        [handleOverviewProposal, handleHandoffPackets]
     );
 
     const { generate, isGenerating, abort, streamingContent } = useChatMessageGeneration({
@@ -2066,6 +2093,9 @@ export function ChatInterface({
                 // global chats with no storyId have nowhere to save a note against).
                 onSaveSelectionAsNote={!isEditorChat && storyId ? handleSaveSelectionAsNote : undefined}
                 onSendSelectionToNotesChat={!isEditorChat && storyId ? handleSendSelectionToNotesChat : undefined}
+                // Same selection bar, Brainstorm-only sibling of onProposeFromReply above — see
+                // handleSuggestCardFromSelection's own comment.
+                onSuggestCardFromSelection={selectedChat.chatType === "brainstorm" ? handleSuggestCardFromSelection : undefined}
                 renderProposalsForMessage={messageId => {
                     // Editor/World-Building/Outline chats show Codex proposals in the
                     // CodexProposalTray under the chat list instead (docs/

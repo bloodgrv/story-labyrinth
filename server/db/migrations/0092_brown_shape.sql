@@ -1,0 +1,1 @@
+ALTER TABLE `aiChats` ADD `autoBrainstormCards` integer DEFAULT true NOT NULL;

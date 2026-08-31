@@ -185,6 +185,7 @@ router.get(
 //   autoAcceptOutline: boolean     — Outline-only auto-accept create/edit/reorder toggle, never delete (P0.4 R6)
 //   webSearchEnabled: boolean      — Research-only, defaults true, off-switch for live web search (P0.4 S1)
 //   autoShuttle: boolean           — Editor/Outline/WB-only always-shuttle pref (Chat Shuttle H7)
+//   autoBrainstormCards: boolean   — Brainstorm-only auto-suggest-cards opt-out, default true (2026-08-30)
 //   folderId: string|null          — cosmetic org folder (B9); null unfiles
 router.patch(
     "/:chatId",
@@ -221,6 +222,7 @@ router.patch(
             autoAcceptOutline,
             webSearchEnabled,
             autoShuttle,
+            autoBrainstormCards,
             folderId
         } = req.body as {
             messages?: unknown[];
@@ -252,6 +254,7 @@ router.patch(
             autoAcceptOutline?: boolean;
             webSearchEnabled?: boolean;
             autoShuttle?: boolean;
+            autoBrainstormCards?: boolean;
             folderId?: string | null; // B9, docs/Folders_Org_Design.md — null unfiles
         };
 
@@ -301,6 +304,7 @@ router.patch(
         if (autoAcceptOutline !== undefined) metaFields.autoAcceptOutline = autoAcceptOutline;
         if (webSearchEnabled !== undefined) metaFields.webSearchEnabled = webSearchEnabled;
         if (autoShuttle !== undefined) metaFields.autoShuttle = autoShuttle;
+        if (autoBrainstormCards !== undefined) metaFields.autoBrainstormCards = autoBrainstormCards;
         if (folderId !== undefined) metaFields.folderId = folderId;
 
         if (Object.keys(metaFields).length > 0) {
@@ -331,6 +335,7 @@ router.patch(
                         autoAcceptOutline?: boolean;
                         webSearchEnabled?: boolean;
                         autoShuttle?: boolean;
+                        autoBrainstormCards?: boolean;
                         folderId?: string | null;
                     }
                 )

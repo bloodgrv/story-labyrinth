@@ -61,6 +61,7 @@ export type UpdateChatMetaFields = Partial<{
     autoAcceptOutline: boolean;
     webSearchEnabled: boolean;
     autoShuttle: boolean;
+    autoBrainstormCards: boolean;
     folderId: string | null;
 }>;
 
@@ -196,6 +197,7 @@ export const updateChatMeta = async (
     if (fields.autoAcceptOutline !== undefined) updates.autoAcceptOutline = fields.autoAcceptOutline;
     if (fields.webSearchEnabled !== undefined) updates.webSearchEnabled = fields.webSearchEnabled;
     if (fields.autoShuttle !== undefined) updates.autoShuttle = fields.autoShuttle;
+    if (fields.autoBrainstormCards !== undefined) updates.autoBrainstormCards = fields.autoBrainstormCards;
     if (fields.folderId !== undefined) updates.folderId = fields.folderId;
 
     const [row] = await db

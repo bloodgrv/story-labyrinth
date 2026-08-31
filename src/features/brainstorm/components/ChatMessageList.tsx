@@ -70,6 +70,11 @@ interface ChatMessageListProps {
     // ChatInterface.tsx.
     onSaveSelectionAsNote?: (text: string) => void;
     onSendSelectionToNotesChat?: (text: string) => void;
+    // 2026-08-30 — same selection bar, Brainstorm-only sibling of onProposeFromReply below: extract
+    // a card from just the highlighted chunk instead of the whole reply. Returns a Promise so this
+    // component can show its own pending spinner (same idea as proposingMessageId below, just
+    // local since the selection bar isn't anchored to one specific message).
+    onSuggestCardFromSelection?: (text: string) => Promise<void>;
     // Fork the conversation into a new sibling chat containing everything up to and including
     // this message — omitted (button hidden) for global chats with no chat list to branch into
     // (see ChatInterface.tsx's storyId gate).
@@ -99,6 +104,7 @@ export function ChatMessageList({
     onSaveAsNote,
     onSaveSelectionAsNote,
     onSendSelectionToNotesChat,
+    onSuggestCardFromSelection,
     onDeleteMessage,
     onRegenerateMessage,
     onResendMessage,
@@ -113,6 +119,9 @@ export function ChatMessageList({
     // selection — this only ever READS the selection out to create a note, never writes back into
     // the rendered markdown). Cleared on any click elsewhere or once an action is taken.
     const [selectedText, setSelectedText] = useState<string | null>(null);
+    // 2026-08-30 — spinner state for the "Suggest card" selection-bar button, local since the bar
+    // isn't anchored to one specific message (unlike proposingMessageId below, which is).
+    const [isSuggestingCard, setIsSuggestingCard] = useState(false);
     const handleMouseUp = () => {
         const selection = window.getSelection();
         const text = selection?.toString().trim() ?? "";
@@ -149,7 +158,7 @@ export function ChatMessageList({
         }
     }, [/* effect dep */ editingMessageId, editingTextareaRef]);
 
-    const showSelectionBar = selectedText && (onSaveSelectionAsNote || onSendSelectionToNotesChat);
+    const showSelectionBar = selectedText && (onSaveSelectionAsNote || onSendSelectionToNotesChat || onSuggestCardFromSelection);
 
     return (
         <ScrollArea className="flex-1 px-4">
@@ -397,6 +406,22 @@ export function ChatMessageList({
                                 }}
                             >
                                 <Send className="h-4 w-4" />
+                            </Button>
+                        )}
+                        {onSuggestCardFromSelection && (
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Suggest card from selection"
+                                disabled={isSuggestingCard}
+                                onClick={() => {
+                                    const text = selectedText;
+                                    setIsSuggestingCard(true);
+                                    void onSuggestCardFromSelection(text).finally(() => setIsSuggestingCard(false));
+                                    setSelectedText(null);
+                                }}
+                            >
+                                {isSuggestingCard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                             </Button>
                         )}
                         <Button size="sm" variant="ghost" title="Dismiss" onClick={() => setSelectedText(null)}>

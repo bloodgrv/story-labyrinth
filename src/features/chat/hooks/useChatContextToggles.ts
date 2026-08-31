@@ -29,7 +29,8 @@ type ToggleField =
     | "autoAcceptCodex"
     | "autoAcceptOutline"
     | "webSearchEnabled"
-    | "autoShuttle";
+    | "autoShuttle"
+    | "autoBrainstormCards";
 
 const readToggles = (chat: AIChat | null) => ({
     includeNotes: chat?.includeNotes ?? false,
@@ -46,7 +47,10 @@ const readToggles = (chat: AIChat | null) => ({
     // Research defaults web search ON at the DB/schema layer for new research chats; UI seeds
     // from the row value when present, else false (non-research types never arm this switch).
     webSearchEnabled: chat?.webSearchEnabled ?? false,
-    autoShuttle: chat?.autoShuttle ?? false
+    autoShuttle: chat?.autoShuttle ?? false,
+    // Defaults true (unlike every other field above) — mirrors the DB column's own default, so a
+    // chat row fetched before this field existed (or omitted from a partial payload) reads as "on".
+    autoBrainstormCards: chat?.autoBrainstormCards ?? true
 });
 
 export function useChatContextToggles(
@@ -80,6 +84,7 @@ export function useChatContextToggles(
     const [autoAcceptOutline, setAutoAcceptOutline] = useState(initial.autoAcceptOutline);
     const [webSearchEnabled, setWebSearchEnabled] = useState(initial.webSearchEnabled);
     const [autoShuttle, setAutoShuttle] = useState(initial.autoShuttle);
+    const [autoBrainstormCards, setAutoBrainstormCards] = useState(initial.autoBrainstormCards);
 
     // Keep latest callback without re-running the seed effect when the parent inline function identity changes.
     const onChatUpdatedRef = useRef(onChatUpdated);
@@ -103,6 +108,7 @@ export function useChatContextToggles(
         setAutoAcceptOutline(next.autoAcceptOutline);
         setWebSearchEnabled(next.webSearchEnabled);
         setAutoShuttle(next.autoShuttle);
+        setAutoBrainstormCards(next.autoBrainstormCards);
     }, [selectedChat?.id]);
 
     const withUpdate =
@@ -141,6 +147,7 @@ export function useChatContextToggles(
     const toggleAutoAcceptOutline = withUpdate("autoAcceptOutline", setAutoAcceptOutline);
     const toggleWebSearchEnabled = withUpdate("webSearchEnabled", setWebSearchEnabled);
     const toggleAutoShuttle = withUpdate("autoShuttle", setAutoShuttle);
+    const toggleAutoBrainstormCards = withUpdate("autoBrainstormCards", setAutoBrainstormCards);
 
     const armedLabels = [
         !isNotesChat && includeNotes && "Notes",
@@ -155,7 +162,10 @@ export function useChatContextToggles(
         usesCodexTray && isEditorChat && autoInsertProse && "Auto-insert prose",
         usesCodexTray && autoAcceptCodex && "Auto-accept Codex",
         usesCodexTray && isOutlineChat && autoAcceptOutline && "Auto-accept outline",
-        usesCodexTray && usesShuttle && autoShuttle && "Auto-shuttle"
+        usesCodexTray && usesShuttle && autoShuttle && "Auto-shuttle",
+        // Flags the non-default state (off), unlike every other entry above which flags an armed
+        // opt-in — the notable state here is off, not on.
+        isBrainstormChat && !autoBrainstormCards && "Auto-suggest cards off"
     ].filter((label): label is string => Boolean(label));
 
     return {
@@ -185,6 +195,8 @@ export function useChatContextToggles(
         toggleWebSearchEnabled,
         autoShuttle,
         toggleAutoShuttle,
+        autoBrainstormCards,
+        toggleAutoBrainstormCards,
         usesCodexTray,
         usesShuttle,
         armedLabels

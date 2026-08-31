@@ -115,6 +115,21 @@ export function ChatContextPanelContent({ selectedChat, promptType, toggles }: C
                             </Label>
                         </div>
                     )}
+                    {/* 2026-08-30 — off during a quiet distillation pass so a card doesn't appear
+                        after every reply; the manual "Propose from this reply" button and the
+                        selection bar's "Suggest card" action still work regardless. */}
+                    {isBrainstormChat && (
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                id={`${selectedChat.id}-auto-brainstorm-cards`}
+                                checked={toggles.autoBrainstormCards}
+                                onCheckedChange={toggles.toggleAutoBrainstormCards}
+                            />
+                            <Label htmlFor={`${selectedChat.id}-auto-brainstorm-cards`} className="text-sm font-normal">
+                                Auto-suggest cards after each reply
+                            </Label>
+                        </div>
+                    )}
                 </div>
             )}
 
