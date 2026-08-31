@@ -6,6 +6,8 @@ import { toast } from "react-toastify";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useContextMemoryExpanded } from "@/lib/useContextMemoryExpanded";
 import { ChatContextPanelContent } from "@/features/chat/components/ChatContextPanelContent";
 import { type ChatContextToggles, useChatContextToggles } from "@/features/chat/hooks/useChatContextToggles";
@@ -1995,15 +1997,35 @@ export function ChatInterface({
                 {focusedOnLabel && (
                     <p className="text-xs text-muted-foreground">Focused on: {focusedOnLabel}</p>
                 )}
-                <ChatSystemPromptControl
-                    prompt={selectedPrompt}
-                    isLoading={promptLoading}
-                    availableModels={availableModels}
-                    selectedModel={selectedModel}
-                    onSelectModel={selectModel}
-                    mode={chatMode}
-                    onModeChange={switchChatMode}
-                />
+                <div className="flex items-center gap-2 flex-wrap">
+                    <ChatSystemPromptControl
+                        prompt={selectedPrompt}
+                        isLoading={promptLoading}
+                        availableModels={availableModels}
+                        selectedModel={selectedModel}
+                        onSelectModel={selectModel}
+                        mode={chatMode}
+                        onModeChange={switchChatMode}
+                    />
+                    {/* Quick-access copy of the same switch in the Context & memory panel
+                        (ChatContextPanelContent.tsx) — user-requested shortcut so it doesn't need
+                        opening that panel to flip mid-conversation. `toggles` (not the raw
+                        contextToggles prop) is the single source of truth shared with that panel
+                        — see its own definition above (contextToggles ?? internalToggles) — so
+                        both always agree. */}
+                    {selectedChat.chatType === "brainstorm" && (
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                id={`${selectedChat.id}-auto-brainstorm-cards-header`}
+                                checked={toggles.autoBrainstormCards}
+                                onCheckedChange={toggles.toggleAutoBrainstormCards}
+                            />
+                            <Label htmlFor={`${selectedChat.id}-auto-brainstorm-cards-header`} className="text-sm font-normal whitespace-nowrap">
+                                Auto-suggest cards
+                            </Label>
+                        </div>
+                    )}
+                </div>
 
                 {activeRework && (
                     <ReworkCard packet={activeRework.packet} onClear={() => setActiveRework(null)} hostHint={reworkHostHint} />
