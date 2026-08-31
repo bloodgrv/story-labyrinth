@@ -1,7 +1,7 @@
 import type { CodexState, DocumentImportDraft } from "@/types/codex";
 import type { LorebookEntry, PlaceState } from "@/types/story";
 import { reverseCompileSheet } from "./reverseCompileSheet";
-import { buildEmptySheetSeed } from "./sheetTemplates";
+import { buildEmptySheetSeed, parseSheetHeadings } from "./sheetTemplates";
 
 export const EMPTY_PLACE_STATE: PlaceState = {};
 
@@ -167,6 +167,46 @@ export const buildSubmitData = (data: CreateEntryForm, entry?: LorebookEntry) =>
     };
 };
 
+// Section headings, per category, whose content is actually about how the entry LOOKS — the only
+// part of a Lore Sheet that belongs in an image-generation prompt. An earlier version of this fix
+// sent the WHOLE sheet body verbatim, which pulls in unrelated narrative/backstory prose — and that
+// isn't just a quality nit, it's a real failure mode: a character sheet's "Maisy is the only child
+// of a single mother" (family-structure phrasing, meaning she has no siblings) plus vaguely
+// age-coded language like "the natural energy of youth" produced a picture of a CHILD for an
+// explicitly 19-year-old character, confirmed live. Restricting the prompt to the sheet's own
+// Physical Appearance/Wardrobe (etc.) section(s) avoids feeding the image model narrative text that
+// was never about appearance in the first place.
+const VISUAL_SHEET_SECTIONS: Partial<Record<LorebookCategory, string[]>> = {
+    character: ["Physical Appearance", "Wardrobe"],
+    item: ["Appearance"],
+    location: ["Overview", "Atmosphere", "Landmarks"]
+};
+
+// Slices out the markdown content under one `##` heading (up to the next heading or end of
+// document) — case-insensitive match, same heading-scan primitive LoreSheetEditor.tsx already uses
+// for its own section-presence detection.
+const extractSheetSection = (sheetBody: string, heading: string): string | null => {
+    const headings = parseSheetHeadings(sheetBody);
+    const target = headings.find(h => h.heading.toLowerCase() === heading.toLowerCase());
+    if (!target) return null;
+    const next = headings.find(h => h.index > target.index);
+    const lineEnd = sheetBody.indexOf("\n", target.index);
+    const contentStart = lineEnd === -1 ? sheetBody.length : lineEnd + 1;
+    const content = sheetBody.slice(contentStart, next ? next.index : sheetBody.length).trim();
+    return content.length > 0 ? content : null;
+};
+
+// Falls back to the full sheet body when the category has no visual-section mapping above, or none
+// of its named sections are actually present (an older entry, non-standard headings, freeform
+// "note" category, etc.) — never worse than sending the whole sheet, just narrower when a cleaner
+// source is available.
+const extractVisualBrief = (sheetBody: string, category?: LorebookCategory): string => {
+    const sectionNames = category ? VISUAL_SHEET_SECTIONS[category] : undefined;
+    if (!sectionNames) return sheetBody;
+    const sections = sectionNames.map(name => extractSheetSection(sheetBody, name)).filter((s): s is string => !!s);
+    return sections.length > 0 ? sections.join("\n\n") : sheetBody;
+};
+
 // 2026-08-31 fix — "Generate Image" used to send no prompt text at all; the server re-read the
 // entry's own saved `description` column from the DB (grokImageService.ts). Since T5 made the
 // Lore Sheet the primary authored surface (description is now a derived projection, only updated
@@ -176,12 +216,14 @@ export const buildSubmitData = (data: CreateEntryForm, entry?: LorebookEntry) =>
 // unsaved) values instead, mirroring grokImageService.ts's old resolveMapPrompt fallback chain but
 // reading live values here rather than a saved DB row — sheetBody wins over description since it's
 // what the user is actually looking at, and the "map" preset's placeState fields still win over
-// both, unchanged from before.
+// both, unchanged from before. Narrowed further the same day (see VISUAL_SHEET_SECTIONS above) to
+// only the sheet's visual section(s), not the whole sheet.
 export const resolveImageGenerationBrief = (
-    values: Pick<CreateEntryForm, "sheetBody" | "description" | "placeState">,
+    values: Pick<CreateEntryForm, "sheetBody" | "description" | "placeState" | "category">,
     preset: "mood" | "map"
 ): string => {
-    const sheetOrDescription = values.sheetBody?.trim() || values.description?.trim() || "";
+    const sheetBrief = values.sheetBody?.trim() ? extractVisualBrief(values.sheetBody, values.category) : "";
+    const sheetOrDescription = sheetBrief.trim() || values.description?.trim() || "";
     if (preset !== "map") return sheetOrDescription;
     const placeState = values.placeState;
     return (

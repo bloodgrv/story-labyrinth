@@ -48,10 +48,11 @@ export function ImageUploadField({
     const description = useWatch({ control, name: "description" });
     const sheetBody = useWatch({ control, name: "sheetBody" });
     const placeState = useWatch({ control, name: "placeState" });
+    const category = useWatch({ control, name: "category" });
     const generateImagePreset = useWatch({ control, name: "generateImagePreset" }) ?? "mood";
     // Live, not saved — matches whatever's actually on the page right now (see
     // resolveImageGenerationBrief's own comment for why this replaced a description-only check).
-    const generationBrief = resolveImageGenerationBrief({ description, sheetBody, placeState }, generateImagePreset);
+    const generationBrief = resolveImageGenerationBrief({ description, sheetBody, placeState, category }, generateImagePreset);
     const [objectUrl, setObjectUrl] = useState<string | null>(null);
 
     useEffect(() => {
