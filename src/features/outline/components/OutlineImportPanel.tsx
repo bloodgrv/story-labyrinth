@@ -328,8 +328,11 @@ function OutlineImportDraft({
 }
 
 // Rich lane (design lock #12/#13) — cast mentions and arc notes found during extract, never
-// silently written. Same B4 morals as BrainstormChecklistTray.tsx: Open sets "opened" and stays
-// in Active, only Mark done/Dismiss leaves it.
+// silently written. 2026-08-30: Open in WB auto-clears Active on click, same as
+// BrainstormChecklistTray/NotesChecklistTray/ShuttleTray's matching change — its button (and
+// Link, which already moved an item to "done" on success) stays live on the Done-tab card so it
+// can be re-opened. Arc notes have no primary action, so Dismiss remains their only path off
+// Active, gated to pending items only.
 function OutlineImportTray({
     storyId,
     checklist,
@@ -356,7 +359,7 @@ function OutlineImportTray({
         const payload = item.payload as ImportCastPayload;
         setPendingLorebookSeed({ name: payload.name, category: "character", blurb: payload.context });
         setCurrentTool("lorebook");
-        updateStatus.mutate({ id: item.id, status: "opened" });
+        updateStatus.mutate({ id: item.id, status: "done" });
     };
 
     // Post-Accept only (design lock: "Link resolved character <-> outline item only after spine
@@ -420,7 +423,7 @@ function OutlineImportTray({
                                         )}
                                     </div>
                                     <p className="text-xs whitespace-pre-wrap text-muted-foreground">{body}</p>
-                                    {statusTab === "active" && isCast && batch.status === "accepted" && batch.acceptedItemIds && (
+                                    {item.status !== "dismissed" && isCast && batch.status === "accepted" && batch.acceptedItemIds && (
                                         <div className="flex flex-wrap items-center gap-1.5 pt-1">
                                             <Select
                                                 value={linkSelections[item.id]?.itemId ?? ""}
@@ -459,7 +462,7 @@ function OutlineImportTray({
                                             </Select>
                                         </div>
                                     )}
-                                    {statusTab === "active" && (
+                                    {item.status !== "dismissed" && (
                                         <div className="flex gap-1.5 pt-1">
                                             {isCast && batch.status !== "accepted" && (
                                                 <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => handleOpenCast(item)}>
@@ -479,14 +482,16 @@ function OutlineImportTray({
                                                     Link
                                                 </Button>
                                             )}
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-6 px-2 text-xs"
-                                                onClick={() => updateStatus.mutate({ id: item.id, status: "dismissed" })}
-                                            >
-                                                Dismiss
-                                            </Button>
+                                            {item.status === "pending" && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-6 px-2 text-xs"
+                                                    onClick={() => updateStatus.mutate({ id: item.id, status: "dismissed" })}
+                                                >
+                                                    Dismiss
+                                                </Button>
+                                            )}
                                         </div>
                                     )}
                                 </CardContent>
