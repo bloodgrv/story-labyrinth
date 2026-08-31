@@ -30,10 +30,26 @@ export function useLorebookPendingHandoffs(params: {
     // Opens a pre-filled "new entry" tab (same open-as-tab pattern every other Lorebook entry
     // point uses, see LorebookNewEntryTab.tsx) instead of the old CreateEntryDialog Sheet —
     // pendingLorebookSeed is cleared in this same effect so it can't re-trigger on a later remount.
+    //
+    // Repeated Brainstorm handoffs about the same subject (e.g. discussing "Elena Cross" across
+    // several chat turns) used to each open a fresh blank draft here with no awareness of each
+    // other, so clicking Open on more than one produced duplicate entries with the same/similar
+    // name instead of one card getting enriched. Now: if an entry with the same name (trimmed,
+    // case-insensitive) already exists in the seed's category, open that real entry instead of a
+    // blank duplicate — the user can fold the new detail in via the entry's own WB chat.
     useEffect(() => {
-        if (!pendingLorebookSeed) return;
-        openNewEntryTabWithSeed(pendingLorebookSeed);
+        if (!pendingLorebookSeed || isLoading) return;
+        const seed = pendingLorebookSeed;
+        const existing = entries.find(
+            e => e.category === seed.category && e.name.trim().toLowerCase() === seed.name.trim().toLowerCase()
+        );
+        if (existing) {
+            openEntryTab(existing);
+            toast.info(`Already have an entry named "${existing.name}" — opened it instead of creating a duplicate.`);
+        } else {
+            openNewEntryTabWithSeed(seed);
+        }
         setPendingLorebookSeed(null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pendingLorebookSeed]);
+    }, [pendingLorebookSeed, isLoading, entries]);
 }

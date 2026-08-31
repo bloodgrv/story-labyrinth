@@ -34,6 +34,7 @@ export function HandoffPacketCard({ items, onOpen, onDismiss, disabled }: Handof
                                 <Badge variant="outline" className="capitalize">
                                     → {payload.destination}
                                 </Badge>
+                                {payload.seedName && <span className="text-sm font-medium">{payload.seedName}</span>}
                             </div>
                             <p className="text-sm whitespace-pre-wrap text-muted-foreground">{payload.summary}</p>
                             <div className="flex gap-2">

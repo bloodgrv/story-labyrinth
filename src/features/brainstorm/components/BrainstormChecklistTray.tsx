@@ -52,7 +52,13 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
                     label: `${(item.payload as CharacterBatchPayload).drafts.length} entries found`,
                     body: (item.payload as CharacterBatchPayload).filename
                 }
-              : { label: `Handoff → ${(item.payload as HandoffPacket).destination}`, body: (item.payload as HandoffPacket).summary };
+              : (() => {
+                    const handoff = item.payload as HandoffPacket;
+                    return {
+                        label: `Handoff → ${handoff.destination}${handoff.seedName ? `: ${handoff.seedName}` : ""}`,
+                        body: handoff.summary
+                    };
+                })();
 
         return (
             <Card key={item.id} className={item.status !== "pending" ? "opacity-80" : undefined}>
