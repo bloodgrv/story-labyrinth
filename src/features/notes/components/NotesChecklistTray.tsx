@@ -25,8 +25,10 @@ interface NotesChecklistTrayProps {
 // anywhere in the checklist write path). Three sections instead of Brainstorm's two: note_split
 // (K2/K4's "Accept all" for a pasted-dump split), overview_proposal (synopsis-only here — Notes'
 // own NOTES_PROMOTE_INSTRUCTIONS never offers the "note"/"memory" sub-types), handoff
-// (worldbuilding/outline only — promoting a note to itself or to Research isn't offered). Same
-// "Open/Accept doesn't clear, only Mark done does" doctrine as Brainstorm's tray throughout.
+// (worldbuilding/outline only — promoting a note to itself or to Research isn't offered).
+// 2026-08-30: Accept/Accept all/Open now auto-move a pending item straight to "done" (mirrors the
+// same change on BrainstormChecklistTray.tsx, explicit user request). Their buttons stay live on
+// the Done-tab card too so they can be re-run/re-opened; Mark done stays gated to pending items.
 export function NotesChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: NotesChecklistTrayProps) {
     const [statusTab, setStatusTab] = useState<"active" | "done">("active");
     const { data: items = [] } = useBrainstormChecklistQuery(chatId, statusTab);
@@ -42,12 +44,10 @@ export function NotesChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: N
 
     const markDone = (id: string) => updateStatus.mutate({ id, status: "done" });
 
-    // Same "perform the write, then move to opened (never done)" doctrine as Brainstorm's tray —
-    // only the user's own explicit Mark done leaves the Active queue.
     const handleAcceptSplit = (item: BrainstormChecklistItem) => {
         const payload = item.payload as NoteSplitProposalPayload;
         for (const note of payload.notes) createNote.mutate({ storyId, title: note.title, content: note.content, type: note.type });
-        updateStatus.mutate({ id: item.id, status: "opened" });
+        updateStatus.mutate({ id: item.id, status: "done" });
     };
 
     const handleAcceptOverview = (item: BrainstormChecklistItem) => {
@@ -57,7 +57,7 @@ export function NotesChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: N
         // silently dropping a proposal if the model emits one anyway.
         if (payload.proposalType === "synopsis") updateStory.mutate({ id: storyId, data: { synopsis: payload.content } });
         else if (payload.proposalType === "note") createNote.mutate({ storyId, title: payload.title, content: payload.content, type: payload.noteType });
-        updateStatus.mutate({ id: item.id, status: "opened" });
+        updateStatus.mutate({ id: item.id, status: "done" });
     };
 
     // Same setPendingLorebookSeed / setPendingChatComposerSeed + navigate pattern as Brainstorm's
@@ -76,7 +76,7 @@ export function NotesChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: N
             setPendingChatComposerSeed({ tool: payload.destination, text: payload.detail });
             setCurrentTool(payload.destination);
         }
-        updateStatus.mutate({ id: item.id, status: "opened" });
+        updateStatus.mutate({ id: item.id, status: "done" });
         // Transfer Log (T1) — Notes -> WB/Outline crosses a desk boundary (unlike this tray's
         // overview_proposal "synopsis"/"note" sub-types, which stay within Notes/story-fields —
         // see handleAcceptOverview above, deliberately not instrumented for that reason).
@@ -117,16 +117,18 @@ export function NotesChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: N
                             </li>
                         ))}
                     </ul>
-                    {statusTab === "active" && (
+                    {item.status !== "dismissed" && (
                         <div className="flex gap-2">
                             <Button size="sm" onClick={() => handleAcceptSplit(item)} disabled={isBusy}>
                                 <Check className="h-4 w-4 mr-1" />
                                 Accept all
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => markDone(item.id)} disabled={updateStatus.isPending}>
-                                {updateStatus.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-                                Mark done
-                            </Button>
+                            {item.status === "pending" && (
+                                <Button size="sm" variant="ghost" onClick={() => markDone(item.id)} disabled={updateStatus.isPending}>
+                                    {updateStatus.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+                                    Mark done
+                                </Button>
+                            )}
                         </div>
                     )}
                 </CardContent>
@@ -159,7 +161,7 @@ export function NotesChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: N
                 </CardHeader>
                 <CardContent className="space-y-2">
                     <p className="text-sm whitespace-pre-wrap">{body}</p>
-                    {statusTab === "active" && (
+                    {item.status !== "dismissed" && (
                         <div className="flex gap-2">
                             {isOverview ? (
                                 <Button size="sm" onClick={() => handleAcceptOverview(item)} disabled={isBusy}>
@@ -172,10 +174,12 @@ export function NotesChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: N
                                     Open
                                 </Button>
                             )}
-                            <Button size="sm" variant="ghost" onClick={() => markDone(item.id)} disabled={updateStatus.isPending}>
-                                {updateStatus.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-                                Mark done
-                            </Button>
+                            {item.status === "pending" && (
+                                <Button size="sm" variant="ghost" onClick={() => markDone(item.id)} disabled={updateStatus.isPending}>
+                                    {updateStatus.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+                                    Mark done
+                                </Button>
+                            )}
                         </div>
                     )}
                 </CardContent>

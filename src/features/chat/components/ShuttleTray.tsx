@@ -24,11 +24,13 @@ interface ShuttleTrayProps {
     onAnswerHere: (text: string) => void;
 }
 
-// Chat Shuttle's origin tray (H3/H4, docs/Chat_Shuttle_Design.md) — same B4 tray morals as
-// BrainstormChecklistTray/NotesChecklistTray (Open/Answer-here do NOT clear Active; only Mark
-// done does), reusing the same brainstormChecklist table/query/mutation via two new kinds
-// ("shuttle"/"shuttle_return", H0). Mounted by each outbound host's own rail (Editor/Outline/WB)
-// alongside CodexProposalTray, same "this chat only" scope.
+// Chat Shuttle's origin tray (H3/H4, docs/Chat_Shuttle_Design.md), reusing the same
+// brainstormChecklist table/query/mutation via two new kinds ("shuttle"/"shuttle_return", H0).
+// Mounted by each outbound host's own rail (Editor/Outline/WB) alongside CodexProposalTray, same
+// "this chat only" scope. Open auto-clears Active on click (2026-08-30, mirrors
+// BrainstormChecklistTray/NotesChecklistTray's same change) — Answer-here still deliberately does
+// NOT change status, since it's a same-chat detour, not a resolution ("Dismiss ≠ destroying the
+// shuttle").
 export function ShuttleTray({ chatId, storyId, fromDesk, fromChatTitleSnapshot, onAnswerHere }: ShuttleTrayProps) {
     const [statusTab, setStatusTab] = useState<"active" | "done">("active");
     const { data: items = [] } = useBrainstormChecklistQuery(chatId, statusTab);
@@ -42,14 +44,16 @@ export function ShuttleTray({ chatId, storyId, fromDesk, fromChatTitleSnapshot, 
 
     // Open (decision #1/#2): hands the question+crumb to Research via the dedicated
     // pendingShuttleSeed field (H2) rather than the generic pendingChatComposerSeed — Research
-    // needs the origin chat id too, to route a later "Send brief to origin" (H5). Status ->
-    // "opened", NOT "done" — stays in Active per the tray-shape table.
+    // needs the origin chat id too, to route a later "Send brief to origin" (H5). Status -> "done"
+    // (2026-08-30: was "opened"/stays-Active — auto-clears now, mirroring BrainstormChecklistTray's
+    // same change; explicit user request). Open stays live on the Done-tab card too, so a shuttle
+    // can be re-opened into Research again later.
     const handleOpen = (item: BrainstormChecklistItem) => {
         const payload = item.payload as ShuttlePayload;
         const text = payload.crumb ? `${payload.question}\n\n(Scene context: ${payload.crumb})` : payload.question;
         setPendingShuttleSeed({ originChatId: chatId, shuttleItemId: item.id, text });
         setCurrentTool("research");
-        updateStatus.mutate({ id: item.id, status: "opened" });
+        updateStatus.mutate({ id: item.id, status: "done" });
         deskTransfersApi
             .log(storyId, {
                 event: "opened",
@@ -90,20 +94,24 @@ export function ShuttleTray({ chatId, storyId, fromDesk, fromChatTitleSnapshot, 
                 <CardContent className="space-y-2">
                     <p className="text-sm whitespace-pre-wrap">{payload.question}</p>
                     {payload.crumb && <p className="text-xs text-muted-foreground italic">{payload.crumb}</p>}
-                    {statusTab === "active" && (
+                    {item.status !== "dismissed" && (
                         <div className="flex flex-wrap gap-2">
                             <Button size="sm" onClick={() => handleOpen(item)} disabled={updateStatus.isPending}>
                                 <ExternalLink className="h-4 w-4 mr-1" />
                                 Open
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleAnswerHere(item)}>
-                                <MessageSquareReply className="h-4 w-4 mr-1" />
-                                Answer here
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => markDone(item.id)} disabled={updateStatus.isPending}>
-                                {updateStatus.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-                                Mark done
-                            </Button>
+                            {item.status === "pending" && (
+                                <>
+                                    <Button size="sm" variant="outline" onClick={() => handleAnswerHere(item)}>
+                                        <MessageSquareReply className="h-4 w-4 mr-1" />
+                                        Answer here
+                                    </Button>
+                                    <Button size="sm" variant="ghost" onClick={() => markDone(item.id)} disabled={updateStatus.isPending}>
+                                        {updateStatus.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+                                        Mark done
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     )}
                 </CardContent>
