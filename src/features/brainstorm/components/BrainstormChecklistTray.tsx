@@ -1,4 +1,4 @@
-import { Check, ExternalLink, Loader2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, ExternalLink, Loader2, X } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ const overviewSummary = (payload: OverviewProposalPayload): { label: string; bod
 // scope, mirroring CodexProposalTray.tsx.
 export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: BrainstormChecklistTrayProps) {
     const [statusTab, setStatusTab] = useState<"active" | "done">("active");
+    const [checklistCollapsed, setChecklistCollapsed] = useState(false);
     const [openBatchItem, setOpenBatchItem] = useState<BrainstormChecklistItem | null>(null);
     const { data: items = [] } = useBrainstormChecklistQuery(chatId, statusTab);
     const updateStatus = useUpdateChecklistStatusMutation();
@@ -124,7 +125,7 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
     };
 
     return (
-        <div className="flex flex-col border-l border-t border-input">
+        <div className="flex h-full flex-col border-l border-t border-input">
             <Tabs value={statusTab} onValueChange={value => setStatusTab(value as "active" | "done")}>
                 <div className="p-2">
                     <TabsList className="w-full">
@@ -138,7 +139,7 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
                 </div>
             </Tabs>
 
-            <div className="max-h-64 overflow-y-auto p-2 space-y-2">
+            <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
                 <p className="px-1 text-xs font-medium text-muted-foreground">Overview proposals</p>
                 {overviewItems.length === 0 ? (
                     <p className="p-2 text-center text-xs text-muted-foreground">No {statusTab} proposals.</p>
@@ -159,8 +160,21 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
                 )}
             </div>
 
-            <p className="px-3 pt-2 text-xs font-medium text-muted-foreground">Setup checklist</p>
-            <SlotChecklistPanel storyId={storyId} />
+            <div className="shrink-0 border-t border-input">
+                <button
+                    type="button"
+                    onClick={() => setChecklistCollapsed(c => !c)}
+                    className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                    Setup checklist
+                    {checklistCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+                </button>
+                {!checklistCollapsed && (
+                    <div className="max-h-64 overflow-y-auto px-3 pb-3">
+                        <SlotChecklistPanel storyId={storyId} />
+                    </div>
+                )}
+            </div>
 
             <MultiEntryImportDialog
                 key={openBatchItem?.id ?? "none"}
