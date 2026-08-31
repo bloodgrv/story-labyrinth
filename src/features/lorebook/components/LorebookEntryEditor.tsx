@@ -491,7 +491,7 @@ function WorldBuildingChatPanel({
                                   label: "Approvals",
                                   title: "Approvals",
                                   content: (
-                                      <div className="space-y-0">
+                                      <div className="flex h-full flex-col">
                                           <CodexProposalTray chatId={selectedChat.id} />
                                           <ShuttleTray
                                               chatId={selectedChat.id}

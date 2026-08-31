@@ -1,4 +1,5 @@
-import { Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { useState } from "react";
 import type { ParsedLoreSuggestion } from "@/features/chat/services/parseLoreSuggestions";
 import { LoreSuggestionCard } from "./LoreSuggestionCard";
 
@@ -22,28 +23,38 @@ interface OutlineProposalTrayProps {
 // standing tray section rather than inline-per-message, since "Open in WB" is a one-way handoff
 // the user may want to revisit across several turns, not a single accept/reject decision.
 export function OutlineProposalTray({ loreSuggestions, storyId, fromChatId, fromChatTitleSnapshot }: OutlineProposalTrayProps) {
+    const [collapsed, setCollapsed] = useState(false);
     if (loreSuggestions.length === 0) return null;
 
     return (
-        <div className="border-t p-3 space-y-2">
-            <div className="flex items-center gap-1.5 text-sm font-medium">
-                <Sparkles className="h-3.5 w-3.5" />
-                Lore suggestions
-            </div>
-            <div className="space-y-2">
-                {loreSuggestions.map((suggestion, index) => (
-                    // Suggestions are never persisted, so there's no stable id to key on — index
-                    // is fine here since this list only ever grows (appended in OutlineChatRail),
-                    // never reorders or removes an item from the middle.
-                    <LoreSuggestionCard
-                        key={`${suggestion.name}-${index}`}
-                        suggestion={suggestion}
-                        storyId={storyId}
-                        fromChatId={fromChatId}
-                        fromChatTitleSnapshot={fromChatTitleSnapshot}
-                    />
-                ))}
-            </div>
+        <div className="shrink-0 border-t">
+            <button
+                type="button"
+                onClick={() => setCollapsed(c => !c)}
+                className="flex w-full items-center justify-between gap-1.5 p-3 text-sm font-medium"
+            >
+                <span className="flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Lore suggestions
+                </span>
+                {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+            </button>
+            {!collapsed && (
+                <div className="max-h-64 overflow-y-auto px-3 pb-3 space-y-2">
+                    {loreSuggestions.map((suggestion, index) => (
+                        // Suggestions are never persisted, so there's no stable id to key on — index
+                        // is fine here since this list only ever grows (appended in OutlineChatRail),
+                        // never reorders or removes an item from the middle.
+                        <LoreSuggestionCard
+                            key={`${suggestion.name}-${index}`}
+                            suggestion={suggestion}
+                            storyId={storyId}
+                            fromChatId={fromChatId}
+                            fromChatTitleSnapshot={fromChatTitleSnapshot}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

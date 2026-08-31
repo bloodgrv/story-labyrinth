@@ -155,7 +155,7 @@ export function ShuttleTray({ chatId, storyId, fromDesk, fromChatTitleSnapshot, 
     };
 
     return (
-        <div className="flex flex-col border-l border-t border-input">
+        <div className="flex min-h-0 flex-1 flex-col border-l border-t border-input">
             <Tabs value={statusTab} onValueChange={value => setStatusTab(value as "active" | "done")}>
                 <div className="p-2">
                     <TabsList className="w-full">
@@ -169,7 +169,7 @@ export function ShuttleTray({ chatId, storyId, fromDesk, fromChatTitleSnapshot, 
                 </div>
             </Tabs>
 
-            <div className="max-h-64 overflow-y-auto p-2 space-y-2">
+            <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
                 <p className="px-1 text-xs font-medium text-muted-foreground">Shuttles</p>
                 {shuttleItems.length === 0 ? (
                     <p className="p-2 text-center text-xs text-muted-foreground">No {statusTab} shuttles.</p>

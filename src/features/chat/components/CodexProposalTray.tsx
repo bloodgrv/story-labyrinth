@@ -28,7 +28,7 @@ export function CodexProposalTray({ chatId }: CodexProposalTrayProps) {
     const entryLookup = useMemo(() => new Map(lorebookEntries.map(e => [e.id, e])), [lorebookEntries]);
 
     return (
-        <div className="flex flex-col border-l border-t border-input">
+        <div className="flex min-h-0 flex-1 flex-col border-l border-t border-input">
             <Tabs value={statusTab} onValueChange={value => setStatusTab(value as CodexPendingStatus)}>
                 <div className="p-2">
                     <TabsList className="w-full">
@@ -41,7 +41,7 @@ export function CodexProposalTray({ chatId }: CodexProposalTrayProps) {
                 </div>
             </Tabs>
 
-            <div className="max-h-64 overflow-y-auto p-2 space-y-2">
+            <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
                 {proposals.length === 0 ? (
                     <p className="p-2 text-center text-xs text-muted-foreground">No {statusTab} Codex proposals.</p>
                 ) : (

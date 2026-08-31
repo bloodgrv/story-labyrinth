@@ -308,7 +308,7 @@ export function EditorToolsPanel({
 
             <SimpleSheet open={openDrawer === "approvals"} onClose={onCloseDrawer} title="Approvals">
                 {selectedEditorChat && (
-                    <div className="space-y-0">
+                    <div className="flex h-full flex-col">
                         <CodexProposalTray chatId={selectedEditorChat.id} />
                         <ShuttleTray
                             chatId={selectedEditorChat.id}
