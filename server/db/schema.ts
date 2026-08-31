@@ -154,6 +154,13 @@ export const aiChats = sqliteTable(
         // Nullable — global chats (chatType='research') have no story; see getGlobalChat.
         storyId: text("storyId").references(() => stories.id, { onDelete: "cascade" }),
         title: text("title").notNull(),
+        // True once a user has explicitly set this chat's title (the Rename dialog, or typing one
+        // into the dashboard's "New Chat" dialog at creation) — the one-shot auto-title pass
+        // (useChatMessageGeneration.ts, fires after a chat's first exchange) checks this first and
+        // never overwrites a title the user chose on purpose. Default false: every creation-time
+        // placeholder (template name, "New Chat <timestamp>", the WB numbered placeholder) is
+        // "ours," not the user's, until they actually rename it.
+        titleIsCustom: integer("titleIsCustom", { mode: "boolean" }).notNull().default(false),
         messages: text("messages", { mode: "json" }).notNull(), // JSON: ChatMessage[]
         // Optimistic-concurrency token for `messages` only (B27, docs/CODE_REVIEW_2026-08-17.md) —
         // bumped by 1 on every write to the message array (server/services/chatService.ts). The

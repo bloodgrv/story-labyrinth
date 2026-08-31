@@ -44,6 +44,11 @@ export type CreateWorldBuildingChatParams = {
     title?: string;
     // The Lorebook entry this chat was opened from (WorldBuildingChatPanel), if any.
     anchorEntryId?: string | null;
+    // Explicit, not inferred from `title`'s presence — LorebookEntryEditor.tsx also always passes
+    // a computed `title` (the numbered placeholder), which is ours to auto-rename later, not the
+    // user's. Only the dashboard's "New Chat" dialog (the one path with a real title text field)
+    // ever passes true here. Defaults false.
+    titleIsCustom?: boolean;
 };
 
 /**
@@ -56,17 +61,16 @@ export const createWorldBuildingChat = async (
     if (!params.storyId.trim()) throw new Error("storyId is required");
 
     const template = params.templateSlug ? getTemplate(params.templateSlug) : undefined;
-    const title =
-        params.title?.trim() ||
-        template?.defaultTitle ||
-        "World-Building";
+    const userTitle = params.title?.trim();
+    const title = userTitle || template?.defaultTitle || "World-Building";
 
     return repoCreateChat({
         storyId: params.storyId,
         title,
         chatType: "worldbuilding",
         templateSlug: params.templateSlug ?? null,
-        anchorEntryId: params.anchorEntryId ?? null
+        anchorEntryId: params.anchorEntryId ?? null,
+        titleIsCustom: params.titleIsCustom ?? false
     });
 };
 

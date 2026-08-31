@@ -48,7 +48,7 @@ export function GlobalResearchChatList({ selectedChat, onSelectChat }: GlobalRes
     const handleSaveTitle = () => {
         if (editingChat && newTitle.trim())
             updateMutation.mutate(
-                { id: editingChat.id, data: { title: newTitle.trim() } },
+                { id: editingChat.id, data: { title: newTitle.trim(), titleIsCustom: true } },
                 { onSuccess: () => (setIsEditDialogOpen(false), setEditingChat(null), setNewTitle("")) }
             );
     };

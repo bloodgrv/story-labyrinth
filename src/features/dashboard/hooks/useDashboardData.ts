@@ -74,12 +74,13 @@ export const useWbChatTemplates = () =>
 export const useCreateWbChatMutation = (storyId: string) => {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (params: { templateSlug?: WorldBuildingTemplateSlug; title?: string }) =>
+        mutationFn: (params: { templateSlug?: WorldBuildingTemplateSlug; title?: string; titleIsCustom?: boolean }) =>
             chatsApi.create({
                 storyId,
                 chatType: "worldbuilding",
                 templateSlug: params.templateSlug,
-                title: params.title
+                title: params.title,
+                titleIsCustom: params.titleIsCustom
             }),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: keys.wbChats(storyId) });

@@ -43,6 +43,7 @@ export const useCreateChatMutation = () => {
             chatType?: ChatType;
             templateSlug?: WorldBuildingTemplateSlug;
             title?: string;
+            titleIsCustom?: boolean;
             anchorEntryId?: string | null;
             anchorChapterId?: string | null;
         }) => chatsApi.create(data),
@@ -70,6 +71,7 @@ export const useUpdateChatMutation = () => {
             data: {
                 messages?: unknown[];
                 title?: string;
+                titleIsCustom?: boolean;
                 lastUsedPromptId?: string | null;
                 lastUsedModelId?: string | null;
                 folderId?: string | null; // B9, docs/Folders_Org_Design.md — null unfiles

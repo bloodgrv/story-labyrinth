@@ -32,10 +32,14 @@ export type CreateChatParams = {
     anchorEntryId?: string | null;
     // The chapter this chat was opened while focused on, if any — see schema.ts's aiChats.anchorChapterId.
     anchorChapterId?: string | null;
+    // Only ever true when a user typed a title into the dashboard's "New Chat" dialog at creation
+    // time (the one creation path that offers a title field) — see schema.ts's titleIsCustom.
+    titleIsCustom?: boolean;
 };
 
 export type UpdateChatMetaFields = Partial<{
     title: string;
+    titleIsCustom: boolean;
     lastUsedPromptId: string | null;
     lastUsedModelId: string | null;
     includeNotes: boolean;
@@ -130,6 +134,7 @@ export const createChat = async (params: CreateChatParams): Promise<ChatRow> => 
             templateSlug: params.templateSlug ?? null,
             anchorEntryId: params.anchorEntryId ?? null,
             anchorChapterId: params.anchorChapterId ?? null,
+            titleIsCustom: params.titleIsCustom ?? false,
             createdAt: new Date(),
             updatedAt: new Date()
         })
@@ -169,6 +174,7 @@ export const updateChatMeta = async (
         updatedAt: new Date()
     };
     if (fields.title !== undefined) updates.title = fields.title;
+    if (fields.titleIsCustom !== undefined) updates.titleIsCustom = fields.titleIsCustom;
     if (fields.lastUsedPromptId !== undefined) updates.lastUsedPromptId = fields.lastUsedPromptId;
     if (fields.lastUsedModelId !== undefined) updates.lastUsedModelId = fields.lastUsedModelId;
     if (fields.includeNotes !== undefined) updates.includeNotes = fields.includeNotes;

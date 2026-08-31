@@ -265,14 +265,18 @@ function WorldBuildingChatPanel({
         setInitialRework({ chatId: mostRecent.id, payload });
     }, [pendingRework, storyId, chats, chatsLoading, createMutation]);
 
-    // Titled "{entry name} — {template name}" rather than just the template name — a rail with
-    // several WB chats used to render as an indistinguishable wall of "Character Codex"/"Character
-    // Codex"/"Character Codex" since the template name alone carries no per-entry identity. Falls
-    // back to the bare template name only in the (rare) case an entry genuinely has no name yet.
+    // Titled "{entry name} {n}" (n = this entry's existing WB chat count + 1) rather than just the
+    // template name — a rail with several WB chats used to render as an indistinguishable wall of
+    // "Character Codex"/"Character Codex"/"Character Codex" since the template name alone carries
+    // no per-entry or per-chat identity. This is only the creation-time placeholder: once the
+    // chat's first exchange completes, useChatMessageGeneration.ts's auto-title pass replaces it
+    // with a real content-derived (still entry-prefixed) name, unless the user renames it first.
+    // Falls back to the bare template name only in the (rare) case an entry genuinely has no name yet.
     const handleCreateFromTemplate = async (templateSlug: WorldBuildingTemplateSlug, templateName: string) => {
         const ensuredEntry = entryId ? entry : await onEnsureEntry();
         const anchorEntryId = entryId ?? ensuredEntry!.id;
-        const title = ensuredEntry?.name ? `${ensuredEntry.name} — ${templateName}` : templateName;
+        const anchoredCount = chats.filter(c => c.anchorEntryId === anchorEntryId).length;
+        const title = ensuredEntry?.name ? `${ensuredEntry.name} ${anchoredCount + 1}` : templateName;
         createMutation.mutate(
             { storyId, chatType: "worldbuilding", templateSlug, title, anchorEntryId },
             { onSuccess: newChat => setSelectedChat(newChat) }
@@ -306,12 +310,13 @@ function WorldBuildingChatPanel({
         consumedSeedRef.current = initialWorldBuildingSeed;
         const template = getTemplate(initialWorldBuildingSeed.templateSlug);
         const templateName = template?.defaultTitle ?? "World-Building";
+        const anchoredCount = chats.filter(c => c.anchorEntryId === entryId).length;
         createMutation.mutate(
             {
                 storyId,
                 chatType: "worldbuilding",
                 templateSlug: initialWorldBuildingSeed.templateSlug,
-                title: entry?.name ? `${entry.name} — ${templateName}` : templateName,
+                title: entry?.name ? `${entry.name} ${anchoredCount + 1}` : templateName,
                 anchorEntryId: entryId
             },
             {

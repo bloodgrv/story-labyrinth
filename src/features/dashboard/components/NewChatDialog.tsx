@@ -26,9 +26,11 @@ export function NewChatDialog({ storyId, open, onOpenChange, onCreated }: NewCha
     const createMutation = useCreateWbChatMutation(storyId);
 
     const handleCreate = async () => {
+        const trimmedTitle = title.trim();
         const chat = await createMutation.mutateAsync({
             templateSlug: selectedSlug,
-            title: title.trim() || undefined
+            title: trimmedTitle || undefined,
+            titleIsCustom: !!trimmedTitle
         });
         onOpenChange(false);
         setTitle("");

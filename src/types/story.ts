@@ -62,6 +62,10 @@ export interface ChapterNotes {
 export interface AIChat extends BaseEntity {
     storyId: string | null; // null for global chats (e.g. Research) — see ChatType
     title: string;
+    // True once a user has explicitly set this title (Rename dialog, or a typed creation-time
+    // title) — see server/db/schema.ts's own comment. The one-shot auto-title pass
+    // (useChatMessageGeneration.ts) skips a chat once this is true.
+    titleIsCustom: boolean;
     messages: ChatMessage[];
     // Optimistic-concurrency token for `messages` only (B27) — see server/db/schema.ts's own
     // comment. A user-initiated full-array replace (edit/delete/regenerate/resend/branch) sends

@@ -92,7 +92,7 @@ router.get(
 router.post(
     "/",
     asyncHandler(async (req, res) => {
-        const { storyId, chatType, title, templateSlug, anchorEntryId, anchorChapterId, global } = req.body as {
+        const { storyId, chatType, title, templateSlug, anchorEntryId, anchorChapterId, global, titleIsCustom } = req.body as {
             storyId?: string;
             chatType?: ChatType;
             title?: string;
@@ -100,6 +100,9 @@ router.post(
             anchorEntryId?: string | null;
             anchorChapterId?: string | null;
             global?: boolean;
+            // Only meaningful for worldbuilding chats — the dashboard's "New Chat" dialog is the
+            // one creation path with a real title text field. See schema.ts's titleIsCustom.
+            titleIsCustom?: boolean;
         };
 
         if (global === true) {
@@ -127,7 +130,8 @@ router.post(
                 storyId,
                 templateSlug: templateSlug as WorldBuildingTemplateSlug | undefined,
                 title,
-                anchorEntryId: anchorEntryId ?? null
+                anchorEntryId: anchorEntryId ?? null,
+                titleIsCustom
             });
         } else {
             if (!title?.trim()) {
@@ -159,6 +163,7 @@ router.get(
 // Update a chat. Accepts any combination of:
 //   messages: ChatMessage[]        — full replacement of message history
 //   title: string                  — rename the chat
+//   titleIsCustom: boolean         — marks the title as user-set, so the auto-title pass skips it
 //   lastUsedPromptId: string|null  — track last prompt
 //   lastUsedModelId: string|null   — track last model
 //   includeNotes: boolean          — Notes/Outline bridge chat-level gate (docs/Notes_Outline_Chat_Bridges_Design.md)
@@ -194,6 +199,7 @@ router.patch(
             messages,
             expectedMessagesVersion,
             title,
+            titleIsCustom,
             lastUsedPromptId,
             lastUsedModelId,
             includeNotes,
@@ -222,6 +228,9 @@ router.patch(
             // on aiChats.messagesVersion. Only checked when `messages` is also present.
             expectedMessagesVersion?: number;
             title?: string;
+            // See schema.ts's titleIsCustom — set true by the Rename dialog and the dashboard's
+            // "New Chat" dialog's typed title, so the one-shot auto-title pass never overwrites it.
+            titleIsCustom?: boolean;
             lastUsedPromptId?: string | null;
             lastUsedModelId?: string | null;
             includeNotes?: boolean;
@@ -270,6 +279,7 @@ router.patch(
         // Apply metadata updates (if any)
         const metaFields: Record<string, unknown> = {};
         if (title !== undefined) metaFields.title = title;
+        if (titleIsCustom !== undefined) metaFields.titleIsCustom = titleIsCustom;
         if (lastUsedPromptId !== undefined) metaFields.lastUsedPromptId = lastUsedPromptId;
         if (lastUsedModelId !== undefined) metaFields.lastUsedModelId = lastUsedModelId;
         if (includeNotes !== undefined) metaFields.includeNotes = includeNotes;

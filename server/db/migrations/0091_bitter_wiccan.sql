@@ -1,0 +1,1 @@
+ALTER TABLE `aiChats` ADD `titleIsCustom` integer DEFAULT false NOT NULL;

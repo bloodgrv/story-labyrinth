@@ -267,6 +267,11 @@ export function ChatInterface({
 
     const { entries: lorebookEntries } = useLorebookContext();
     const { data: chapters = [] } = useChaptersByStoryQuery(storyId ?? "");
+    // Moved up from further down in this file (was declared right before its own sole original
+    // use) so useChatMessageGeneration's titlePrefix (below) can read a WB chat's anchor entry
+    // name — the auto-title pass needs it entry-prefixed since the WB rail lists every entry's
+    // chats together, not just the one currently open (see useChatMessageGeneration.ts).
+    const entryLookup = useMemo(() => new Map(lorebookEntries.map(e => [e.id, e])), [lorebookEntries]);
 
     // Selection Rework Bridge (docs/Chat_Panel_Integrations_Design.md §2.1/§3) — EditorChatRail
     // hands down a fresh `initialRework` object each time a NEW rework request resolves to this
@@ -1013,6 +1018,9 @@ export function ChatInterface({
         selectedModel,
         onChatUpdate,
         createPromptConfig,
+        // WB-only — see the auto-title block's own comment in useChatMessageGeneration.ts for why
+        // it needs entry context, unlike every other auto-titled chat type.
+        titlePrefix: selectedChat.anchorEntryId ? entryLookup.get(selectedChat.anchorEntryId)?.name : undefined,
         autoAcceptCodex: toggles.autoAcceptCodex,
         onUsage: usage => setLastUsage(usage ?? null),
         onProseProposal: enableProseProposals
@@ -1771,7 +1779,6 @@ export function ChatInterface({
 
     const { data: chatProposals = [] } = useChatProposalsQuery(selectedChat.id, "pending");
     const proposalsByMessageId = useMemo(() => groupProposalsByMessage(chatProposals), [chatProposals]);
-    const entryLookup = useMemo(() => new Map(lorebookEntries.map(e => [e.id, e])), [lorebookEntries]);
 
     useEffect(() => {
         clearSelections();

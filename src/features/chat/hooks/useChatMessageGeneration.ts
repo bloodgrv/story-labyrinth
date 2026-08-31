@@ -126,6 +126,11 @@ interface UseChatMessageGenerationParams {
     // Context/Token Meter (T4, M3) — fires when this turn's response carried real usage (Local
     // only this pass). Caller uses it to refresh its "last known usage" chip state.
     onUsage?: (usage: ChatMessage["usage"]) => void;
+    // WB chats only (see AUTO_TITLE_CHAT_TYPES/the auto-title block below) — the anchor entry's
+    // name, prepended to the auto-generated title so it stays identifiable in a rail that lists
+    // every entry's WB chats together, not just the one currently open. ChatInterface.tsx passes
+    // this via its own entryLookup; every other chat type leaves it undefined.
+    titlePrefix?: string;
 }
 
 interface UseChatMessageGenerationReturn {
@@ -135,11 +140,12 @@ interface UseChatMessageGenerationReturn {
     streamingContent: string;
 }
 
-// Chat organization pass — self-naming chats. WB already gets descriptive template-derived
-// titles (createWorldBuildingChat) and Research has no manual "new chat" list at all, so both are
-// left alone; Editor/Outline/Notes/Brainstorm all default new chats to a generic
-// "New Chat <timestamp>" title today, which is the one this auto-titles over.
-const AUTO_TITLE_CHAT_TYPES = new Set(["editor", "outline", "notes", "brainstorm"]);
+// Chat organization pass — self-naming chats. Every chat type's creation-time title is a
+// placeholder (a static template/type name, a numbered "{entry} {n}" for WB, or a raw creation
+// timestamp) rather than anything content-derived — this replaces it once, right after the
+// chat's first real exchange, unless the user has already set a title on purpose
+// (selectedChat.titleIsCustom below).
+const AUTO_TITLE_CHAT_TYPES = new Set(["editor", "outline", "notes", "brainstorm", "worldbuilding", "research"]);
 
 // AI Activity indicator — worldbuilding/general omitted (no Jump target): a WB chat is
 // entry-anchored inside the Lorebook editor with no pointer here to the right entry, and general
@@ -182,7 +188,8 @@ export const useChatMessageGeneration = ({
     onTimelinePinProposal,
     onMcpToolCallProposal,
     autoAcceptCodex,
-    onUsage
+    onUsage,
+    titlePrefix
 }: UseChatMessageGenerationParams): UseChatMessageGenerationReturn => {
     const [isSending, setIsSending] = useState(false);
     const { generateWithPrompt } = useGenerateWithPrompt();
@@ -294,11 +301,20 @@ export const useChatMessageGeneration = ({
                 // Self-naming chats — fire-and-forget, one small extra completion call after a
                 // chat's genuine first exchange (see isFirstExchange/AUTO_TITLE_CHAT_TYPES above).
                 // Never awaited by the main turn and never surfaces an error toast on failure — a
-                // missed rename just leaves the generic default title in place.
-                if (isFirstExchange && selectedChat.storyId && selectedChat.chatType && AUTO_TITLE_CHAT_TYPES.has(selectedChat.chatType)) {
+                // missed rename just leaves the existing placeholder title in place. Skipped
+                // entirely once the user has set a title on purpose (titleIsCustom) — dropped the
+                // old `selectedChat.storyId` guard, which would have silently excluded Research's
+                // Global (storyId-less) chats from the newly-added "research" coverage below.
+                if (
+                    isFirstExchange &&
+                    !selectedChat.titleIsCustom &&
+                    selectedChat.chatType &&
+                    AUTO_TITLE_CHAT_TYPES.has(selectedChat.chatType)
+                ) {
                     void (async () => {
-                        const title = await generateChatTitle(selectedModel.provider, selectedModel.id, input.trim(), finalContent);
-                        if (!title) return;
+                        const rawTitle = await generateChatTitle(selectedModel.provider, selectedModel.id, input.trim(), finalContent);
+                        if (!rawTitle) return;
+                        const title = titlePrefix ? `${titlePrefix}: ${rawTitle}` : rawTitle;
                         const [titleError, updated] = await attemptPromise(() =>
                             updateChatMutation.mutateAsync({ id: selectedChat.id, data: { title } })
                         );

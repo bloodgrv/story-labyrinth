@@ -200,6 +200,9 @@ export const chatsApi = {
         chatType?: string;
         templateSlug?: string;
         title?: string;
+        // Only meaningful for worldbuilding chats (dashboard's "New Chat" dialog typed title) —
+        // see src/types/story.ts's AIChat.titleIsCustom.
+        titleIsCustom?: boolean;
         anchorEntryId?: string | null;
         anchorChapterId?: string | null;
     }) => fetchJSON<AIChat>("/chats", { method: "POST", body: JSON.stringify(data) }),
@@ -211,6 +214,7 @@ export const chatsApi = {
             // also present. See src/types/story.ts's AIChat.messagesVersion.
             expectedMessagesVersion?: number;
             title?: string;
+            titleIsCustom?: boolean;
             lastUsedPromptId?: string | null;
             lastUsedModelId?: string | null;
             includeNotes?: boolean;

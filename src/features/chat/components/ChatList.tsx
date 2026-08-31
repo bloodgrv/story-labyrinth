@@ -133,7 +133,9 @@ export function ChatList({
     const handleSaveTitle = () => {
         if (editingChat && newTitle.trim())
             updateMutation.mutate(
-                { id: editingChat.id, data: { title: newTitle.trim() } },
+                // titleIsCustom: true — a deliberate rename, never overwritten by the one-shot
+                // auto-title pass (useChatMessageGeneration.ts).
+                { id: editingChat.id, data: { title: newTitle.trim(), titleIsCustom: true } },
                 { onSuccess: () => (setIsEditDialogOpen(false), setEditingChat(null), setNewTitle("")) }
             );
     };
