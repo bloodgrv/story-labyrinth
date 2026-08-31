@@ -27,9 +27,10 @@ export function useBrainstormChecklistActions({ chatId, storyId, fromChatTitleSn
 
     const isBusy = updateStatus.isPending || updateStory.isPending || createNote.isPending;
 
-    // Accept performs the actual write (synopsis/note/memory) then moves the row to "opened" —
-    // NOT "done": per B4's doctrine, only the user's own explicit Mark done leaves the active
-    // queue, even for an action that already completed.
+    // Accept performs the actual write (synopsis/note/memory) then moves the row straight to
+    // "done" — auto-clearing Active once the action is taken (2026-08-30 change from B4's original
+    // "only explicit Mark done clears Active" doctrine, per explicit user request). The Accept
+    // button stays visible on the Done-tab card too, so it can be pressed again if needed.
     const handleAcceptOverview = (item: BrainstormChecklistItem) => {
         const payload = item.payload as OverviewProposalPayload;
         if (payload.proposalType === "synopsis") updateStory.mutate({ id: storyId, data: { synopsis: payload.content } });
@@ -42,7 +43,7 @@ export function useBrainstormChecklistActions({ chatId, storyId, fromChatTitleSn
             void agentMemoriesApi.createNote({ storyId, category, title: payload.title, body: payload.body });
         }
         if (payload.slotKey) setSlotStatus.mutate({ slotKey: payload.slotKey, status: "known" });
-        updateStatus.mutate({ id: item.id, status: "opened" });
+        updateStatus.mutate({ id: item.id, status: "done" });
         if (payload.proposalType === "note")
             deskTransfersApi
                 .log(storyId, {
@@ -58,6 +59,9 @@ export function useBrainstormChecklistActions({ chatId, storyId, fromChatTitleSn
                 .catch(() => {});
     };
 
+    // Open likewise moves straight to "done" (see handleAcceptOverview above) — but since Open is
+    // just navigation/seeding (no one-shot write), its button also stays live on the Done-tab
+    // card so the user can re-open the handoff destination again later without hunting it down.
     const handleOpenHandoff = (item: BrainstormChecklistItem) => {
         const payload = item.payload as HandoffPacket;
         if (payload.destination === "worldbuilding") {
@@ -72,7 +76,7 @@ export function useBrainstormChecklistActions({ chatId, storyId, fromChatTitleSn
             setPendingChatComposerSeed({ tool: payload.destination, text: payload.detail });
             setCurrentTool(payload.destination);
         }
-        updateStatus.mutate({ id: item.id, status: "opened" });
+        updateStatus.mutate({ id: item.id, status: "done" });
         deskTransfersApi
             .log(storyId, {
                 event: "opened",

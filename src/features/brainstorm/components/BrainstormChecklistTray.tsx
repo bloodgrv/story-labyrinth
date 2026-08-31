@@ -23,10 +23,14 @@ const overviewSummary = (payload: OverviewProposalPayload): { label: string; bod
     return { label: `Memory: ${payload.title}`, body: payload.body };
 };
 
-// P0.4 B4 — the durable tray: overview proposals + handoffs (both backed by brainstormChecklist,
-// Open/Send/Accept do NOT clear the queue — only Mark done does) + the slot checklist (a
-// genuinely different, simpler known/unknown model, see SlotChecklistPanel). "This chat only"
-// scope, mirroring CodexProposalTray.tsx.
+// P0.4 B4 — the durable tray: overview proposals + handoffs (both backed by brainstormChecklist)
+// + the slot checklist (a genuinely different, simpler known/unknown model, see
+// SlotChecklistPanel). "This chat only" scope, mirroring CodexProposalTray.tsx.
+// 2026-08-30: Accept/Open/Review now auto-move a pending item straight to "done" (explicit user
+// request, reversing B4's original "only Mark done clears Active" doctrine for this tray). Their
+// buttons stay live on the Done-tab card too — Accept can be re-run, Open/Review are pure
+// navigation so re-opening is harmless. Mark done/Reject only make sense pre-resolution, so they
+// stay gated to item.status === "pending".
 export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot }: BrainstormChecklistTrayProps) {
     const [statusTab, setStatusTab] = useState<"active" | "done">("active");
     const [checklistCollapsed, setChecklistCollapsed] = useState(false);
@@ -77,7 +81,7 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
                 </CardHeader>
                 <CardContent className="space-y-2">
                     <p className="text-sm whitespace-pre-wrap">{body}</p>
-                    {statusTab === "active" && (
+                    {item.status !== "dismissed" && (
                         <div className="flex gap-2">
                             {isOverview ? (
                                 <Button size="sm" onClick={() => handleAcceptOverview(item)} disabled={isBusy}>
@@ -89,7 +93,7 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
                                     size="sm"
                                     onClick={() => {
                                         setOpenBatchItem(item);
-                                        if (item.status === "pending") updateStatus.mutate({ id: item.id, status: "opened" });
+                                        if (item.status === "pending") updateStatus.mutate({ id: item.id, status: "done" });
                                     }}
                                     disabled={isBusy}
                                 >
@@ -102,21 +106,25 @@ export function BrainstormChecklistTray({ chatId, storyId, fromChatTitleSnapshot
                                     Open
                                 </Button>
                             )}
-                            <Button size="sm" variant="ghost" onClick={() => markDone(item.id)} disabled={updateStatus.isPending}>
-                                {updateStatus.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-                                Mark done
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-muted-foreground"
-                                onClick={() => dismiss(item.id)}
-                                disabled={updateStatus.isPending}
-                                title="Reject — no longer relevant, was never acted on"
-                            >
-                                <X className="h-4 w-4 mr-1" />
-                                Reject
-                            </Button>
+                            {item.status === "pending" && (
+                                <>
+                                    <Button size="sm" variant="ghost" onClick={() => markDone(item.id)} disabled={updateStatus.isPending}>
+                                        {updateStatus.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+                                        Mark done
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-muted-foreground"
+                                        onClick={() => dismiss(item.id)}
+                                        disabled={updateStatus.isPending}
+                                        title="Reject — no longer relevant, was never acted on"
+                                    >
+                                        <X className="h-4 w-4 mr-1" />
+                                        Reject
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     )}
                 </CardContent>
