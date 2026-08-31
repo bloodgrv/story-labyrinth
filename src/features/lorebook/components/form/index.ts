@@ -11,6 +11,13 @@ export { SheetSyncButton } from "./SheetSyncButton";
 export { SheetSyncCrossDeskCard } from "./SheetSyncCrossDeskCard";
 export { SelectField } from "./SelectField";
 export { TagsField } from "./TagsField";
-export { CATEGORIES, EMPTY_CODEX_STATE, IMPORTANCE_LEVELS, buildSubmitData, getDefaultFormValues } from "./entryFormUtils";
+export {
+    CATEGORIES,
+    EMPTY_CODEX_STATE,
+    IMPORTANCE_LEVELS,
+    buildSubmitData,
+    getDefaultFormValues,
+    resolveImageGenerationBrief
+} from "./entryFormUtils";
 export type { CreateEntryForm, LorebookCategory } from "./entryFormUtils";
 export { buildEmptySheetSeed } from "./sheetTemplates";

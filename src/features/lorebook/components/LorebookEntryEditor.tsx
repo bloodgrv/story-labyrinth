@@ -61,7 +61,8 @@ import {
     SheetSyncCrossDeskCard,
     buildEmptySheetSeed,
     buildSubmitData,
-    getDefaultFormValues
+    getDefaultFormValues,
+    resolveImageGenerationBrief
 } from "./form";
 import type { CreateEntryForm, LorebookCategory } from "./form";
 
@@ -744,15 +745,21 @@ export function LorebookEntryEditor({
         return withCodex;
     };
 
-    // Fires immediately on "Generate from Description" instead of deferring to form submit like
-    // Upload/Remove still do — there's no real reason to wait once an entry has a real id, and a
-    // brand-new one gets it via the same lazy-create path ensureLiveEntry already established for
-    // starting a WB chat before Create is clicked. See ImageUploadField.tsx.
+    // Fires immediately on "Generate Image" instead of deferring to form submit like Upload/Remove
+    // still do — there's no real reason to wait once an entry has a real id, and a brand-new one
+    // gets it via the same lazy-create path ensureLiveEntry already established for starting a WB
+    // chat before Create is clicked. See ImageUploadField.tsx.
+    //
+    // 2026-08-31 fix — the prompt text is resolved from the form's own current values
+    // (form.getValues(), NOT a server-side re-read of the saved entry) so this always generates
+    // from whatever's actually on the page, unsaved edits included. See
+    // resolveImageGenerationBrief's own comment in entryFormUtils.ts.
     const handleGenerateImage = async (preset: "mood" | "map") => {
         setIsGeneratingImage(true);
         const [error, updated] = await attemptPromise(async () => {
             const current = liveEntry ?? (await ensureLiveEntry());
-            return lorebookApi.generateImage(current.id, preset);
+            const promptText = resolveImageGenerationBrief(form.getValues(), preset);
+            return lorebookApi.generateImage(current.id, preset, promptText);
         });
         setIsGeneratingImage(false);
         if (error) toastCRUD.saveError("image", error);

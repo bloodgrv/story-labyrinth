@@ -54,8 +54,8 @@ export interface CreateEntryForm {
     // Never pre-populated from an existing entry's image — that's displayed via its own URL
     // (lorebookApi.imageUrl), not re-uploaded. See ImageUploadField.tsx.
     imageFile?: File | null;
-    // Which prompt preset "Generate from Description" uses — "mood" (default, current
-    // description-driven path) or "map" (location-only, top-down/ink style, see
+    // Which prompt preset "Generate Image" uses — "mood" (default, sheetBody/description-driven,
+    // see resolveImageGenerationBrief below) or "map" (location-only, top-down/ink style, see
     // grokImageService.ts's MAP_IMAGE_PROMPT_PREFIX). Only ever shown for category="location".
     // Generation itself fires immediately on click (LorebookEntryEditor.tsx's
     // handleGenerateImage), not deferred to form submit — this field just remembers which preset
@@ -165,4 +165,29 @@ export const buildSubmitData = (data: CreateEntryForm, entry?: LorebookEntry) =>
         level: data.level,
         scopeId: data.level === "global" ? undefined : data.scopeId
     };
+};
+
+// 2026-08-31 fix — "Generate Image" used to send no prompt text at all; the server re-read the
+// entry's own saved `description` column from the DB (grokImageService.ts). Since T5 made the
+// Lore Sheet the primary authored surface (description is now a derived projection, only updated
+// via the separate Sync propose→Accept loop), that meant the generated image reflected neither
+// unsaved edits nor the sheet content actually visible on the page — confirmed live as "it's not
+// reading what's on the page." Fix: resolve the brief from the form's own current (possibly
+// unsaved) values instead, mirroring grokImageService.ts's old resolveMapPrompt fallback chain but
+// reading live values here rather than a saved DB row — sheetBody wins over description since it's
+// what the user is actually looking at, and the "map" preset's placeState fields still win over
+// both, unchanged from before.
+export const resolveImageGenerationBrief = (
+    values: Pick<CreateEntryForm, "sheetBody" | "description" | "placeState">,
+    preset: "mood" | "map"
+): string => {
+    const sheetOrDescription = values.sheetBody?.trim() || values.description?.trim() || "";
+    if (preset !== "map") return sheetOrDescription;
+    const placeState = values.placeState;
+    return (
+        placeState?.imageBrief?.trim() ||
+        placeState?.layoutMd?.trim() ||
+        placeState?.landmarks?.filter(Boolean).join(", ") ||
+        sheetOrDescription
+    );
 };

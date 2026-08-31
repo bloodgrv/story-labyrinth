@@ -10,25 +10,24 @@ const MAP_IMAGE_PROMPT_PREFIX =
     "Top-down map illustration, simple ink linework, clear labeled landmarks, no photorealism, " +
     "no perspective/establishing-shot framing. Depict: ";
 
-// Picks the best available brief for a "map" preset generation, per the design doc's fallback
-// chain (imageBrief > layoutMd > landmarks > plain description).
-const resolveMapPrompt = (entry: typeof schema.lorebookEntries.$inferSelect): string => {
-    const placeState = (entry.metadata as { placeState?: { imageBrief?: string; layoutMd?: string; landmarks?: string[] } } | null)
-        ?.placeState;
-    const brief = placeState?.imageBrief || placeState?.layoutMd || placeState?.landmarks?.join(", ") || entry.description;
-    return MAP_IMAGE_PROMPT_PREFIX + brief;
-};
-
 // xAI's image generation is a real, separate endpoint from chat completions -
 // POST {baseURL}/images/generations, confirmed against xAI's own docs (not assumed from the
 // chat-completions shape) since this hits a real billed API. Not exposed through the `openai`
 // npm SDK's typed images.generate() (that's shaped around OpenAI's own `size` param; xAI uses
 // aspect_ratio/resolution instead), so this does a raw fetch reusing the same resolved
 // baseURL/apiKey/model buildClientForFeature already produces for every other feature.
-export const generateLorebookImage = async (entryId: string, preset: "mood" | "map" = "mood"): Promise<void> => {
+// 2026-08-31 fix — used to always re-read the entry's own saved `description` column here,
+// ignoring whatever the caller actually has on screen. Since T5 made the Lore Sheet the primary
+// authored surface (description is now a derived projection, only updated via the separate Sync
+// propose→Accept loop), that meant a generated image could reflect neither unsaved edits nor the
+// sheet content the user was actually looking at. `promptText` is now resolved client-side, from
+// the form's live (possibly unsaved) values — see entryFormUtils.ts's resolveImageGenerationBrief,
+// the client-side mirror of what the old resolveMapPrompt fallback chain did against a DB row.
+export const generateLorebookImage = async (entryId: string, preset: "mood" | "map", promptText: string): Promise<void> => {
     const [entry] = await db.select().from(schema.lorebookEntries).where(eq(schema.lorebookEntries.id, entryId));
     if (!entry) throw new Error(`Lorebook entry not found: ${entryId}`);
-    if (!entry.description.trim()) throw new Error("This entry has no description to generate an image from.");
+    const brief = promptText.trim();
+    if (!brief) throw new Error("This entry has no description or lore sheet content to generate an image from.");
 
     const connection = await buildClientForFeature("image_generation");
     if (!connection)
@@ -37,7 +36,7 @@ export const generateLorebookImage = async (entryId: string, preset: "mood" | "m
         );
     const { client, model } = connection;
 
-    const prompt = preset === "map" ? resolveMapPrompt(entry) : entry.description;
+    const prompt = preset === "map" ? MAP_IMAGE_PROMPT_PREFIX + brief : brief;
 
     const response = await fetch(`${client.baseURL}/images/generations`, {
         method: "POST",

@@ -566,13 +566,16 @@ export default createCrudRouter({
             })
         );
 
-        // POST /lorebook/:id/generate-image - generate a portrait from the entry's own saved
-        // description via the "image_generation" feature endpoint (see grokImageService.ts).
+        // POST /lorebook/:id/generate-image - generate a portrait from client-submitted live
+        // sheet/description text (whatever's actually on the page right now, not necessarily
+        // saved yet — see grokImageService.ts's own comment) via the "image_generation" feature
+        // endpoint.
         router.post(
             "/:id/generate-image",
             asyncHandler(async (req, res) => {
                 const preset = req.body?.preset === "map" ? "map" : "mood";
-                const [error] = await attemptPromise(() => generateLorebookImage(req.params.id, preset));
+                const promptText = typeof req.body?.promptText === "string" ? req.body.promptText : "";
+                const [error] = await attemptPromise(() => generateLorebookImage(req.params.id, preset, promptText));
                 if (error) {
                     res.status(400).json({ error: error.message });
                     return;

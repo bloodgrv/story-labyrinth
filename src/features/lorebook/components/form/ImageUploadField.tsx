@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FormLabel } from "@/components/ui/form";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { lorebookApi } from "@/services/api/client";
-import type { CreateEntryForm } from "./entryFormUtils";
+import { resolveImageGenerationBrief, type CreateEntryForm } from "./entryFormUtils";
 
 interface ImageUploadFieldProps {
     control: Control<CreateEntryForm>;
@@ -46,7 +46,12 @@ export function ImageUploadField({
 }: ImageUploadFieldProps) {
     const imageFile = useWatch({ control, name: "imageFile" });
     const description = useWatch({ control, name: "description" });
+    const sheetBody = useWatch({ control, name: "sheetBody" });
+    const placeState = useWatch({ control, name: "placeState" });
     const generateImagePreset = useWatch({ control, name: "generateImagePreset" }) ?? "mood";
+    // Live, not saved — matches whatever's actually on the page right now (see
+    // resolveImageGenerationBrief's own comment for why this replaced a description-only check).
+    const generationBrief = resolveImageGenerationBrief({ description, sheetBody, placeState }, generateImagePreset);
     const [objectUrl, setObjectUrl] = useState<string | null>(null);
 
     useEffect(() => {
@@ -122,7 +127,7 @@ export function ImageUploadField({
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={!description?.trim() || isGeneratingImage}
+                    disabled={!generationBrief.trim() || isGeneratingImage}
                     onClick={() => onGenerateImage(generateImagePreset)}
                 >
                     {isGeneratingImage ? (
@@ -130,7 +135,7 @@ export function ImageUploadField({
                     ) : (
                         <Sparkles className="h-4 w-4 mr-1.5" />
                     )}
-                    Generate from Description
+                    Generate Image
                 </Button>
                 {isLocation && (
                     <div className="flex rounded-md border overflow-hidden">
