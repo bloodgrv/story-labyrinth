@@ -22,8 +22,6 @@ export function ExtractPinsButton({ control, category, entryId }: ExtractPinsBut
     const sheetBody = useWatch({ control, name: "sheetBody" }) ?? "";
     const { setCurrentTool } = useStoryContext();
 
-    if (category !== "timeline" && category !== "event") return null;
-
     const extractMutation = useMutation({
         mutationFn: () => lorebookApi.extractTimelinePins(entryId ?? "", { sheetBody, category }),
         onSuccess: result => {
@@ -42,6 +40,13 @@ export function ExtractPinsButton({ control, category, entryId }: ExtractPinsBut
         },
         onError: (error: Error) => toast.error(error.message || "Couldn't extract pins")
     });
+
+    // Must come AFTER every hook above, not before: `category` is a live form.watch("category")
+    // in LorebookEntryEditor, so an early return here changed this component's hook count between
+    // renders the moment someone switched an entry's category to or from Timeline/Event — React
+    // then threw "Rendered more hooks than during the previous render" and tore the whole entry
+    // editor down, taking any unsaved edits with it.
+    if (category !== "timeline" && category !== "event") return null;
 
     return (
         <Button
