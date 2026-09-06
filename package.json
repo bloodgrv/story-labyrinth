@@ -22,6 +22,7 @@
         "build:portable:mac": "node scripts/build-portable.mjs --platform=mac-arm64",
         "test": "vitest run",
         "test:watch": "vitest",
+        "test:portable-update": "node devscripts/test-portable-update.mjs",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "drizzle-kit migrate",
         "knip": "knip",
