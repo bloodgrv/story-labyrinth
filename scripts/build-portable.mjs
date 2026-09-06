@@ -16,7 +16,7 @@
 // Rebuilding into an existing --out dir never touches current-version.txt or other versions —
 // that's the running self-updater's job, not this script's.
 //
-// mac-* builds MUST run on darwin: better-sqlite3/sqlite-vec/canvas/onnxruntime-node are native
+// mac-* builds MUST run on darwin: better-sqlite3/sqlite-vec/onnxruntime-node are native
 // modules, and `npm ci` under a bundled darwin Node still needs a real darwin host to produce
 // (or compile) darwin binaries — there is no cross-build path from Windows.
 
@@ -99,7 +99,7 @@ const platform = PLATFORMS[platformId];
 if (!platform) {
     fail(`Unknown --platform=${platformId}. Valid: ${Object.keys(PLATFORMS).join("|")}`);
 }
-// Native modules (better-sqlite3/sqlite-vec/canvas/onnxruntime-node) can't be cross-installed —
+// Native modules (better-sqlite3/sqlite-vec/onnxruntime-node) can't be cross-installed —
 // `npm ci` must run under a bundled runtime of the SAME OS it'll ship for. This is the one hard
 // gate docs/Mac_Portable_Design.md calls out repeatedly: never let a Windows host produce a
 // mac-* zip (or vice versa) even if someone passes --platform to force it.

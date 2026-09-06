@@ -5,14 +5,14 @@ WORKDIR /app
 # Install build dependencies for native modules.
 # Debian (glibc) rather than Alpine (musl): sqlite-vec's prebuilt Linux binaries are
 # built against glibc and fail to load under musl — see DECISIONS.md.
-# Cairo/Pango/JPEG/GIF/RSVG dev libs: required by the `canvas` package (document-import PDF
-# image extraction) — node-canvas ships prebuilt binaries for some platforms, but this slim base
-# image has none of its native deps present, so it needs to be able to build from source too.
 # libgomp1: onnxruntime-node's prebuilt native binary (used by the local in-process embedding
 # backend, @huggingface/transformers) links against OpenMP, which Debian-slim doesn't include by
 # default — see docs/Local_Embeddings_Design.md.
+# NOTE: the Cairo/Pango/JPEG/GIF/RSVG dev libs that used to be installed here were for the
+# `canvas` package, which was removed 2026-09-06 (B46) — it was never imported, and pdf-parse's
+# getImage() is backed by @napi-rs/canvas (prebuilt, no system deps). Don't re-add them without
+# first checking whether anything actually imports node-canvas.
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ libgomp1 \
-    libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
@@ -45,11 +45,11 @@ FROM node:22-slim
 
 WORKDIR /app
 
-# Install build dependencies for native modules (needed for better-sqlite3 and canvas), wget for
-# the docker-compose healthcheck (not included by default on Debian, unlike Alpine), and libgomp1
+# Install build dependencies for native modules (needed for better-sqlite3), wget for the
+# docker-compose healthcheck (not included by default on Debian, unlike Alpine), and libgomp1
 # for onnxruntime-node (local in-process embeddings — see docs/Local_Embeddings_Design.md).
+# The Cairo/Pango/JPEG/GIF/RSVG dev libs were dropped here too — see the builder stage's note.
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ wget libgomp1 \
-    libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files

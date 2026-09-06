@@ -71,7 +71,6 @@
         "@tanstack/react-query": "^5.90.6",
         "@xyflow/react": "^12.11.2",
         "better-sqlite3": "^12.4.1",
-        "canvas": "^3.2.3",
         "cheerio": "^1.2.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -84,7 +83,7 @@
         "gpt-tokenizer": "^3.4.0",
         "harper.js": "^2.7.0",
         "html-to-image": "^1.11.13",
-        "jspdf": "^3.0.3",
+        "jspdf": "^4.2.1",
         "lexical": "^0.48.0",
         "lodash": "^4.17.21",
         "loglevel": "^1.9.2",
@@ -115,7 +114,6 @@
         "tailwind-merge": "^3.4.0",
         "tailwindcss": "^3.4.17",
         "tailwindcss-animate": "^1.0.7",
-        "vaul": "^1.1.2",
         "zod": "^4.1.13"
     },
     "devDependencies": {
