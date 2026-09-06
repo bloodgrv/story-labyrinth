@@ -7,7 +7,7 @@
 // before because dev always runs under tsx against the real repo tree, where the relative path
 // happens to resolve correctly on its own. Copies the same content dir the client already inlines
 // via Vite, into the one place the compiled server actually looks for it, as the last build step.
-import { existsSync, mkdirSync, readdirSync, copyFileSync } from "node:fs";
+import { mkdirSync, readdirSync, copyFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 

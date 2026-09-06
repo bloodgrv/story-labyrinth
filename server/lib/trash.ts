@@ -54,6 +54,7 @@ type TrashRow = Record<string, unknown> & { id: string; deletedAt: Date | null; 
 type TrashableEntity = {
     type: TrashEntityType;
     // biome-ignore lint: heterogeneous drizzle tables, see TrashRow comment above
+    // oxlint-disable-next-line typescript-eslint/no-explicit-any -- same deliberate exception; oxlint doesn't read biome-ignore
     table: any;
     displayLabel: (row: TrashRow) => string;
     storyIdOf: (row: TrashRow) => string | null;
