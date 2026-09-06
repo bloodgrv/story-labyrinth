@@ -125,6 +125,11 @@ function run(command, cmdArgs, opts = {}) {
     execFileSync(command, cmdArgs, { stdio: "inherit", ...opts });
 }
 
+// PowerShell single-quoted strings escape an embedded quote by doubling it — without this, a repo
+// checked out under a path containing an apostrophe turns every Compress-Archive call below into a
+// parse error. Same helper, same reason, as update-runner.mjs's own copy.
+const psQuote = value => `'${String(value).replace(/'/g, "''")}'`;
+
 // Where the node binary lives inside a given <root>/node/ dir — same helper shape as server/
 // routes/update.ts's and update-runner.mjs's own nodeBinaryFor(), kept as separate copies since
 // this script, the server, and the updater are three independent runtimes.
@@ -150,7 +155,7 @@ async function ensureNodeRuntime() {
             "-NoProfile",
             "-NonInteractive",
             "-Command",
-            `Expand-Archive -LiteralPath '${archivePath}' -DestinationPath '${cacheDir}' -Force`
+            `Expand-Archive -LiteralPath ${psQuote(archivePath)} -DestinationPath ${psQuote(cacheDir)} -Force`
         ]);
     } else {
         run("tar", ["-xzf", archivePath, "-C", cacheDir]);
@@ -194,6 +199,18 @@ function assembleApp() {
     fs.cpSync(embeddingCacheSrc, path.join(appDir, ".embedding-model-cache"), { recursive: true });
 
     fs.cpSync(path.join(repoRoot, "scripts", "portable-updater"), path.join(appDir, "updater-src"), { recursive: true });
+
+    // The launcher and README used to exist only in the from-scratch scaffold below, which meant an
+    // already-installed copy could never receive a launcher fix — laydownScaffold explicitly skips
+    // them on a rebuild, and the update payload is just versions/<ver>/, which didn't contain them
+    // at all. Shipping this release's own copies inside the version lets update-runner.mjs's
+    // refreshLauncherAssets() bring an existing install's launcher forward after a successful boot.
+    // Platform-specific by construction: a payload only ever carries the launcher for its own
+    // platform, because that's the only one this build produced.
+    const launcherSrcDir = path.join(appDir, "launcher-src");
+    fs.mkdirSync(launcherSrcDir, { recursive: true });
+    fs.copyFileSync(path.join(repoRoot, "scripts", "portable-assets", platform.launcherAsset), path.join(launcherSrcDir, platform.launcherAsset));
+    fs.copyFileSync(path.join(repoRoot, "scripts", "portable-assets", platform.readmeAsset), path.join(launcherSrcDir, "README.txt"));
 
     // Written unconditionally into every build (fresh + update alike) purely so a FUTURE update's
     // decision logic (see zipUpdatePayload's lean/full check below) always has something on disk
@@ -321,18 +338,25 @@ async function smokeTest() {
     }
 }
 
+// Waits for READINESS, not just a bound port. server/index.ts starts its HTTP listener without
+// awaiting initializeDatabase(), so /api/health answers 200 while migrations and seeds are still
+// running — which used to let the smoke test's very next call (POST /api/auth/register) race the
+// creation of the tables it needs. `ready` only flips true once initializeDatabase() has resolved.
 async function waitForHealth(port, timeoutMs) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         try {
             const res = await fetch(`http://localhost:${port}/api/health`, { signal: AbortSignal.timeout(1000) });
-            if (res.ok) return;
+            if (res.ok) {
+                const body = await res.json().catch(() => null);
+                if (!body || body.ready === undefined || body.ready === true) return;
+            }
         } catch {
             // not up yet
         }
         await new Promise(r => setTimeout(r, 500));
     }
-    fail(`server never responded on :${port}/api/health within ${timeoutMs}ms`);
+    fail(`server never became ready on :${port}/api/health within ${timeoutMs}ms`);
 }
 
 // Two zip kinds, both produced from the same build (see docs/Mac_Portable_Design.md §3.4):
@@ -355,11 +379,12 @@ function zipFreshInstall() {
     log(`Zipping fresh-install ${outRoot} -> ${zipPath} ...`);
     fs.rmSync(zipPath, { force: true });
     if (process.platform === "win32") {
+        const outRootGlob = path.join(outRoot, "*");
         run("powershell.exe", [
             "-NoProfile",
             "-NonInteractive",
             "-Command",
-            `Compress-Archive -Path '${outRoot}\\*' -DestinationPath '${zipPath}' -CompressionLevel Optimal`
+            `Compress-Archive -Path ${psQuote(outRootGlob)} -DestinationPath ${psQuote(zipPath)} -CompressionLevel Optimal`
         ]);
     } else {
         run("zip", ["-ry", zipPath, "."], { cwd: outRoot });
@@ -414,7 +439,7 @@ function zipUpdatePayload() {
             "-NoProfile",
             "-NonInteractive",
             "-Command",
-            `Compress-Archive -Path '${nodeDir}','${appDir}' -DestinationPath '${zipPath}' -CompressionLevel Optimal`
+            `Compress-Archive -Path ${psQuote(nodeDir)},${psQuote(appDir)} -DestinationPath ${psQuote(zipPath)} -CompressionLevel Optimal`
         ]);
     } else {
         run("zip", ["-ry", zipPath, "node", "app"], { cwd: versionDir });
@@ -450,7 +475,7 @@ function zipLeanAppOnly(zipPath) {
             "-NoProfile",
             "-NonInteractive",
             "-Command",
-            `Compress-Archive -Path '${stagedAppDir}' -DestinationPath '${zipPath}' -CompressionLevel Optimal`
+            `Compress-Archive -Path ${psQuote(stagedAppDir)} -DestinationPath ${psQuote(zipPath)} -CompressionLevel Optimal`
         ]);
         fs.rmSync(stagingRoot, { recursive: true, force: true });
     } else {

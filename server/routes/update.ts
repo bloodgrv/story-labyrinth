@@ -6,6 +6,7 @@
 // portable mode, as defense in depth against a direct API call bypassing the hidden UI.
 import { attemptPromise } from "@jfdi/attempt";
 import { spawn } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import express from "express";
@@ -41,6 +42,48 @@ const portablePlatform = detectPlatform();
 const updateAssetName = (platform: PortablePlatform): string => `Story-Labyrinth-portable-${platform}-update.zip`;
 
 export const isPortableBuild = () => process.env.PORTABLE_BUILD === "1";
+
+// --- Graceful-stop token -------------------------------------------------------------------
+// Minted by POST /start, handed to the detached updater as a command-line arg, and redeemed
+// exactly once by POST /api/update/prepare-shutdown (registered in server/index.ts, above
+// requireAuth — see the long comment there for why that route can't use the normal session auth).
+// In-memory only: never written to disk, never logged, and gone the moment this process exits,
+// which is the same moment the token stops being useful. Single-use plus a short TTL so a token
+// left over from an update that failed early can't be replayed later in the same process's life.
+const SHUTDOWN_TOKEN_TTL_MS = 30 * 60 * 1000;
+let shutdownToken: { value: string; expiresAt: number } | null = null;
+
+const mintShutdownToken = (): string => {
+    const value = crypto.randomBytes(32).toString("hex");
+    shutdownToken = { value, expiresAt: Date.now() + SHUTDOWN_TOKEN_TTL_MS };
+    return value;
+};
+
+export const consumeShutdownToken = (candidate: string): boolean => {
+    if (!shutdownToken) return false;
+    const { value, expiresAt } = shutdownToken;
+    if (Date.now() > expiresAt) {
+        shutdownToken = null;
+        return false;
+    }
+    // Constant-time compare — cheap here, and avoids making this the one place in the app where a
+    // secret is compared with ===.
+    const a = Buffer.from(value);
+    const b = Buffer.from(candidate);
+    const matches = a.length === b.length && crypto.timingSafeEqual(a, b);
+    // Burned on success only, NOT on a wrong guess: brute-forcing 256 bits of randomness isn't a
+    // threat worth defending against here, whereas invalidating the live token on any stray probe
+    // would quietly demote a legitimate update back to the hard-kill path it exists to replace.
+    if (matches) shutdownToken = null;
+    return matches;
+};
+
+// One updater per process lifetime. Two clicks (or two open Settings tabs) previously spawned two
+// detached runners racing on the same versions/.download-<ver>.zip path, which is a reliable way
+// to produce a corrupt archive that then fails its digest check. Not persisted anywhere: an
+// update that gets far enough to matter takes this process down with it, and a fresh process
+// genuinely should be allowed to try again.
+let updateSpawned = false;
 
 // Single choke point for "where's the node binary for this version" — darwin ships node/bin/node
 // (the official tarball layout), win ships node/node.exe directly.
@@ -143,6 +186,10 @@ router.post("/start", async (_req, res) => {
         res.status(500).json({ error: "Could not determine this portable build's platform" });
         return;
     }
+    if (updateSpawned) {
+        res.status(409).json({ error: "An update is already running — watch its progress, or restart the app to try again" });
+        return;
+    }
 
     const [error, release] = await attemptPromise(fetchLatestRelease);
     if (error) {
@@ -170,8 +217,13 @@ router.post("/start", async (_req, res) => {
         return;
     }
 
+    updateSpawned = true;
     res.status(202).json({ started: true, targetVersion: latestVersion });
 
+    // --shutdown-token lets the runner ask THIS process to stop the clean way (flushing manuscript
+    // backups, draining in-flight agent jobs) instead of hard-killing it — see the prepare-shutdown
+    // route in server/index.ts. An older runner that doesn't know the flag simply ignores it and
+    // falls back to the kill path, so this stays compatible in both directions.
     spawn(
         nodeExe,
         [
@@ -182,7 +234,9 @@ router.post("/start", async (_req, res) => {
             `--download-url=${asset.browser_download_url}`,
             `--digest=${asset.digest}`,
             `--old-pid=${process.pid}`,
-            `--port=${process.env.PORT ?? "3000"}`
+            `--port=${process.env.PORT ?? "3000"}`,
+            `--shutdown-token=${mintShutdownToken()}`,
+            `--db-path=${process.env.DATABASE_PATH ?? path.join(root, "data", "story-labyrinth.db")}`
         ],
         { detached: true, stdio: "ignore" }
     ).unref();

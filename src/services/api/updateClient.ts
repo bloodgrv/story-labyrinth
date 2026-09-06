@@ -14,14 +14,30 @@ export interface UpdateCheckResult {
     assetAvailable: boolean;
 }
 
-export type UpdatePhase = "idle" | "downloading" | "verifying" | "extracting" | "restarting" | "rolling-back" | "done" | "error";
+// "stopping" and "backing-up" are the two steps added when the updater stopped hard-killing the
+// old server: it now asks it to shut down cleanly (flushing Manuscript Failsafe Saves, draining
+// in-flight jobs) and then snapshots the database before the new version can migrate it.
+export type UpdatePhase =
+    | "idle"
+    | "downloading"
+    | "verifying"
+    | "extracting"
+    | "stopping"
+    | "backing-up"
+    | "restarting"
+    | "rolling-back"
+    | "done"
+    | "error";
 
 export interface UpdateStatusResult {
     phase: UpdatePhase;
     pct?: number;
+    detail?: string;
     targetVersion?: string;
     previousVersion?: string;
     rolledBack?: boolean;
+    /** Where the pre-update database snapshot was written, so a failure message can point at it. */
+    backupPath?: string;
     message?: string;
     updatedAt?: string;
 }

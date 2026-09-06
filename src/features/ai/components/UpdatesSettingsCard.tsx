@@ -13,6 +13,8 @@ const PHASE_LABELS: Record<UpdatePhase, string> = {
     downloading: "Downloading",
     verifying: "Verifying download",
     extracting: "Extracting",
+    stopping: "Saving your work and stopping the app",
+    "backing-up": "Backing up your database",
     restarting: "Restarting",
     "rolling-back": "New version failed to start — rolling back",
     done: "Done",
@@ -70,10 +72,18 @@ export function UpdatesSettingsCard() {
         // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per phase transition into restarting/done, not on every statusQuery refetch
     }, [phase, updating]);
 
+    // Every path out of `updating` matters: it used to be set true and never set false again, so a
+    // failed POST /start left the card spinning on "Working…" forever, and a runner-reported
+    // `phase: "error"` rendered a *spinner* labelled "Update failed" while the block below that
+    // actually explains why (gated on `!updating`) was unreachable. A page reload was the only exit.
+    useEffect(() => {
+        if (updating && phase === "error") setUpdating(false);
+    }, [updating, phase]);
+
     const handleUpdateNow = () => {
         setConfirmOpen(false);
         setUpdating(true);
-        startMutation.mutate();
+        startMutation.mutate(undefined, { onError: () => setUpdating(false) });
     };
 
     return (
@@ -97,6 +107,7 @@ export function UpdatesSettingsCard() {
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         {PHASE_LABELS[phase] || "Working…"}
                         {typeof statusQuery.data?.pct === "number" && phase === "downloading" && ` (${statusQuery.data.pct}%)`}
+                        {statusQuery.data?.detail && ` — ${statusQuery.data.detail}`}
                     </p>
                 ) : (
                     <>
@@ -145,7 +156,14 @@ export function UpdatesSettingsCard() {
                 )}
 
                 {!updating && phase === "error" && statusQuery.data?.message && (
-                    <p className="text-xs text-destructive break-words">{statusQuery.data.message}</p>
+                    <div className="space-y-1">
+                        <p className="text-xs text-destructive break-words">{statusQuery.data.message}</p>
+                        {statusQuery.data.backupPath && (
+                            <p className="text-xs text-muted-foreground break-words">
+                                Pre-update database backup: <code>{statusQuery.data.backupPath}</code>
+                            </p>
+                        )}
+                    </div>
                 )}
             </CardContent>
 
@@ -153,7 +171,7 @@ export function UpdatesSettingsCard() {
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
                 title="Update & restart?"
-                description={`This downloads v${checkQuery.data?.latestVersion}, then restarts the app — the console window stays open, but the whole server (and this page) goes down for a few seconds during the swap. Your data isn't touched either way.`}
+                description={`This downloads v${checkQuery.data?.latestVersion}, saves your work, snapshots your database to data/backups/, then restarts the app — the whole server (and this page) goes down for a few seconds during the swap. If the new version doesn't start, both the app and the database are rolled back automatically.`}
                 confirmLabel="Update & restart"
                 onConfirm={handleUpdateNow}
             />

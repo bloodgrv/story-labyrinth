@@ -5,8 +5,10 @@ import path from "node:path";
 import * as sqliteVec from "sqlite-vec";
 import * as schema from "./schema.js";
 
-// Database path - default to ./data/story-labyrinth.db, overridable via environment variable
-const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "story-labyrinth.db");
+// Database path - default to ./data/story-labyrinth.db, overridable via environment variable.
+// Exported so preMigrationBackup.ts resolves the same file (and the same data/ dir) rather than
+// re-deriving it and risking the two drifting apart.
+export const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "story-labyrinth.db");
 
 // One-time migration from the pre-rebrand default filename (storynexus.db) so existing
 // deployments don't appear to lose their data when the default filename changes underneath

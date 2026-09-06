@@ -1,2 +1,8 @@
 *.db*
 /uploads/
+# Pre-migration/pre-update database snapshots (server/db/preMigrationBackup.ts and the portable
+# updater's own backupDatabase). The *.db* rule above already covers the snapshot files themselves,
+# but not anything else that lands in here.
+/backups/
+# Which app version last migrated this database — purely local runtime state.
+.app-version

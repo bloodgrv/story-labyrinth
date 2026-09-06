@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runMigrations } from "./db/migrate.js";
+import { recordSchemaVersion, takePreMigrationSnapshot } from "./db/preMigrationBackup.js";
 import { seedCoreNamePools } from "./db/seedNamePools.js";
 import { migrateSceneBeatPromptType, patchStaleSystemPrompts, seedSystemPrompts } from "./db/seedSystemPrompts.js";
 import { blockViewerMutations, requireAuth, requireOwner } from "./middleware/auth.js";
@@ -48,9 +49,10 @@ import storyMapRouter from "./routes/storyMap.js";
 import storyMapsRouter from "./routes/storyMaps.js";
 import storyTimelineRouter from "./routes/storyTimeline.js";
 import ttsRouter from "./routes/tts.js";
-import updateRouter, { isPortableBuild } from "./routes/update.js";
+import updateRouter, { consumeShutdownToken, isPortableBuild } from "./routes/update.js";
 import usersRouter from "./routes/users.js";
 import writerPrefsSettingsRouter from "./routes/writerPrefsSettings.js";
+import pkg from "../package.json" with { type: "json" };
 
 // ES module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -65,6 +67,21 @@ const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "s
 // (after startup has finished), so the forward reference is safe.
 let server: ReturnType<typeof app.listen>;
 let jobRunnerStarted = false;
+
+// Readiness, as distinct from liveness. initializeDatabase() below is deliberately NOT awaited
+// before app.listen() (kept that way — the HTTP server binding early is what lets the browser
+// show *something* while a slow first-boot migration runs), so for a window after startup this
+// process answers HTTP fine while the database is still being migrated/seeded. GET /api/health
+// reported a flat `{status:"ok"}` through that whole window, which made the portable self-updater's
+// boot-failure rollback (scripts/portable-updater/update-runner.mjs) structurally unable to fire:
+// it saw "healthy" milliseconds after spawning the new version, declared the update done and
+// exited — even when initializeDatabase() then threw and process.exit(1)'d a moment later,
+// leaving current-version.txt pointing at a build that can't start. `ready` closes that hole;
+// the updater now waits for `ready === true` AND a matching `version` before it stops watching.
+// Kept as an extra FIELD on a still-200 response rather than a 503-until-ready, so every existing
+// consumer (four compose healthchecks, build-portable.mjs's smoke test, the frontend's
+// reconnect poll) keeps behaving exactly as before.
+let dbReady = false;
 
 // No graceful shutdown handling existed anywhere in this codebase before this — needed now so
 // stopJobRunner() gets a chance to let an in-flight job finish before the process exits. Shared
@@ -114,7 +131,12 @@ const shutdown = async (relaunch = false) => {
 // jobRunner starts last so the agentJobs table (and everything it references) definitely
 // exists first — a failure here is caught by the same startup guard below.
 const initializeDatabase = async () => {
+    // Snapshot first, stamp after: if runMigrations() throws, the version marker stays on the old
+    // version so the next boot still recognises this upgrade. See preMigrationBackup.ts for why
+    // this lives here rather than only in the portable updater.
+    takePreMigrationSnapshot();
     runMigrations();
+    recordSchemaVersion();
     await seedSystemPrompts();
     await patchStaleSystemPrompts();
     // Scene Beat Removal (SB7) — recategorizes existing promptType: "scene_beat" rows to "other".
@@ -127,6 +149,7 @@ const initializeDatabase = async () => {
     await seedShippedPlaybookPacks();
     await startJobRunner();
     jobRunnerStarted = true;
+    dbReady = true;
 };
 
 initializeDatabase().catch(error => {
@@ -146,7 +169,40 @@ app.use("/api/auth", authRouter);
 
 // Health check — must also stay reachable without a session (e.g. Docker healthcheck).
 app.get("/api/health", (_, res) => {
-    res.json({ status: "ok" });
+    res.json({ status: "ok", ready: dbReady, version: pkg.version });
+});
+
+// POST /api/update/prepare-shutdown — the portable self-updater's graceful-stop channel, and the
+// one /api/update/* route that deliberately sits ABOVE requireAuth. It has to: the updater
+// (scripts/portable-updater/update-runner.mjs) is a detached child process with no cookie jar and
+// no way to obtain one. It is NOT unauthenticated — it's authenticated by a single-use,
+// in-memory-only token that POST /api/update/start minted for this exact updater run (see
+// routes/update.ts's mintShutdownToken), plus a hard loopback-only check. The token never touches
+// disk and dies with this process, so there is nothing to leak or replay across restarts.
+//
+// Why it exists at all: the updater used to stop the old server with process.kill(pid), which on
+// Windows — the primary portable target — libuv maps to TerminateProcess. That is an instant,
+// unblockable kill, so the SIGTERM handler at the bottom of this file never ran during an update:
+// no Manuscript Failsafe Save pass, and every in-flight agent job severed mid-write. Routing the
+// stop through shutdown() instead means an update now flushes the same backups and drains the
+// same jobs as any other clean stop, on every platform.
+const isLoopback = (address: string | undefined): boolean =>
+    address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
+
+app.post("/api/update/prepare-shutdown", (req, res) => {
+    if (!isLoopback(req.socket.remoteAddress)) {
+        res.status(403).json({ error: "Not available off-loopback" });
+        return;
+    }
+    const token = (req.body as { token?: unknown } | undefined)?.token;
+    if (typeof token !== "string" || !consumeShutdownToken(token)) {
+        res.status(403).json({ error: "Invalid or already-used shutdown token" });
+        return;
+    }
+    res.json({ ok: true });
+    // Same defer-past-the-response shape as /_status/shutdown below, so the updater actually
+    // receives its 200 before this process starts tearing itself down.
+    setTimeout(() => void shutdown(false), 100);
 });
 
 // Every other /api/* route requires a valid session from here on.
