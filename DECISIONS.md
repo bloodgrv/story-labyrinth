@@ -4,6 +4,16 @@ Architecture decisions that are not obvious from the code or CLAUDE.md.
 
 ---
 
+## Release Builds Must Start From a Clean `portable-build/`
+
+**Why:** Caught while cutting v0.8.21, before publishing. `zipFreshInstall()` archives the whole install root, which includes **every** `versions/<x>/` directory sitting in it — and each is ~1.4GB. Because the same root had been used for a v0.8.20 build earlier the same day, the v0.8.21 fresh-install zip was on course to contain both versions: roughly double the download, with a stale version shipped to every new user. It would have "worked" (`current-version.txt` points at the new one), which is exactly why it could have gone out unnoticed.
+
+Keeping several versions in a local root is deliberate and useful — it is how the self-updater's roll-forward gets exercised — so the script should not start deleting them on its own. The rule is about **release** builds specifically: **delete `portable-build/` (or pass a clean `--out=<dir>`) before building a release artifact.** Now commented at `zipFreshInstall()`.
+
+Worth noting the shape of this bug: the size of the artifact is the only symptom, and nobody checks that. It surfaced only because the build was being watched at the time.
+
+---
+
 ## Release Zip Naming — Version-Stamp the Fresh-Install Zip, Never the Update Payload
 
 **Why:** Asked for the release number in the portable build's output filenames. Only one of the two zips can safely take it, and the split is worth writing down because the reason is invisible from the filename itself.

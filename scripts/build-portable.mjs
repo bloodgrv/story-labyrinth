@@ -377,6 +377,12 @@ async function waitForHealth(port, timeoutMs) {
 // it's the asset a human downloads from the release page — so having the version in the filename
 // makes a folder of downloaded zips tellable apart, and makes "which build is this?" answerable
 // without opening it.
+// ⚠ This zips the WHOLE install root, so it includes every `versions/<x>/` directory present —
+// each of which is ~1.4GB. That is correct for a local dev root (keeping several versions around
+// is how you exercise the updater rolling between them) and wrong for a release artifact: building
+// v0.8.21 in a root that still held v0.8.20 produced a fresh-install zip carrying both, doubling
+// the download and shipping a stale version to every new user. Caught while cutting v0.8.21.
+// **Before building a release, either delete `portable-build/` or use a clean `--out=<dir>`.**
 function zipFreshInstall() {
     const zipName = `Story-Labyrinth-portable-${platformId}-v${version}.zip`;
     const zipPath = path.join(repoRoot, zipName);
