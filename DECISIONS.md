@@ -4,6 +4,26 @@ Architecture decisions that are not obvious from the code or CLAUDE.md.
 
 ---
 
+## The Portable Server Runs Under a Renamed Node Binary
+
+**Why:** a portable install appeared in Task Manager as an anonymous `node.exe` — indistinguishable from every other Node process on the machine (this one had four). That is a bad thing to have to guess at when the process you mean to kill is a server holding a SQLite database open, and it is worst for exactly the process the updater creates, which runs detached with no console of its own.
+
+**`process.title` does not solve this on Windows.** Verified rather than assumed: setting it leaves `ProcessName`, `Win32_Process.Name` and the Task Manager description all reading `node.exe` / "Node.js JavaScript Runtime" — it only moves the console title there (it does work on macOS/Linux). The only thing Windows lists a process by is its image name, so the fix is a differently-named binary: `versions/<v>/node/story-labyrinth-server.exe` (`node/bin/story-labyrinth-server` on macOS).
+
+**Created at launch, never shipped.** A zip stores a hard link as a full second copy of the file, so shipping the alias would add **31.6 MB compressed** (measured) to the fresh-install zip *and* to every full update payload — a recurring ~6% on every user's every download, for a filename. Instead:
+
+- `build-portable.mjs` creates it, runs the boot smoke test **through** it (so every build proves the renamed binary actually starts the server), then deletes it before either zip is made.
+- Both launchers create it on first launch of a version (`mklink /H`, `ln`) — no admin rights needed, no disk cost, confirmed a genuine hard link via `fsutil hardlink list`.
+- `update-runner.mjs` creates it itself, since it spawns the server directly rather than through a launcher.
+
+**Every creator falls back to plain `node` and never copies.** A label must never be able to stop a server from starting — least of all during a rollback — so a read-only install directory, a FAT32 stick, or a version folder that predates all of this simply runs `node.exe` as before. The build is the one exception, allowed a copy fallback because a build machine can afford one.
+
+**`node.exe` always stays in place.** Older updaters spawn `node/node.exe` by name (a real installed example: the August 2026 runner), and a rollback targets a version folder built before any of this existed. Removing or renaming the original would strand both.
+
+**Residual, accepted:** the Task Manager *Processes* tab labels by the exe's embedded version resource, so it still reads "Node.js JavaScript Runtime" there. Changing that means editing the PE resource, which breaks Node's Authenticode signature — not worth the SmartScreen/AV risk for a cosmetic gain. The *Details* tab, `taskkill /IM`, and `ps` all show the real name.
+
+---
+
 ## A Second Instance Must Never Reach the Database
 
 **How it surfaced:** a user reported that Settings showed v0.8.21 while the console window behind it still said "Starting Story Labyrinth v0.8.20". That part was a non-issue — stale scrollback. An in-app update stops the server that owns the launcher window and spawns the replacement **detached, with `stdio: "ignore"`** (`update-runner.mjs`'s `spawnServer`), so the old window keeps its original banner text forever and the running app has no console at all. `Settings → Running version` reads `pkg.version` of the process actually answering the request, so it was right.

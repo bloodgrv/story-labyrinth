@@ -18,7 +18,20 @@ echo.
 
 start "" cmd /c "ping -n 4 127.0.0.1 >nul & start http://localhost:%PORT%"
 
-"%~dp0versions\%CURRENT_VERSION%\node\node.exe" "%~dp0versions\%CURRENT_VERSION%\app\dist\server\server\index.js"
+REM Run the server under a renamed copy of the Node binary, so it is identifiable in Task Manager
+REM rather than being one anonymous node.exe among however many others a machine is running.
+REM
+REM Made here (once per version) instead of shipped: a zip stores a hard link as a full second copy,
+REM which would add ~32 MB to every download for the sake of a filename. mklink /H needs no admin
+REM rights and costs no disk space. If it can't be made — FAT32 stick, read-only install folder, an
+REM older version folder — we simply run node.exe as before. This is a label, and a label must never
+REM stop the app from starting.
+set "NODE_EXE=%~dp0versions\%CURRENT_VERSION%\node\node.exe"
+set "SERVER_EXE=%~dp0versions\%CURRENT_VERSION%\node\story-labyrinth-server.exe"
+if not exist "%SERVER_EXE%" mklink /H "%SERVER_EXE%" "%NODE_EXE%" >nul 2>&1
+if not exist "%SERVER_EXE%" set "SERVER_EXE=%NODE_EXE%"
+
+"%SERVER_EXE%" "%~dp0versions\%CURRENT_VERSION%\app\dist\server\server\index.js"
 
 REM An in-app update stops THIS window's server and starts the new version detached, with no window
 REM of its own — so node exits here while the app is still running. Without this check the window

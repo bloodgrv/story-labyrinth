@@ -52,6 +52,10 @@ const PLATFORMS = {
         nodeArchiveExt: "zip",
         nodeExtractedDirName: v => `node-v${v}-win-x64`,
         nodeBinaryRelPath: ["node.exe"],
+        // A second name for the same binary, so the running server is identifiable in Task Manager
+        // (which shows the image name, not process.title — that only moves the console title on
+        // Windows, verified). See installServerBinaryAlias().
+        serverBinaryRelPath: ["story-labyrinth-server.exe"],
         npmCliRelPath: ["node_modules", "npm", "bin", "npm-cli.js"],
         launcherAsset: "Start Story Labyrinth.bat",
         readmeAsset: "README.txt"
@@ -62,6 +66,7 @@ const PLATFORMS = {
         nodeArchiveExt: "tar.gz",
         nodeExtractedDirName: v => `node-v${v}-darwin-arm64`,
         nodeBinaryRelPath: ["bin", "node"],
+        serverBinaryRelPath: ["bin", "story-labyrinth-server"],
         npmCliRelPath: ["lib", "node_modules", "npm", "bin", "npm-cli.js"],
         launcherAsset: "Start Story Labyrinth.command",
         readmeAsset: "README-mac.txt"
@@ -72,6 +77,7 @@ const PLATFORMS = {
         nodeArchiveExt: "tar.gz",
         nodeExtractedDirName: v => `node-v${v}-darwin-x64`,
         nodeBinaryRelPath: ["bin", "node"],
+        serverBinaryRelPath: ["bin", "story-labyrinth-server"],
         npmCliRelPath: ["lib", "node_modules", "npm", "bin", "npm-cli.js"],
         launcherAsset: "Start Story Labyrinth.command",
         readmeAsset: "README-mac.txt"
@@ -137,6 +143,41 @@ const psQuote = value => `'${String(value).replace(/'/g, "''")}'`;
 // routes/update.ts's and update-runner.mjs's own nodeBinaryFor(), kept as separate copies since
 // this script, the server, and the updater are three independent runtimes.
 const nodeBinaryFor = root => path.join(root, "node", ...platform.nodeBinaryRelPath);
+
+// The same binary under a name that identifies it. Windows Task Manager lists a process by its
+// image name, and `process.title` does not change that (verified: it only moves the console title
+// there, though it does work on macOS/Linux) — so a portable install showed up as an anonymous
+// `node.exe` among however many other Node processes a machine happens to be running, which is a
+// genuinely bad thing to have to guess at when the one you want to kill is a server holding a
+// SQLite database open.
+//
+// A hard link, not a copy: node.exe is 83 MB, and the alias costs nothing on disk this way.
+//
+// It is deliberately NOT shipped. A zip stores a hard link as a second full copy of the file, so
+// shipping it would add ~31.6 MB compressed (measured) to the fresh-install zip AND to every full
+// update payload — a recurring 6% on every user's every download, purely for a filename. Instead
+// the build creates it, proves it boots in the smoke test, and deletes it again before zipping;
+// the launcher and the updater each recreate it at launch/extract time, where a hard link is free.
+//
+// node.exe always stays in place regardless, so older updaters (which spawn `node/node.exe` by
+// name) and older version folders keep launching exactly as before.
+const serverBinaryFor = root => path.join(root, "node", ...platform.serverBinaryRelPath);
+
+function installServerBinaryAlias() {
+    const source = nodeBinaryFor(versionDir);
+    const alias = serverBinaryFor(versionDir);
+    fs.rmSync(alias, { force: true });
+    try {
+        fs.linkSync(source, alias);
+        log(`Server binary alias: ${path.basename(alias)} (hard link, 0 extra bytes)`);
+    } catch (error) {
+        // Build machines can afford the copy; the runtime creators deliberately can't and fall
+        // back to plain node instead.
+        fs.copyFileSync(source, alias);
+        log(`Server binary alias: ${path.basename(alias)} (copy — hard link unavailable: ${error.code ?? error.message})`);
+    }
+    if (process.platform !== "win32") fs.chmodSync(alias, 0o755);
+}
 
 async function ensureNodeRuntime() {
     const cachedBinary = path.join(nodeCacheDir, ...platform.nodeBinaryRelPath);
@@ -239,6 +280,7 @@ function installProductionDeps() {
         // needs +x to run at all a hard guarantee rather than an assumption.
         fs.chmodSync(nodeBinaryFor(versionDir), 0o755);
     }
+    installServerBinaryAlias();
 
     log("Running npm ci --omit=dev under the bundled Node runtime...");
     // THE fix (originally found on Windows, applies identically on darwin): prepend the bundled
@@ -287,7 +329,9 @@ async function smokeTest() {
     const dbPath = path.join(scratchDir, "story-labyrinth.db");
     const port = 34567;
 
-    const child = spawn(nodeBinaryFor(versionDir), [path.join(appDir, "dist", "server", "server", "index.js")], {
+    // Through the alias on purpose, so every build proves the renamed binary actually boots the
+    // server rather than only proving node.exe does.
+    const child = spawn(serverBinaryFor(versionDir), [path.join(appDir, "dist", "server", "server", "index.js")], {
         cwd: versionDir,
         env: { ...process.env, NODE_ENV: "production", PORT: String(port), DATABASE_PATH: dbPath },
         stdio: ["ignore", "pipe", "pipe"]
@@ -521,6 +565,10 @@ async function main() {
     installProductionDeps();
     laydownScaffold();
     await smokeTest();
+    // Before any zipping: see installServerBinaryAlias() for why the alias is created, exercised,
+    // and then removed rather than shipped.
+    fs.rmSync(serverBinaryFor(versionDir), { force: true });
+    log("Removed the server binary alias from the build output (recreated at launch/extract time).");
     const freshZipPath = zipFreshInstall();
     const updateZipPath = zipUpdatePayload();
     log(`Portable build complete: ${freshZipPath}`);

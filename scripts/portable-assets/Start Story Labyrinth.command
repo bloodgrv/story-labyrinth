@@ -28,7 +28,19 @@ echo ""
 
 ( sleep 2; open "http://localhost:${PORT}" ) &
 
-"./versions/${CURRENT_VERSION}/node/bin/node" "./versions/${CURRENT_VERSION}/app/dist/server/server/index.js"
+# Run the server under a renamed copy of the Node binary, so it is identifiable in Activity Monitor
+# (and `ps`) rather than being one anonymous `node` among however many others.
+#
+# Made here (once per version) instead of shipped: a zip stores a hard link as a full second copy,
+# which would add ~32 MB to every download for the sake of a filename. A hard link costs nothing. If
+# it can't be made — read-only install, an older version folder — we simply run bin/node as before.
+# This is a label, and a label must never stop the app from starting.
+NODE_BIN="./versions/${CURRENT_VERSION}/node/bin/node"
+SERVER_BIN="./versions/${CURRENT_VERSION}/node/bin/story-labyrinth-server"
+[ -x "$SERVER_BIN" ] || ln "$NODE_BIN" "$SERVER_BIN" 2>/dev/null || true
+[ -x "$SERVER_BIN" ] || SERVER_BIN="$NODE_BIN"
+
+"$SERVER_BIN" "./versions/${CURRENT_VERSION}/app/dist/server/server/index.js"
 STATUS=$?
 
 # An in-app update stops THIS window's server and starts the new version detached, with no window of

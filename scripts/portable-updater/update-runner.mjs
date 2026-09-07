@@ -90,6 +90,34 @@ const KEEP_DB_BACKUPS = 3;
 const nodeBinaryFor = versionDir => (isWindows ? path.join(versionDir, "node", "node.exe") : path.join(versionDir, "node", "bin", "node"));
 const indexJsFor = versionDir => path.join(versionDir, "app", "dist", "server", "server", "index.js");
 
+// Launch the server through a renamed copy of the Node binary, so it is identifiable in Task
+// Manager / Activity Monitor instead of being one anonymous `node.exe` among however many others a
+// machine happens to be running — which matters most for exactly the process this updater creates,
+// since it runs detached with no console of its own.
+//
+// Created here rather than shipped: a zip stores a hard link as a full second copy, so shipping it
+// would put ~31.6 MB of duplicate binary in every payload (see build-portable.mjs's
+// installServerBinaryAlias). A hard link costs nothing on disk and takes microseconds.
+//
+// Never throws and never copies: if linking isn't possible (FAT32 stick, read-only install dir,
+// a version folder that predates all of this), fall back to plain node. The alias is a convenience
+// and must never be able to prevent a server from starting — least of all during a rollback.
+const serverBinaryFor = versionDir => {
+    const node = nodeBinaryFor(versionDir);
+    const alias = isWindows
+        ? path.join(versionDir, "node", "story-labyrinth-server.exe")
+        : path.join(versionDir, "node", "bin", "story-labyrinth-server");
+    if (fs.existsSync(alias)) return alias;
+    if (!fs.existsSync(node)) return node; // let the caller fail on the real problem
+    try {
+        fs.linkSync(node, alias);
+        if (!isWindows) fs.chmodSync(alias, 0o755);
+        return alias;
+    } catch {
+        return node;
+    }
+};
+
 const readCurrentVersion = () => fs.readFileSync(currentVersionFile, "utf8").trim();
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -103,7 +131,7 @@ const psQuote = value => `'${String(value).replace(/'/g, "''")}'`;
 // Returns the spawned ChildProcess (NOT the result of .unref(), which is undefined) — the caller
 // needs the handle to notice an early exit and, on rollback, to stop it again.
 const spawnServer = (versionDir, extraEnv = {}) => {
-    const child = spawn(nodeBinaryFor(versionDir), [indexJsFor(versionDir)], {
+    const child = spawn(serverBinaryFor(versionDir), [indexJsFor(versionDir)], {
         cwd: root,
         env: {
             ...process.env,
