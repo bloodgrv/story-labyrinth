@@ -37,8 +37,13 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
+            # --force-full: this is a release builder, and the automatic lean/update decision is
+            # unsafe here. It compares against the committed deps baseline, which the release
+            # commit itself updates — so building from a release tag makes the baseline describe
+            # this very build, and a lean zip gets emitted across a real dependency change. Hit for
+            # real on v0.8.21; see zipUpdatePayload()'s comment.
             - name: Build Mac portable (mac-arm64)
-              run: node scripts/build-portable.mjs --platform=mac-arm64
+              run: node scripts/build-portable.mjs --platform=mac-arm64 --force-full
 
             - name: Upload fresh-install zip artifact
               uses: actions/upload-artifact@v4

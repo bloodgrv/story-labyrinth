@@ -10,6 +10,9 @@
 //   --skip-build      reuse the existing dist/ instead of running `npm run build` again (fast
 //                     iteration only — never use this for a real release)
 //   --out=<dir>       output root (default: portable-build/ at repo root)
+//   --force-full      never emit a lean update payload, whatever the dependency baseline says.
+//                     Use for every RELEASE build — see zipUpdatePayload() for why the automatic
+//                     lean/full decision cannot be trusted once the baseline has been committed.
 //
 // Every run adds a new versions/<version>/ folder. A from-scratch run (no existing --out dir)
 // also lays down the stable scaffold (launcher, README.txt, current-version.txt, updater/).
@@ -441,7 +444,16 @@ function zipUpdatePayload() {
     const zipName = `Story-Labyrinth-portable-${platformId}-update.zip`;
     const zipPath = path.join(repoRoot, zipName);
     const currentManifest = computeDepsManifest();
-    const isLean = sameDepsManifest(readShippedDepsManifest(), currentManifest);
+    // --force-full exists because the automatic decision below has a real failure mode, hit for
+    // real while cutting v0.8.21. The baseline is meant to describe the PREVIOUS release, but the
+    // build itself rewrites it and prints "commit this alongside the version bump" — so once that
+    // commit is tagged, any platform that builds from the tag (the Mac CI does) compares its own
+    // lockfile against a baseline describing itself, concludes nothing changed, and emits a lean
+    // zip. update-runner.mjs then copies node_modules forward from the installed version, so a
+    // user updating across a dependency change gets new app code on old binaries. The Windows zip
+    // was full only because it happened to be built before that commit. Release builds should pass
+    // --force-full and not depend on the ordering.
+    const isLean = !args["force-full"] && sameDepsManifest(readShippedDepsManifest(), currentManifest);
 
     log(
         isLean

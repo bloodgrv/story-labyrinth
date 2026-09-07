@@ -4,6 +4,18 @@ Architecture decisions that are not obvious from the code or CLAUDE.md.
 
 ---
 
+## Lean Update Payloads Can't Be Trusted on a Release Build — `--force-full`
+
+**What went wrong (v0.8.21, caught after publishing):** the Mac CI shipped a **lean** update payload across a real dependency change. `zipUpdatePayload()` decides lean-vs-full by comparing the current lockfile hash against the committed baseline in `shipped-deps-manifest.json`, which is meant to describe the **previous** release. But the build rewrites that file and prints "commit this alongside the version bump" — so the release commit contains this release's own hash, and any platform building **from the release tag** compares its lockfile against a baseline describing itself, concludes nothing changed, and emits a lean zip. The Windows payload was full only by accident of ordering: it was built before that commit existed.
+
+**Why it matters:** `update-runner.mjs` detects a lean zip by absence and copies `node/` and `app/node_modules` forward from the *installed* version. So a user updating across a dependency change gets the new app code on the old binaries — here, v0.8.21's code against v0.8.20's better-sqlite3 12 / openai 6. The updater's readiness gate and rollback mean this most likely surfaces as a failed-and-reverted update rather than a broken install, but it is still a broken update sitting on a public release.
+
+**Fix:** new `--force-full` flag, and `.github/workflows/portable-mac.yml` now passes it. **Every release build should use it.** The automatic decision stays for local/dev builds, where a lean zip is a genuine convenience and the baseline still means what it says. The v0.8.21 Mac asset was rebuilt with the flag and replaced in-place via `gh release upload --clobber`.
+
+**The general shape worth remembering:** a build artifact whose correctness depends on *when* a file was committed relative to *which* platform built it is a trap regardless of how carefully it is documented. The flag removes the ordering dependency instead of documenting it.
+
+---
+
 ## Release Builds Must Start From a Clean `portable-build/`
 
 **Why:** Caught while cutting v0.8.21, before publishing. `zipFreshInstall()` archives the whole install root, which includes **every** `versions/<x>/` directory sitting in it — and each is ~1.4GB. Because the same root had been used for a v0.8.20 build earlier the same day, the v0.8.21 fresh-install zip was on course to contain both versions: roughly double the download, with a stale version shipped to every new user. It would have "worked" (`current-version.txt` points at the new one), which is exactly why it could have gone out unnoticed.
