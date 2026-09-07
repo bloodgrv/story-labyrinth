@@ -4,6 +4,20 @@ Architecture decisions that are not obvious from the code or CLAUDE.md.
 
 ---
 
+## Chat Auto-Title Broken for Reasoning Models (found verifying B45 against a real model)
+
+**Why:** With LM Studio finally up, B45's proxy was re-verified against a real local model (`artemis-31b-v1h-i1-gguf`) rather than the stub used on 2026-09-06. The proxy itself passed cleanly — a real question got a chapter-accurate answer, real usage reached the Context Meter, and the `local/` prefix strip worked on the real path. But the chat kept its `New Chat <date>` name even though its title request returned 200.
+
+**Root cause (reproduced directly, not inferred):** `generateChatTitle` asked for **30 tokens**. A reasoning-capable model spends its budget on an internal reasoning phase *before* emitting any visible content, so the call came back with `finish_reason: "length"`, 103 characters of reasoning and **zero characters of content**. `generateChatTitle` then correctly discarded that as unusable and returned null, and the caller correctly left the title alone — every layer behaved as designed, and the feature silently did nothing. This is the same failure mode `AIService.DEFAULT_MAX_TOKENS` was raised from 2048 to 4096 to avoid; the title path's hardcoded 30 was simply never revisited in that light. **Not a B45 regression** — the identical cap and model would have failed the same way through the old browser-direct path.
+
+**Fix, and why the ceiling went up everywhere rather than just for local** (user's call): `max_tokens` is a cap, not a target. A non-reasoning model still stops at its own end-of-turn after a few words and is billed for exactly those, so a higher ceiling costs nothing for the models that never needed it and is the whole fix for the ones that did. `MAX_TITLE_TOKENS = 512`; the live re-run then produced "Cold Rainy Night in Berlin" with `finish_reason: stop` after 765 characters of reasoning — comfortably inside the new ceiling.
+
+**A second fix the first one made necessary.** Raising the ceiling lets a model that keeps its reasoning *in `content`* (rather than in a separate `reasoning_content` field, which is what LM Studio uses) actually return that reasoning — whereupon `.slice(0, 60)` would have saved the opening 60 characters of the model's own thinking as the chat's title. Turning "no title" into "garbage title" is not an improvement, so the raw text now goes through the existing `parseThinkingContent` first. The two changes belong together and are tested together.
+
+**Verified:** 6 new unit tests (`generateChatTitle.test.ts`), both mutation-checked — reverting the cap to 30 fails 1, dropping the thinking-strip fails 3 — plus the full live path in the browser, where a fresh Editor chat auto-titled itself "Identifying Point Of View Character" off a reply that correctly named the chapter's POV character.
+
+---
+
 ## Wave 3 — Dependency Majors, Tier 3 + API-Checkable Tier 4 (health review B48)
 
 **Context:** `docs/HEALTH_REVIEW_2026-09-06.md`'s H3 / P2 **B48**. Scope picked by the user: everything whose breakage a compiler or a test can actually catch, leaving the ones that fail *visually* for their own passes. Landed: `concurrently` 10, `knip` 6, `@types/node` 26, `@types/better-sqlite3` 9, `gpt-tokenizer` 4, `@sindresorhus/is` 8, `better-sqlite3` 13, `openai` 7, `@google/genai` 2.
