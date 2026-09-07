@@ -28,7 +28,10 @@ import { runTimelineSuggestPinsJob } from "./jobs/timelineSuggestPinsJob.js";
 // only claims a job whose type isn't already running, preserving the original SQLite
 // write-contention rationale (design doc §3.3) within a type while relaxing it across types.
 
-const TICK_INTERVAL_MS = 3000; // claim + run
+// claim + run. Overridable ONLY so the integration suite doesn't spend ~50s waiting on 3s ticks
+// (server/test/jobRunnerQueue.test.ts sets it to 200ms); the default is unchanged for every real
+// deployment, and nothing in the app sets this — if you find it set outside a test, that's a bug.
+const TICK_INTERVAL_MS = Number(process.env.JOB_TICK_INTERVAL_MS) || 3000;
 const SCHEDULE_INTERVAL_MS = 60_000; // enqueue due periodic jobs
 
 // B37 (docs/CODE_REVIEW_2026-08-17.md) — before this, a handler that hung (a stuck fetch with no
