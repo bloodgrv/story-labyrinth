@@ -17,3 +17,11 @@ screenshots
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Portable-build outputs and release zips — gitignored build artifacts, ~2.5GB combined. Without
+# these the Dockerfile's `COPY . .` ships them INTO the image (and every build spends a minute
+# transferring them as build context). Added 2026-09-06 after a verification build watched the
+# context climb past 1.5GB. See docs/CURRENT_BACKLOG.md's B46 row.
+portable-build
+.portable-build-cache
+*.zip
