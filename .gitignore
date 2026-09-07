@@ -19,8 +19,10 @@ dist-ssr
 # Windows portable build output (scripts/build-portable.mjs) — generated, not source.
 .portable-build-cache
 portable-build
-Story-Labyrinth-portable-win-x64.zip
-Story-Labyrinth-portable-win-x64-update.zip
+# The fresh-install zip is version-stamped (…-win-x64-v0.8.20.zip); the update payload deliberately
+# is not, since server/routes/update.ts matches that asset by exact name. One glob covers both,
+# and the mac-arm64 zips too.
+Story-Labyrinth-portable-*.zip
 
 # Local Hermes planning-agent output — not source.
 .hermes/

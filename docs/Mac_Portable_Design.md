@@ -81,9 +81,11 @@ Story-Labyrinth-portable-mac-arm64/   # folder name free; zip top-level entries 
 
 | Priority | Platform id | Node dist | Fresh-install zip | Update payload zip |
 |----------|-------------|-----------|-------------------|--------------------|
-| **P0** | `mac-arm64` | `node-v{N}-darwin-arm64.tar.gz` | `Story-Labyrinth-portable-mac-arm64.zip` | `Story-Labyrinth-portable-mac-arm64-update.zip` |
-| P1 (if demanded) | `mac-x64` | `node-v{N}-darwin-x64.tar.gz` | `…-mac-x64.zip` | `…-mac-x64-update.zip` |
-| (existing) | `win-x64` | win-x64 zip | `…-win-x64.zip` | `…-win-x64-update.zip` |
+| **P0** | `mac-arm64` | `node-v{N}-darwin-arm64.tar.gz` | `Story-Labyrinth-portable-mac-arm64-v<version>.zip` | `Story-Labyrinth-portable-mac-arm64-update.zip` |
+| P1 (if demanded) | `mac-x64` | `node-v{N}-darwin-x64.tar.gz` | `…-mac-x64-v<version>.zip` | `…-mac-x64-update.zip` |
+| (existing) | `win-x64` | win-x64 zip | `…-win-x64-v<version>.zip` | `…-win-x64-update.zip` |
+
+**The asymmetry is deliberate (2026-09-07).** The fresh-install zip is version-stamped because only humans consume it — the version in the filename is what makes a folder of downloaded builds tellable apart. The update payload is **not**, and must not be: `server/routes/update.ts` finds it by exact name, and that lookup runs in the build the user already has installed, so renaming it would make every release invisible to every copy in the field.
 
 - **Node version:** same pin as Windows builder (`NODE_RUNTIME_VERSION` in `build-portable.mjs` — single constant for all platforms).  
 - **Default Mac ship target:** **Apple Silicon only** until someone needs Intel.  

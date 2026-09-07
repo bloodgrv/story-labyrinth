@@ -4,6 +4,20 @@ Architecture decisions that are not obvious from the code or CLAUDE.md.
 
 ---
 
+## Release Zip Naming — Version-Stamp the Fresh-Install Zip, Never the Update Payload
+
+**Why:** Asked for the release number in the portable build's output filenames. Only one of the two zips can safely take it, and the split is worth writing down because the reason is invisible from the filename itself.
+
+**Fresh-install zip → version-stamped** (`Story-Labyrinth-portable-win-x64-v0.8.20.zip`). Nothing reads this name programmatically; it is the asset a human downloads from the release page. Stamping it makes a folder of downloaded builds tellable apart and answers "which build is this?" without opening it.
+
+**Update payload → keeps its fixed name** (`Story-Labyrinth-portable-<platform>-update.zip`), and this is a compatibility contract, not an oversight. `server/routes/update.ts` resolves it by **exact** name (`release.assets.find(a => a.name === updateAssetName(platform))`), and **that lookup runs inside the build the user already has installed**. A release that renamed the asset would therefore be invisible to every copy in the field: "Update now" would report no available asset, indefinitely, with a manual reinstall as the only way forward — and the breakage would land on users who had done nothing but stay on a previous version. The version is already unambiguous from the release tag the asset hangs off, so there is nothing to gain against that risk.
+
+Changing it later would need releases to carry **both** names long enough that every install has passed through a version whose updater accepts the new one — a real deprecation window, not a rename. The constraint is now commented at `zipUpdatePayload()` so the next person to reach for symmetry finds the reason first.
+
+**Knock-on edits:** `.gitignore`'s two literal zip names became one `Story-Labyrinth-portable-*.zip` glob (a version-stamped name would otherwise show up as untracked every build), and `.github/workflows/portable-mac.yml` now globs the fresh-install artifact/upload path (`…-mac-arm64-v*.zip`) while still naming the update zip exactly.
+
+---
+
 ## Chat Auto-Title Broken for Reasoning Models (found verifying B45 against a real model)
 
 **Why:** With LM Studio finally up, B45's proxy was re-verified against a real local model (`artemis-31b-v1h-i1-gguf`) rather than the stub used on 2026-09-06. The proxy itself passed cleanly — a real question got a chapter-accurate answer, real usage reached the Context Meter, and the `local/` prefix strip worked on the real path. But the chat kept its `New Chat <date>` name even though its title request returned 200.

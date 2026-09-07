@@ -373,8 +373,12 @@ async function waitForHealth(port, timeoutMs) {
 // system `zip` command — `ditto` was the other documented option but `zip -ry` gives the exact
 // same "contents at top level, no wrapper folder" shape with more predictable, widely-understood
 // behavior, and matches the plain `zip` tooling a future Linux CI leg would use too.
+// Version-stamped, unlike the update payload below: nothing reads this name programmatically —
+// it's the asset a human downloads from the release page — so having the version in the filename
+// makes a folder of downloaded zips tellable apart, and makes "which build is this?" answerable
+// without opening it.
 function zipFreshInstall() {
-    const zipName = `Story-Labyrinth-portable-${platformId}.zip`;
+    const zipName = `Story-Labyrinth-portable-${platformId}-v${version}.zip`;
     const zipPath = path.join(repoRoot, zipName);
     log(`Zipping fresh-install ${outRoot} -> ${zipPath} ...`);
     fs.rmSync(zipPath, { force: true });
@@ -419,6 +423,14 @@ const sameDepsManifest = (a, b) => !!a && !!b && a.nodeRuntimeVersion === b.node
 // have come out identical anyway. When in doubt (no baseline yet, unreadable baseline, anything
 // mismatched) this always falls back to full — a lean zip is only ever produced when the manifests
 // provably match.
+// ⚠ This name is a compatibility contract and must NOT be version-stamped the way the
+// fresh-install zip above is. server/routes/update.ts looks the asset up by EXACT name
+// (`release.assets.find(a => a.name === updateAssetName(platform))`), and that lookup runs in the
+// build the user already has installed — so a release that renamed this asset would be invisible
+// to every copy in the field: "Update now" would report no available asset, forever, with a manual
+// reinstall as the only way forward. The version is already unambiguous from the release tag the
+// asset hangs off. Changing this safely would need releases to carry BOTH names for long enough
+// that every install has passed through a version whose updater accepts the new one.
 function zipUpdatePayload() {
     const zipName = `Story-Labyrinth-portable-${platformId}-update.zip`;
     const zipPath = path.join(repoRoot, zipName);

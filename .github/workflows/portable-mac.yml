@@ -44,7 +44,10 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: Story-Labyrinth-portable-mac-arm64
-                  path: Story-Labyrinth-portable-mac-arm64.zip
+                  # Version-stamped by build-portable.mjs (…-mac-arm64-v<version>.zip), so matched
+                  # by pattern. The -update.zip below keeps its fixed name on purpose — see
+                  # zipUpdatePayload()'s comment.
+                  path: Story-Labyrinth-portable-mac-arm64-v*.zip
                   if-no-files-found: error
 
             - name: Upload update-payload zip artifact
@@ -62,7 +65,7 @@ jobs:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   gh release upload "${{ github.ref_name }}" \
-                      "Story-Labyrinth-portable-mac-arm64.zip" \
+                      Story-Labyrinth-portable-mac-arm64-v*.zip \
                       "Story-Labyrinth-portable-mac-arm64-update.zip" \
                       --repo "${{ github.repository }}" \
                       --clobber
