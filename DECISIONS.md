@@ -4,6 +4,34 @@ Architecture decisions that are not obvious from the code or CLAUDE.md.
 
 ---
 
+## A Second Instance Must Never Reach the Database
+
+**How it surfaced:** a user reported that Settings showed v0.8.21 while the console window behind it still said "Starting Story Labyrinth v0.8.20". That part was a non-issue — stale scrollback. An in-app update stops the server that owns the launcher window and spawns the replacement **detached, with `stdio: "ignore"`** (`update-runner.mjs`'s `spawnServer`), so the old window keeps its original banner text forever and the running app has no console at all. `Settings → Running version` reads `pkg.version` of the process actually answering the request, so it was right.
+
+The window is now *lying*, though: it says "Closing this window stops the server", which after an update is false. Close it, assume you shut down, double-click the launcher again — and you get a second instance. That path had two real defects.
+
+**1. The crash.** `server` had no `'error'` handler, so `EADDRINUSE` killed the process with a raw Node stack trace as its only explanation.
+
+**2. The dangerous one.** `initializeDatabase()` ran at module load, independent of the bind. The doomed second process took a `VACUUM INTO` pre-migration snapshot and ran the migration pass **against the SQLite file the live instance was actively using**, and only afterwards discovered the port was taken. Two processes migrating one database is precisely what the portable updater's entire design exists to prevent.
+
+**The fix that didn't work, and why it matters more than the fix that did:** gating the database work on `app.listen()`'s success callback is the obvious answer and it is *wrong on Windows*. `'listening'` fires **first**; `EADDRINUSE` arrives right behind it, and the callback's synchronous `runMigrations()` completes before the error is ever dispatched. Verified by running two real instances — the second logged `Server running on port 3999` and a full migration pass before printing the conflict. (The mechanism is libuv's dual-stack bind: `netstat` shows `0.0.0.0:PORT` and `[::]:PORT` as separate listeners, and a partial success is possible. With the guard deliberately disabled, a foreign IPv4-only listener let the app half-start on the IPv6 side and *keep running*.)
+
+**What shipped** (`startServer` at the bottom of `server/index.ts`), belt-and-braces:
+
+1. **A pre-bind probe** — `GET http://127.0.0.1:$PORT/api/health` before anything else. This is the only deterministic part for the real case, and it also distinguishes *us* (our health payload) from some other program on the port, so the message doesn't send the user hunting for a window that doesn't exist. It **fails open**: only a completed HTTP response counts as occupied, and every rejection is treated as free and left for the bind to adjudicate. Treating an unrecognised probe error as "occupied" would trade a rare cosmetic problem for a total outage — refusing to start on a port that was never in use — and this code has to be right on Windows, macOS and in Docker.
+2. **DB init deferred one macrotask** past `'listening'`, skipped if a `bindFailed` flag is set — this is what hands a late Windows `EADDRINUSE` its chance to run before any migration starts, and it is what makes the fail-open probe safe.
+3. **An `'error'` handler** that sets `bindFailed` *synchronously* (the data-safety guarantee), then re-probes to name the occupant before exiting 1 — reaching it means the pre-bind probe said "free", so assuming "another copy of us" would often be wrong. Non-`EADDRINUSE` errors still throw: those are genuinely unexpected and a stack trace is the right output.
+
+Both messages point at the two things the user actually wants: `http://localhost:PORT` to use it, and `/_status` ("Shutdown server") to stop it gracefully — which is also the answer to "how do I stop the server that has no window?".
+
+**Launcher side:** both launchers now check, after node exits, whether the port is still listening (`netstat`/`findstr` on Windows, `lsof` with a `curl` fallback on macOS) and say plainly that the app is still running and closing the window won't stop it. The mac launcher's pre-existing "exited with an error (code N)" branch had to move *below* that check — a signalled shutdown exits non-zero, so a normal in-app update was being reported as a crash. These reach existing installs on the next update via `refreshLauncherAssets()`.
+
+**Covered by** `server/test/secondInstance.test.ts` (integration, real processes). The load-bearing assertion is `expect(output).not.toContain("Running database migrations")` — a process that cannot have the port must not write to a live database. Mutation-verified: disabling the probe fails the suite.
+
+**The general shape worth remembering:** the fix that "obviously" works — gate on the success callback — was disproved in about two minutes by running the actual thing on the actual platform, and would have shipped looking correct on review. Same lesson as every other real bug in this project's recent history.
+
+---
+
 ## Lean Update Payloads Can't Be Trusted on a Release Build — `--force-full`
 
 **What went wrong (v0.8.21, caught after publishing):** the Mac CI shipped a **lean** update payload across a real dependency change. `zipUpdatePayload()` decides lean-vs-full by comparing the current lockfile hash against the committed baseline in `shipped-deps-manifest.json`, which is meant to describe the **previous** release. But the build rewrites that file and prints "commit this alongside the version bump" — so the release commit contains this release's own hash, and any platform building **from the release tag** compares its lockfile against a baseline describing itself, concludes nothing changed, and emits a lean zip. The Windows payload was full only by accident of ordering: it was built before that commit existed.

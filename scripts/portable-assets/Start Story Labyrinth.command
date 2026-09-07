@@ -31,7 +31,32 @@ echo ""
 "./versions/${CURRENT_VERSION}/node/bin/node" "./versions/${CURRENT_VERSION}/app/dist/server/server/index.js"
 STATUS=$?
 
-if [ "$STATUS" -ne 0 ]; then
+# An in-app update stops THIS window's server and starts the new version detached, with no window of
+# its own — so node exits here while the app is still running (and with a non-zero status, since it
+# was signalled, which the error branch below would otherwise report as a crash). Check the port
+# before blaming anything: closing this window does NOT stop the replacement.
+still_running=false
+if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1 && still_running=true
+elif command -v curl >/dev/null 2>&1; then
+    # -s (not -sS): a refused connection is the normal "it really did stop" case, and curl's own
+    # error text printed here would read as a fault rather than the expected outcome.
+    curl -fs -o /dev/null --max-time 2 "http://localhost:${PORT}/api/health" 2>/dev/null && still_running=true
+fi
+
+if [ "$still_running" = true ]; then
+    echo ""
+    echo "------------------------------------------------------------------"
+    echo "Story Labyrinth is STILL RUNNING on port ${PORT}."
+    echo ""
+    echo "This window's copy has stopped, which normally means you updated"
+    echo "from inside the app: the new version took over and runs in the"
+    echo "background. Closing this window will NOT stop it."
+    echo ""
+    echo "  Use it:   http://localhost:${PORT}"
+    echo "  Stop it:  http://localhost:${PORT}/_status  (\"Shutdown server\")"
+    echo "------------------------------------------------------------------"
+elif [ "$STATUS" -ne 0 ]; then
     echo ""
     echo "Story Labyrinth exited with an error (code $STATUS). See the output above for details."
 fi

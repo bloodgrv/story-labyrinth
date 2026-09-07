@@ -1,3 +1,4 @@
+import { attemptPromise } from "@jfdi/attempt";
 import cors from "cors";
 import express from "express";
 import { spawn } from "node:child_process";
@@ -69,9 +70,9 @@ const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "s
 let server: ReturnType<typeof app.listen>;
 let jobRunnerStarted = false;
 
-// Readiness, as distinct from liveness. initializeDatabase() below is deliberately NOT awaited
-// before app.listen() (kept that way — the HTTP server binding early is what lets the browser
-// show *something* while a slow first-boot migration runs), so for a window after startup this
+// Readiness, as distinct from liveness. initializeDatabase() is deliberately NOT awaited before
+// app.listen() answers requests (kept that way — the HTTP server binding early is what lets the
+// browser show *something* while a slow first-boot migration runs), so for a window after startup this
 // process answers HTTP fine while the database is still being migrated/seeded. GET /api/health
 // reported a flat `{status:"ok"}` through that whole window, which made the portable self-updater's
 // boot-failure rollback (scripts/portable-updater/update-runner.mjs) structurally unable to fire:
@@ -98,9 +99,14 @@ let dbReady = false;
 // the update-runner's own respawn (scripts/portable-updater/update-runner.mjs) does the same.
 // Spawned detached + unref'd, and — critically — only AFTER server.close()'s callback fires (the
 // port is actually released by then), not before: spawning earlier would race the new process's
-// own app.listen() against this one still holding the port, and index.ts has no EADDRINUSE
-// handler on `server` (an unhandled 'error' event there crashes the process outright).
+// own app.listen() against this one still holding the port. That race is now caught rather than
+// fatal (see `startServer`'s conflict handling at the bottom of this file), but a relaunch that
+// reports a port conflict to a console nobody is watching is still a failed restart — the ordering
+// here is what prevents it, not the handler.
 const shutdown = async (relaunch = false) => {
+    // `server` is assigned asynchronously (startServer awaits a port probe first), so a signal
+    // arriving in that window would otherwise crash on `server.close` instead of exiting.
+    if (!server) process.exit(0);
     await writeAllManuscriptBackups().catch(error => console.error("Manuscript backup pass failed on shutdown:", error));
     await stopJobRunner();
     server.close(() => {
@@ -153,10 +159,13 @@ const initializeDatabase = async () => {
     dbReady = true;
 };
 
-initializeDatabase().catch(error => {
-    console.error("Failed to initialize database:", error);
-    process.exit(1);
-});
+// initializeDatabase() is NOT called here — it runs from app.listen()'s callback at the bottom of
+// this file, so nothing touches the database until this process actually owns the port. It used to
+// fire right here, at module load, racing app.listen(): a second instance started against an
+// already-running one would take a pre-migration VACUUM INTO snapshot and run migrations on the
+// SQLite file the live instance was busy using, and only afterwards discover the port was taken and
+// die. Two processes migrating one database is exactly what the rest of the update doctrine exists
+// to prevent, and a second launch is easy to trigger by accident — see the EADDRINUSE handler.
 
 // Middleware
 app.use(express.json({ limit: "50mb" }));
@@ -354,9 +363,110 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
     res.status(500).json({ error: err.message || "Internal server error" });
 });
 
-server = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT} in ${NODE_ENV} mode`);
-});
+// --- Second-instance handling -------------------------------------------------------------------
+//
+// Starting a second copy against a running one is easy to do by accident on a portable build: an
+// in-app update stops the server that owns the console window and starts the replacement detached,
+// with no window of its own (update-runner.mjs's spawnServer), so the old window sits there looking
+// dead while the app is very much alive — and the obvious move is to double-click the launcher.
+//
+// Two things went wrong on that path, and the second is the serious one:
+//   1. `server`'s 'error' event had no handler, so an EADDRINUSE bind failure killed the process
+//      with a raw Node stack trace as its only explanation.
+//   2. initializeDatabase() ran at module load, before/independently of the bind, so the doomed
+//      second process took a VACUUM INTO snapshot and ran migrations against the SQLite file the
+//      live instance was actively using — two processes migrating one database, which is precisely
+//      what the rest of this project's update doctrine exists to prevent.
+//
+// Gating the database work on a successful bind is NOT sufficient on its own, which is only visible
+// by running it: on Windows the 'listening' event fires *first* and EADDRINUSE arrives right after,
+// so the callback's synchronous runMigrations() completes before the error is ever dispatched.
+// Verified by running two instances — the second logged "Server running on port 3999" and a full
+// migration pass before printing the conflict. Hence the belt-and-braces below.
+
+// Positive detection, and the only part that is deterministic for the real-world case: something
+// answering /api/health with our own payload is a Story Labyrinth we must not fight with; anything
+// else that answers gets an honest "some other program" message rather than a confusing claim about
+// this app.
+//
+// Deliberately FAILS OPEN. Only a completed HTTP response counts as occupied — every rejection
+// (connection refused, timeout, or some error shape this code has never seen) is treated as free
+// and left for the bind to adjudicate, because the bind is the real authority and the handler below
+// catches it. The alternative, treating an unrecognised probe error as occupied, trades a rare
+// cosmetic problem for a total outage: a refusal to start on a port that was never in use.
+const probePortOccupant = async (): Promise<"free" | "story-labyrinth" | "other"> => {
+    // 127.0.0.1 rather than localhost on purpose — an IP literal skips DNS, so a rejection is a
+    // plain connection error rather than an AggregateError over several resolved addresses.
+    const [error, response] = await attemptPromise(() =>
+        fetch(`http://127.0.0.1:${PORT}/api/health`, { signal: AbortSignal.timeout(2000) })
+    );
+    if (error) return "free";
+    const [, body] = await attemptPromise(() => response.json() as Promise<{ status?: string; version?: string }>);
+    return body?.status === "ok" && typeof body.version === "string" ? "story-labyrinth" : "other";
+};
+
+const reportPortConflict = (occupant: "story-labyrinth" | "other") => {
+    if (occupant === "story-labyrinth") {
+        console.error(`\nStory Labyrinth is already running on port ${PORT}, so this copy can't start.`);
+        console.error(`\n  Use it:   http://localhost:${PORT}`);
+        console.error(`  Stop it:  http://localhost:${PORT}/_status  ("Shutdown server")`);
+        console.error(`\nIf you updated from inside the app, the new version is what's holding the port:`);
+        console.error(`it runs in the background without a window of its own.`);
+    } else {
+        console.error(`\nPort ${PORT} is already in use by another program, so Story Labyrinth can't start.`);
+        console.error(`Close whatever is using it, or set a different port (PORT=3001) and try again.`);
+    }
+    console.error(`\nNothing on disk was changed, and your data has not been touched.`);
+};
+
+// Set by the 'error' handler; read by the deferred start below. The whole point is that on Windows
+// the error is already queued behind our own synchronous work when 'listening' fires.
+let bindFailed = false;
+
+const startServer = async () => {
+    const occupant = await probePortOccupant();
+    if (occupant !== "free") {
+        reportPortConflict(occupant);
+        process.exit(1);
+    }
+
+    server = app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT} in ${NODE_ENV} mode`);
+        // Yield one macrotask before touching the database. On Windows a late EADDRINUSE is already
+        // sitting in the queue at this point (see above), so this hands it the chance to run — and
+        // its process.exit(1) — before any migration starts. Backstop for the genuine race the
+        // probe above can't close: two cold starts within the same few milliseconds.
+        setTimeout(() => {
+            if (bindFailed) return;
+            // Still deliberately not awaited (see `dbReady`'s comment) — binding early is what lets
+            // the browser show something during a slow first-boot migration.
+            initializeDatabase().catch(error => {
+                console.error("Failed to initialize database:", error);
+                process.exit(1);
+            });
+        }, 0);
+    });
+
+    // An unhandled 'error' event on an http.Server kills the process outright. Anything that isn't a
+    // port conflict keeps that behaviour deliberately: it's genuinely unexpected, and a stack trace
+    // is the right output for it.
+    server.on("error", (error: NodeJS.ErrnoException) => {
+        if (error.code !== "EADDRINUSE") throw error;
+        // Synchronous, so the deferred initializeDatabase() above is skipped no matter what the
+        // re-probe does next. That ordering is the data-safety guarantee; the message is cosmetic.
+        bindFailed = true;
+        // Re-probe rather than assume: reaching here means the pre-bind probe said "free", so the
+        // occupant either arrived in the intervening milliseconds or never answered HTTP at all.
+        // Ask again so the message names the right culprit; if it still won't answer, "some other
+        // program" is the honest description.
+        void probePortOccupant().then(occupant => {
+            reportPortConflict(occupant === "story-labyrinth" ? "story-labyrinth" : "other");
+            process.exit(1);
+        });
+    });
+};
+
+void startServer();
 
 process.on("SIGTERM", () => void shutdown());
 process.on("SIGINT", () => void shutdown());
