@@ -1,5 +1,6 @@
 import { estimateTokens, formatTokenCount } from "@/features/context-meter/lib/estimateTokens";
 import { aiService } from "@/services/ai/AIService";
+import type { FeatureKey } from "@/types/aiSettings";
 import type { AIProvider, PromptMessage } from "@/types/story";
 import { logger } from "@/utils/logger";
 
@@ -8,7 +9,13 @@ import { logger } from "@/utils/logger";
 // here per-message and as a total right before every generation call, so "why is this turn slow"
 // can be checked against actual outbound size instead of guessing. Browser console only (logger
 // writes there client-side); look for "AI Generation Request" in DevTools after sending a message.
-export const generateWithProvider = (provider: AIProvider, messages: PromptMessage[], modelId: string): Promise<Response> => {
+export const generateWithProvider = (
+    provider: AIProvider,
+    messages: PromptMessage[],
+    modelId: string,
+    // B45 — forwarded to the server so a matching per-feature endpoint's apiUrl/apiKey applies.
+    featureKey?: FeatureKey
+): Promise<Response> => {
     const perMessageTokens = messages.map(m => ({ role: m.role, estimatedTokens: estimateTokens(m.content) }));
     const totalEstimatedTokens = perMessageTokens.reduce((sum, m) => sum + m.estimatedTokens, 0);
 
@@ -22,5 +29,5 @@ export const generateWithProvider = (provider: AIProvider, messages: PromptMessa
         promptPreview: messages[0]?.content?.substring(0, 200)
     });
 
-    return aiService.generate(provider, messages, modelId);
+    return aiService.generate(provider, messages, modelId, undefined, undefined, featureKey);
 };

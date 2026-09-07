@@ -2,6 +2,7 @@ import { attemptPromise } from "@jfdi/attempt";
 import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
 import { useGenerateWithPrompt } from "@/features/ai/hooks/useGenerateWithPrompt";
+import { featureKeyForChatType } from "@/features/ai/utils/chatFeatureKeys";
 import { useStreamingGeneration } from "@/features/ai/hooks/useStreamingGeneration";
 import { beginAiActivity, endAiActivity } from "@/features/activity/store/aiActivityStore";
 import type { WorkspaceTool } from "@/features/stories/context/StoryContext";
@@ -241,7 +242,7 @@ export const useChatMessageGeneration = ({
                 onChatUpdate(afterUserMessage);
 
                 const config = createPromptConfig(selectedPrompt, extraContext);
-                const response = await generateWithPrompt(config, selectedModel);
+                const response = await generateWithPrompt(config, selectedModel, featureKeyForChatType(selectedChat.chatType));
 
                 if (response.status === 204) {
                     logger.info("Generation was aborted.");

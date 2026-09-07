@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { usePromptParser } from "@/features/prompts/hooks/usePromptParser";
 import { aiService } from "@/services/ai/AIService";
+import type { FeatureKey } from "@/types/aiSettings";
 import type { AllowedModel, PromptMessage, PromptParserConfig } from "@/types/story";
 import { generateWithProvider } from "../services/aiGenerationHelper";
 
@@ -27,7 +28,7 @@ export function useGenerateWithPrompt() {
     const { parsePrompt } = usePromptParser();
 
     const generateWithPrompt = useCallback(
-        async (config: PromptParserConfig, selectedModel: AllowedModel): Promise<Response> => {
+        async (config: PromptParserConfig, selectedModel: AllowedModel, featureKey?: FeatureKey): Promise<Response> => {
             await aiService.initialize();
 
             const { messages, error } = await parsePrompt(config);
@@ -36,7 +37,7 @@ export function useGenerateWithPrompt() {
 
             const finalMessages = applyLocalInject(messages, selectedModel.provider);
 
-            return generateWithProvider(selectedModel.provider, finalMessages, selectedModel.id);
+            return generateWithProvider(selectedModel.provider, finalMessages, selectedModel.id, featureKey);
         },
         [parsePrompt]
     );

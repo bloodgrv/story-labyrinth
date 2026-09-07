@@ -196,7 +196,20 @@ export const processStreamedResponse = async (
                         return;
                     }
                     if (json) {
-                        const text = json.choices[0]?.delta?.content || "";
+                        // An error frame, not a content chunk. Providers emit these inline, and so
+                        // does this app's own generation proxy (server/routes/aiChat.ts) when a
+                        // generation fails after the SSE headers have already gone out — at that
+                        // point there is no status code left to fail with. Without this branch the
+                        // line below would throw on the absent `choices`, surfacing an unrelated
+                        // TypeError instead of what actually went wrong.
+                        if (json.error) {
+                            const message =
+                                typeof json.error === "string" ? json.error : json.error?.message || "Generation failed";
+                            logger.error("processStreamedResponse - provider error frame:", json.error);
+                            onError(new Error(message));
+                            return;
+                        }
+                        const text = json.choices?.[0]?.delta?.content || "";
                         if (text) onToken(text);
                         const usage = readUsage(json);
                         if (usage) onUsage?.(usage);

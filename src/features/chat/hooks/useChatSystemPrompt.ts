@@ -6,19 +6,11 @@ import {
     resolveChatDefaultModel,
     resolveModelForModeSwitch
 } from "@/features/ai/utils/resolveChatDefaultModel";
+import { featureKeyForChatType } from "@/features/ai/utils/chatFeatureKeys";
 import { usePromptsQuery } from "@/features/prompts/hooks/usePromptsQuery";
-import type { FeatureKey } from "@/types/aiSettings";
 import type { AIModel, AllowedModel, ChatMode, Prompt } from "@/types/story";
 
-// Every chatType with its own Feature Routing row (see src/types/aiSettings.ts's FEATURE_KEYS).
-const CHAT_FEATURE_KEYS: Partial<Record<Prompt["promptType"], FeatureKey>> = {
-    worldbuilding: "worldbuilding_chat",
-    editor: "editor_chat",
-    brainstorm: "brainstorm_chat",
-    outline: "outline_chat",
-    notes: "notes_chat",
-    research: "research_chat"
-};
+
 
 interface UseChatSystemPromptReturn {
     prompt: Prompt | null;
@@ -50,7 +42,7 @@ export const useChatSystemPrompt = (
     const { data: featureEndpoints } = useFeatureEndpointsQuery();
 
     const prompt = prompts[0] ?? null;
-    const featureKey = CHAT_FEATURE_KEYS[promptType];
+    const featureKey = featureKeyForChatType(promptType);
     const featureOverrideModelId = featureKey ? featureEndpoints?.[featureKey]?.model : undefined;
 
     const [selectedModelId, setSelectedModelId] = useState<string | undefined>(lastUsedModelId);

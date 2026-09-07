@@ -4,6 +4,28 @@ Architecture decisions that are not obvious from the code or CLAUDE.md.
 
 ---
 
+## Wave 2 — Server-Side Chat Generation Proxy (health review B45), Load-Bearing Decisions
+
+**Context:** `docs/HEALTH_REVIEW_2026-09-06.md`'s H1 / P2 **B45**. Live chat generation used to run entirely in the browser — `AIService.ts` read the raw provider keys out of `GET /api/ai/settings` and called OpenAI/OpenRouter/Grok/Gemini directly. That one split was the root cause of three separately-logged items: **B32**'s "architecturally unfixable" key exposure, **B13**'s parked per-feature `apiUrl`/`apiKey` residual, and the remote-access gap where the *browser* had to reach the model host. New `POST /api/ai-chat/stream` (`server/routes/aiChat.ts`) closes all three.
+
+**1. The seam was already there, which is why this is smaller than it sounds.** `AIService.generate` has always returned a `Response` whose body is OpenAI-style SSE, consumed by `handleStreamedResponse`/`processStreamedResponse`. A server route that emits the same bytes is a drop-in: everything downstream — token streaming, usage capture for the Context Meter, the 204-on-abort convention — is untouched. Only two call sites existed (`aiGenerationHelper.ts`, `generateChatTitle.ts`).
+
+**2. Credential resolution: match on provider, fall back to global (user's explicit call).** A chat generation carries something a background job never does — a per-chat model the user picked from the dropdown. So `buildChatClient` always takes the model from the caller, and the only question is whose credentials to use: if the feature's endpoint targets the *same provider* the chat picked, its `apiUrl`/`apiKey` apply (this is what finally makes Feature Routing real for chat); otherwise that provider's global credentials do. Never blocks a generation over a routing mismatch, and never lets an endpoint silently override a deliberate model choice. The two rejected options are recorded on the backlog row.
+
+**3. Mounted at `/api/ai-chat`, deliberately not inside `/api/ai`.** That router is `requireOwner` because it serves and writes provider settings; *generating* is ordinary editor work. `blockViewerMutations` still stops viewers from POSTing.
+
+**4. `grok-session` stays on the browser path,** clearly marked in both the client's `PROXIED_PROVIDERS` set and the route's own enum. It authenticates with a raw session cookie and has no OpenAI-compatible client in `aiClientFactory` — the most brittle provider of the set, and not worth blocking the other seven on. The route rejects it rather than half-handling it.
+
+**5. Errors have two shapes, because a stream has two phases.** Headers are sent only *after* the provider accepts the request, so an upstream failure (bad key, unreachable endpoint) still returns a real status code — B14's lesson, that a failure dressed as a success is worse than an error. After headers are out there is no status left, so a mid-stream failure is written as an SSE `error` frame; `processStreamedResponse` gained a branch for exactly that, which also fixes a latent crash (the old code would have thrown on the absent `choices`, surfacing an unrelated `TypeError`).
+
+**6. Live verification found two real bugs the tests missed — both now regression-tested.** The suite passed 7/7 while both were present, because it only ever sent clean model ids and always supplied a `featureKey`:
+   - **The `local/` prefix.** The browser namespaces local models as `local/<id>` for display, and the old client path stripped that immediately before calling; nothing downstream of the new route did, so a real model server would have rejected `local/artemis-31b-…` outright. Caught by watching what the stub provider actually received.
+   - **The ignored global Local URL.** With no matching per-feature endpoint (chat *title* generation is the real case — it carries no feature key), the synthesised endpoint left `apiUrl` unset, so `clientFromEndpoint` fell back to its hardcoded `localhost:1234` and ignored a configured global Local URL entirely. Surfaced as a 502 in the browser's network tab next to a perfectly successful main generation.
+
+   Both are the reason the house rule is "verify live, not just typecheck": these are precisely the defects a green suite hides, and the second one would have broken every install whose model server isn't on the default port.
+
+---
+
 ## Wave 1 — Invariant Test Harness (health review B49), Load-Bearing Decisions
 
 **Context:** `docs/HEALTH_REVIEW_2026-09-06.md`'s H4 / P2 **B49**. B40 (2026-08-18) deliberately scoped the test suite to pure functions; this adds the first tests that touch the database and HTTP, covering three invariant groups the user picked: chapter-content CAS, Codex propose→approve, chat messages CAS. Auth/permission gating was offered and deliberately left for a later slice.

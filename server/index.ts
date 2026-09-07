@@ -16,6 +16,7 @@ import adminRouter from "./routes/admin.js";
 import agentJobsRouter from "./routes/agentJobs.js";
 import agentMemoriesRouter from "./routes/agentMemories.js";
 import aiRouter from "./routes/ai.js";
+import aiChatRouter from "./routes/aiChat.js";
 import authRouter from "./routes/auth.js";
 import beatsRouter from "./routes/beats.js";
 import brainstormRouter from "./routes/brainstorm.js";
@@ -225,6 +226,11 @@ app.use("/api/lorebook", lorebookRouter);
 app.use("/api/name-generator", nameGeneratorRouter);
 app.use("/api/prompts", promptsRouter);
 app.use("/api/ai", requireOwner, aiRouter);
+// B45 — live chat's server-side streaming proxy. Deliberately its own mount at editor level
+// rather than a route inside aiRouter above: /api/ai is requireOwner (it serves and writes
+// provider settings), but *generating* is ordinary editor work. blockViewerMutations, already
+// applied above, still stops a viewer from POSTing here.
+app.use("/api/ai-chat", aiChatRouter);
 app.use("/api/brainstorm", brainstormRouter);
 app.use("/api/notes", notesRouter);
 app.use("/api/admin", requireOwner, adminRouter);

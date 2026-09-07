@@ -259,3 +259,56 @@ export const setFeatureEndpoints = async (endpoints: FeatureEndpoints): Promise<
         .set({ featureEndpoints: JSON.stringify(endpoints) })
         .where(eq(schema.aiSettings.id, settings.id));
 };
+
+/**
+ * Build a client for a live chat generation (B45, docs/HEALTH_REVIEW_2026-09-06.md's H1).
+ *
+ * Different resolution rule from buildClientForFeature above, because a chat generation carries
+ * something a background job never does: an explicit, per-chat model the user picked from the
+ * model dropdown. That choice has to survive, so the model always comes from the caller and the
+ * only question is which *credentials* to use for it.
+ *
+ * Rule (user's explicit call, 2026-09-06): if this feature has a per-feature endpoint configured
+ * AND that endpoint targets the same provider the chat picked, use the endpoint's custom
+ * apiUrl/apiKey — that is what finally makes Feature Routing real for live chat, closing B13's
+ * parked residual. If the chat picked a model from some other provider, fall back to that
+ * provider's global credentials. This never blocks a generation over a routing mismatch.
+ *
+ * Deliberately not routed through here: "grok-session" (raw cookie auth, no OpenAI-compatible
+ * client exists for it in this file) still generates from the browser — see AIService.generate.
+ */
+export const buildChatClient = async (
+    provider: Exclude<FeatureEndpoint["provider"], "local-inprocess">,
+    model: string,
+    featureKey?: FeatureKey
+): Promise<ClientAndModel> => {
+    const [settings] = await db.select().from(schema.aiSettings);
+    if (!settings) throw new Error("AI settings not initialised");
+
+    // The browser namespaces local models as `local/<id>` for display (LocalAIProvider.ts's
+    // fetchModels), and the old client-side generate path stripped that prefix right before the
+    // call. Nothing downstream of here does, so a proxied local generation would otherwise send
+    // "local/artemis-31b..." as the model name and be rejected by the model server. Found live,
+    // not by the route's own tests, which had only ever passed clean ids.
+    const resolvedModel = provider === "local" ? model.replace(/^local\//, "") : model;
+
+    if (featureKey) {
+        const override = parseEndpoints(settings.featureEndpoints)[featureKey];
+        // Same provider → the override's apiUrl/apiKey apply, but never its model.
+        if (override && override.provider === provider)
+            return clientFromEndpoint({ ...override, model: resolvedModel }, settings);
+    }
+
+    // No matching override: synthesise a bare endpoint so clientFromEndpoint's own per-provider
+    // fallbacks (`endpoint.apiKey || settings.<provider>Key`) supply the global credentials.
+    //
+    // `local` needs its base URL threaded through explicitly: clientFromEndpoint defaults a
+    // missing apiUrl to localhost:1234, which silently ignores a custom global Local URL (Settings
+    // → Local) and sends the generation to the wrong host. clientFromGlobalSettings has always
+    // honoured settings.localApiUrl; this path has to as well. Also found live — chat title
+    // generation, which carries no featureKey, 502'd against a global Local URL that was set.
+    return clientFromEndpoint(
+        { provider, model: resolvedModel, ...(provider === "local" ? { apiUrl: settings.localApiUrl } : {}) },
+        settings
+    );
+};

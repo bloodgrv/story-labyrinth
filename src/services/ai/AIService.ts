@@ -1,11 +1,17 @@
 import { attemptPromise } from "@jfdi/attempt";
 import { API_URLS } from "@/constants/urls";
 import { aiSettingsSchema } from "@/schemas/entities";
+import type { FeatureKey } from "@/types/aiSettings";
 import type { AIModel, AIProvider, AISettings, ChatMode, LocalInjectPreset, PromptMessage } from "@/types/story";
 import { logger } from "@/utils/logger";
 import { aiApi } from "../api/client";
 import { AIProviderFactory } from "./AIProviderFactory";
 import { formatStreamAsSSE, processStreamedResponse, type StreamUsage } from "./streamUtils";
+
+// B45 — providers the server can build an OpenAI-compatible client for, and therefore generates
+// for. "grok-session" is absent deliberately: it authenticates with a raw session cookie and has
+// no equivalent in aiClientFactory, so it still generates from the browser (tracked on B45's row).
+const PROXIED_PROVIDERS = new Set<AIProvider>(["openai", "openrouter", "deepseek", "gemini", "grok", "grok-oauth", "local"]);
 
 export class AIService {
     private static instance: AIService;
@@ -138,7 +144,11 @@ export class AIService {
         messages: PromptMessage[],
         modelId: string,
         temperature: number = 1.0,
-        maxTokens?: number
+        maxTokens?: number,
+        // B45 — which Feature Routing row this generation belongs to, so the server can apply a
+        // matching per-feature endpoint's apiUrl/apiKey. Absent for generations with no feature of
+        // their own (chat title generation).
+        featureKey?: FeatureKey
     ): Promise<Response> {
         this.abortController = new AbortController();
         const signal = this.abortController.signal;
@@ -149,6 +159,16 @@ export class AIService {
             maxTokens ??
             (providerType === "local" ? this.settings?.localMaxOutputTokens ?? undefined : undefined) ??
             AIService.DEFAULT_MAX_TOKENS;
+
+        // B45 (docs/HEALTH_REVIEW_2026-09-06.md's H1) — every provider the server can build an
+        // OpenAI-compatible client for now generates through the server instead of from here.
+        // The provider keys stop being handed to the browser at all, per-feature endpoints finally
+        // apply to live chat, and a remote browser no longer has to reach the model host itself.
+        // The proxy answers with the same OpenAI-style SSE the provider used to return directly,
+        // so everything below this line — handleStreamedResponse, usage capture, the 204-on-abort
+        // convention — is unchanged.
+        if (PROXIED_PROVIDERS.has(providerType))
+            return this.generateViaServer(providerType, messages, modelId, temperature, effectiveMaxTokens, featureKey, signal);
 
         // Local and grok-session already return an OpenAI-style SSE stream (raw HTTP fetch), so no
         // re-wrapping needed.
@@ -179,6 +199,55 @@ export class AIService {
         // (it only ever saw already-flattened content strings, never the SDK chunk's `.usage`).
         // Only Gemini's wrapGeminiStream still emits bare text and needs the re-wrap.
         return providerType === "gemini" ? formatStreamAsSSE(response) : response;
+    }
+
+    // B45 — POST the generation to the server's streaming proxy and hand the raw Response back.
+    // The body is already OpenAI-style SSE, which is exactly what the caller expects, so there is
+    // no re-wrapping here (and none of the browser's provider SDKs are involved at all).
+    private async generateViaServer(
+        providerType: AIProvider,
+        messages: PromptMessage[],
+        modelId: string,
+        temperature: number,
+        maxTokens: number,
+        featureKey: FeatureKey | undefined,
+        signal: AbortSignal
+    ): Promise<Response> {
+        const [error, response] = await attemptPromise(() =>
+            fetch("/api/ai-chat/stream", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                signal,
+                body: JSON.stringify({
+                    provider: providerType,
+                    model: modelId,
+                    messages,
+                    temperature,
+                    maxTokens,
+                    ...(featureKey ? { featureKey } : {})
+                })
+            })
+        );
+
+        if (error) {
+            // Same convention the direct-provider path already used: an aborted generation is a
+            // 204, which useStreamingGeneration reads as "stopped by the user", not an error.
+            if ((error as Error).name === "AbortError") return new Response(null, { status: 204 });
+            throw error;
+        }
+        if (!response) throw new Error("No response from the generation proxy");
+
+        // A non-OK response carries a JSON error body, not a stream. Surface the server's own
+        // message (a bad key, an unreachable local endpoint) rather than a bare status code —
+        // useStreamingGeneration's own 504 handling still applies on top.
+        if (!response.ok && response.status !== 204) {
+            const [, body] = await attemptPromise(() => response.clone().json());
+            const message = (body as { error?: string } | undefined)?.error;
+            if (message) throw new Error(message);
+        }
+
+        return response;
     }
 
     private ensureProviderInitialized(providerType: AIProvider): void {
