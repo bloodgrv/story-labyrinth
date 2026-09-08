@@ -35,6 +35,7 @@ import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 import path from "node:path";
 import { writeStatus } from "./lib/statusFile.mjs";
+import { extractZipTo } from "./lib/extractZip.mjs";
 
 const args = Object.fromEntries(
     process.argv.slice(2).map(arg => {
@@ -122,11 +123,16 @@ const readCurrentVersion = () => fs.readFileSync(currentVersionFile, "utf8").tri
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-// PowerShell single-quoted strings escape an embedded quote by doubling it. Without this, a
-// portable install under a path containing an apostrophe (C:\Users\O'Brien\... is the obvious
-// real-world one) turned every extract into a PowerShell parse error — a permanent, unexplained
-// update failure for that user, on every release.
-const psQuote = value => `'${String(value).replace(/'/g, "''")}'`;
+// Windows-only \\?\ prefixing, via Node's own built-in (a no-op on darwin, so call sites don't
+// branch). The install tree contains paths past MAX_PATH — see lib/extractZip.mjs's header — and
+// the default LongPathsEnabled=0 makes every plain-path fs call against them fail with ENAMETOOLONG
+// or ENOENT. The \\?\ namespace bypasses that at the kernel level regardless of the registry, and
+// path.toNamespacedPath is idempotent, so double-wrapping is harmless.
+//
+// (This replaced a psQuote helper that escaped apostrophes for the PowerShell extract command —
+// C:\Users\O'Brien\... used to break every update. Nothing shells out to PowerShell here any
+// more, so that whole class of quoting bug is now structurally impossible on this path.)
+const longPath = value => path.toNamespacedPath(value);
 
 // Returns the spawned ChildProcess (NOT the result of .unref(), which is undefined) — the caller
 // needs the handle to notice an early exit and, on rollback, to stop it again.
@@ -289,33 +295,58 @@ function verifyDigest() {
 
 function extractZip() {
     writeStatus(root, { phase: "extracting", targetVersion });
-    fs.rmSync(newVersionDir, { recursive: true, force: true });
-    fs.mkdirSync(newVersionDir, { recursive: true });
+    fs.rmSync(longPath(newVersionDir), { recursive: true, force: true });
+    fs.mkdirSync(longPath(newVersionDir), { recursive: true });
     if (isWindows) {
-        // Expand-Archive is dramatically slower than calling .NET's ZipFile API directly — its
-        // per-entry cmdlet/pipeline overhead dominates once an archive has tens of thousands of
-        // small files, which this one does (bundled Node runtime + a full node_modules). Measured
-        // 10+ minutes for a real ~55k-file update payload with Expand-Archive; ExtractToDirectory
-        // does the same extraction in seconds. newVersionDir is freshly rm'd+mkdir'd just above,
-        // so the two-arg (no-overwrite) overload — the only one available under Windows
-        // PowerShell 5.1's bundled .NET Framework, unlike pwsh's .NET Core — is safe to use as-is.
-        execFileSync(
-            "powershell.exe",
-            [
-                "-NoProfile",
-                "-NonInteractive",
-                "-Command",
-                `Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory(${psQuote(downloadPath)}, ${psQuote(newVersionDir)})`
-            ],
-            { stdio: "ignore" }
-        );
+        // Extracted in-process (lib/extractZip.mjs) rather than by shelling out. This used to call
+        // PowerShell 5.1's [System.IO.Compression.ZipFile]::ExtractToDirectory, which is .NET
+        // *Framework* and therefore hard-limited to MAX_PATH (260 chars) unless the machine has
+        // LongPathsEnabled=1 — and 0 is the Windows default. Six deeply-nested @radix-ui paths
+        // under @excalidraw in the payload cross that line on a normal install root, so every
+        // update on a default-configured machine died mid-extract with PathTooLongException. See
+        // that module's header for the full story; the fix is \\?\-prefixed paths, which the .NET
+        // Framework API cannot be talked into using.
+        //
+        // Performance was the original reason for going to .NET at all (Expand-Archive took 10+
+        // minutes on a ~55k-file payload where ExtractToDirectory took seconds). The in-process
+        // reader is in the same class as ExtractToDirectory: one open file descriptor, one pass
+        // over the central directory, no per-entry process or pipeline overhead.
+        const result = extractZipTo(downloadPath, newVersionDir, {
+            onProgress: (done, total) => {
+                writeStatus(root, {
+                    phase: "extracting",
+                    targetVersion,
+                    detail: `unpacking ${done.toLocaleString()} of ${total.toLocaleString()} files`
+                });
+            }
+        });
+        writeStatus(root, {
+            phase: "extracting",
+            targetVersion,
+            detail: `unpacked ${result.files.toLocaleString()} files`
+        });
     } else {
         // -o overwrite, -q quiet — the download zip's top-level entries are node/ and app/
         // directly (see build-portable.mjs's zipUpdatePayload), same shape the Windows extract
         // above produces, so nothing else here needs to branch on platform. A LEAN zip (see
         // copyForwardUnchangedDeps below) only has app/ minus node_modules — unzip handles that
         // identically, it just extracts fewer entries.
-        execFileSync("/usr/bin/unzip", ["-o", "-q", downloadPath, "-d", newVersionDir], { stdio: "ignore" });
+        //
+        // Kept as unzip rather than moved onto the in-process extractor above: the mac payload is
+        // built with `zip -ry`, so it carries symlinks and POSIX modes that extractZip.mjs
+        // deliberately doesn't handle — and darwin has no MAX_PATH problem to fix.
+        //
+        // stderr is captured, not ignored: swallowing it is exactly what made the Windows
+        // PathTooLongException above surface to users as a bare "Command failed: powershell.exe
+        // ..." with no cause attached, and unzip's own failures deserve better than that too.
+        try {
+            execFileSync("/usr/bin/unzip", ["-o", "-q", downloadPath, "-d", newVersionDir], {
+                stdio: ["ignore", "ignore", "pipe"]
+            });
+        } catch (error) {
+            const detail = error?.stderr?.toString().trim();
+            throw new Error(`unzip failed${detail ? `: ${detail}` : ""}`);
+        }
     }
 }
 
@@ -335,11 +366,14 @@ function copyForwardUnchangedDeps() {
 
     if (!fs.existsSync(newNodeDir)) {
         writeStatus(root, { phase: "extracting", targetVersion, detail: "copying unchanged Node runtime forward" });
-        fs.cpSync(path.join(previousVersionDir, "node"), newNodeDir, { recursive: true });
+        fs.cpSync(longPath(path.join(previousVersionDir, "node")), longPath(newNodeDir), { recursive: true });
     }
     if (!fs.existsSync(newNodeModulesDir)) {
         writeStatus(root, { phase: "extracting", targetVersion, detail: "copying unchanged node_modules forward" });
-        fs.cpSync(path.join(previousVersionDir, "app", "node_modules"), newNodeModulesDir, { recursive: true });
+        // longPath matters most here: this copies the very node_modules tree whose nested
+        // @radix-ui paths blow past MAX_PATH. A lean update would otherwise fail exactly the way
+        // the .NET extract did, just on a different code path and only for lean releases.
+        fs.cpSync(longPath(path.join(previousVersionDir, "app", "node_modules")), longPath(newNodeModulesDir), { recursive: true });
     }
 }
 
@@ -506,7 +540,9 @@ function pruneOldVersions(keep) {
         }
         if (keep.includes(name) || !/^\d+\.\d+\.\d+$/.test(name)) continue;
         try {
-            fs.rmSync(full, { recursive: true, force: true });
+            // longPath, or the deep node_modules paths inside an old version folder make it
+            // undeletable — quietly leaving ~1.3 GB behind on every update, forever.
+            fs.rmSync(longPath(full), { recursive: true, force: true });
         } catch {
             // still locked by something — it'll be swept on a later update
         }

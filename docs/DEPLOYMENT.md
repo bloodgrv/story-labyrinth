@@ -135,3 +135,37 @@ SQLite can lock if multiple processes access it. Ensure only one instance is run
 - Verify JSON file format
 - Ensure backend is running
 - Check server logs: `docker-compose logs -f`
+
+### Windows Portable: update fails with "path too long"
+
+Windows limits paths to 260 characters (`MAX_PATH`) unless long paths are enabled,
+which they are **not** by default. A few dependencies in the update payload nest deeply
+enough to cross that line — the worst is ~210 characters before the install root is even
+prepended — so on a long install root an update could abort partway through extraction
+with `System.IO.PathTooLongException`, leaving a partial `versions\<version>\` folder.
+
+**Fixed as of 2026-09-08:** the updater now extracts in-process through `\\?\`-prefixed
+paths (`scripts/portable-updater/lib/extractZip.mjs`), which bypasses `MAX_PATH` at the
+kernel level regardless of the registry setting. See `DECISIONS.md`'s "Portable Windows
+Self-Update — MAX_PATH Extraction Failure" entry.
+
+**Important caveat for the release that carries the fix.** The updater that performs an
+update is the one the _previous_ release installed — `root/updater/` is only refreshed
+from the new version after it boots successfully. So an install on an older build still
+uses the old extractor for the hop _onto_ the fixed release, and is protected only from
+that release onward. (Same doctrine as the pre-migration database snapshot: a fix in the
+updater never protects the update that installs it.) Affected installs need one of:
+
+- **Enable long paths** (Administrator, then reboot):
+    ```powershell
+    New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+    ```
+- **Use a short install root** — `C:\SL\` rather than
+  `D:\Story-Labyrinth-portable-win-x64\` — which buys back the ~35 characters that
+  matter.
+
+A failed update is non-destructive by design: the running version and its data are
+untouched, so retrying after either change is safe.
+
+Note for anyone cutting Windows builds: `Compress-Archive` is bound by the same limit, so
+a build machine also wants long paths enabled.
